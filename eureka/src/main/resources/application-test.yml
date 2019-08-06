@@ -8,7 +8,7 @@ spring:
 #eureka需要超时读取之前需要等待的时间
 eureka:
   client:
-    eureka-server-read-timeout-seconds: 10
+    eureka-server-read-timeout-seconds: 11
     #eureka客户端允许所有eureka服务器连接的总数目,默认是200
     EurekaServerTotalConnections: 200
     #允许连接最大注册数量
