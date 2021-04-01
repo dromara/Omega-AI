@@ -1,0 +1,25 @@
+server:
+  port: 8001
+
+#注册中心配置
+spring:
+  application:
+    name: omega-eureka
+  security:
+    user:
+      name: omega
+      password: omega2020
+
+eureka:
+  client:
+    register-with-eureka: true #把自身注册到注册中心
+    registry-fetch-interval-seconds: 30 #提供者列表的刷新间隔(配置在注册中心)：默认值为 30(秒)
+    fetch-registry: false
+    serviceUrl:
+      defaultZone: http://${spring.security.user.name}:${spring.security.user.password}@localhost:${server.port}/eureka/
+  instance:
+    hostname: localhost
+    lease-expiration-duration-in-seconds: 90 #服务失效时间(配置在注册中心): 默认值为 90(秒)
+    lease-renewal-interval-in-seconds: 30 #心跳发送间隔(配置在服务提供者): 默认值为 30(秒)
+  server: 
+    enable-self-preservation: false #关闭保护机制(配置在注册中心): 关闭后(建议采用此方式)，严格以心跳断定服务提供者是否失效，认为失效时直接当作下线，不会采用一定算法的保护机制认为它可能还有效
