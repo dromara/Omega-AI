@@ -2,7 +2,6 @@ package com.omega.engine.nn.network;
 
 import java.util.List;
 
-import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.LabelUtils;
 import com.omega.engine.loss.LossFunction;
 import com.omega.engine.loss.LossType;
@@ -195,6 +194,16 @@ public class BPNetwork extends Network{
 				FullyLayer fullyLayer = (FullyLayer) layer;
 				
 				fullyLayer.nextDiff(diff);
+				
+//				/**
+//				 * 全0梯度打印
+//				 */
+//				if(MatrixOperation.isZero(fullyLayer.nextDiff)) {
+//					for(Layer onceLayer:layerList) {
+//						
+//						onceLayer.showDiff();
+//					}
+//				}
 				
 				fullyLayer.back();
 				

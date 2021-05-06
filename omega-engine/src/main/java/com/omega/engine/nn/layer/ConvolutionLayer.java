@@ -45,7 +45,9 @@ public class ConvolutionLayer extends Layer {
 	
 	public double[][][][] kernel;  //c * kn * kh * kw
 	
-	public double[][][] bias;
+//	public double[][][] bias;
+	
+	public double[] bias;
 	
 	public double[][][] active;
 	
@@ -54,6 +56,8 @@ public class ConvolutionLayer extends Layer {
 	public double[][][] delta;
 	
 	public double[][][][] deltaW;
+	
+	public double[] deltaB;
 	
 	public double[][][] nextDiff;
 	
@@ -100,7 +104,7 @@ public class ConvolutionLayer extends Layer {
 		this.oWidth = (this.width + this.padding * 2 - kWidth) / this.stride + 1;
 		this.oHeight = (this.height + this.padding * 2 - kHeight) / this.stride + 1;
 		this.kernel = MatrixOperation.gaussianRandom(this.channel, this.kernelNum, this.kHeight, this.kWidth, 0.1d);
-		this.bias = MatrixOperation.zero(this.kernelNum,this.oHeight,this.oWidth);
+		this.bias = MatrixOperation.zero(this.kernelNum);
 		this.diffPadding = ((this.height - 1) * this.stride + this.kHeight - this.oHeight) / 2;
 	}
 	
@@ -141,6 +145,13 @@ public class ConvolutionLayer extends Layer {
 		}
 	}
 
+
+	/**
+	 * delta = diff(i + 1) * f'(xi)
+	 * dx = padding(delta) conv r180(kernel)
+	 * dw = delta * px
+	 * remark: px is zeropadding x
+	 */
 	@Override
 	public void diff() {
 		// TODO Auto-generated method stub
@@ -153,8 +164,7 @@ public class ConvolutionLayer extends Layer {
 			 * delta(i) = diff(i + 1) * f'(xi)
 			 */
 			this.delta = MatrixOperation.multiplication(this.nextDiff, this.activeFunction.diff2d);
-//
-			
+
 //			
 //			System.out.println("<========================>");
 //			
@@ -167,13 +177,15 @@ public class ConvolutionLayer extends Layer {
 			this.delta = this.nextDiff;
 			
 		}
-		
+
 		/**
 		 * 计算deltaW
 		 */
 		this.deltaW = MatrixOperation.convnVail(this.pInput, this.delta, 1);
+
+		this.deltaB = MatrixOperation.sumBias(this.delta);
 		
-		MatrixOperation.printImage(this.deltaW[0]);
+//		MatrixOperation.printImage(this.deltaW);
 		
 		/**
 		 * 梯度添加zeroPadding使得size与卷积输入一致
@@ -181,15 +193,29 @@ public class ConvolutionLayer extends Layer {
 		double[][][] deltaP = MatrixOperation.zeroPadding(this.delta, this.diffPadding);
 		
 		/**
+		 * 旋转kernel180
+		 */
+		double[][][][] kernel180 = MatrixOperation.rotate180(this.kernel);
+		
+//		System.out.println("----------------"+this.index+"-------------------------");
+//		
+//		MatrixOperation.printImage(this.nextDiff);
+//		
+//		System.out.println("==============="+this.index+"===================");
+//		
+//		MatrixOperation.printImage(deltaP);
+		
+		/**
 		 * 计算当前层梯度
 		 */
-		double[][][] diffP = MatrixOperation.convnVail(this.kernel, deltaP, 1);
-		
+		double[][][] diffP = MatrixOperation.convnVail(kernel180, deltaP, 1);
+
 		/**
 		 * 去除输入层zeroPadding
 		 */
 		//this.diff = MatrixOperation.dislodgeZeroPadding(diffP, this.padding);
 		this.diff = diffP;
+		
 	}
 
 	@Override
@@ -213,7 +239,7 @@ public class ConvolutionLayer extends Layer {
 	public void update() {
 		// TODO Auto-generated method stub
 		if(this.updater != null){
-			this.updater.update(this);
+			this.updater.updateForMatrix(this);
 		}else{
 			
 			for(int c = 0;c<this.channel;c++) {
@@ -229,7 +255,7 @@ public class ConvolutionLayer extends Layer {
 			for(int k = 0;k<this.kernelNum;k++) {
 				for(int oh = 0;oh<this.oHeight;oh++) {
 					for(int ow = 0;ow<this.oWidth;ow++) {
-						this.bias[k][oh][ow] -= this.learnRate * this.delta[k][oh][ow];
+						this.bias[k] -= this.learnRate * this.deltaB[k];
 					}
 				}
 			}
@@ -259,6 +285,15 @@ public class ConvolutionLayer extends Layer {
 	public double[] getOutput() {
 		// TODO Auto-generated method stub
 		return MatrixOperation.transform(this.output);
+	}
+
+	@Override
+	public void showDiff() {
+		// TODO Auto-generated method stub
+//		System.out.println("conv layer["+this.index+"]diff start:");
+//		
+//		
+//		System.out.println("conv layer["+this.index+"]diff end.");
 	}
 
 }

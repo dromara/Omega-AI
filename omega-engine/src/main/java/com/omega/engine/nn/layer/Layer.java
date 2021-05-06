@@ -74,6 +74,8 @@ public abstract class Layer {
 	
 	public abstract LayerType getLayerType();
 	
+	public abstract void showDiff();
+	
 	public void setActive(ActiveFunction activeFunction) {
 		this.activeFunction = activeFunction;
 	}

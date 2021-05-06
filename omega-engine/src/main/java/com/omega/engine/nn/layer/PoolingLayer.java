@@ -2,7 +2,6 @@ package com.omega.engine.nn.layer;
 
 import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.pooling.PoolingType;
-import com.omega.engine.updater.Updater;
 
 /**
  * PoolingLayer
@@ -48,7 +47,7 @@ public class PoolingLayer extends Layer {
 	
 	public double[][][][] mask;
 	
-	public PoolingLayer(int channel,int width,int height,int pWidth,int pHeight,int stride,PoolingType poolingType,Updater updater) {
+	public PoolingLayer(int channel,int width,int height,int pWidth,int pHeight,int stride,PoolingType poolingType) {
 		this.channel = channel;
 		this.width = width;
 		this.height = height;
@@ -56,7 +55,6 @@ public class PoolingLayer extends Layer {
 		this.pHeight = pHeight;
 		this.stride = stride;
 		this.poolingType = poolingType;
-		this.updater = updater;
 		initParam();
 	}
 	
@@ -111,6 +109,12 @@ public class PoolingLayer extends Layer {
 		
 		this.diff =  MatrixOperation.poolingDiff(this.delta, this.mask, this.diff, this.pWidth, this.pHeight, this.stride);
 		
+//		System.out.println("pooling layer ["+this.index+"]");
+//		
+//		MatrixOperation.printImage(this.nextDiff);
+//		
+//		System.out.println("pooling layer ["+this.index+"] end.");
+		
 	}
 
 	@Override
@@ -158,6 +162,16 @@ public class PoolingLayer extends Layer {
 	public double[] getOutput() {
 		// TODO Auto-generated method stub
 		return MatrixOperation.transform(this.output);
+	}
+
+	@Override
+	public void showDiff() {
+		// TODO Auto-generated method stub
+//		System.out.println("pooling layer["+this.index+"]diff start:");
+//		
+//		MatrixOperation.printImage(this.diff);
+//		
+//		System.out.println("pooling layer["+this.index+"]diff end.");
 	}
 	
 }

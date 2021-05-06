@@ -16,6 +16,12 @@ public abstract class Updater {
 	
 	public double[] vdb;
 	
+	public double[][][][] vdmw;  //c * kn * kh * kw
+	
+	public double[] vdmb;
+	
 	public abstract void update(Layer layer);
+	
+	public abstract void updateForMatrix(Layer layer);
 	
 }

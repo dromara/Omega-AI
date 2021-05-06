@@ -350,6 +350,7 @@ public class DataLoader {
                         // normalization
                     	if(normalization){
                     		element[j] = bin.read() / 255.0;
+//                    		element[j] = (bin.read() - 127.5) / 128.0;
                     	}else {
                     		element[j] = bin.read();
                     	}

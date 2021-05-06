@@ -1,7 +1,6 @@
 package com.omega.engine.nn.layer;
 
 import com.omega.common.utils.MatrixOperation;
-import com.omega.engine.updater.Updater;
 
 /**
  * SoftmaxWithCrossEntropyLayer
@@ -17,10 +16,9 @@ public class SoftmaxWithCrossEntropyLayer extends Layer {
 
 	private double[] currentLabel;
 	
-	public SoftmaxWithCrossEntropyLayer(int inputNum,Updater updater) {
+	public SoftmaxWithCrossEntropyLayer(int inputNum) {
 		this.inputNum = inputNum;
 		this.outputNum = inputNum;
-		this.updater = updater;
 		this.layerType = LayerType.softmax_cross_entropy;
 		this.initParam();
 	}
@@ -77,7 +75,7 @@ public class SoftmaxWithCrossEntropyLayer extends Layer {
 		// TODO Auto-generated method stub
 		
 		this.diff = MatrixOperation.subtraction(this.active, this.currentLabel);
-		
+//		MatrixOperation.printImage(this.diff);
 //		System.out.println(JsonUtils.toJson(this.diff));
 	}
 
@@ -137,6 +135,24 @@ public class SoftmaxWithCrossEntropyLayer extends Layer {
 	public double[] getOutput() {
 		// TODO Auto-generated method stub
 		return this.output;
+	}
+
+	@Override
+	public void showDiff() {
+		// TODO Auto-generated method stub
+//		System.out.println("softmax with cross layer["+this.index+"]diff start:");
+////		
+//		MatrixOperation.printImage(this.input);
+////		
+////		System.out.println("=====================================");
+////		
+//		MatrixOperation.printImage(this.active);
+////		
+//		System.out.println("=====================================");
+////		
+//		MatrixOperation.printImage(this.diff);
+////		
+//		System.out.println("softmax with cross layer["+this.index+"]diff end.");
 	}
 	
 }

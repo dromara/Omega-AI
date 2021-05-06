@@ -98,4 +98,22 @@ public class LabelUtils {
 		return labelSet[index];
 	}
 	
+	/**
+	 * checkLabelForVector
+	 * @param output
+	 * @param labelSet
+	 * @param label
+	 * @return
+	 */
+	public static boolean checkLabelForVector(double[] output,String[] labelSet,String label) {
+		
+		String predictLabel = LabelUtils.vectorTolabel(output, labelSet);
+		
+		if(!label.equals(predictLabel)) {
+			return false;
+		}
+		
+		return true;
+	}
+	
 }

@@ -108,7 +108,6 @@ public class MatrixOperation {
 		return temp;
 	}
 	
-	
 	/**
 	 * 
 	 * @Title: subtraction
@@ -181,6 +180,73 @@ public class MatrixOperation {
 		}
 		return temp;
 	}
+	
+	/**
+	 * 
+	 * @Title: multiplication
+	 *
+	 * @param x
+	 * @param b
+	 * @return
+	 *
+	 * @Description:
+	 * TODO(这里用一句话描述这个方法的作用)
+	 *
+	 * @throws
+	 */
+	public static double[][][] multiplication(double[][][] x,double b) {
+		
+		if(x == null) {
+			new RuntimeException("matrix is null.");
+		}
+		
+		double[][][] temp = MatrixOperation.zero(x.length,x[0].length,x[0][0].length);
+		for(int c = 0;c<x.length;c++) {
+			for(int i = 0;i<x[c].length;i++) {
+				for(int j = 0;j<x[c][i].length;j++) {
+					temp[c][i][j] = x[c][i][j] * b;
+				}
+			}
+			
+		}
+		
+		return temp;
+	}
+	
+	/**
+	 * 
+	 * @Title: multiplication
+	 *
+	 * @param x
+	 * @param b
+	 * @return
+	 *
+	 * @Description:
+	 * TODO(这里用一句话描述这个方法的作用)
+	 *
+	 * @throws
+	 */
+	public static double[][][][] multiplication(double[][][][] x,double b) {
+		
+		if(x == null) {
+			new RuntimeException("matrix is null.");
+		}
+		
+		double[][][][] temp = MatrixOperation.zero(x.length,x[0].length,x[0][0].length,x[0][0][0].length);
+		for(int c = 0;c<x.length;c++) {
+			for(int k = 0;k<x[c].length;k++) {
+				for(int i = 0;i<x[c][k].length;i++) {
+					for(int j = 0;j<x[c][k][i].length;j++) {
+						temp[c][k][i][j] = x[c][k][i][j] * b;
+					}
+				}
+			}
+			
+		}
+		
+		return temp;
+	}
+	
 	
 	/**
 	 * 
@@ -467,6 +533,72 @@ public class MatrixOperation {
 	
 	/**
 	 * 
+	 * @Title: subtraction
+	 *
+	 * @param x
+	 * @param b
+	 * @return
+	 *
+	 * @Description:
+	 * TODO(这里用一句话描述这个方法的作用)
+	 *
+	 * @throws
+	 */
+	public static double[][][] subtraction(double[][][] x,double[][][] b) {
+		if(x == null || b == null) {
+			new RuntimeException("matrix is null.");
+		}
+		if(x.length != b.length || x[0].length != b[0].length) {
+			new RuntimeException("x size must equals b.");
+		}
+		double[][][] temp = MatrixOperation.zero(x.length,x[0].length,x[0][0].length);
+		for(int k = 0;k<x.length;k++) {
+			for(int i = 0;i<x[k].length;i++) {
+				for(int j = 0;j<x[k][i].length;j++) {
+					temp[k][i][j] = x[k][i][j] - b[k][i][j];
+				}
+			}
+		}
+
+		return temp;
+	}
+	
+	/**
+	 * 
+	 * @Title: subtraction
+	 *
+	 * @param x
+	 * @param b
+	 * @return
+	 *
+	 * @Description:
+	 * TODO(这里用一句话描述这个方法的作用)
+	 *
+	 * @throws
+	 */
+	public static double[][][][] subtraction(double[][][][] x,double[][][][] b) {
+		if(x == null || b == null) {
+			new RuntimeException("matrix is null.");
+		}
+		if(x.length != b.length || x[0].length != b[0].length) {
+			new RuntimeException("x size must equals b.");
+		}
+		double[][][][] temp = MatrixOperation.zero(x.length,x[0].length,x[0][0].length,x[0][0][0].length);
+		for(int c = 0;c<x.length;c++) {
+			for(int k = 0;k<x[c].length;k++) {
+				for(int i = 0;i<x[c][k].length;i++) {
+					for(int j = 0;j<x[c][k][i].length;j++) {
+						temp[c][k][i][j] = x[c][k][i][j] - b[c][k][i][j];
+					}
+				}
+			}
+		}
+		
+		return temp;
+	}
+	
+	/**
+	 * 
 	 * @Title: multiplication
 	 *
 	 * @param x
@@ -635,9 +767,7 @@ public class MatrixOperation {
 			for(int i = 0;i<x[c].length;i++) {
 				
 				for(int j = 0;j<x[c][i].length;j++) {
-					
-					result[c*i*j + i*j +j] = x[c][i][j];
-					
+					result[c*x[c].length*x[c][i].length + i*x[c][i].length +j] = x[c][i][j];
 				}
 			}
 			
@@ -646,7 +776,6 @@ public class MatrixOperation {
 		return result;
 	}
 	
-
 	/**
 	 * transform
 	 * @param x
@@ -659,7 +788,7 @@ public class MatrixOperation {
 		for(int ci = 0;ci<c;ci++) {
 			for(int hi = 0;hi<h;hi++) {
 				for(int wi = 0;wi<w;wi++) {
-					y[ci][hi][wi] = x[ci*hi*wi + hi*wi + wi];
+					y[ci][hi][wi] = x[ci * h * w + hi * w + wi];
 				}
 			}
 		}
@@ -683,6 +812,30 @@ public class MatrixOperation {
 		double temp = 0.0d;
 		for(double o:x) {
 			temp += o;
+		}
+		return temp;
+	}
+	
+	/**
+	 * 
+	 * @Title: count
+	 *
+	 * @param x
+	 * @return
+	 *
+	 * @Description:
+	 * TODO(这里用一句话描述这个方法的作用)
+	 *
+	 * @throws
+	 */
+	public static double[] sumBias(double[][][] x) {
+		double[] temp = new double[x.length];
+		for(int i = 0;i<x.length;i++) {
+			for(int h = 0;h<x[i].length;h++) {
+				for(int w = 0;w<x[i][h].length;w++) {
+					temp[i] += x[i][h][w];
+				}
+			}
 		}
 		return temp;
 	}
@@ -768,6 +921,38 @@ public class MatrixOperation {
 	}
 	
 	/**
+	 * isZero
+	 * @param x
+	 * @return
+	 */
+	public static boolean isZero(double[][][] x) {
+		for(int k = 0;k<x.length;k++) {
+			for(int i = 0;i<x[k].length;i++) {
+				for(int j = 0;j<x[k][i].length;j++) {
+					if(x[k][i][j] != 0) {
+						return false;
+					}
+				}
+			}
+		}
+		return true;
+	}
+	
+	/**
+	 * isZero
+	 * @param x
+	 * @return
+	 */
+	public static boolean isZero(double[] x) {
+		for(int k = 0;k<x.length;k++) {
+			if(x[k] != 0) {
+				return false;
+			}
+		}
+		return true;
+	}
+	
+	/**
 	 * 
 	 * @Title: max
 	 *
@@ -819,18 +1004,38 @@ public class MatrixOperation {
 	 * @param matrix
 	 * @return
 	 */
-	public static double[][] rotate90(double [][]matrix){
-		double [][]temp=new double[matrix[0].length][matrix.length];
+	public static double[][] rotate90(double[][] matrix){
+		double[][] temp = new double[matrix[0].length][matrix.length];
 		int dst=matrix.length-1;
 		for(int i=0;i<matrix.length;i++,dst--){
-			for(int j=0;j<matrix[0].length;j++){
+			for(int j=0;j<matrix[i].length;j++){
 				temp[j][dst]=matrix[i][j];
 			}
 		}
 		return temp;
 	 }
 
-	
+	/**
+	 * rotate90
+	 * @param matrix
+	 * @return
+	 */
+	public static double[][][][] rotate90(double[][][][] matrix){
+		double[][][][] temp = new double[matrix.length][matrix[0].length][matrix[0][0][0].length][matrix[0][0].length];
+		for(int c=0;c<matrix.length;c++) {
+			for(int k=0;k<matrix[c].length;k++) {
+				int dst=matrix[0][0].length-1;
+				for(int i=0;i<matrix[c][k].length;i++,dst--){
+					for(int j=0;j<matrix[c][k][i].length;j++){
+						temp[c][k][j][dst]=matrix[c][k][i][j];
+					}
+				}
+			}
+		}
+		
+		return temp;
+	 }
+
 	/**
 	 * revolve180
 	 * @param x
@@ -839,6 +1044,20 @@ public class MatrixOperation {
 	public static double[][] rotate180(double[][] x){
 		
 		double[][] temp = MatrixOperation.rotate90(x);
+		
+		temp = MatrixOperation.rotate90(temp);
+		
+		return temp;
+	}
+	
+	/**
+	 * revolve180
+	 * @param x
+	 * @return
+	 */
+	public static double[][][][] rotate180(double[][][][] x){
+		
+		double[][][][] temp = MatrixOperation.rotate90(x);
 		
 		temp = MatrixOperation.rotate90(temp);
 		
@@ -1187,12 +1406,12 @@ public class MatrixOperation {
 								
 							for(int n = 0;n<d[kn][m].length;n++) {
 								
-								result[c][kn][i][j] = x[c][i * stride + m][j * stride + n] * d[kn][m][n];
+								result[c][kn][i][j] += x[c][i * stride + m][j * stride + n] * d[kn][m][n];
 
 							}
-								
-						}
 							
+						}
+						
 					}
 						
 				}
@@ -1318,7 +1537,7 @@ public class MatrixOperation {
 								
 								if(m == 0 && n == 0) {
 									result[c][i][j] = x[c][i * stride + m][j * stride + n];
-								}else if(result[c][i][j] < x[c][i * stride + m][j * stride + n]) {
+								}else if(result[c][i][j] <= x[c][i * stride + m][j * stride + n]) {
 									result[c][i][j] = x[c][i * stride + m][j * stride + n];
 									maxH = m;
 									maxW = n;
@@ -1447,6 +1666,46 @@ public class MatrixOperation {
 		return temp;
 	}
 	
+	public static double[] x2Random(int x) {
+		double[] temp = new double[x];
+		double scale = Math.sqrt(1.0 / x);
+        Random r = new Random();
+        for(int i=0; i<x; i++) {
+        	temp[i] = r.nextDouble() * scale;
+        }
+        return temp;
+	}
+	
+	public static double[][] x2Random(int x,int y){
+		double[][] temp = new double[x][y];
+		double scale = Math.sqrt(1.0 / x);
+		Random r = new Random();
+		for(int i = 0;i<x;i++) {
+			for(int j = 0;j<y;j++) {
+				temp[i][j] = r.nextDouble() * scale;
+			}
+		}
+		return temp;
+	}
+	
+	public static double[][][][] x2Random(int c,int n,int x,int y) {
+		double[][][][] temp = new double[c][n][x][y];
+		double scale = Math.sqrt(1.0 / x);
+        Random r = new Random();
+        
+        for(int k = 0;k<c;k++) {
+			for(int l = 0;l<n;l++) {
+				for(int i = 0;i<x;i++) {
+					for(int j = 0;j<y;j++) {
+						temp[k][l][i][j] = r.nextDouble() * scale;
+					}
+				}
+			}
+		}
+        
+        return temp;
+	}
+	
 	/**
 	 * xavier随机数
 	 * @param x
@@ -1496,6 +1755,17 @@ public class MatrixOperation {
 		return x;
 	}
 	
+	/**
+	 * print matrix
+	 * @param data
+	 */
+	public static void printImage(double[] data) {
+		
+		for(int i = 0;i<data.length;i++) {
+			System.out.print(data[i]+" ");
+		}
+		
+	}
 	
 	/**
 	 * print matrix
@@ -1519,6 +1789,27 @@ public class MatrixOperation {
 			for(int i = 0;i<data[c].length;i++) {
 				for(int j = 0;j<data[c][i].length;j++) {
 					System.out.print(data[c][i][j]+" ");
+				}
+				System.out.println("");
+			}
+			
+			System.out.println("-------------------------");
+			
+		}
+		
+	}
+	
+	public static void printImageToOne(double[][][] data) {
+		
+		for(int c = 0;c<data.length;c++) {
+			
+			for(int i = 0;i<data[c].length;i++) {
+				for(int j = 0;j<data[c][i].length;j++) {
+					if(data[c][i][j] == 0.0) {
+						System.out.print("0 ");
+					}else {
+						System.out.print("1 ");
+					}
 				}
 				System.out.println("");
 			}

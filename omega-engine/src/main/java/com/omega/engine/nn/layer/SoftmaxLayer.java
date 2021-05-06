@@ -198,5 +198,15 @@ public class SoftmaxLayer extends Layer {
 		// TODO Auto-generated method stub
 		return this.output;
 	}
+
+	@Override
+	public void showDiff() {
+		// TODO Auto-generated method stub
+		System.out.println("softmax layer["+this.index+"]diff start:");
+		
+		MatrixOperation.printImage(this.diff);
+		
+		System.out.println("softmax layer["+this.index+"]diff end.");
+	}
 	
 }

@@ -220,4 +220,14 @@ public class FullyLayer extends Layer{
 		return this.output;
 	}
 
+	@Override
+	public void showDiff() {
+		// TODO Auto-generated method stub
+//		System.out.println("fully layer["+this.index+"]diff start:");
+//		
+//		MatrixOperation.printImage(this.active);
+//		
+//		System.out.println("fully layer["+this.index+"]diff end.");
+	}
+
 }

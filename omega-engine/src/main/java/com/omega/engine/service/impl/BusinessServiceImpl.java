@@ -162,7 +162,7 @@ public class BusinessServiceImpl implements BusinessService {
 		
 //		hidden4.learnRate = 0.001d;
 		
-		SoftmaxWithCrossEntropyLayer hidden5 = new SoftmaxWithCrossEntropyLayer(10,new Momentum());
+		SoftmaxWithCrossEntropyLayer hidden5 = new SoftmaxWithCrossEntropyLayer(10);
 		
 //		hidden5.learnRate = 0.001d;
 		
@@ -238,21 +238,23 @@ public class BusinessServiceImpl implements BusinessService {
 		
 		InputLayer inputLayer = new InputLayer(784, channel, height, width);
 		
-		ConvolutionLayer conv1 = new ConvolutionLayer(channel, 32, width, height, 5, 5, 4, 1, new Relu(), null);
+		ConvolutionLayer conv1 = new ConvolutionLayer(channel, 6, width, height, 5, 5, 2, 1, new Relu(), new Momentum());
 		
-		PoolingLayer pool1 = new PoolingLayer(conv1.oChannel, conv1.oWidth, conv1.oHeight, 2, 2, 2, PoolingType.MAX_POOLING, null);
+		PoolingLayer pool1 = new PoolingLayer(conv1.oChannel, conv1.oWidth, conv1.oHeight, 2, 2, 2, PoolingType.MAX_POOLING);
 		
-		ConvolutionLayer conv2 = new ConvolutionLayer(pool1.oChannel, 20, pool1.oWidth, pool1.oHeight, 3, 3, 0, 1, new Relu(), null);
+		ConvolutionLayer conv2 = new ConvolutionLayer(pool1.oChannel, 12, pool1.oWidth, pool1.oHeight, 5, 5, 0, 1, new Relu(), new Momentum());
 		
-		PoolingLayer pool2 = new PoolingLayer(conv2.oChannel, conv2.oWidth, conv2.oHeight, 2, 2, 2, PoolingType.MAX_POOLING, null);
+		PoolingLayer pool2 = new PoolingLayer(conv2.oChannel, conv2.oWidth, conv2.oHeight, 2, 2, 2, PoolingType.MAX_POOLING);
 
-		int inputCount = (int) (Math.sqrt((pool2.oChannel * pool2.oWidth * pool2.oHeight) + 10)+10);
+		int fInputCount = pool2.oChannel * pool2.oWidth * pool2.oHeight;
 		
-		FullyLayer full1 = new FullyLayer(pool2.oChannel * pool2.oWidth * pool2.oHeight, inputCount, new Relu(),new Momentum());
+		int inputCount = (int) (Math.sqrt((fInputCount) + 10) + 10);
+		
+		FullyLayer full1 = new FullyLayer(fInputCount, inputCount, new Relu(), new Momentum());
 
-		FullyLayer full2 = new FullyLayer(inputCount, 10, new Relu(),new Momentum());
+		FullyLayer full2 = new FullyLayer(inputCount, 10, new Relu(), new Momentum());
 
-		SoftmaxWithCrossEntropyLayer softmax = new SoftmaxWithCrossEntropyLayer(10,new Momentum());
+		SoftmaxWithCrossEntropyLayer softmax = new SoftmaxWithCrossEntropyLayer(10);
 
 		layers.add(inputLayer);
 		layers.add(conv1);
@@ -271,7 +273,7 @@ public class BusinessServiceImpl implements BusinessService {
 		
 //		BGDOptimizer optimizer = new BGDOptimizer(netWork, 20000, 0.001d);
 		
-		MBSGDOptimizer optimizer = new MBSGDOptimizer(netWork, 1, 0.0000001d, 64, LearnRateUpdate.NONE);
+		MBSGDOptimizer optimizer = new MBSGDOptimizer(netWork, 20000, 0.000001d, 64, LearnRateUpdate.NONE);
 		
 		//启动多线程
 //		optimizer.setTrainEngine(trainEngine);

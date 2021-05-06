@@ -106,4 +106,10 @@ public class InputLayer extends Layer {
 		return this.output;
 	}
 
+	@Override
+	public void showDiff() {
+		// TODO Auto-generated method stub
+//		System.out.println("input layer not have diff.");
+	}
+
 }

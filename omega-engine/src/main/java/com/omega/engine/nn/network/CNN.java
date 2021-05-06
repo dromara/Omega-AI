@@ -2,6 +2,8 @@ package com.omega.engine.nn.network;
 
 import java.util.List;
 
+import com.omega.common.utils.JsonUtils;
+import com.omega.common.utils.LabelUtils;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.loss.LossFunction;
 import com.omega.engine.loss.LossType;
@@ -244,7 +246,7 @@ public class CNN extends Network {
 				if(preLayer.getLayerType() == LayerType.pooling) {
 					
 					PoolingLayer poolingLayer = (PoolingLayer) preLayer;
-					
+
 					convolutionLayer.nextDiff(poolingLayer.diff);
 					
 				}else if(preLayer.getLayerType() == LayerType.conv) {
@@ -257,6 +259,16 @@ public class CNN extends Network {
 					throw new RuntimeException("parent layer must be conv layer or fully layer for conv layer.");
 				}
 				
+//				/**
+//				 * 全0梯度打印
+//				 */
+//				if(MatrixOperation.isZero(convolutionLayer.nextDiff)) {
+//					for(Layer onceLayer:layerList) {
+//						
+//						onceLayer.showDiff();
+//					}
+//				}
+//				
 				convolutionLayer.back();
 				
 				convolutionLayer.update();
@@ -268,6 +280,8 @@ public class CNN extends Network {
 				
 				if(preLayer.getLayerType() == LayerType.full) {
 					
+//					MatrixOperation.printImage(preLayer.diff);
+					
 					double[][][] fullDiff = MatrixOperation.transform(preLayer.diff, poolingLayer.channel, poolingLayer.oHeight, poolingLayer.oWidth);
 					
 					poolingLayer.nextDiff(fullDiff);
@@ -277,6 +291,8 @@ public class CNN extends Network {
 					ConvolutionLayer convLayer = (ConvolutionLayer) preLayer;
 					
 					poolingLayer.nextDiff(convLayer.diff);
+					
+//					MatrixOperation.printImage(convLayer.diff);
 					
 				}else {
 					throw new RuntimeException("parent layer must be conv layer or fully layer for pooling layer.");
@@ -334,7 +350,30 @@ public class CNN extends Network {
 	@Override
 	public double test(DataSet testData) {
 		// TODO Auto-generated method stub
-		return 0;
+		double error = 0.0d;
+		
+		double trueCount = 0;
+		
+		for(int i = 0;i<testData.dataSize;i++) {
+			
+			double[] output = this.predict(testData.dataInput[i]);
+
+//			double[] onceError = MatrixOperation.subtraction(output, testData.dataLabel[i]);
+			
+			String label = testData.labels[i];
+			
+			String predictLabel = LabelUtils.vectorTolabel(output, testData.labelSet);
+			
+			if(!label.equals(predictLabel)) {
+				System.out.println("index:"+i+"::"+JsonUtils.toJson(output)+"==>predictLabel:"+predictLabel+"==label:"+label+":"+label.equals(predictLabel));
+			}else {
+				trueCount++;
+			}
+			
+		}
+		
+		System.out.println("准确率:"+ trueCount / testData.dataSize * 100 +"%");
+		return error;
 	}
 
 	@Override

@@ -1,8 +1,10 @@
 package com.omega.engine.optimizer;
 
+import java.math.BigDecimal;
 import java.util.concurrent.CountDownLatch;
 
 import com.omega.common.utils.JsonUtils;
+import com.omega.common.utils.LabelUtils;
 import com.omega.common.utils.MathUtils;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.nn.network.Network;
@@ -57,6 +59,7 @@ public class MBSGDOptimizer extends Optimizer {
 				 */
 				int[] dataSetIndexs = MathUtils.randomInt(this.network.getTrainingData().dataSize - 1, this.batchSize);
 				
+				int successCount = 0;
 
 				/**
 				 * batch training
@@ -84,6 +87,7 @@ public class MBSGDOptimizer extends Optimizer {
 //			        System.out.println("执行完成.");
 			        
 				}else {
+					
 					for(int index:dataSetIndexs) {
 						
 						/**
@@ -100,7 +104,16 @@ public class MBSGDOptimizer extends Optimizer {
 						 * loss diff
 						 */
 						this.lossDiff = MatrixOperation.add(this.lossDiff, this.network.lossDiff(output, this.network.getTrainingData().dataLabel[index]));
-
+						
+						/**
+						 * 计算正确率
+						 */
+						boolean isSame = LabelUtils.checkLabelForVector(output, this.network.getTrainingData().labelSet, this.network.getTrainingData().labels[index]);
+						
+						if(isSame) {
+							successCount++;
+						}
+						
 					}
 					
 				}
@@ -124,7 +137,9 @@ public class MBSGDOptimizer extends Optimizer {
 				 */
 				this.network.back(this.lossDiff);
 				
-				System.out.println("training["+this.trainIndex+"] (lr:"+this.network.learnRate+") currentError:"+this.currentError);
+				double accuracy = new BigDecimal(successCount).divide(new BigDecimal(dataSetIndexs.length)).doubleValue();
+				
+				System.out.println("training["+this.trainIndex+"] (lr:"+this.network.learnRate+") ["+(accuracy * 100) +"%"+"] currentError:"+this.currentError);
 				
 			}
 			
