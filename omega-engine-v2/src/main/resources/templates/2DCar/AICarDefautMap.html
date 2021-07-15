@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AICar</title>
+	
+    <meta http-equiv="keywords" content="keyword1,keyword2,keyword3">
+    <meta http-equiv="description" content="Genetic">
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+
+  	<script type="text/javascript" src="../2DEngine/2DEngine.v1.0.1.js"></script>
+	<script type="text/javascript" src="../2DCar/NetwrokAI.js"></script>
+	
+	<script type="text/javascript" src="../2DCar/car_map_v1.1.js"></script>
+	
+	<style type="text/css">
+		
+		body{
+			margin: 0;
+			padding: 0;
+			text-align: center;
+		}
+		
+		#myCanvas{
+						width: 100%;
+			height: 100%;
+			margin: 0;
+			padding: 0;
+		}
+		
+		.consoleDiv{
+			width: 99%;
+			margin: 10px;
+		}
+		
+	</style>
+	
+  </head>
+  	
+  <body>
+   	
+   	<canvas id="myCanvas" width="1600px" height="1000px"></canvas>
+   	
+   	<br/>
+   	
+   	<div class="consoleDiv">
+	   	age:<span id="age">0</span>||
+	   	bestAgent:<span id="bestAgent">0</span>||
+	   	bestFitness:<span id="bestFitness">0</span>||
+	   	totalFitness:<span id="totalFitness">0</span>
+   	</div>
+   	
+   	<div class="consoleDiv">
+	   	
+   	</div>
+   	
+  </body>
+  
+  <script type="text/javascript">
+  	 
+  	 var rotateSpeed = 7;
+  	 
+  	 var forwardSpeed = 10;
+  	 
+  	 var maxSpeed = 20;
+  	 
+  	 var minSpeed = 8;
+  	 
+  	 var fSpeed = 1;
+  	 
+  	 var viewWidth = 360;
+  	 
+  	 var carCount = 30;
+  	 
+  	 var age = 0;
+  	 
+  	 var ageTime = 0;
+  	 
+  	 var maps = {};
+  	 
+  	 var cars = {};
+  	 
+  	 var trainer = null;
+  	 
+  	 var canvas = document.getElementById('myCanvas');
+  	 
+  	 var engine = Engine2D.method.getInstance();
+  	 
+  	 engine.init(canvas);
+  	 
+  	 var startScene = new Engine2D.scene();
+  	 startScene.name = "startScene";
+  	 startScene.fps = 60;
+  	 startScene.hitTest = true;
+
+  	 startScene.update = function(){
+  	 	engine.clear();
+  	 	isNewAge();
+  	 	clearCarsView();
+  	 }
+  	
+  	//统一处理碰撞测试后的结果
+  	startScene.afterHitTest = function(){
+		//计算各车最近的击中点
+		for(var key in cars){
+			//var onceCar = cars[key];
+			//计算每条射线最近击中点
+			for(var i = 0;i<cars[key].x.length;i++){
+				var minHitDis = viewWidth;
+				var minHitPoint = null;
+				if(cars[key].x[i].seft!=null){
+					//获取击中点
+					for(var j = 0;j<cars[key].x[i].hitResult.length;j++){
+						var hitPoiont = cars[key].x[i].hitResult[j];
+						var dis = Engine2D.engine.Vec2.distance2(cars[key].spirit.centerX(),cars[key].spirit.centerY(),hitPoiont.x,hitPoiont.y);
+						if(minHitDis>dis){
+							minHitDis = dis;
+							minHitPoint = hitPoiont;
+						}
+					}	
+					
+					var point = {x:cars[key].spirit.centerX(),y:cars[key].spirit.centerY()};
+					
+					if(minHitPoint!=null){
+						Engine2D.util.drawPoint(cars[key].spirit,minHitPoint.x,minHitPoint.y,3,"#4A4AFF",0.5);
+						//console.log(cars[key].seft);
+					}
+					Engine2D.util.drawLine2(cars[key].spirit,point,cars[key].x[i].seft.rotate,minHitDis,"#EE3B3B",1);
+				}
+				
+				cars[key].x[i].dis = minHitDis;
+			}
+			
+		}
+  		
+  	}
+  	 
+  	 engine.addScene(startScene);
+  	 
+  	 var testLayer = new Engine2D.layer();
+  	 testLayer.name = "testLayer";
+  	 
+  	 testLayer.update = function(){
+  		//收集car状态信息
+  		//console.log(cars);
+  	 }
+  	 
+  	 startScene.addLayer(testLayer);
+	 
+  	 function clearCarsView(){
+
+  		 for(var key in cars){
+  			 if(cars[key].survival){
+  	  			for(var i = 0;i<cars[key].x.length;i++){
+  	  				cars[key].x[i].hitResult = new Array();
+  	  				cars[key].x[i].hitObj = null;
+  	  				cars[key].x[i].dis = viewWidth;
+  	  				cars[key].x[i].hitPoint = null;
+  	  			}
+  			 }
+  		 }
+  		 
+  	 }
+	
+  	 function isNewAge(){
+
+  		 //判断是否全部死亡
+  		 for(var key in cars){
+  			 if(cars[key].survival){
+  				return;
+  			 }
+  		 }
+	
+  		 console.log("in new age.",age);
+  		 
+  		 var params =  new Array();
+		 
+		 //更新ai
+		 for(var key in cars){
+			params.push(cars[key].ai.getParamsV2());
+	 	 }
+
+		 //console.log("start",params);
+		 
+		 params = trainer.run(params);
+	  	 
+		 //console.log("end",params);
+		 
+		 showInfo();
+		 
+		 var index = 0;
+		 for(var key in cars){
+			var param = {data:params[index],fitness:cars[key].survivalTime};
+			cars[key].ai.updateV2(param);
+			cars[key].survival = true;
+			cars[key].survivalTime = 0;
+			cars[key].forwardSpeed = forwardSpeed;
+			cars[key].dis = 0;
+			cars[key].finish = false;
+			index++;
+		 }
+		
+		 //还原agent
+		 resetAgent(maps["wallstart"]);
+
+  		 ageTime = 0;
+  		 
+		 age++;
+		//console.log("======================");
+  	 }
+  	 
+  	 initMapData();
+  	 
+  	 function showInfo(){
+  		document.getElementById('age').innerText  = age;
+  		document.getElementById('bestAgent').innerText  = trainer.population.bestIndex;
+  		document.getElementById('bestFitness').innerText  = trainer.population.bestFitness;
+  		document.getElementById('totalFitness').innerText  = trainer.population.totalFitness;
+  	 }
+  	 
+  	 function init(){
+		//创建cars
+   		createAgent(maps["wallstart"]);
+  		//创建weight训练器
+  		trainer = createAITrainer(carCount,333);
+		//启动
+  	  	play();
+  	 }
+  	 
+  	 function play(){
+
+  	  	 engine.runScene("startScene");
+  	  	 
+  	 }
+  	 
+  	 //创建AI训练器
+  	 function createAITrainer(populationCount,chromosomeCount){
+  		 var trainer = new AF_AI.genetic.instance();
+  		 trainer.populationCount = populationCount;
+  		 trainer.chromosomeCount = chromosomeCount;
+  		 trainer.crossoverRate = 0.7;
+  		 trainer.mutationRate = 0.4;
+  		 trainer.calculateFitnessFunction = function(x){
+  			 //var max = 0;
+  			 var winMin = 99999999;
+  			 var winFisrt = null;
+  			 for(var key in cars){
+  				
+  				if(cars[key].finish){
+  					if(winMin>cars[key].survivalTime){
+  						winMin = cars[key].survivalTime;
+  						winFisrt = key;
+  					}
+  				} 
+  				 
+  				//if(max<cars[key].survivalTime){
+  					//max = cars[key].survivalTime;
+  				//}
+  			 }
+  			 
+  			 //var st = cars["agent"+x].survivalTime / max;
+  	  		 
+  			 //var dt = cars["agent"+x].dis / cars["agent"+x].survivalTime / maxSpeed;
+			 
+  			 //var fitness = st * 10 + dt * 6;
+  			 var fitness = cars["agent"+x].dis;
+  			 console.log("winFisrt:"+winFisrt);
+  			 if(winFisrt!=null && winFisrt == ("agent"+x)){
+  				fitness += 10000;
+  			 }
+  			 
+  			 return fitness;
+  		 }
+  		 trainer.init();
+  		 return trainer;
+  	 }
+  	 
+  	 //创建AI神经网络
+  	 function createNN(){
+  		 
+  		 //创建神经网络
+  		 var nn = new AF_AI.network.instance();
+  		 
+  		 var inputLayer = new AF_AI.network.layer();
+  		 inputLayer.layerType = 0;
+  		 inputLayer.name = "inputLayer";
+  		 inputLayer.inputNum = 7;
+  		 inputLayer.outputNum = 7;
+  		 inputLayer.activeType = null;
+  		 
+  		 var fullyLayer1 = new AF_AI.network.layer();
+  		 fullyLayer1.layerType = 1;
+  		 fullyLayer1.name = "fullyLayer1";
+  		 fullyLayer1.inputNum = 7;
+  		 fullyLayer1.outputNum = 30;
+  		 fullyLayer1.activeType = 0;
+  		 
+ 		 var fullyLayer2 = new AF_AI.network.layer();
+ 		 fullyLayer2.layerType = 1;
+ 		 fullyLayer2.name = "fullyLayer2";
+ 		 fullyLayer2.inputNum = 30;
+ 		 fullyLayer2.outputNum = 3;
+ 		 fullyLayer2.activeType = 0;
+ 		 
+  		 nn.addLayer(inputLayer);
+  		 nn.addLayer(fullyLayer1);
+  		 nn.addLayer(fullyLayer2);
+
+  		 nn.init();
+  		 
+  		 return nn;
+  	 } 
+  	 
+  	 function updateAI(){
+  		 
+  		for(var key in cars){
+  			cars[key].spirit.x = startPoint.x;
+  			cars[key].spirit.y = startPoint.y;
+  			cars[key].spirit.rotate = 90;
+  		}
+  		
+  	 }
+  	 
+  	 function resetAgent(startPoint){
+  		 
+  		 for(var key in cars){
+  			cars[key].spirit.x = startPoint.x;
+  			cars[key].spirit.y = startPoint.y;
+  			cars[key].spirit.rotate = 90;
+  		 }
+  		 
+  	 }
+  	 
+  	 function createAgentAI(spirit,viewWidth,xCount){
+  		var agent = {};
+  		agent.name = spirit.name;
+  		agent.spirit = spirit;
+  		agent.x = new Array();
+  		for(var i = 0;i<xCount;i++){
+  			var ix = {};
+  			ix.dis = viewWidth;
+  			ix.hitResult = new Array();
+  			ix.hitObj = null;
+  			ix.hitPoiont = null;
+  			ix.seft = null;
+  			agent.x.push(ix);
+  		}
+  		agent.survivalTime = 0;
+  		agent.survival = true;
+  		agent.ai = createNN();
+  		agent.speed = forwardSpeed;
+  		agent.dis = 0;
+  		agent.finish = false;
+  		agent.rotate = 0;
+  	 	return agent;
+  	 }
+  	 
+  	 function createAgent(startPoint){
+  		 
+  		/**
+  	  	 * 创建移动精灵
+  	  	 **/
+  	  	 for(var i = 0;i<carCount;i++){
+  	  	 	
+  	  		 var x = 800 * Math.random();
+  	  		 var y = 800 * Math.random();
+  	  	     var rotate = 360 * Math.random();
+  	  		 
+  	  	     if(startPoint!=null){
+  	  	    	 x = startPoint.x;
+  	  	    	 y = startPoint.y;
+  	  	    	 rotate = 90;
+  	  	     }
+  	  	     
+  		  	 var testSpirit = new Engine2D.spirit();
+  		  	 testSpirit.name = "agent"+i;
+  		  	 testSpirit.spiritType = 0;
+  		  	 testSpirit.substanceType = 1;
+  		  	 testSpirit.orgType = 0;
+  		  	 testSpirit.width = 38;
+  		  	 testSpirit.height = 28;
+  		  	 testSpirit.rotate = rotate;
+  		  	 testSpirit.x = x;
+  		  	 testSpirit.y = y;
+  		  	 testSpirit.style = Engine2D.util.randomColor();
+  		  	 
+			 testSpirit.update = function(){
+				
+  	  	 		ageTime++;
+  	  	 		 
+  	  	 		if(cars[this.name].survival){
+  	  	 			
+  	  	 			cars[this.name].survivalTime++;
+
+  	  	 			if(cars[this.name].survivalTime > 1){
+						
+  	  	 				cars[this.name].rotate = (this.rotate % 360) /360;
+  	  	 				
+  	  	  	 			//var carInput = [cars[this.name].x1/viewWidth,cars[this.name].x2/viewWidth,cars[this.name].x3/viewWidth,cars[this.name].x4/viewWidth,cars[this.name].x5/viewWidth
+  	  	  	 			//cars[this.name].x6/viewWidth,cars[this.name].x7/viewWidth,cars[this.name].speed/maxSpeed,cars[this.name].rotate];
+  	  	  	 			
+  	  	  	 			var carInput = new Array();
+  	  	  	 			for(var i = 0;i<cars[this.name].x.length;i++){
+  	  	  	 				carInput.push(cars[this.name].x[i].dis/viewWidth);
+  	  	  	 			}
+  	  	  	 			
+  	  	  	 			//carInput.push(cars[this.name].speed/maxSpeed);
+  	  	  	 			//carInput.push(cars[this.name].rotate);
+  	  	  	 			
+  	  	  	 			//console.log(carInput);
+  	  	  	  	 	 	var random = cars[this.name].ai.forword(carInput);
+  	  	  	  	 	 	//console.log(this.name,random);
+  	  	  	  	 	 	
+  	  	  	  	 	 	//选择最大数决定方向
+  	  	  	  	 	 	var directionIndex = getMaxIndex(random[0],random[1],random[2]);
+  	  	  	  	 	 	//0:left,1:right,2:unchanged
+  	  	  	  	 	 	switch (directionIndex){
+  	  	  	  	 	 		case 0:
+  	  	  	  	 	 			Engine2D.action.rotate(this,-rotateSpeed);
+  	  	  	  	 	 			break;
+  	  	  	  	 			case 1:
+  	  	  	  	 				Engine2D.action.rotate(this,rotateSpeed);
+	  	  	  	 	 			break;
+  	  	  	  				case 2:
+	  	  	 	 				break;
+  	  	  	  	 	 	}	
+
+  	  	  	  	 	 	var speed = cars[this.name].speed;
+  	  	  	  	 	 	
+  	  	  	  			//选择最大数决定方向
+  	  	  	  	 	 	//var speedIndex = getMaxIndex(random[3],random[4],random[5]);
+  	  	  	  	 	 	//0:plus,1:sub,2:unchanged
+  	  	  	  	 	 	//switch (speedIndex){
+  	  	  	  	 	 		//case 0:
+  	  	  	  	 	 			//speed = cars[this.name].speed * 1 + fSpeed * 1;
+  	  	  	  	 	 			//break;
+  	  	  	  	 			//case 1:
+  	  	  	  	 				//speed = cars[this.name].speed * 1 - fSpeed * 1;
+	  	  	  	 	 			//break;
+  	  	  	  				//case 2:
+	  	  	 	 				//break;
+  	  	  	  	 	 	//}
+  	  	  	  	 	 	
+  	  	  	  	 	 	//if(speed > maxSpeed){
+  	  	  	  	 			//speed = maxSpeed;
+  	  	  	  	 	 	//}else if(speed < minSpeed){
+  	  	  	  	 			//speed = minSpeed;
+  	  	  	  	 	 	//}
+  	  	  	  	 	 	
+  	  	  	  	        //cars[this.name].speed = speed;
+  	  	  	  	 	 	
+  	  	  	  			cars[this.name].dis = cars[this.name].dis * 1 + speed * 1;
+  	  	  	  	        
+  	  	  	  	 		Engine2D.action.forward(this,speed,true);
+  	  	  	  	 	
+  	  	 			}
+  	  	 			
+  	  	 		}
+  	  	 		
+  	  	 	 }
+  	  	 	 
+  	  	 	 testSpirit.hitTest = function(hitSpirit,result){
+  	  	 	 	//if(hitSpirit.name.indexOf("_testLine")<0){
+  	  	 	 		//hitSpirit.scene.removeChilds(hitSpirit.name);
+  	  	 	 	//}
+  	  	 		if(cars[this.name].survival && hitSpirit.name!="wallstart" && hitSpirit.name != "wallwin" && hitSpirit.name.indexOf("agent")<0 && hitSpirit.name.indexOf("testLine")<0){
+					//console.log(testSpirit.name);
+	 	 			cars[this.name].survival = false;
+	 	 		}else if(cars[this.name].survival && hitSpirit.name == "wallwin"){
+	 	 			cars[this.name].survivalTime += 100;
+	 	 			cars[this.name].survival = false;
+	 	 			cars[this.name].finish = true;
+	 	 		}
+  	  	 	 }
+
+  	  	 	 cars[testSpirit.name] = createAgentAI(testSpirit,viewWidth,7);
+  	  	 	 
+  		  	 testLayer.addSpirit(testSpirit);
+  			 
+  			 var testLineSpirit1 = new Engine2D.spirit();
+  		  	 testLineSpirit1.name = testSpirit.name + "_testLine1";
+  		  	 testLineSpirit1.spiritType = 0;
+  		  	 testLineSpirit1.orgType = 2;
+  		  	 testLineSpirit1.substanceType = 1;
+  		  	 testLineSpirit1.isFollowParent = 0;
+  		  	 testLineSpirit1.width = viewWidth;
+  		  	 testLineSpirit1.rotate = 0;
+  		  	 testLineSpirit1.relativeRotate = -90;
+  		  	 testLineSpirit1.x = 0;
+  		  	 testLineSpirit1.y = 0;
+  		  	 testLineSpirit1.relativeX = 0;
+  		  	 testLineSpirit1.relativeY = 0;
+  		  	 testLineSpirit1.style = "#EE3B3B";
+  		  	 testLineSpirit1.alpha = 0;
+  			 
+  			 testLineSpirit1.update = function(){
+  			 	//this.style = "#EE3B3B";
+  			 }
+  			 
+  			 testLineSpirit1.hitTest = function(hitSpirit,result){
+  	  	 	 	if(hitSpirit.name.indexOf("wall")>=0 && hitSpirit.name != "wallstart" && hitSpirit.name != "wallwin"){
+  	  	 	 		//console.log(this.name+"===>hit:"+hitSpirit.name,"=====:",result.point.x,result.point.y);
+  	  	 	 		cars[this.parent.name].x[0].hitResult.push(result);
+  	  	 	 		cars[this.parent.name].x[0].seft = this;
+  	  	 	 	}
+  	  	 	 }
+  	  	 	 
+  	  	 	 var testLineSpirit2 = new Engine2D.spirit();
+  		  	 testLineSpirit2.name = testSpirit.name + "_testLine2";
+  		  	 testLineSpirit2.spiritType = 0;
+  		  	 testLineSpirit2.orgType = 2;
+  		  	 testLineSpirit2.substanceType = 1;
+  		  	 testLineSpirit2.isFollowParent = 0;
+  		  	 testLineSpirit2.width = viewWidth;
+  		  	 testLineSpirit2.rotate = 0;
+  		  	 testLineSpirit2.relativeRotate = -30;
+  		  	 testLineSpirit2.x = 0;
+  		  	 testLineSpirit2.y = 0;
+  		  	 testLineSpirit2.relativeX = 0;
+  		  	 testLineSpirit2.relativeY = 0;
+  		  	 testLineSpirit2.style = "#EE3B3B";
+  		  	 testLineSpirit2.alpha = 0;
+  			 
+  			 testLineSpirit2.update = function(){
+  			 	//this.style = "#EE3B3B";
+  			 }
+  			 
+  			 testLineSpirit2.hitTest = function(hitSpirit,result){
+  				if(hitSpirit.name.indexOf("wall")>=0 && hitSpirit.name != "wallstart" && hitSpirit.name != "wallwin"){
+  	  	 	 		//console.log(this.name+"===>hit:"+hitSpirit.name,"=====:",result.point.x,result.point.y);
+  					cars[this.parent.name].x[1].hitResult.push(result);
+  					cars[this.parent.name].x[1].seft = this;
+  	  	 	 	}
+  	  	 	 }
+  	  	 	 
+  	  	 	 var testLineSpirit3 = new Engine2D.spirit();
+  		  	 testLineSpirit3.name = testSpirit.name + "_testLine3";
+  		  	 testLineSpirit3.spiritType = 0;
+  		  	 testLineSpirit3.orgType = 2;
+  		  	 testLineSpirit3.substanceType = 1;
+  		  	 testLineSpirit3.isFollowParent = 0;
+  		  	 testLineSpirit3.width = viewWidth;
+  		  	 testLineSpirit3.rotate = 0;
+  		  	 testLineSpirit3.relativeRotate = 30;
+  		  	 testLineSpirit3.x = 0;
+  		  	 testLineSpirit3.y = 0;
+  		  	 testLineSpirit3.relativeX = 0;
+  		  	 testLineSpirit3.relativeY = 0;
+  		  	 testLineSpirit3.style = "#EE3B3B";
+  		  	 testLineSpirit3.alpha = 0;
+  		  	 
+  			 testLineSpirit3.update = function(){
+  			 	//this.style = "#EE3B3B";
+  			 }
+  			 
+  			 testLineSpirit3.hitTest = function(hitSpirit,result){
+  				if(hitSpirit.name.indexOf("wall")>=0 && hitSpirit.name != "wallstart" && hitSpirit.name != "wallwin"){
+  	  	 	 		//console.log(this.name+"===>hit:"+hitSpirit.name,"=====:",result.point.x,result.point.y);
+  					cars[this.parent.name].x[2].hitResult.push(result);
+  					cars[this.parent.name].x[2].seft = this;
+  	  	 	 	}
+  	  	 	 }
+  			
+  			 var testLineSpirit4 = new Engine2D.spirit();
+  		  	 testLineSpirit4.name = testSpirit.name + "_testLine4";
+  		  	 testLineSpirit4.spiritType = 0;
+  		  	 testLineSpirit4.orgType = 2;
+  		  	 testLineSpirit4.substanceType = 1;
+  		  	 testLineSpirit4.isFollowParent = 0;
+  		  	 testLineSpirit4.width = viewWidth;
+  		  	 testLineSpirit4.rotate = 0;
+  		  	 testLineSpirit4.relativeRotate = 90;
+  		  	 testLineSpirit4.x = 0;
+  		  	 testLineSpirit4.y = 0;
+  		  	 testLineSpirit4.relativeX = 0;
+  		  	 testLineSpirit4.relativeY = 0;
+  		  	 testLineSpirit4.style = "#EE3B3B";
+  		  	 testLineSpirit4.alpha = 0;
+  		  	 
+  			 testLineSpirit4.update = function(){
+  			 	//this.style = "#EE3B3B";
+  			 }
+  			 
+  			 testLineSpirit4.hitTest = function(hitSpirit,result){
+  				if(hitSpirit.name.indexOf("wall")>=0 && hitSpirit.name != "wallstart" && hitSpirit.name != "wallwin"){
+  	  	 	 		//console.log(this.name+"===>hit:"+hitSpirit.name,"=====:",result.point.x,result.point.y);
+  					cars[this.parent.name].x[3].hitResult.push(result);
+  					cars[this.parent.name].x[3].seft = this;
+  	  	 	 	}
+  	  	 	 }
+  			 
+  			 var testLineSpirit5 = new Engine2D.spirit();
+ 		  	 testLineSpirit5.name = testSpirit.name + "_testLine5";
+ 		  	 testLineSpirit5.spiritType = 0;
+ 		  	 testLineSpirit5.orgType = 2;
+ 		  	 testLineSpirit5.substanceType = 1;
+ 		  	 testLineSpirit5.isFollowParent = 0;
+ 		  	 testLineSpirit5.width = viewWidth;
+ 		  	 testLineSpirit5.rotate = 0;
+ 		  	 testLineSpirit5.relativeRotate = 0;
+ 		  	 testLineSpirit5.x = 0;
+ 		  	 testLineSpirit5.y = 0;
+ 		  	 testLineSpirit5.relativeX = 0;
+ 		  	 testLineSpirit5.relativeY = 0;
+ 		  	 testLineSpirit5.style = "#EE3B3B";
+ 		  	 testLineSpirit5.alpha = 0;
+ 		  	 
+ 			 testLineSpirit5.update = function(){
+ 			 	//this.style = "#EE3B3B";
+ 			 }
+ 			 
+ 			 testLineSpirit5.hitTest = function(hitSpirit,result){
+ 				if(hitSpirit.name.indexOf("wall")>=0 && hitSpirit.name != "wallstart" && hitSpirit.name != "wallwin"){
+ 	  	 	 		//console.log(this.name+"===>hit:"+hitSpirit.name,"=====:",result.point.x,result.point.y);
+ 					cars[this.parent.name].x[4].hitResult.push(result);
+ 					cars[this.parent.name].x[4].seft = this;
+ 	  	 	 	}
+ 	  	 	 }
+ 			 
+ 			var testLineSpirit6 = new Engine2D.spirit();
+ 			testLineSpirit6.name = testSpirit.name + "_testLine6";
+ 			testLineSpirit6.spiritType = 0;
+ 			testLineSpirit6.orgType = 2;
+ 			testLineSpirit6.substanceType = 1;
+ 			testLineSpirit6.isFollowParent = 0;
+ 			testLineSpirit6.width = viewWidth;
+ 			testLineSpirit6.rotate = 0;
+ 			testLineSpirit6.relativeRotate = -60;
+ 			testLineSpirit6.x = 0;
+ 			testLineSpirit6.y = 0;
+ 			testLineSpirit6.relativeX = 0;
+ 			testLineSpirit6.relativeY = 0;
+ 			testLineSpirit6.style = "#EE3B3B";
+ 			testLineSpirit6.alpha = 0; 
+ 			
+ 			testLineSpirit6.update = function(){
+			 	//this.style = "#EE3B3B";
+			}
+			 
+ 			testLineSpirit6.hitTest = function(hitSpirit,result){
+				if(hitSpirit.name.indexOf("wall")>=0 && hitSpirit.name != "wallstart" && hitSpirit.name != "wallwin"){
+	  	 	 		//console.log(this.name+"===>hit:"+hitSpirit.name,"=====:",result.point.x,result.point.y);
+					cars[this.parent.name].x[5].hitResult.push(result);
+					cars[this.parent.name].x[5].seft = this;
+	  	 	 	}
+	  	 	 }
+			 
+			 var testLineSpirit7 = new Engine2D.spirit();
+			 testLineSpirit7.name = testSpirit.name + "_testLine7";
+			 testLineSpirit7.spiritType = 0;
+			 testLineSpirit7.orgType = 2;
+			 testLineSpirit7.substanceType = 1;
+			 testLineSpirit7.isFollowParent = 0;
+			 testLineSpirit7.width = viewWidth;
+			 testLineSpirit7.rotate = 0;
+			 testLineSpirit7.relativeRotate = 60;
+			 testLineSpirit7.x = 0;
+			 testLineSpirit7.y = 0;
+			 testLineSpirit7.relativeX = 0;
+			 testLineSpirit7.relativeY = 0;
+			 testLineSpirit7.style = "#EE3B3B";
+			 testLineSpirit7.alpha = 0;
+			 
+			 testLineSpirit7.update = function(){
+ 			 	//this.style = "#EE3B3B";
+ 			 }
+ 			 
+			 testLineSpirit7.hitTest = function(hitSpirit,result){
+ 				if(hitSpirit.name.indexOf("wall")>=0 && hitSpirit.name != "wallstart" && hitSpirit.name != "wallwin"){
+ 	  	 	 		//console.log(this.name+"===>hit:"+hitSpirit.name,"=====:",result.point.x,result.point.y);
+ 					cars[this.parent.name].x[6].hitResult.push(result);
+ 					cars[this.parent.name].x[6].seft = this;
+ 	  	 	 	}
+ 	  	 	 }
+
+  	  	 	 testSpirit.addchild(testLineSpirit1);
+  	  	 	 testSpirit.addchild(testLineSpirit2);
+  	  	 	 testSpirit.addchild(testLineSpirit3);
+  	  	 	 testSpirit.addchild(testLineSpirit4);
+  	  	 	 testSpirit.addchild(testLineSpirit5);
+  	  	 	 testSpirit.addchild(testLineSpirit6);
+  	  		 testSpirit.addchild(testLineSpirit7);
+  	  	 }
+  		 
+  	 }
+  	 
+  	function initMapData() {
+  		console.log(mapJson);
+        loadMap(mapJson);
+        init();
+  	}
+  	
+  	function loadMap(mapData){
+  		
+  		for(var key in mapData){
+  			
+  			addWallFromMap(mapData[key]);
+  			
+  		}
+  		
+  	}
+  	
+  	 //添加墙
+ 	 function addWallFromMap(wall){
+ 		 
+ 		 var wallSpirit = new Engine2D.spirit();
+	  	 wallSpirit.name = wall.name;
+	  	 console.log(wall.spiritType,wall.substanceType,wall.orgType);
+	  	 wallSpirit.spiritType = wall.spiritType;
+	  	 wallSpirit.substanceType = wall.substanceType;
+	  	 wallSpirit.orgType = wall.orgType;
+	  	 wallSpirit.width = wall.width;
+	  	 wallSpirit.height = wall.height;
+	  	 wallSpirit.rotate = wall.rotate;
+	  	 wallSpirit.x = wall.x;
+	  	 wallSpirit.y = wall.y;
+	  	 wallSpirit.style = wall.style;
+	  	 
+	 	 wallSpirit.update = function(){
+	 		
+	 	 }
+	 	 
+	 	 wallSpirit.hitTest = function(hitSpirit,result){
+	 	 	
+	 	 	//console.log("in:"+hitSpirit.name);
+	 	 	//console.log("in:"+this.name);
+	 	 	
+	 	 	//if(wallSpirit.name!="wallstart" && hitSpirit.name.indexOf("agent")>=0 && hitSpirit.name.indexOf("testLine")<0){
+	 	 		//console.log(hitSpirit.name);
+	 	 		//cars[hitSpirit.name].survival = false;
+	  	 	 	//Engine2D.action.back(hitSpirit, forwardSpeed, true);
+	 	 	//}
+	 	 	
+	 	 	//Engine2D.action.stop(hitSpirit);
+	 	 }
+		 
+	 	 maps[wall.name] = wall;
+	 	 
+	  	 testLayer.addSpirit(wallSpirit);
+ 		 
+ 	 }
+  	
+ 	function getMaxIndex(num1,num2,num3){
+		  var max = num1;//假设num1是最大的
+		  var index = 0;
+		  //比较num1和num2，产生一个最大值max
+		  if(num1>num2){
+		    max=num1;
+		    index = 0;
+		  }else{
+		    max=num2;
+		    index = 1;
+		  }
+		  //比较max和num3，产生一个最大值
+		  if(max<num3){
+			 index = 2;
+		  }
+		  return index;
+	 }
+  	 
+  </script>
+   
+</html>

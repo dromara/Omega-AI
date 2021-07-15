@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>mnist</title>
+	
+    <meta http-equiv="keywords" content="keyword1,keyword2,keyword3">
+    <meta http-equiv="description" content="Genetic">
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+
+	<script type="text/javascript" src="../jquery/jquery-3.6.0.min.js"></script>
+
+  	<script type="text/javascript" src="../2DEngine/2DEngine.v1.0.1.js"></script>
+  	
+
+	<style type="text/css">
+		
+		body{
+			margin: 0;
+			padding: 0;
+			text-align: center;
+		}
+		
+		#myCanvas{
+			margin-top: 5%;
+			border: 1px solid #D3D3D3;
+		}
+		
+		#myCanvas2{
+			margin-top: 5%;
+			border: 1px solid #D3D3D3;
+		}
+		
+		.consoleDiv{
+			width: 99%;
+			margin: 10px;
+		}
+		
+	</style>
+	
+  </head>
+  	
+  <body>
+   	
+   	<canvas id="myCanvas" width="280px" height="280px"></canvas>
+   	
+   	<canvas id="myCanvas2" width="28px" height="28px"></canvas>
+   	
+   	<br/>
+   	
+   	<div class="consoleDiv">
+		
+		<button id="train" onclick="train()">train</button>
+		
+		<button id="submit" onclick="sumbitImg()">submit</button>
+		
+	   	<button id="clear" onclick="clearPrint()">clear</button>
+   		
+   	</div>
+   	
+   	<div class="consoleDiv">
+   		
+   	</div>
+   	
+  </body>
+  
+  <script th:inline="javascript">
+	
+  	 var mnistUrl = [[@{/networkTest/mnistCNNTest}]];
+  	
+  	 var trainUrl = [[@{/networkTest/mnistCNNTrain}]];
+  	 
+  	 var canvas = document.getElementById('myCanvas');
+  	 
+  	 var canvas2 = document.getElementById('myCanvas2');
+  	 
+  	 var ctx = canvas2.getContext("2d");
+  	 
+  	 var engine = Engine2D.method.getInstance();
+  	 
+  	 engine.init(canvas);
+  	 
+  	 drawRect();
+  	 
+  	 var startScene = new Engine2D.scene();
+  	 startScene.name = "startScene";
+  	 startScene.fps = 60;
+  	 startScene.hitTest = true;
+  	 
+  	 var testLayer = new Engine2D.layer();
+  	 testLayer.name = "testLayer";
+  	 
+  	 startScene.update = function(){
+  	 	//engine.clear();
+  	 }
+  	 
+  	 engine.addScene(startScene);
+  	 startScene.addLayer(testLayer);
+  	 
+  	 let painting = false;
+  	 let lastPoint = {x: undefined, y: undefined};
+
+	 engine.mousedown = function(){
+		 painting = true;
+		 let x = engine.mouseX;
+		 let y = engine.mouseY;
+		 lastPoint = {"x": x, "y": y};
+		 //drawCircle(x, y, 5);
+	 };
+	 
+	 engine.mouseup = function(){
+		 painting = false;
+		 lastPoint = {x: undefined, y: undefined};
+	 };
+	 
+	 engine.mousemove = function(){
+		 if (painting) {
+		    let x = engine.mouseX;
+		    let y = engine.mouseY;
+		    let newPoint = {"x": x, "y": y};
+		    drawLine(lastPoint.x, lastPoint.y, newPoint.x, newPoint.y);
+		    lastPoint = newPoint;
+		 }
+	 };
+	 
+  	 engine.runScene("startScene");
+  	 
+  	// 画点函数
+  	function drawCircle(x, y, radius) {
+  		engine.context.save();
+  		engine.context.beginPath();
+  		engine.context.arc(x, y, radius, 0, Math.PI * 2);
+  		engine.context.fill();
+  	}
+  	 
+    // 划线函数
+  	function drawLine(x1, y1, x2, y2) {
+  		engine.context.beginPath();
+  		engine.context.strokeStyle = "#ffffff";
+  		engine.context.lineWidth = 10;
+  		engine.context.lineCap = "round";
+  		engine.context.lineJoin = "round";
+  		engine.context.moveTo(x1, y1);
+  		engine.context.lineTo(x2, y2);
+  		engine.context.stroke();
+  		engine.context.closePath();
+  	}
+    
+  	// 画点函数
+  	function drawRect() {
+  		engine.context.save();
+  		engine.context.translate(0,0);
+  		engine.context.scale(1,1);
+  		engine.context.fillStyle = "#000000";//填充颜色,默认是黑色
+  		engine.context.globalAlpha = 1;//透明度
+  		engine.context.fillRect(0,0,280,280);
+  		engine.context.restore();
+  	}
+    
+    function clearPrint(){
+    	engine.clear();
+    	drawRect();
+    	ctx.clearRect(0,0,28,28);
+    }
+    
+    function sumbitImg(){
+    	//console.log(imgUrl);
+    	var image = new Image();
+     	image.src = canvas.toDataURL("image/png");
+     	image.onload = function () {
+     		ctx.clearRect(0,0,28,28);
+     		ctx.drawImage(image,0,0,28,28);
+     		var img = canvas2.toDataURL("image/png");
+     		upload(img);
+        }
+     	
+    }
+    
+    function upload(img){
+    	var blob = dataURItoBlob(img);
+    	var fd = new FormData();
+    	fd.append('file',blob);
+    	//上传
+    	$.ajax({
+            url: mnistUrl,
+            type: 'post',
+            processData: false,
+            contentType: false,
+            data: fd,
+            success: function (msg) {
+                alert(msg.msg);
+            }
+        });
+    }
+    
+    function train(){
+    	//上传
+    	$.ajax({
+            url: trainUrl,
+            type: 'post',
+            processData: false,
+            contentType: false,
+            success: function (msg) {
+                alert(msg.msg);
+            }
+        });
+    }
+    
+    function dataURItoBlob(dataURI) {//图片转成Buffer
+        var byteString = atob(dataURI.split(',')[1]);
+        var mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+        var ab = new ArrayBuffer(byteString.length);
+        var ia = new Uint8Array(ab);
+        for (var i = 0; i < byteString.length; i++) {
+            ia[i] = byteString.charCodeAt(i);
+        }
+        return new Blob([ab], {type: mimeString});
+    }
+ 
+  </script>
+   
+</html>

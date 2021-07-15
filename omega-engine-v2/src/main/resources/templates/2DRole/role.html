@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AICar</title>
+	
+    <meta http-equiv="keywords" content="keyword1,keyword2,keyword3">
+    <meta http-equiv="description" content="Genetic">
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+
+  	<script type="text/javascript" src="../2DEngine/2DEngine.v1.0.2.js"></script>
+
+	
+	<style type="text/css">
+		
+		body{
+			margin: 0;
+			padding: 0;
+			text-align: center;
+		}
+		
+		#myCanvas{
+			width: 100%;
+			height: 100%;
+			margin: 0;
+			padding: 0;
+		}
+		
+	</style>
+	
+  </head>
+  	
+  <body>
+   	
+   	<canvas id="myCanvas"></canvas>
+	
+	<button onclick="play()">play</button>
+	
+  </body>
+  
+  <script type="text/javascript">
+  	 
+  	var canvas = document.getElementById('myCanvas');
+  	
+  	var engine = Engine2D.method.getInstance();
+ 	 
+ 	engine.init(canvas);
+ 	
+ 	var res = [
+ 				{"id": "1","src":"/role/images/1.png"},
+ 				{"id": "2","src":"/role/images/2.png"},
+ 				{"id": "3","src":"/role/images/3.png"},
+ 				{"id": "4","src":"/role/images/4.png"},
+ 				{"id": "5","src":"/role/images/5.png"},
+ 				{"id": "6","src":"/role/images/6.png"},
+ 				{"id": "7","src":"/role/images/7.png"},
+ 				{"id": "8","src":"/role/images/8.png"}
+ 			];
+ 	
+ 	Engine2D.resource._import("role",res);
+ 	
+ 	var startScene = new Engine2D.scene();
+ 	startScene.name = "startScene";
+ 	startScene.fps = 60;
+ 	startScene.hitTest = true;
+
+ 	startScene.update = function(){
+ 	  engine.clear();
+ 	}
+ 	
+ 	engine.addScene(startScene);
+ 	engine.showFPS = true;
+ 	
+ 	var testLayer = new Engine2D.layer();
+  	testLayer.name = "testLayer";
+  	
+  	testLayer.update = function(){
+  		
+  	}
+  	 
+  	startScene.addLayer(testLayer);
+ 	
+  	var x = 0;
+	var y = 0;
+     
+  	var testSpirit = new Engine2D.spirit();
+  	testSpirit.name = "agent";
+  	testSpirit.spiritType = 2;
+  	testSpirit.substanceType = 0;
+  	testSpirit.width = 28;
+  	testSpirit.height = 28;
+  	testSpirit.rotate = 0;
+  	testSpirit.x = x;
+  	testSpirit.y = y;
+  	testSpirit.animationId = "role";
+  	
+  	testLayer.addSpirit(testSpirit);
+  	
+  	var roleRes = Engine2D.resource["role"];
+  	
+  	var fa = new Engine2D.frameAnimation("role",roleRes, 8);
+  	
+  	testSpirit.addAnimation(fa);
+  	
+  	function play(){
+  		engine.runScene("startScene");
+  	}
+
+  </script>
+   
+</html>

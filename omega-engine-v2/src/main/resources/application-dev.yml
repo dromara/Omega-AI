@@ -1,0 +1,32 @@
+
+server:
+  port: 8011
+
+spring:
+  application:
+    name: OMEGA-ENGINE
+  thymeleaf:
+    enabled: true  #开启thymeleaf视图解析
+    encoding: utf-8  #编码
+    prefix: classpath:/templates/  #前缀
+    cache: false  #是否使用缓存
+    mode: HTML  #严格的HTML语法模式
+    suffix: .html  #后缀名 
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://${security.username}:${security.password}@127.0.0.1:8001/eureka/
+  instance:
+    prefer-ip-address: true
+    instance_id: ${spring.cloud.client.ip-address}:${server.port}
+    hostname: ${spring.cloud.client.ip-address}
+    
+#安全认证的配置  
+security:
+    username: omega
+    password: omega2020
+    
+ribbon:
+  eureka:
+    enable: true
