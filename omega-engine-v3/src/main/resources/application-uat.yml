@@ -1,0 +1,25 @@
+
+server:
+  port: 8011
+
+spring:
+  application:
+    name: OMEGA-ENGINE
+    
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://${security.user.name}:${security.user.password}@192.168.0.248:8001/eureka/
+  instance:
+    instance_id: ${spring.cloud.client.ip-address}:${server.port}
+    hostname: ${spring.cloud.client.ip-address}
+    
+#安全认证的配置  
+security:
+  user:  
+    name: omega 
+    password: omega2020
+    
+ribbon:
+  eureka:
+    enable: true

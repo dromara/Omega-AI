@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>training controller</title>
+	
+    <meta http-equiv="keywords" content="keyword1,keyword2,keyword3">
+    <meta http-equiv="description" content="Genetic">
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+
+	<script type="text/javascript" src="../jquery/jquery-3.6.0.min.js"></script>
+	<script type="text/javascript" src="../jquery/chart.min.js"></script>
+	
+	<style type="text/css">
+		
+		body{
+			margin: 0;
+			padding: 0;
+			text-align: center;
+		}
+		
+		.box{
+			width: 800px;
+			height: 800px;
+		}
+		
+	</style>
+	
+  </head>
+  	
+  <body>
+	
+	<div class="box">
+		
+		<canvas id="myChart" width="400" height="400"></canvas>
+	
+	</div>
+	
+	<div class="consoleDiv">
+   		
+	   	sid:<input id="sid" type="text"/>
+	   	
+	   	lr:<input id="lr" type="text" value="0"/>
+
+	   	model:<select id="model">
+	   			<option value="0">bp_mnist</option>
+	   			<option value="1">cnn_mnist</option>
+	   			<option value="2">alexNet_mnist</option>
+	   			<option value="3">alexNet_cifar10</option>
+	   			<option value="4">vgg16</option>
+	   	 	  </select>
+	   	
+	   	<button id="start" onclick="start()">start</button>
+	   	
+	   	<button id="updateLR" onclick="updateLR()">updateLR</button>
+   		
+   	</div>
+
+   	<div class="consoleDiv">
+   		result msg:<span id="msg">none</span>
+   	</div>
+   	
+  </body>
+  
+  <script type="text/javascript">
+  	 
+  	  const ctx = document.getElementById('myChart').getContext('2d');
+  	  
+  	  var myChart = null;
+  	  
+	  var socket;
+	  
+	  var start_url = "http://127.0.0.1:8011/tm/start";
+	  
+	  var lr_url = "http://127.0.0.1:8011/tm/updateLR";
+	  
+	  var time = 0;
+	  
+	  var times = new Array();
+	  
+	  var error = new Array();
+	  
+	  onInit();
+	  
+	  function onInit(){
+		  initCanvas(times,error);
+	  }
+	  
+	  function openSocket() {
+	
+	      const socketUrl = "ws://127.0.0.1:8011/api/pushMessage/" + $("#sid").val();
+	      console.log(socketUrl);
+	      if(socket!=null){
+	          socket.close();
+	          socket=null;
+	      }
+	      socket = new WebSocket(socketUrl);
+	      //打开事件
+	      socket.onopen = function() {
+	          console.log("websocket已打开");
+	          init();
+	      };
+	      //获得消息事件
+	      socket.onmessage = function(msg) {
+	          console.log(msg.data);
+	          
+	          if(msg.data != null && msg.data != "连接成功"){
+
+		          //发现消息进入,开始处理前端触发逻辑
+		          document.getElementById('msg').innerText = msg.data;
+		          
+		          const start = msg.data.indexOf("currentError:");
+		          
+		          const end = msg.data.indexOf(" [");
+		          
+		          let currentError = msg.data.substring(start + 13,end);
+
+		          currentError = currentError * 1.0;
+		          
+		          time++;
+		          
+		          //times.push(time);
+		          
+		          //error.push(currentError);
+		          
+		          updateCanvas(time,currentError);
+		          
+	          }
+	          
+	      };
+	      //关闭事件
+	      socket.onclose = function() {
+	          console.log("websocket已关闭");
+	      };
+	      //发生了错误事件
+	      socket.onerror = function() {
+	          console.log("websocket发生了错误");
+	      }
+	  }
+	  
+	  function sendMessage() {
+	      socket.send('{"toUserId":"'+$("#toUserId").val()+'","contentText":"'+$("#contentText").val()+'"}');
+	      console.log('{"toUserId":"'+$("#toUserId").val()+'","contentText":"'+$("#contentText").val()+'"}');
+	  }
+  	 
+	  function start(){
+		  
+		  openSocket();
+		  
+	  }
+	  
+	  function init(){
+		  var sid = $("#sid").val();
+		  var lr = $("#lr").val();
+		  var model = $("#model").val();
+
+		  $.post(start_url,{sid:sid,model:model,lr:lr},function(data){
+			  console.log(data.msg);
+		  });
+		  
+	  }
+	  
+	  function updateLR(){
+		  var sid = $("#sid").val();
+		  var lr = $("#lr").val();
+
+		  $.post(lr_url,{sid:sid,lr:lr},function(data){
+			  console.log(data.msg);
+		  });
+		  
+	  }
+	  
+	  function updateCanvas(labels,data){
+		    myChart.data.labels.push(labels);
+		    myChart.data.datasets.forEach((dataset) => {
+		        dataset.data.push(data);
+		    });
+		    myChart.update();
+	  }
+	  
+	  function initCanvas(labels,data){
+
+		  const dataConfig = {
+				    labels: labels,
+				    datasets: [{
+				      label: 'currentError',
+				      backgroundColor: 'rgb(255, 99, 132)',
+				      borderColor: 'rgb(255, 99, 132)',
+				      data: data,
+				    }]
+				  };
+		  
+		  const config = {
+				    type: 'line',
+				    data: dataConfig,
+				    options: {}
+				  };
+		  
+		  myChart = new Chart(
+				    document.getElementById('myChart'),
+				    config
+				  );
+
+	  }
+	  
+  </script>
+   
+</html>

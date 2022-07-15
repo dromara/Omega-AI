@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>origin</title>
+	
+    <meta http-equiv="keywords" content="keyword1,keyword2,keyword3">
+    <meta http-equiv="description" content="Genetic">
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+
+  	<script type="text/javascript" src="../2DEngine/2DEngine.v1.0.2.js"></script>
+		<script type="text/javascript" src="../ai/NetwrokAI.js"></script>
+	
+	<style type="text/css">
+		
+		body{
+			margin: 0;
+			padding: 0;
+			text-align: center;
+		}
+		
+		#myCanvas{
+			margin-top: 5%;
+			border: 1px solid #D3D3D3;
+		}
+		
+		.consoleDiv{
+			width: 99%;
+			margin: 10px;
+		}
+		
+	</style>
+	
+  </head>
+  	
+  <body>
+
+   	<canvas id="myCanvas" width="1600px" height="1000px"></canvas>
+   	
+   	<br/>
+   	
+   	<div class="consoleDiv">
+   		liveCount:<span id="liveCount">0</span>||
+	   	age:<span id="age">0</span>||
+	   	bestAgent:<span id="bestAgent">0</span>||
+	   	bestFitness:<span id="bestFitness">0</span>||
+	   	totalFitness:<span id="totalFitness">0</span>
+   	</div>
+   	
+  </body>
+  
+  <script type="text/javascript">
+  	 
+  	 var rotateSpeed = 5;
+  	 
+  	 var forwardSpeed = 10;
+  	 
+  	 var maxSpeed = 20;
+  	 
+  	 var minSpeed = 8;
+  	 
+  	 var fSpeed = 1;
+  	 
+  	 var viewWidth = 1020;
+  	 
+  	 var carCount = 20;
+  	 
+  	 var age = 0;
+  	 
+  	 var ageTime = 0;
+  	 
+  	 var maps = {};
+  	 
+  	 var cars = [];
+  	 
+  	 var objs = new Array();
+  	 
+  	 var trainer = null;
+  	 
+  	 var startColor = [255,0,0];
+  	 
+  	 var endColor = [0,255,0];
+  	 
+  	 var canvas = document.getElementById('myCanvas');
+  	 
+  	 var engine = Engine2D.method.getInstance();
+  	 
+  	 var currentTime = 0;
+  	 
+  	 var hour = 6;
+  	 
+  	 var foods = [];
+  	 
+  	 var foodCount = 10;
+  	 
+  	 var foodPower = 20;
+  	 
+  	 var foodScore = 50;
+  	 
+  	 var liveScore = 1;
+  	 
+  	 var AI_MAX_HP = 100;
+  	 
+  	 var ais = []; 
+  	 
+  	 var ainn = null;
+  	 
+  	 var geneCount = 223;
+  	 
+  	 var xCount = 7;
+  	 
+  	 var deadCount = 0;
+  	 
+  	 
+  	 engine.init(canvas);
+  	 
+  	 var startScene = new Engine2D.scene();
+  	 startScene.name = "startScene";
+  	 startScene.fps = 60;
+  	 startScene.hitTest = true;
+
+  	 startScene.update = function(){
+   	 	updateTime();
+  	 	engine.clear();
+  	 	clearAIView();
+  	 }
+  	
+  	 function updateTime(){
+		
+  		if(currentTime > hour && currentTime % hour == 0){
+  			
+  			for(let i = 0;i<ais.length;i++){
+  				let ob = ais[i];
+  				if(ob.hp > 0){
+  					ob.hp = ob.hp - 2;
+  					ob.score += liveScore;
+  					if(ob.hp <= 0){
+  						ob.status = false;
+  						deadCount++;
+  						document.getElementById('liveCount').innerText = carCount - deadCount;
+  						if(deadCount >= carCount){
+  							isNewAge();
+  							deadCount = 0;
+  						}
+  					}
+  				}
+  			}
+  			currentTime = 0;
+  		}
+  		currentTime++;
+  	 }
+  	 
+  	function clearAIView(){
+ 		 for(let i = 0;i<ais.length;i++){	
+ 			for(let j = 0;j<ais[i].x.length;j++){
+ 				ais[i].x[j].hitResult = new Array();
+ 				ais[i].x[j].hitObj = null;
+ 				ais[i].x[j].dis = viewWidth;
+ 				ais[i].x[j].hitPoint = null;
+ 				if(ais[i].x[j].seft!=null){
+ 					ais[i].x[j].seft.alpha = 50;
+ 	 				ais[i].x[j].seft = null;
+ 				}
+ 				
+ 			}	
+ 		 } 
+ 	 }
+  	
+  	function isNewAge(){
+	
+ 		console.log("in new age.",age);
+ 		
+ 		var params =  new Array();
+ 		
+ 		//更新ai
+		for(let i = 0;i<ais.length;i++){
+  			let ob = ais[i];
+			params.push(ob.gene);
+	 	}
+
+		params = trainer.run(params);
+ 		
+		for(let i = 0;i<ais.length;i++){
+			let ob = ais[i];
+			ob.gene = params[i];
+			ob.status = true;
+			ob.hp = AI_MAX_HP;
+			ob.score = 0;
+			let x = 1500 * Math.random();
+ 	  		let y = 900 * Math.random();
+ 	  		let rotate = 360 * Math.random();
+			cars[i].x = x;
+			cars[i].y = y;
+			cars[i].rotate = rotate;
+		}
+		
+		document.getElementById('liveCount').innerText = carCount;
+		
+		age++;
+ 	 }
+  	 
+  	//统一处理碰撞测试后的结果
+  	startScene.afterHitTest = function(){
+		//计算各车最近的击中点
+		for(let i = 0;i<ais.length;i++){	
+			//var onceCar = cars[key];
+			//计算每条射线最近击中点
+			for(let j = 0;j<ais[i].x.length;j++){
+				let minHitDis = viewWidth;
+				let minHitPoint = null;
+				
+				if(ais[i].x[j].seft!=null){
+					let parent = ais[i].x[j].seft.parent;
+					let seft = ais[i].x[j].seft;
+					//获取击中点
+					for(let z = 0;z<ais[i].x[j].hitResult.length;z++){
+						let hitPoiont = ais[i].x[j].hitResult[z];
+						let dis = Engine2D.engine.Vec2.distance2(parent.centerX(),parent.centerY(),hitPoiont.x,hitPoiont.y);
+						if(minHitDis>dis){
+							minHitDis = dis;
+							minHitPoint = hitPoiont;
+						}
+					}
+					
+					//console.log(minHitPoint);
+					
+					if(minHitPoint!=null){
+						
+						Engine2D.util.drawPoint(parent,minHitPoint.x,minHitPoint.y,3,"#0000FF",0.8);
+						//console.log(cars[key].seft);
+						let point = {x:parent.centerX(),y:parent.centerY()};
+						Engine2D.util.drawLine2(parent,point,seft.rotate,minHitDis,"#EE3B3B",1);
+					}
+				}
+				
+				ais[i].x[j].dis = minHitDis;
+			}
+			
+		}
+  		
+  	}
+  	 
+  	 engine.addScene(startScene);
+  	 
+  	 var testLayer = new Engine2D.layer();
+  	 testLayer.name = "testLayer";
+  	 
+  	 testLayer.update = function(){
+  		//收集car状态信息
+  		//console.log(cars);
+  	 }
+  	 
+  	 startScene.addLayer(testLayer);
+
+  	 function init(){
+  		createAgent();
+  		createFoods();
+  		ainn = createNN();
+  		initAI();
+  		trainer = createAITrainer(carCount,geneCount);
+		//启动
+  	  	play();
+  	 }
+  	 
+  	 function play(){
+
+  	  	 engine.runScene("startScene");
+  	  	 
+  	 }
+  	 
+  	 /**
+  	 * val:0~1
+  	 * exsample:from:[255,0,0],to:[0,0,255]
+  	 **/
+  	 function updateColor(start,end,from,to){
+  		if(start < 0){
+  			start = 0;
+  		}
+  		let r = cubicEaseOut(start, from[0], to[0] - from[0], end);
+  		let g = cubicEaseOut(start, from[1], to[1] - from[1], end);
+  		let b = cubicEaseOut(start, from[2], to[2] - from[2], end);
+  	    return 'rgb('+ [r, g, b].join() +')';
+  	 }
+  	 
+  	var cubicEaseOut = function(t, b, c, d) {
+  	    return c * ((t = t/d - 1) * t * t + 1) + b;
+  	};
+  	 
+  	function createFoods(){
+  		
+  		for(let i = 0;i<foodCount;i++){
+  			
+  			let x = 1500 * Math.random();
+  			let y = 900 * Math.random();
+  			let rotate = 360 * Math.random();
+ 	  		
+  			let foodSpirit = new Engine2D.spirit();
+ 		  	foodSpirit.name = "food"+i;
+ 		  	foodSpirit.spiritType = 0;
+ 		  	foodSpirit.substanceType = 1;
+ 		  	foodSpirit.orgType = 0;
+ 		  	foodSpirit.width = 12;
+ 		  	foodSpirit.height = 12;
+ 		  	foodSpirit.rotate = rotate;
+ 		  	foodSpirit.x = x;
+ 		  	foodSpirit.y = y;
+ 		  	foodSpirit.style = 'rgb(255,215,0)';
+ 		  	foods.push(foodSpirit);
+ 		  	testLayer.addSpirit(foodSpirit);
+ 		  	
+  		}
+  		
+  	}
+  	
+  	function createAI(name,maxHP){
+  		var oai = {};
+  		oai.name = name;
+  		oai.hp = maxHP;
+  		oai.status = true;
+  		oai.score = 0;
+  		oai.gene = null;
+  		oai.x = new Array();
+  		for(let i = 0;i<xCount;i++){
+  			var ix = {};
+  			ix.dis = viewWidth;
+  			ix.hitResult = new Array();
+  			ix.hitObj = null;
+  			ix.hitPoiont = null;
+  			ix.seft = null;
+  			oai.x.push(ix);
+  		}
+  		ais.push(oai);
+  		return oai;
+  	}
+  	
+  	function initAI(){
+  		
+  		for(let i = 0;i<ais.length;i++){
+  			let oai = ais[i];
+  			oai.gene = AF_AI.utils.getNumbersInND(0,1,geneCount);
+
+  		}
+  		
+  	}
+  	
+  	//创建AI训练器
+ 	function createAITrainer(populationCount,chromosomeCount){
+ 		 var trainer = new AF_AI.genetic.instance();
+ 		 trainer.populationCount = populationCount;
+ 		 trainer.chromosomeCount = chromosomeCount;
+ 		 trainer.crossoverRate = 0.7;
+ 		 trainer.mutationRate = 0.3;
+ 		 trainer.calculateFitnessFunction = function(x){
+ 			 //console.log(ais[x].score);
+ 			 return ais[x].score;
+ 		 }
+ 		 trainer.init();
+ 		 return trainer;
+ 	 }
+  	
+    //创建AI神经网络
+ 	function createNN(){
+ 		 
+ 		 //创建神经网络
+ 		 var nn = new AF_AI.network.instance();
+ 		 
+ 		 var inputLayer = new AF_AI.network.layer();
+ 		 inputLayer.layerType = 0;
+ 		 inputLayer.name = "inputLayer";
+ 		 inputLayer.inputNum = 7;
+ 		 inputLayer.outputNum = 7;
+ 		 inputLayer.activeType = null;
+ 		 
+ 		 var fullyLayer1 = new AF_AI.network.layer();
+ 		 fullyLayer1.layerType = 1;
+ 		 fullyLayer1.name = "fullyLayer1";
+ 		 fullyLayer1.inputNum = 7;
+ 		 fullyLayer1.outputNum = 20;
+ 		 fullyLayer1.activeType = 1;
+ 		 
+		 var fullyLayer2 = new AF_AI.network.layer();
+		 fullyLayer2.layerType = 1;
+		 fullyLayer2.name = "fullyLayer2";
+		 fullyLayer2.inputNum = 20;
+		 fullyLayer2.outputNum = 3;
+		 fullyLayer2.activeType = 0;
+		 
+ 		 nn.addLayer(inputLayer);
+ 		 nn.addLayer(fullyLayer1);
+ 		 nn.addLayer(fullyLayer2);
+
+ 		 return nn;
+ 	 }
+  	 
+    /**
+    *创建触角
+    **/
+     function createAgentX(parent,angle,xCount){
+    	 
+    	
+    	for(let i = 0;i<xCount;i++){
+    		var rotate = 42 - (i + 1) * angle;
+
+       	 	var testLineSpirit1 = new Engine2D.spirit();
+       	 	testLineSpirit1.index = i;
+   		 	testLineSpirit1.name = parent.name + "_testLine"+i;
+   		 	testLineSpirit1.spiritType = 0;
+   		 	testLineSpirit1.orgType = 2;
+   		 	testLineSpirit1.substanceType = 1;
+   		 	testLineSpirit1.isFollowParent = 0;
+   		 	testLineSpirit1.width = viewWidth;
+   		 	testLineSpirit1.rotate = 0;
+   		 	testLineSpirit1.relativeRotate = rotate;
+   		 	testLineSpirit1.x = 0;
+   		 	testLineSpirit1.y = 0;
+   		 	testLineSpirit1.relativeX = 0;
+   		 	testLineSpirit1.relativeY = 0;
+   		 	testLineSpirit1.style = "#EE3B3B";
+   		 	testLineSpirit1.alpha = 0;
+   		 	testLineSpirit1.display = false;
+   			 
+   		 	testLineSpirit1.update = function(){
+   		 		//this.style = "#EE3B3B";
+   		 		//testLineSpirit1.alpha = 0;
+   		 	}
+   			 
+   		 	testLineSpirit1.hitTest = function(hitSpirit,result){
+   	  	 		if(hitSpirit.name.indexOf("food")>=0){
+   	  	 			this.parent.ai.x[this.index].hitResult.push(result);
+   	  	 			this.parent.ai.x[this.index].seft = this;
+   	  	 		}
+   	  	 	}
+       		
+   		 	parent.addchild(testLineSpirit1);
+    		
+    	} 
+    	
+     }
+    
+  	 function createAgent(){
+  		
+  		/**
+  	  	 * 创建移动精灵
+  	  	 **/
+  	  	 for(let i = 0;i<carCount;i++){
+  	  	 	
+  	  		 let x = 1500 * Math.random();
+  	  		 let y = 900 * Math.random();
+  	  		 let rotate = 360 * Math.random();
+  	  		 
+  			 let testSpirit = new Engine2D.spirit();
+  		  	 testSpirit.name = "agent"+i;
+  		  	 testSpirit.spiritType = 0;
+  		  	 testSpirit.substanceType = 1;
+  		  	 testSpirit.orgType = 1;
+  		  	 testSpirit.width = 8;
+  		  	 testSpirit.height = 8;
+  		  	 testSpirit.rotate = rotate;
+  		  	 testSpirit.x = x;
+  		  	 testSpirit.y = y;
+  		  	 testSpirit.style = 'rgb(0,255,0)';
+  		  	 
+  		  	 testSpirit.ai = createAI(testSpirit.name,AI_MAX_HP);
+  		  	 
+  		  	 cars.push(testSpirit);
+  		  	 
+  	  	 	 testSpirit.update = function(){
+				
+  	  	 		if(this.ai.status){
+
+  	  	  	 		this.style = updateColor(this.ai.hp,AI_MAX_HP,startColor,endColor);
+  	  	  	 		
+  	  	  	 		var carInput = new Array();
+	  	 			for(let i = 0;i<this.ai.x.length;i++){
+	  	 				carInput.push(1.0 - this.ai.x[i].dis / viewWidth);
+	  	 			}
+	  	 			
+	  	 			//console.log(this.ai.gene.length);
+	  	 			ainn.setParams(this.ai.gene);
+	  	  	 	 	var random = ainn.forword(carInput);
+
+	  	  	 	 	//选择最大数决定方向
+	  	  	 	 	var directionIndex = getMaxIndex(random[0],random[1],random[2]);
+	  	  	 	 	//0:left,1:right,2:unchanged
+	  	  	 	 	
+	  	  	 	 	switch (directionIndex){
+	  	  	 	 		case 0:
+	  	  	 	 			Engine2D.action.rotate(this,-rotateSpeed);
+	  	  	 	 			break;
+	  	  	 			case 1:
+	  	  	 				Engine2D.action.rotate(this,rotateSpeed);
+	  	  	 	 			break;
+	  	  				case 2:
+	  	 	 				break;
+	  	  	 	 	}	
+  		  	  	 		
+  			  	  	Engine2D.action.forward(this,forwardSpeed,true);
+  	  	 		}else{
+  	  	 			this.x = -999;
+  	  	 			this.y = -999;
+  	  	 		}
+
+  	  	 	 }
+  	  	 	 
+  	  	 	 testSpirit.hitTest = function(hitSpirit,result){
+				
+  	  	 		if(hitSpirit.name.indexOf("agent")>=0 && hitSpirit.name.indexOf("testLine")<0 && hitSpirit.ai.status){
+  	  	 			//Engine2D.action.forward(this,-forwardSpeed,true);
+  	  	 			//Engine2D.action.rotate(this,-rotateSpeed*10);
+	  	 	 	}else if(hitSpirit.name.indexOf("food")>=0){
+	  	 	 		if(this.ai.hp + foodPower <= AI_MAX_HP){
+	  	 	 			this.ai.hp += foodPower;
+	  	 	 		}else if(this.ai.hp + foodPower > AI_MAX_HP){
+	  	 	 			this.ai.hp = AI_MAX_HP;
+	  	 	 		}
+	  	 	 		this.ai.score += foodScore;
+	  	 	 		hitSpirit.x = 1500 * Math.random();
+	  	 	 		hitSpirit.y = 900 * Math.random();
+	  	 	 	}
+
+  	  	 	 }
+
+  		  	 testLayer.addSpirit(testSpirit);
+  			 
+  		  	 createAgentX(testSpirit,6,xCount);
+  			 
+  	  	 }
+  		 
+  	 }
+  	 
+ 	 function getMaxIndex(num1,num2,num3){
+		  var max = num1;//假设num1是最大的
+		  var index = 0;
+		  //比较num1和num2，产生一个最大值max
+		  if(num1>num2){
+		    max=num1;
+		    index = 0;
+		  }else{
+		    max=num2;
+		    index = 1;
+		  }
+		  //比较max和num3，产生一个最大值
+		  if(max<num3){
+			 index = 2;
+		  }
+		  return index;
+	 }
+  	 
+  	init();
+  	 
+  </script>
+   
+</html>

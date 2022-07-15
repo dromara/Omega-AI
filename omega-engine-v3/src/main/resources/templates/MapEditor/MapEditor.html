@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AICarMapEditor</title>
+	
+    <meta http-equiv="keywords" content="keyword1,keyword2,keyword3">
+    <meta http-equiv="description" content="Genetic">
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+
+  	<script type="text/javascript" src="../2DEngine/2DEngine.v1.0.1.js"></script>
+
+	<style type="text/css">
+		
+		body{
+			margin: 0;
+			padding: 0;
+			text-align: center;
+		}
+		
+		#myCanvas{
+			margin-top: 5%;
+			border: 1px solid #D3D3D3;
+		}
+		
+		.consoleDiv{
+			width: 99%;
+			margin: 10px;
+		}
+		
+	</style>
+	
+  </head>
+  	
+  <body>
+   	
+   	<canvas id="myCanvas" width="1600px" height="1000px"></canvas>
+   	
+   	<br/>
+   	
+   	<div class="consoleDiv">
+   		
+	   	name:<input id="name" type="text"/>
+	   	
+	   	width:<input id="width" type="text" value="0"/>
+	   	
+	   	height:<input id="height" type="text" value="0"/>
+	   	
+	   	rotate:<input id="rotate" type="text" value="0"/>
+	   	
+	   	<button id="add" onclick="addWall()">add</button>
+   		
+   	</div>
+   	
+   	<div class="consoleDiv">
+   		
+	   	name:<input id="nameEdit" type="text" disabled="disabled"/>
+	   	
+	   	width:<input id="widthEdit" type="text" value="0"/>
+	   	
+	   	height:<input id="heightEdit" type="text" value="0"/>
+	   	
+	   	rotate:<input id="rotateEdit" type="text" value="0"/>
+	   	
+	   	color:<input id="colorEdit" type="text" value=""/>
+	   	
+	   	<button id="edit" onclick="editWall()">edit</button>
+   		
+	   	<br/>
+	   	
+	   	<br/>
+	   	
+	   	x:<input id="x" type="text" value="0" disabled="disabled"/>,y:<input id="y" type="text" value="0" disabled="disabled"/>
+	   	
+	   	fileName:<input id="fileName" type="text" value="map"/>
+	   	<button onclick="saveMapJson()">save</button>
+	   	
+	   	load map:
+	   	<input type="file" onchange="showDataByBinaryString()" name="jsonFile" id="jsonFile" multiple="multiple"/>
+    	<button onclick="showDataByBinaryString()">load</button>
+	   	
+   	</div>
+   	
+  </body>
+  
+  <script type="text/javascript">
+  	 
+  	 var rotateSpeed = 5;
+  	 
+  	 var forwardSpeed = 3;
+  	 
+  	 var canvas = document.getElementById('myCanvas');
+  	 
+  	 var engine = Engine2D.method.getInstance();
+  	 
+  	 var walls = {};
+  	 
+  	 engine.init(canvas);
+  	 
+  	 var startScene = new Engine2D.scene();
+  	 startScene.name = "startScene";
+  	 startScene.fps = 60;
+  	 startScene.hitTest = true;
+  	 
+  	 var testLayer = new Engine2D.layer();
+  	 testLayer.name = "testLayer";
+  	 
+  	 startScene.update = function(){
+  	 	engine.clear();
+  	 }
+  	 
+  	 engine.addScene(startScene);
+  	 startScene.addLayer(testLayer);
+  	 
+  	 /**
+  	 * 创建移动精灵
+  	 **/
+  	 for(var i = 0;i<1;i++){
+  	 	
+	  	 var testSpirit = new Engine2D.spirit();
+	  	 testSpirit.name = "agent"+i;
+	  	 testSpirit.spiritType = 0;
+	  	 testSpirit.substanceType = 1;
+	  	 testSpirit.orgType = 0;
+	  	 testSpirit.width = 26;
+	  	 testSpirit.height = 18;
+	  	 testSpirit.rotate = 360 * Math.random();
+	  	 testSpirit.x = 800 * Math.random();
+	  	 testSpirit.y = 800 * Math.random();
+	  	 testSpirit.style = "#7CFC00";
+	  	 
+  	 	 testSpirit.update = function(){
+  	 		
+  	 	 	var random = Math.random();
+  	 	 	
+  	 	 	if(random<0.5){
+  	 	 		Engine2D.action.rotate(this,-rotateSpeed);
+  	 	 	}else{
+  	 	 		Engine2D.action.rotate(this,rotateSpeed);
+  	 	 	}
+  	 	 	
+  	 		Engine2D.action.forward(this,forwardSpeed,true);
+  	 	
+  	 	 }
+  	 	 
+  	 	 testSpirit.hitTest = function(hitSpirit){
+  	 	 	//if(hitSpirit.name.indexOf("_testLine")<0){
+  	 	 		//hitSpirit.scene.removeChilds(hitSpirit.name);
+  	 	 	//}
+  	 	 }
+
+	  	 testLayer.addSpirit(testSpirit);
+		 
+		 var testLineSpirit1 = new Engine2D.spirit();
+	  	 testLineSpirit1.name = testSpirit.name + "_testLine1";
+	  	 testLineSpirit1.spiritType = 0;
+	  	 testLineSpirit1.orgType = 2;
+	  	 testLineSpirit1.substanceType = 1;
+	  	 testLineSpirit1.isFollowParent = 0;
+	  	 testLineSpirit1.width = 100;
+	  	 testLineSpirit1.rotate = 0;
+	  	 testLineSpirit1.relativeRotate = -30;
+	  	 testLineSpirit1.x = 0;
+	  	 testLineSpirit1.y = 0;
+	  	 testLineSpirit1.relativeX = 0;
+	  	 testLineSpirit1.relativeY = 0;
+	  	 testLineSpirit1.style = "#EE3B3B";
+		 
+		 testLineSpirit1.update = function(){
+		 	this.style = "#EE3B3B";
+		 }
+		 
+		 testLineSpirit1.hitTest = function(hitSpirit){
+		 	console.log(this.name+"===>hit:"+hitSpirit.name);
+  	 	 	this.style = "#7CFC00";
+  	 	 	
+  	 	 }
+  	 	 
+  	 	 var testLineSpirit2 = new Engine2D.spirit();
+	  	 testLineSpirit2.name = testSpirit.name + "_testLine2";
+	  	 testLineSpirit2.spiritType = 0;
+	  	 testLineSpirit2.orgType = 2;
+	  	 testLineSpirit2.substanceType = 1;
+	  	 testLineSpirit2.isFollowParent = 0;
+	  	 testLineSpirit2.width = 100;
+	  	 testLineSpirit2.rotate = 0;
+	  	 testLineSpirit2.relativeRotate = -10;
+	  	 testLineSpirit2.x = 0;
+	  	 testLineSpirit2.y = 0;
+	  	 testLineSpirit2.relativeX = 0;
+	  	 testLineSpirit2.relativeY = 0;
+	  	 testLineSpirit2.style = "#EE3B3B";
+		 
+		 testLineSpirit2.update = function(){
+		 	this.style = "#EE3B3B";
+		 }
+		 
+		 testLineSpirit2.hitTest = function(hitSpirit){
+		 	console.log(this.name+"===>hit:"+hitSpirit.name);
+  	 	 	this.style = "#7CFC00";
+  	 	 	
+  	 	 }
+  	 	 
+  	 	 var testLineSpirit3 = new Engine2D.spirit();
+	  	 testLineSpirit3.name = testSpirit.name + "_testLine3";
+	  	 testLineSpirit3.spiritType = 0;
+	  	 testLineSpirit3.orgType = 2;
+	  	 testLineSpirit3.substanceType = 1;
+	  	 testLineSpirit3.isFollowParent = 0;
+	  	 testLineSpirit3.width = 100;
+	  	 testLineSpirit3.rotate = 0;
+	  	 testLineSpirit3.relativeRotate = 10;
+	  	 testLineSpirit3.x = 0;
+	  	 testLineSpirit3.y = 0;
+	  	 testLineSpirit3.relativeX = 0;
+	  	 testLineSpirit3.relativeY = 0;
+	  	 testLineSpirit3.style = "#EE3B3B";
+		 
+		 testLineSpirit3.update = function(){
+		 	this.style = "#EE3B3B";
+		 }
+		 
+		 testLineSpirit3.hitTest = function(hitSpirit){
+		 	console.log(this.name+"===>hit:"+hitSpirit.name);
+  	 	 	this.style = "#7CFC00";
+  	 	 	
+  	 	 }
+		
+		 var testLineSpirit4 = new Engine2D.spirit();
+	  	 testLineSpirit4.name = testSpirit.name + "_testLine4";
+	  	 testLineSpirit4.spiritType = 0;
+	  	 testLineSpirit4.orgType = 2;
+	  	 testLineSpirit4.substanceType = 1;
+	  	 testLineSpirit4.isFollowParent = 0;
+	  	 testLineSpirit4.width = 100;
+	  	 testLineSpirit4.rotate = 0;
+	  	 testLineSpirit4.relativeRotate = 30;
+	  	 testLineSpirit4.x = 0;
+	  	 testLineSpirit4.y = 0;
+	  	 testLineSpirit4.relativeX = 0;
+	  	 testLineSpirit4.relativeY = 0;
+	  	 testLineSpirit4.style = "#EE3B3B";
+		 
+		 testLineSpirit4.update = function(){
+		 	this.style = "#EE3B3B";
+		 }
+		 
+		 testLineSpirit4.hitTest = function(hitSpirit){
+		 	console.log(this.name+"===>hit:"+hitSpirit.name);
+  	 	 	this.style = "#7CFC00";
+  	 	 }
+
+  	 	 testSpirit.addchild(testLineSpirit1);
+  	 	 testSpirit.addchild(testLineSpirit2);
+  	 	 testSpirit.addchild(testLineSpirit3);
+  	 	 testSpirit.addchild(testLineSpirit4);
+  	 }
+
+	 engine.mousedown = function(){
+
+		for(var key in walls){
+			var one = walls[key];
+			var c = Math.pow(Math.pow(one.childs[one.name + "_testArea"].x-engine.mouseX, 2) + Math.pow(one.childs[one.name + "_testArea"].y-engine.mouseY, 2),0.5);
+			//判断是否在原内
+			if(c<=one.childs[one.name + "_testArea"].width){
+				  one.isTake = true;
+				  //显示该属性
+				  showWall(one);
+			}
+		}
+		 
+	 };
+	 
+	 engine.mouseup = function(){
+		 for(var key in walls){
+			var one = walls[key];
+			one.isTake = false;
+		}
+	 };
+	 
+	 engine.mousemove = function(){
+		
+		 for(var key in walls){
+			var one = walls[key];
+			 if(one.isTake){
+				 one.x = one.getXByCenterX(engine.mouseX);
+				 one.y = one.getYByCenterY(engine.mouseY);
+			 }
+			   	   
+		 }
+		 
+	 };
+	 
+  	 engine.runScene("startScene");
+  	 
+  	 //添加墙
+  	 function addWall(){
+  		 
+  		 var width = document.getElementById('width').value * 1;
+  		 var height = document.getElementById('height').value * 1;
+  		 var rotate = document.getElementById('rotate').value * 1;
+  		 var name = document.getElementById('name').value;
+  		 
+  		 var wallSpirit = new Engine2D.spirit();
+	  	 wallSpirit.name = "wall" + name;
+	  	 wallSpirit.spiritType = 0;
+	  	 wallSpirit.substanceType = 1;
+	  	 wallSpirit.orgType = 0;
+	  	 wallSpirit.width = width;
+	  	 wallSpirit.height = height;
+	  	 wallSpirit.rotate = rotate;
+	  	 wallSpirit.x = 800 * Math.random();
+	  	 wallSpirit.y = 800 * Math.random();
+	  	 wallSpirit.style = "#D3D3D3";
+	  	 
+ 	 	 wallSpirit.update = function(){
+ 	 		
+ 	 	 }
+ 	 	 
+ 	 	 wallSpirit.hitTest = function(hitSpirit){
+ 	 	 	
+ 	 	 	//console.log("in:"+hitSpirit.name);
+ 	 	 	//console.log("in:"+this.name);
+ 	 	 	
+ 	 	 	if(hitSpirit.name.indexOf("wall")<0){
+ 	  	 	 	Engine2D.action.back(hitSpirit, forwardSpeed, true);
+ 	 	 	}
+ 	 	 	
+ 	 	 	//Engine2D.action.stop(hitSpirit);
+ 	 	 }
+		 
+ 	 	 walls[wallSpirit.name] = wallSpirit;
+ 	 	 
+	  	 testLayer.addSpirit(wallSpirit);
+  		 
+	  	 var areaR = width;
+	  	 
+	  	 if(width > height){
+	  		areaR = height;
+	  	 }
+	  	 
+	  	 var testAreaSpirit = new Engine2D.spirit();
+	  	 testAreaSpirit.name = wallSpirit.name + "_testArea";
+	  	 testAreaSpirit.spiritType = 0;
+	  	 testAreaSpirit.orgType = 1;
+	  	 testAreaSpirit.substanceType = 1;
+	  	 testAreaSpirit.isFollowParent = 0;
+	  	 testAreaSpirit.width = areaR;
+	  	 testAreaSpirit.height = areaR;
+	  	 testAreaSpirit.rotate = 0;
+	  	 testAreaSpirit.relativeRotate = 0;
+	  	 testAreaSpirit.x = 0;
+	  	 testAreaSpirit.y = 0;
+	  	 testAreaSpirit.relativeX = 0;
+	  	 testAreaSpirit.relativeY = 0;
+	  	 testAreaSpirit.style = "#EE3B3B";
+	  	 testAreaSpirit.alpha = 0.3;
+		
+		 wallSpirit.addchild(testAreaSpirit);
+	  	 
+  	 }
+  	 
+  	 function showWall(spirit){
+  		document.getElementById('nameEdit').value = spirit.name;
+  		document.getElementById('widthEdit').value = spirit.width;
+  		document.getElementById('heightEdit').value = spirit.height;
+  		document.getElementById('rotateEdit').value = spirit.rotate;
+  		document.getElementById('x').value = spirit.x;
+  		document.getElementById('y').value = spirit.y;
+  		document.getElementById('colorEdit').value = spirit.style;
+  	 }
+  	 
+  	function editWall(){
+  		var name = document.getElementById('nameEdit').value;
+  		var width = document.getElementById('widthEdit').value;
+  		var height = document.getElementById('heightEdit').value;
+  		var rotate = document.getElementById('rotateEdit').value;
+  		var style = document.getElementById('colorEdit').value;
+  		walls[name].width = width * 1;
+  		walls[name].height = height * 1;
+  		walls[name].rotate = rotate * 1;
+  		if(style!=null){
+  			walls[name].style = style;
+  		}
+  	}
+  	
+  	function saveMapJson(){
+  		var json = getWallJson();
+  		var fileName = document.getElementById('fileName').value;
+  		saveJSON(json,fileName);
+  	}
+  	 
+  	function getWallJson(){
+  		var jsonData = {};
+  		for(var key in walls){
+  			var once = {};
+  			once.name = walls[key].name;
+  			once.x = walls[key].x;
+  			once.y = walls[key].y;
+  			once.width = walls[key].width;
+  			once.height = walls[key].height;
+  			once.rotate = walls[key].rotate;
+  			once.spiritType = walls[key].spiritType;
+  			once.substanceType = walls[key].substanceType;
+  			once.orgType = walls[key].orgType;
+  			once.style = walls[key].style;
+  			once.alpha = walls[key].alpha;
+  			jsonData[key] = once;
+  		}
+  		
+  		return jsonData;
+  	}
+  	
+  	function saveJSON(data, filename){
+  		if(!data) {
+  			alert('保存的数据为空');
+  			return;
+  		}
+  		if(!filename) {
+  			filename = 'json.json'
+  		}else{
+  			filename += ".json";
+  		}
+  		if(typeof data === 'object'){
+  			data = JSON.stringify(data, undefined, 4)
+  		}
+  		var blob = new Blob([data], {type: 'text/json'}),
+  		e = document.createEvent('MouseEvents'),
+  		a = document.createElement('a')
+  		a.download = filename
+  		a.href = window.URL.createObjectURL(blob)
+  		a.dataset.downloadurl = ['text/json', a.download, a.href].join(':')
+  		e.initMouseEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null)
+  		a.dispatchEvent(e)
+  	}
+  	
+  	function showDataByBinaryString() {
+        var resultFile = document.getElementById("jsonFile").files[0];
+      if (resultFile) {
+          var reader = new FileReader();
+          //异步方式
+			reader.onload = function(e) {
+              var urlData = this.result;
+              
+              var jsonObject = null;
+              
+              if(urlData!=null){
+            	  jsonObject = JSON.parse(urlData);
+              }
+              console.log(jsonObject);
+              loadMap(jsonObject);
+          };
+          reader.readAsBinaryString(resultFile);                
+      }
+  	}
+  	
+  	function loadMap(mapData){
+  		
+  		for(var key in mapData){
+  			
+  			addWallFromMap(mapData[key]);
+  			
+  		}
+  		
+  	}
+  	
+  	 //添加墙
+ 	 function addWallFromMap(wall){
+ 		 
+ 		 var wallSpirit = new Engine2D.spirit();
+	  	 wallSpirit.name = wall.name;
+	  	 console.log(wall.spiritType,wall.substanceType,wall.orgType);
+	  	 wallSpirit.spiritType = wall.spiritType;
+	  	 wallSpirit.substanceType = wall.substanceType;
+	  	 wallSpirit.orgType = wall.orgType;
+	  	 wallSpirit.width = wall.width;
+	  	 wallSpirit.height = wall.height;
+	  	 wallSpirit.rotate = wall.rotate;
+	  	 wallSpirit.x = wall.x;
+	  	 wallSpirit.y = wall.y;
+	  	 wallSpirit.style = wall.style;
+	  	 
+	 	 wallSpirit.update = function(){
+	 		
+	 	 }
+	 	 
+	 	 wallSpirit.hitTest = function(hitSpirit){
+	 	 	
+	 	 	//console.log("in:"+hitSpirit.name);
+	 	 	//console.log("in:"+this.name);
+	 	 	
+	 	 	if(hitSpirit.name.indexOf("wall")<0){
+	  	 	 	Engine2D.action.back(hitSpirit, forwardSpeed, true);
+	 	 	}
+	 	 	
+	 	 	//Engine2D.action.stop(hitSpirit);
+	 	 }
+		 
+	 	 walls[wallSpirit.name] = wallSpirit;
+	 	 
+	  	 testLayer.addSpirit(wallSpirit);
+ 		 
+	  	 var areaR = wallSpirit.width;
+	  	 
+	  	 if(wallSpirit.width > wallSpirit.height){
+	  		areaR = wallSpirit.height;
+	  	 }
+	  	 
+	  	 var testAreaSpirit = new Engine2D.spirit();
+	  	 testAreaSpirit.name = wallSpirit.name + "_testArea";
+	  	 testAreaSpirit.spiritType = 0;
+	  	 testAreaSpirit.orgType = 1;
+	  	 testAreaSpirit.substanceType = 1;
+	  	 testAreaSpirit.isFollowParent = 0;
+	  	 testAreaSpirit.width = areaR;
+	  	 testAreaSpirit.height = areaR;
+	  	 testAreaSpirit.rotate = 0;
+	  	 testAreaSpirit.relativeRotate = 0;
+	  	 testAreaSpirit.x = 0;
+	  	 testAreaSpirit.y = 0;
+	  	 testAreaSpirit.relativeX = 0;
+	  	 testAreaSpirit.relativeY = 0;
+	  	 testAreaSpirit.style = "#EE3B3B";
+	  	 testAreaSpirit.alpha = 0.3;
+		
+		 wallSpirit.addchild(testAreaSpirit);
+	  	 
+ 	 }
+  	
+  </script>
+   
+</html>
