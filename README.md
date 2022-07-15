@@ -1,15 +1,39 @@
-# Omega-AI
 
-## 介绍
-Omega-AI：基于java打造的深度学习框架，帮助你快速搭建神经网络，实现训练或测试模型，支持多线程运算。
+# 自己打造一个深度学习框架 for java
 
-## 架构
+###  前言
+从16年开始利用空余时间研究深度学习的方面，由于工作的原因，最熟悉的编程语言就是java，所以框架的编程语言自然而然就使用了java。自己打造框架的初衷就是为了更加深入了解各个算法、模型、实现的原理和思路。
+## 框架介绍
+Omega-AI：基于java打造的深度学习框架，帮助你快速搭建神经网络，实现训练或测试模型，支持多线程运算，框架目前支持BP神经网络和卷积神经网络的构建。
+### 源码地址：
 
-框架目前支持BP神经网络和卷积神经网络的构建
+[https://gitee.com/iangellove/omega-ai](https://gitee.com/iangellove/omega-ai)
 
-支持多线程计算
+[https://github.com/iangellove/Omega-AI](https://github.com/iangellove/Omega-AI)
 
-### 支持的网络层类型：
+### 版本更新
+#### omega-engine-1.0.3
+
+1.添加gup支持，使用jcuda调用cuda的cublasSgemm矩阵乘法，参考了caffe的卷积操作已将卷积操作优化成im2col+gemm实现，计算效率得到大大提高
+
+2.添加vgg16 demo，该模型在cifar10数据集上表现为测试数据集准确率78.2%
+
+3.利用jdk ForkJoin框架实现任务拆分，充分利用cpu多线程，提高对数组操作与计算速度
+
+4.参考darknet对学习率更新机制进行升级，目前已支持RANDOM、POLY、STEP、EXP、SIG等多种学习率更新方法，并且实现学习率warmup功能
+
+### 依赖
+由于omega-engine-1.0.3加入了jcuda支持，所以1.0.3需要安装与jcuda版本对应的cuda，我在该项目中使用的是jcuda-11.2.0版本的包，那么我cuda需要安装11.2.x版本
+
+### 系统参数
+由于训练vgg16模型的参数比较庞大，所以在部署项目的时候需要对jvm内存进行调整.
+调整事例如：-Xmx20480m -Xms20480m -Xmn10240m
+
+### Demo展示
+[基于卷积神经网络mnist手写数字识别](http://120.237.148.121:8011/mnist)
+![在这里插入图片描述](https://img-blog.csdnimg.cn/b9b5846af6624bdf8f5d570c5052bc64.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3UwMTMyODMzMDQ=,size_1,color_FFFFFF,t_70#pic_center)
+##  功能介绍
+#### 支持的网络层类型：
 
 Fullylayer 全连接层
 
@@ -35,13 +59,13 @@ BNLayer (Batch Normalization)
 
 DropoutLayer
 
-### 优化器
+#### 优化器
 
 Momentum
 
 Adam
 
-### 训练器
+#### 训练器
 
 BGDOptimizer (批量梯度下降法)
 
@@ -49,13 +73,13 @@ MBSGDOptimizer (小批量随机梯度下降)
 
 SGDOptimizer（随机梯度下降算法）
 
-### 损失函数(loss function)
+#### 损失函数(loss function)
 
 SquareLoss (平方差损失函数)
 
 CrossEntropyLoss (交叉熵损失函数)
 
-### 学习率更新器（LearnRateUpdate）
+#### 学习率更新器（LearnRateUpdate）
 
 NONE (固定学习率)
 
@@ -63,7 +87,19 @@ LR_DECAY (decay)
 
 GD_GECAY (gd_decay)
 
-### 数据加载器
+CONSTANT(gd_decay)
+
+RANDOM [Math.pow(RandomUtils.getInstance().nextFloat(), power) * this.lr]
+
+POLY [this.lr * Math.pow((1.0f - (batchIndex * 1.0f / trainTime / dataSize * batchSize)), power)]
+
+STEP [this.lr * Math.pow(this.scale, batchIndex / step)]
+
+EXP [this.lr * Math.pow(this.gama, batchIndex)]
+
+SIG [this.lr / (1 + Math.pow(Math.E, this.gama * (batchIndex - step)))]
+
+#### 数据加载器
 
 .bin (二进制数据文件)
 
@@ -81,19 +117,21 @@ mnist（手写数字数据集）
 
 cifat_10 （cifat_10数据集）
 
-### demo成绩
+### 数据集成绩
 
-iris 训练次数8   测试数据集准确率100%
+iris 训练次数8 bp神经网络[3层全连接层]  测试数据集准确率100%
 
-mnist 训练次数8 测试数据集准确率98.6%
+mnist 训练次数10 alexnet 测试数据集准确率98.6% 
 
-cifat_10 训练次数8 测试数据集准确率76.6%
+cifat_10 训练次数10 alexnet 测试数据集准确率76.6%
 
-#### JAVA代码
+cifat_10 训练次数10 vgg16 测试数据集准确率86.45%
 
-### bp iris demo
+## 事例代码
 
-```
+#### bp iris demo
+
+```java
 public void bpNetwork_iris() {
 		// TODO Auto-generated method stub
 
@@ -149,11 +187,11 @@ public void bpNetwork_iris() {
 		}
 
 	}
-```
+````
 
-### cnn mnist demo
+#### cnn mnist demo
 
-```
+```java
 public void cnnNetwork_mnist() {
 		// TODO Auto-generated method stub
 		
@@ -262,10 +300,10 @@ public void cnnNetwork_mnist() {
 		}
 		
 	}
-```
-### cnn cifar10 demo
+````
+#### cnn cifar10 demo
 
-```
+```java
 public void cnnNetwork_cifar10() {
 		// TODO Auto-generated method stub
 		
@@ -374,20 +412,26 @@ public void cnnNetwork_cifar10() {
 		}
 		
 	}
-```
+````
 ## 未来可期
 
-### 可视化
-
-基于已训练模型实现手写数字识别
+实现rcnn、rnn、resnet、yolo等算法
 
 ### 训练情况可视化
 
-...
+支持动态调参，可视化训练
+![在这里插入图片描述](https://img-blog.csdnimg.cn/8bd006e4fc1442cfbc2d5e3682a2c5f1.png#pic_center)
+
+### 彩蛋
+
+## 基于神经网络+遗传算法实现AI赛车游戏
+
+http://119.3.123.193:8011/AICar
 
 ## 欢迎打扰
 
 ### QQ：465973119
+### 技术交流QQ群：119593195
 ### 电子邮箱：465973119@qq.com
 
 
