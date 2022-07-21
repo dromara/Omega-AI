@@ -25,6 +25,10 @@ Omega-AI：基于java打造的深度学习框架，帮助你快速搭建神经�
 ### 依赖
 由于omega-engine-1.0.3加入了jcuda支持，所以1.0.3需要安装与jcuda版本对应的cuda，我在该项目中使用的是jcuda-11.2.0版本的包，那么我cuda需要安装11.2.x版本
 
+### 系统参数
+由于训练vgg16模型的参数比较庞大，所以在部署项目的时候需要对jvm内存进行调整.
+调整事例如：-Xmx20480m -Xms20480m -Xmn10240m
+
 ### Demo展示
 [基于卷积神经网络mnist手写数字识别](http://120.237.148.121:8011/mnist)
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/b9b5846af6624bdf8f5d570c5052bc64.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3UwMTMyODMzMDQ=,size_1,color_FFFFFF,t_70#pic_center)
@@ -115,11 +119,13 @@ cifat_10 （cifat_10数据集）
 
 ### 数据集成绩
 
-iris 训练次数8   测试数据集准确率100%
+iris 训练次数8 bp神经网络[3层全连接层]  测试数据集准确率100%
 
-mnist 训练次数8 测试数据集准确率98.6% 
+mnist 训练次数10 alexnet 测试数据集准确率98.6% 
 
-cifat_10 训练次数8 测试数据集准确率76.6%
+cifat_10 训练次数10 alexnet 测试数据集准确率76.6%
+
+cifat_10 训练次数10 vgg16 测试数据集准确率86.45%
 
 ## 事例代码
 
@@ -409,7 +415,7 @@ public void cnnNetwork_cifar10() {
 ````
 ## 未来可期
 
-实现rcnn、rnn、yolo等算法
+实现rcnn、rnn、resnet、yolo等算法
 
 ### 训练情况可视化
 
