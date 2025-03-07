@@ -4,8 +4,6 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 
 import com.omega.common.data.Tensor;
-import com.omega.engine.ad.op.TensorOP;
-import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.normalization.LNLayer;
@@ -41,8 +39,6 @@ public class CLIPEncoderLayer extends Layer{
 	private CLIPMLPLayer mlp;
 	
 	private LNLayer norm2;
-	
-	private BaseKernel baseKernel;
 	
 	private Tensor tmp1;
 	
@@ -88,10 +84,6 @@ public class CLIPEncoderLayer extends Layer{
 		
 		mlp = new CLIPMLPLayer(embedDim, intermediateSize, bias, network);
 		
-		if(baseKernel == null) {
-			baseKernel = new BaseKernel();
-		}
-
 	}
 	
 	@Override
@@ -135,13 +127,13 @@ public class CLIPEncoderLayer extends Layer{
 
 		getAttn().forward(getNorm1().getOutput());
 
-		TensorOP.add(getAttn().getOutput(), input, tmp1);
+		Tensor_OP().add(getAttn().getOutput(), input, tmp1);
 		
 		getNorm2().forward(tmp1);
 
 		getMlp().forward(getNorm2().getOutput());
 		
-		TensorOP.add(getMlp().getOutput(), tmp1, tmp2);
+		Tensor_OP().add(getMlp().getOutput(), tmp1, tmp2);
 		
 		this.output = tmp2;
 		

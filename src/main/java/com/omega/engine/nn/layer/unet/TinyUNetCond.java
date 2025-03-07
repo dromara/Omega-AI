@@ -7,18 +7,13 @@ import java.util.Stack;
 
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixUtils;
-import com.omega.engine.ad.op.TensorOP;
-import com.omega.engine.gpu.BaseKernel;
-import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.ParamsInit;
 import com.omega.engine.nn.layer.RouteLayer;
 import com.omega.engine.nn.layer.active.SiLULayer;
-import com.omega.engine.nn.layer.diffusion.TimeEmbeddingLayer;
 import com.omega.engine.nn.layer.diffusion.TinyTimeEmbeddingLayer;
-import com.omega.engine.nn.layer.normalization.GNLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.nn.network.Transformer;
@@ -26,8 +21,6 @@ import com.omega.engine.updater.UpdaterFactory;
 import com.omega.engine.updater.UpdaterType;
 import com.omega.example.clip.utils.ClipModelUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
-
-import jcuda.runtime.JCuda;
 
 /**
  * UNet_Cond
@@ -87,8 +80,6 @@ public class TinyUNetCond extends Layer{
 	private ConvolutionLayer conv_out1;
 	private SiLULayer act;
 	private ConvolutionLayer conv_out2;
-	
-	private BaseKernel baseKernel;
 	
 	private Tensor tDiff;
 	
@@ -185,10 +176,6 @@ public class TinyUNetCond extends Layer{
 		conv_out2 = new ConvolutionLayer(downChannels[0], channel, width, height, 3, 3, 1, 1, true, this.network);
 		conv_out2.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
 		conv_out2.paramsInit = ParamsInit.silu;
-		
-		if(baseKernel == null) {
-			baseKernel = new BaseKernel();
-		}
 		
 		this.oHeight = ih;
 		this.oWidth = iw;

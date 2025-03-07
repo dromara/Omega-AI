@@ -7,8 +7,8 @@ import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
-import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.RMSLayer;
 import com.omega.engine.nn.network.Transformer;
@@ -64,7 +64,8 @@ public class RMSKernel extends BaseKernel{
 	private CUdeviceptr d_mean;
 	private CUdeviceptr d_rms;
 	
-	public RMSKernel(int W,BNType bnType) {
+	public RMSKernel(int W,BNType bnType,CUDAManager cudaManager) {
+		super(cudaManager);
 		this.W = W;
 		this.bnType = bnType;
 		init();
@@ -90,19 +91,19 @@ public class RMSKernel extends BaseKernel{
 		try {
 			
 			if(forward_function == null) {
-				forward_function = CUDAModules.getLocalFunctionByModule("RMSKernel.cu", "rmsnorm_forward_kernel");
+				forward_function = getCudaManager().getLocalFunctionByModule("RMSKernel.cu", "rmsnorm_forward_kernel");
 			}
 
 			if(backward_function == null) {
-				backward_function = CUDAModules.getLocalFunctionByModule("RMSKernel.cu", "rmsnorm_backward_kernel");
+				backward_function = getCudaManager().getLocalFunctionByModule("RMSKernel.cu", "rmsnorm_backward_kernel");
 			}
 			
 			if(forward_function2 == null) {
-				forward_function2 = CUDAModules.getLocalFunctionByModule("RMSKernel.cu", "rmsnorm_forward_kernel1");
+				forward_function2 = getCudaManager().getLocalFunctionByModule("RMSKernel.cu", "rmsnorm_forward_kernel1");
 			}
 
 			if(backward_function2 == null) {
-				backward_function2 = CUDAModules.getLocalFunctionByModule("RMSKernel.cu", "rmsnorm_backward_kernel1");
+				backward_function2 = getCudaManager().getLocalFunctionByModule("RMSKernel.cu", "rmsnorm_backward_kernel1");
 			}
 
 		} catch (Exception e) {
@@ -313,8 +314,6 @@ public class RMSKernel extends BaseKernel{
     	
     	 try {
 
-			CUDAModules.initContext();
-			
 			int N = 4;
 	    	int T = 512;
 	    	int W = 512;

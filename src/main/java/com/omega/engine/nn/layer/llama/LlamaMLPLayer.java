@@ -5,7 +5,6 @@ import java.io.RandomAccessFile;
 
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.RandomUtils;
-import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.nn.layer.DropoutLayer;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
@@ -78,7 +77,7 @@ public class LlamaMLPLayer extends Layer{
 		this.linear1.weight = new Tensor(1, 1, nChannel, embedDim, RandomUtils.normal_(this.embedDim * nChannel, 0.01f, 0.02f), true);
 //		this.linear1.weight = new Tensor(1, 1, nChannel, embedDim, RandomUtils.order(this.embedDim * nChannel, 0.001f, 0.001f), true);
 //		Tensor qw = new Tensor(1, 1, embedDim, nChannel, true);
-//		TensorOP.permute(this.linear1.weight, qw, new int[] {0, 1, 3, 2});
+//		Tensor_OP().permute(this.linear1.weight, qw, new int[] {0, 1, 3, 2});
 //		this.linear1.weight = qw;
 //		this.linear1.weight = new Tensor(1, 1, embedDim, nChannel, RandomUtils.uniform(this.embedDim * nChannel, 0.0f, 0.02f), true);
 
@@ -88,7 +87,7 @@ public class LlamaMLPLayer extends Layer{
 		this.linear2.weight = new Tensor(1, 1, embedDim, nChannel, RandomUtils.normal_(this.nChannel * embedDim, 0.01f, 0.02f), true);
 //		this.linear2.weight = new Tensor(1, 1, embedDim, nChannel, RandomUtils.order(this.nChannel * embedDim, 0.001f, 0.001f), true);
 //		Tensor w2 = new Tensor(1, 1, nChannel, embedDim, true);
-//		TensorOP.permute(this.linear2.weight, w2, new int[] {0, 1, 3, 2});
+//		Tensor_OP().permute(this.linear2.weight, w2, new int[] {0, 1, 3, 2});
 //		this.linear2.weight = w2;
 //		this.linear2.weight = new Tensor(1, 1, nChannel, embedDim, RandomUtils.uniform(this.embedDim * nChannel, 0.0f, 0.02f), true);
 //		this.linear2.weight = new Tensor(1, 1, nChannel, embedDim, RandomUtils.uniform(this.embedDim * nChannel, 0.0f, (0.02f / (float) Math.sqrt(2 * net.decoderNum))), true);
@@ -97,7 +96,7 @@ public class LlamaMLPLayer extends Layer{
 		this.linear3.weight = new Tensor(1, 1, nChannel, embedDim, RandomUtils.normal_(this.embedDim * nChannel, 0.01f, 0.02f), true);
 //		this.linear3.weight = new Tensor(1, 1, nChannel, embedDim, RandomUtils.order(this.embedDim * nChannel, 0.001f, 0.001f), true);
 //		Tensor w3 = new Tensor(1, 1, embedDim, nChannel, true);
-//		TensorOP.permute(this.linear3.weight, w3, new int[] {0, 1, 3, 2});
+//		Tensor_OP().permute(this.linear3.weight, w3, new int[] {0, 1, 3, 2});
 //		this.linear3.weight = w3;
 		
 		if(dropout) {
@@ -137,7 +136,7 @@ public class LlamaMLPLayer extends Layer{
 		
 		getLinear3().forward(input);
 		
-		TensorOP.mul(active.getOutput(), getLinear3().getOutput(), tmp);
+		Tensor_OP().mul(active.getOutput(), getLinear3().getOutput(), tmp);
 		
 		getLinear2().forward(tmp);
 		
@@ -167,17 +166,17 @@ public class LlamaMLPLayer extends Layer{
 		}
 		
 		//diff l3
-		TensorOP.mul(this.getLinear2().diff, active.getOutput(), tmp);
+		Tensor_OP().mul(this.getLinear2().diff, active.getOutput(), tmp);
 		getLinear3().back(tmp);
 		
 		//diff l1
-		TensorOP.mul(this.getLinear2().diff, getLinear3().getOutput(), tmp);
+		Tensor_OP().mul(this.getLinear2().diff, getLinear3().getOutput(), tmp);
 		
 		active.back(tmp);
 		
 		getLinear1().back(active.diff);
 		
-		TensorOP.add(this.getLinear1().diff, this.getLinear3().diff, this.getLinear1().diff);
+		Tensor_OP().add(this.getLinear1().diff, this.getLinear3().diff, this.getLinear1().diff);
 		
 		this.diff = this.getLinear1().diff;
 		
@@ -314,7 +313,19 @@ public class LlamaMLPLayer extends Layer{
 		getLinear3().loadModel(inputStream);
 		getLinear2().loadModel(inputStream);
 	}
-
+	
+	public void putParamters() {
+		getLinear1().putParamters();
+		getLinear3().putParamters();
+		getLinear2().putParamters();
+	}
+	
+	public void putParamterGrads() {
+		getLinear1().putParamterGrads();
+		getLinear3().putParamterGrads();
+		getLinear2().putParamterGrads();
+	}
+	
 	public FullyLayer getLinear1() {
 		return linear1;
 	}

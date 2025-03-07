@@ -77,7 +77,7 @@ public class DiffusionUNet extends Network {
 	private Tensor d_temb;
 	
 	public DiffusionUNet(LossType lossType,UpdaterType updater,int T,int inChannel,int mChannel,int[] channelMult,int resBlockNum,int width,int height,boolean bias) {
-		this.lossFunction = LossFactory.create(lossType);
+		this.lossFunction = LossFactory.create(lossType, this);
 		this.bias = bias;
 		this.updater = updater;
 		this.T = T;
@@ -662,6 +662,18 @@ public class DiffusionUNet extends Network {
 		gn.loadModel(inputStream);
 		conv.loadModel(inputStream);
 		System.out.println("tail load success...");
+		
+	}
+
+	@Override
+	public void putParamters() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void putParamterGrads() {
+		// TODO Auto-generated method stub
 		
 	}
 	

@@ -1,7 +1,6 @@
 package com.omega.engine.nn.layer;
 
 import com.omega.common.data.Tensor;
-import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.gpu.UpSampleKernel;
 import com.omega.engine.nn.network.Network;
 
@@ -15,8 +14,6 @@ public class UPSampleLayer extends Layer {
 	private int stride = 2;
 	
 	private UpSampleKernel kernel;
-	
-	private BaseKernel baseKernel;
 	
 	public UPSampleLayer(int channel,int height,int width,int stride) {
 		this.channel = channel;
@@ -59,11 +56,7 @@ public class UPSampleLayer extends Layer {
 		}
 
 		if(kernel == null) {
-			kernel = new UpSampleKernel(this.stride, 1.0f);
-		}
-		
-		if(baseKernel == null) {
-			baseKernel = new BaseKernel();
+			kernel = new UpSampleKernel(this.stride, 1.0f, cuda());
 		}
 		
 	}
@@ -77,11 +70,7 @@ public class UPSampleLayer extends Layer {
 		}
 
 		if(kernel == null) {
-			kernel = new UpSampleKernel(this.stride, 1.0f);
-		}
-		
-		if(baseKernel == null) {
-			baseKernel = new BaseKernel();
+			kernel = new UpSampleKernel(this.stride, 1.0f, cuda());
 		}
 		
 	}
@@ -115,7 +104,7 @@ public class UPSampleLayer extends Layer {
 	@Override
 	public void diff() {
 		// TODO Auto-generated method stub
-		baseKernel.fill_gpu(diff, 0);
+		baseKernel().fill_gpu(diff, 0);
 		kernel.backward(delta, diff);
 	}
 

@@ -6,7 +6,6 @@ import java.util.Map;
 
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.RandomUtils;
-import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
@@ -164,30 +163,30 @@ public class UNetAttentionBlock extends Layer{
 		conv_in.forward(gn.getOutput());
 		
 		//[b, c, h, w] --> [b, h*w, c]
-		TensorOP.permute(conv_in.getOutput(), xt, new int[] {0, 2, 3, 1});
+		Tensor_OP().permute(conv_in.getOutput(), xt, new int[] {0, 2, 3, 1});
 		xt.view(number * time, 1, 1, channel);
 
 		ln1.forward(xt);
 		attn.forward(ln1.getOutput());
-		TensorOP.add(attn.getOutput(), xt, x1);
+		Tensor_OP().add(attn.getOutput(), xt, x1);
 
 		ln3.forward(x1);
 		geglu1.forward(ln3.getOutput());
 		gelu.forward(geglu1.getOutput());
 		geglu2.forward(gelu.getOutput());
-		TensorOP.add(geglu2.getOutput(), x2, x3);
+		Tensor_OP().add(geglu2.getOutput(), x2, x3);
 
 		//[b, h*w, c] --> [b, c, h, w]
 		x3.view(number, time, 1, channel);
 		tmp.view(number, channel, 1, time);
-		TensorOP.permute(x3, tmp, new int[] {0, 3, 2, 1});
+		Tensor_OP().permute(x3, tmp, new int[] {0, 3, 2, 1});
 		tmp.view(number, channel, height, width);
 
 		conv_out.forward(tmp);
 		
 		this.output = conv_out.getOutput();
 //		output.showDMByOffsetRed(0, 100, "down-output");
-		TensorOP.add(this.output, this.input, this.output);
+		Tensor_OP().add(this.output, this.input, this.output);
 	}
 	
 	public void output(Tensor context) {
@@ -198,7 +197,7 @@ public class UNetAttentionBlock extends Layer{
 		conv_in.forward(gn.getOutput());
 		
 		//[b, c, h, w] --> [b, h*w, c]
-		TensorOP.permute(conv_in.getOutput(), xt, new int[] {0, 2, 3, 1});
+		Tensor_OP().permute(conv_in.getOutput(), xt, new int[] {0, 2, 3, 1});
 		xt.view(number * time, 1, 1, channel);
 //		xt.showDM("xt");
 //		ln1.gamma.showDM("ln1.gamma");
@@ -208,13 +207,13 @@ public class UNetAttentionBlock extends Layer{
 //		System.out.println("attn---->in");
 		attn.forward(ln1.getOutput());
 //		attn.getOutput().showDM("attn");
-		TensorOP.add(attn.getOutput(), xt, x1);
+		Tensor_OP().add(attn.getOutput(), xt, x1);
 //		x1.showDM("x1");
 		ln2.forward(x1);
 //		System.out.println("cross_attn---->in");
 		cross_attn.forward(ln2.getOutput(), context);
 //		cross_attn.getOutput().showDMByOffsetRed(10 * x2.width * x2.height, x2.width * x2.height, "cross_attn.getOutput()");
-		TensorOP.add(cross_attn.getOutput(), x1, x2);
+		Tensor_OP().add(cross_attn.getOutput(), x1, x2);
 
 		ln3.forward(x2);
 //		System.out.println("geglu1---->in");
@@ -222,20 +221,20 @@ public class UNetAttentionBlock extends Layer{
 		gelu.forward(geglu1.getOutput());
 //		System.out.println("geglu2---->in");
 		geglu2.forward(gelu.getOutput());
-		TensorOP.add(geglu2.getOutput(), x2, x3);
+		Tensor_OP().add(geglu2.getOutput(), x2, x3);
 
 		//[b, h*w, c] --> [b, c, h, w]
 
 		x3.view(number, time, 1, channel);
 		tmp.view(number, channel, 1, time);
-		TensorOP.permute(x3, tmp, new int[] {0, 3, 2, 1});
+		Tensor_OP().permute(x3, tmp, new int[] {0, 3, 2, 1});
 		tmp.view(number, channel, height, width);
 
 		conv_out.forward(tmp);
 		
 		this.output = conv_out.getOutput();
 //		output.showDMByOffsetRed(0, 100, "down-output");
-		TensorOP.add(this.output, this.input, this.output);
+		Tensor_OP().add(this.output, this.input, this.output);
 //		output.showDMByOffsetRed(0, 100, "down-output-add");
 //		output.showDMByOffsetRed(0, output.width, "down-output");
 	}
@@ -253,14 +252,14 @@ public class UNetAttentionBlock extends Layer{
 		
 		//delta[b, c, h, w] --> [b, h*w, c]
 		tmp.view(number, height, width, channel);
-		TensorOP.permute(conv_out.diff, tmp, new int[] {0, 2, 3, 1});
+		Tensor_OP().permute(conv_out.diff, tmp, new int[] {0, 2, 3, 1});
 		Tensor gdiff = tmp.view(number * time, 1, 1, channel);
 		
 		geglu2.back(gdiff);
 		gelu.back(geglu2.diff);
 		geglu1.back(gelu.diff);
 		ln3.back(geglu1.diff);
-		TensorOP.add(ln3.diff, gdiff, ln3.diff);
+		Tensor_OP().add(ln3.diff, gdiff, ln3.diff);
 		
 		Tensor d = ln3.diff;
 		
@@ -269,19 +268,19 @@ public class UNetAttentionBlock extends Layer{
 			cross_attn.back(d);
 //			cross_attn.diff.showDM("cross_attn");
 			ln2.back(cross_attn.diff);
-			TensorOP.add(ln2.diff, ln3.diff, ln2.diff);
+			Tensor_OP().add(ln2.diff, ln3.diff, ln2.diff);
 			d = ln2.diff;
 		}
 		
 		attn.back(d);
 
 		ln1.back(attn.diff);
-		TensorOP.add(ln1.diff, d, ln1.diff);
+		Tensor_OP().add(ln1.diff, d, ln1.diff);
 		
 		//[b, h*w, c] --> [b, c, h, w]
 		ln1.diff.view(number, time, 1, channel);
 		tmp.view(number, channel, 1, time);
-		TensorOP.permute(ln1.diff, tmp, new int[] {0, 3, 2, 1});
+		Tensor_OP().permute(ln1.diff, tmp, new int[] {0, 3, 2, 1});
 		tmp.view(number, channel, height, width);
 //		xt.showDM("xt");
 		conv_in.back(tmp);
@@ -289,7 +288,7 @@ public class UNetAttentionBlock extends Layer{
 		
 		gn.back(conv_in.diff);
 
-		TensorOP.add(gn.diff, delta, gn.diff);
+		Tensor_OP().add(gn.diff, delta, gn.diff);
 		
 		this.diff = gn.diff;
 		

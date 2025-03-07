@@ -5,7 +5,6 @@ import java.io.RandomAccessFile;
 
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.RandomUtils;
-import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.EmbeddingIDLayer;
@@ -103,10 +102,6 @@ public class CLIPVisionEmbeddingLayer extends Layer{
 			positionIDS = new Tensor(numPositions, 1, 1, 1, data, true);
 		}
 		
-		if(kernel == null) {
-			kernel = new BaseKernel();
-		}
-		
 	}
 	
 	@Override
@@ -127,12 +122,12 @@ public class CLIPVisionEmbeddingLayer extends Layer{
 
 		getPatchEmbedding().forward(this.input);
 		
-		TensorOP.permute(getPatchEmbedding().getOutput().view(this.number, getPatchEmbedding().getOutput().channel, 1, getPatchEmbedding().getOutput().height * getPatchEmbedding().getOutput().width), patchEmbedsT, new int[] {0, 3, 2, 1});
+		Tensor_OP().permute(getPatchEmbedding().getOutput().view(this.number, getPatchEmbedding().getOutput().channel, 1, getPatchEmbedding().getOutput().height * getPatchEmbedding().getOutput().width), patchEmbedsT, new int[] {0, 3, 2, 1});
 		
 		/**
 		 * embeddings = torch.cat([class_embeds, patch_embeds], dim=1)
 		 */
-		TensorOP.expand(getClassEmbedding(), classEmbeddingEx, getClassEmbedding().getDataLength());
+		Tensor_OP().expand(getClassEmbedding(), classEmbeddingEx, getClassEmbedding().getDataLength());
 		
 		kernel.concat_channel_forward(classEmbeddingEx, patchEmbedsT, embeddings, patchEmbedsT.number, classEmbeddingEx.channel, patchEmbedsT.channel, patchEmbedsT.height, patchEmbedsT.width);
 		
@@ -141,7 +136,7 @@ public class CLIPVisionEmbeddingLayer extends Layer{
 		 */
 		positionEmbedding.forward(positionIDS);
 		
-		TensorOP.addAxis(this.embeddings, positionEmbedding.getOutput(), this.embeddings, this.embeddings.getOnceSize());
+		Tensor_OP().addAxis(this.embeddings, positionEmbedding.getOutput(), this.embeddings, this.embeddings.getOnceSize());
 		
 		this.output = this.embeddings;
 		

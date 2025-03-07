@@ -5,16 +5,15 @@ import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 import java.io.Serializable;
 
 import com.omega.common.data.Tensor;
-import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
-import com.omega.engine.ad.op.TensorOP;
-import com.omega.engine.gpu.CUDAModules;
+import com.omega.engine.gpu.BaseKernel;
+import com.omega.engine.gpu.CUDAManager;
 
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
 import jcuda.runtime.cudaError;
 
-public class NormalizeKernel implements Serializable{
+public class NormalizeKernel extends BaseKernel implements Serializable{
 	
 	/**
 	 * 
@@ -23,8 +22,6 @@ public class NormalizeKernel implements Serializable{
 
 	public int N = 0;
 	
-	private static NormalizeKernel kernel = null;
-
 	private int CAFFE_CUDA_NUM_THREADS = 1024;
 	
 	private CUfunction norm_function;
@@ -41,29 +38,24 @@ public class NormalizeKernel implements Serializable{
 	
 //	private CUfunction norm_grad_function;
 
-	public NormalizeKernel() {
+	public NormalizeKernel(CUDAManager cudaManager) {
 		
-		norm_function = CUDAModules.getLocalFunctionByModule("NormalizeKernel.cu", "norm");
+		super(cudaManager);
 		
-		l2_norm_function = CUDAModules.getLocalFunctionByModule("NormalizeKernel.cu", "l2norm_kernel");
+		norm_function = cudaManager.getLocalFunctionByModule("NormalizeKernel.cu", "norm");
 		
-		l2_norm_backward_function = CUDAModules.getLocalFunctionByModule("NormalizeKernel.cu", "l2norm_backward_kernel");
+		l2_norm_function = cudaManager.getLocalFunctionByModule("NormalizeKernel.cu", "l2norm_kernel");
 		
-		l2_norm_1dim_function = CUDAModules.getLocalFunctionByModule("NormalizeKernel.cu", "l2norm_1dim_kernel");
+		l2_norm_backward_function = cudaManager.getLocalFunctionByModule("NormalizeKernel.cu", "l2norm_backward_kernel");
 		
-		l2_norm_1dim_backward_function = CUDAModules.getLocalFunctionByModule("NormalizeKernel.cu", "l2norm_1dim_backward_kernel");
+		l2_norm_1dim_function = cudaManager.getLocalFunctionByModule("NormalizeKernel.cu", "l2norm_1dim_kernel");
 		
-		l2_norm_1dim_backward_function2 = CUDAModules.getLocalFunctionByModule("NormalizeKernel.cu", "l2norm_1dim_backward_kernel2");
+		l2_norm_1dim_backward_function = cudaManager.getLocalFunctionByModule("NormalizeKernel.cu", "l2norm_1dim_backward_kernel");
+		
+		l2_norm_1dim_backward_function2 = cudaManager.getLocalFunctionByModule("NormalizeKernel.cu", "l2norm_1dim_backward_kernel2");
 		
 //		norm_grad_function = CUDAModules.getLocalFunctionByModule("NormalizeKernel.cu", "NormalizeGradientKernel"); 
 		
-	}
-	
-	public static NormalizeKernel getInstance() {
-		if(kernel == null) {
-			kernel = new NormalizeKernel();
-		}
-		return kernel;
 	}
 	
 	public void norm(Tensor x,Tensor y) {
@@ -272,7 +264,9 @@ public class NormalizeKernel implements Serializable{
     	
     	Tensor output = new Tensor(N, C, H, W, true);
     	
-    	NormalizeKernel kernel = new NormalizeKernel();
+    	CUDAManager cudaManager = new CUDAManager(0);
+    	
+    	NormalizeKernel kernel = new NormalizeKernel(cudaManager);
     	
 //    	kernel.l2norm1Dim(input, output);
 //    	

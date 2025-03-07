@@ -4,7 +4,7 @@ import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 
 import com.omega.common.data.Tensor;
 import com.omega.engine.gpu.BaseKernel;
-import com.omega.engine.gpu.CUDAModules;
+import com.omega.engine.gpu.CUDAManager;
 
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
@@ -31,7 +31,8 @@ public class DropoutKernel extends BaseKernel{
 	
 	private float scale = 1.0f;
 	
-	public DropoutKernel(float prob, float scale) {
+	public DropoutKernel(float prob, float scale,CUDAManager cudaManager) {
+		super(cudaManager);
 		this.prob = prob;
 		this.scale = scale;
 		init();
@@ -51,18 +52,18 @@ public class DropoutKernel extends BaseKernel{
 
 			if(function == null) {
 
-				function = CUDAModules.getLocalFunctionByModule("DropoutKernel.cu", "forward_kernel");
+				function = getCudaManager().getLocalFunctionByModule("DropoutKernel.cu", "forward_kernel");
 				
 			}
 			
 			if(back_function == null) {
 
-				back_function = CUDAModules.getLocalFunctionByModule("DropoutKernel.cu", "backward_kernel");
+				back_function = getCudaManager().getLocalFunctionByModule("DropoutKernel.cu", "backward_kernel");
 				
 			}
 			
 			if(dropout_function == null) {
-				dropout_function = CUDAModules.getLocalFunctionByModule("DropoutKernel.cu", "dropout_kernel");
+				dropout_function = getCudaManager().getLocalFunctionByModule("DropoutKernel.cu", "dropout_kernel");
 			}
 			
 		} catch (Exception e) {

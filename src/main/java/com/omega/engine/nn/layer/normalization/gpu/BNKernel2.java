@@ -3,15 +3,14 @@ package com.omega.engine.nn.layer.normalization.gpu;
 import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 
 import com.omega.common.data.Tensor;
-import com.omega.common.lib.LibPaths;
 import com.omega.common.utils.CheckArrayUtils;
 import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.PrintUtils;
 import com.omega.common.utils.RandomUtils;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
-import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.nn.layer.gpu.BNBaseKernel;
 import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.network.RunModel;
@@ -124,7 +123,8 @@ public class BNKernel2 extends BNBaseKernel{
 	private Pointer mean_xhat_Parameters;
 	private Pointer dx_fullParameters;
 
-	public BNKernel2(BNType bnType,int C,int H,int W) {
+	public BNKernel2(BNType bnType,int C,int H,int W,CUDAManager cudaManager) {
+		super(cudaManager);
 		this.bnType = bnType;
 		this.C = C;
 		this.H = H;
@@ -142,82 +142,82 @@ public class BNKernel2 extends BNBaseKernel{
 		try {
 			
 			if(mean_function == null) {
-				mean_function = CUDAModules.getLocalFunctionByModule("MathKernel2.cu", "mean_full");
+				mean_function = getCudaManager().getLocalFunctionByModule("MathKernel2.cu", "mean_full");
 			}
 			
 			if(fast_mean_function == null) {
-				fast_mean_function = CUDAModules.getLocalFunctionByModule("MathKernel2.cu", "fast_mean_kernel");
+				fast_mean_function = getCudaManager().getLocalFunctionByModule("MathKernel2.cu", "fast_mean_kernel");
 			}
 			
 			if(var_function == null) {
-				var_function = CUDAModules.getLocalFunctionByModule("MathKernel2.cu", "var_full");
+				var_function = getCudaManager().getLocalFunctionByModule("MathKernel2.cu", "var_full");
 			}
 			
 			if(fast_var_function == null) {
-				fast_var_function = CUDAModules.getLocalFunctionByModule("MathKernel2.cu", "fast_variance_kernel");
+				fast_var_function = getCudaManager().getLocalFunctionByModule("MathKernel2.cu", "fast_variance_kernel");
 			}
 			
 			if(normalize_function == null) {
-				normalize_function =  CUDAModules.getLocalFunctionByModule("BNKernel2.cu", "normalize_kernel");
+				normalize_function =  getCudaManager().getLocalFunctionByModule("BNKernel2.cu", "normalize_kernel");
 			}
 			
 			if(normalize_test_function == null) {
-				normalize_test_function =  CUDAModules.getLocalFunctionByModule("BNKernel2.cu", "normalize_test_kernel");
+				normalize_test_function =  getCudaManager().getLocalFunctionByModule("BNKernel2.cu", "normalize_test_kernel");
 			}
 			
 			if(mwa_function == null) {
-				mwa_function = CUDAModules.getLocalFunctionByModule("MathKernel2.cu", "mwa");
+				mwa_function = getCudaManager().getLocalFunctionByModule("MathKernel2.cu", "mwa");
 			}
 			
 			if(culOutput_function == null) {
-				culOutput_function = CUDAModules.getLocalFunctionByModule("BNKernel2.cu", "culOutput_cov");
+				culOutput_function = getCudaManager().getLocalFunctionByModule("BNKernel2.cu", "culOutput_cov");
 			}
 
 			if(computeDelta_full_function == null) {
-				computeDelta_full_function = CUDAModules.getLocalFunctionByModule("BNKernel2.cu", "computeDelta_full");
+				computeDelta_full_function = getCudaManager().getLocalFunctionByModule("BNKernel2.cu", "computeDelta_full");
 			}
 			
 			if(meanDzSum_function == null) {
-				meanDzSum_function = CUDAModules.getLocalFunctionByModule("BNKernel2.cu", "meanDzSum");
+				meanDzSum_function = getCudaManager().getLocalFunctionByModule("BNKernel2.cu", "meanDzSum");
 			}
 			
 			if(computeDiff_function == null) {
-				computeDiff_function = CUDAModules.getLocalFunctionByModule("BNKernel2.cu", "computeDiff");
+				computeDiff_function = getCudaManager().getLocalFunctionByModule("BNKernel2.cu", "computeDiff");
 			}
 			
 			/**
 			 * fast function
 			 */
 			if(dgama_function == null) {
-				dgama_function = CUDAModules.getLocalFunctionByModule("BNKernel2.cu", "dgama_kernel");
+				dgama_function = getCudaManager().getLocalFunctionByModule("BNKernel2.cu", "dgama_kernel");
 			}
 			
 			if(dbeta_function == null) {
-				dbeta_function = CUDAModules.getLocalFunctionByModule("BNKernel2.cu", "dbeta_kernel");
+				dbeta_function = getCudaManager().getLocalFunctionByModule("BNKernel2.cu", "dbeta_kernel");
 			}
 			
 			if(dxhat_function == null) {
-				dxhat_function = CUDAModules.getLocalFunctionByModule("BNKernel2.cu", "dxhat_kernel");
+				dxhat_function = getCudaManager().getLocalFunctionByModule("BNKernel2.cu", "dxhat_kernel");
 			}
 			
 			if(dx_function == null) {
-				dx_function = CUDAModules.getLocalFunctionByModule("BNKernel2.cu", "dx_kernel");
+				dx_function = getCudaManager().getLocalFunctionByModule("BNKernel2.cu", "dx_kernel");
 			}
 			
 			if(dx_full_function == null) {
-				dx_full_function = CUDAModules.getLocalFunctionByModule("BNKernel2.cu", "dx_kernel_full");
+				dx_full_function = getCudaManager().getLocalFunctionByModule("BNKernel2.cu", "dx_kernel_full");
 			}
 			
 			if(fast_mean_xhat_function == null) {
-				fast_mean_xhat_function = CUDAModules.getLocalFunctionByModule("BNKernel2.cu", "fast_mean_xhat_kernel");
+				fast_mean_xhat_function = getCudaManager().getLocalFunctionByModule("BNKernel2.cu", "fast_mean_xhat_kernel");
 			}
 			
 			if(mean_xhat_function == null) {
-				mean_xhat_function = CUDAModules.getLocalFunctionByModule("BNKernel2.cu", "mean_xhat_kernel");
+				mean_xhat_function = getCudaManager().getLocalFunctionByModule("BNKernel2.cu", "mean_xhat_kernel");
 			}
 			
 			if(fast_mean_dxhat_function == null) {
-				fast_mean_dxhat_function = CUDAModules.getLocalFunctionByModule("BNKernel2.cu", "fast_mean_dxhat_kernel");
+				fast_mean_dxhat_function = getCudaManager().getLocalFunctionByModule("BNKernel2.cu", "fast_mean_dxhat_kernel");
 			}
 			
 			
@@ -859,8 +859,6 @@ public class BNKernel2 extends BNBaseKernel{
     
     public static void main(String args[]) {
     	
-    	CUDAModules.initContext();
-    	
     	test2d();
     	
     }
@@ -920,7 +918,9 @@ public class BNKernel2 extends BNBaseKernel{
     	Tensor dgama = new Tensor(1, 1, 1, C, true);
     	Tensor dbeta = new Tensor(1, 1, 1, C, true);
     	
-    	BNKernel2 kernel = new BNKernel2(BNType.conv_bn, C, H, W);
+    	CUDAManager cudaManager = new CUDAManager(0);
+    	
+    	BNKernel2 kernel = new BNKernel2(BNType.conv_bn, C, H, W, cudaManager);
     	
     	for(int i = 0;i<1;i++) {
 
@@ -1009,7 +1009,9 @@ public class BNKernel2 extends BNBaseKernel{
     	Tensor dgama = new Tensor(1, 1, 1, W, true);
     	Tensor dbeta = new Tensor(1, 1, 1, W, true);
     	
-    	BNKernel2 kernel = new BNKernel2(BNType.fully_bn, C, H, W);
+    	CUDAManager cudaManager = new CUDAManager(0);
+    	
+    	BNKernel2 kernel = new BNKernel2(BNType.fully_bn, C, H, W, cudaManager);
     	
     	for(int i = 0;i<1;i++) {
 

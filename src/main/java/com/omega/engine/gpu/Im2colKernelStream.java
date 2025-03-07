@@ -3,12 +3,6 @@ package com.omega.engine.gpu;
 import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 import static jcuda.driver.JCudaDriver.cuMemAlloc;
 
-import com.omega.common.lib.LibPaths;
-import com.omega.common.utils.CheckArrayUtils;
-import com.omega.common.utils.Im2colToVector;
-import com.omega.common.utils.MatrixUtils;
-import com.omega.common.utils.RandomUtils;
-
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUdeviceptr;
@@ -17,7 +11,7 @@ import jcuda.driver.CUstream;
 import jcuda.driver.JCudaDriver;
 import jcuda.runtime.JCuda;
 
-public class Im2colKernelStream {
+public class Im2colKernelStream extends CUDAKernel{
 
 	private float[] x;
 	private float[] out;
@@ -36,7 +30,8 @@ public class Im2colKernelStream {
 	private CUfunction function;
 
 	
-	public Im2colKernelStream(float[] x,float[] out,int N,int C,int H,int W,int kh,int kw,int s) {
+	public Im2colKernelStream(float[] x,float[] out,int N,int C,int H,int W,int kh,int kw,int s,CUDAManager cudaManager) {
+		super(cudaManager);
 		this.x = x;
 		this.N = N;
 		this.C = C;
@@ -60,7 +55,7 @@ public class Im2colKernelStream {
 
 			if(function == null) {
 				
-				function = CUDAModules.getLocalFunctionByModule("Im2colKernelTmp.cu", "im2col_gpuv4");
+				function = getCudaManager().getLocalFunctionByModule("Im2colKernelTmp.cu", "im2col_gpuv4");
 //				
 //				/**
 //				 * 加载方法
@@ -257,57 +252,57 @@ public class Im2colKernelStream {
 //        JCuda.cudaFree(deviceX);
 //        JCuda.cudaFree(deviceO);
         
-    	int N = 128;
-    	int C = 64;
-    	int H = 64;
-    	int W = 64;
-    	int kh = 3;
-    	int kw = 3;
-    	int s = 1;
-    	int oHeight = ((H - kh ) / s) + 1;
-		int oWidth = ((W - kw) / s) + 1;
-		int ow = C * kh * kw;
-		int oh = N * oHeight * oWidth;
-    	
-    	float[] x = RandomUtils.gaussianRandom(N * C * H * W, 0.1f);
-    	float[][][][] x2 = MatrixUtils.transform(x, N, C, H, W);
-
-    	float[] out = new float[oh * ow];
-    	
-//    	System.out.println(x.length+"start.");
-
-    	for(int i = 0;i<10;i++) {
-
-    		long start = System.nanoTime();
-    		
-        	Im2colKernelStream k = new Im2colKernelStream(x, out, N, C, H, W, kh, kw, s);
-        	
-        	k.im2col();
-        	
-        	System.out.println((System.nanoTime() - start) / 1e6 + "ms.");
-        	
-    	}
-    	
-//    	System.out.println(JsonUtils.toJson(out));
-    	
-    	System.out.println("==============================>");
-		
-    	float[] out2 = new float[oh * ow];
-    	
-	    for(int i = 0;i<10;i++) {
-	    	
-	    	long start2 = System.nanoTime();
-	//    	
-	//    	float[] cpu = MatrixOperation.im2col4d(x, N, C, H, W, kh, kw, s);
-	//    	
-	    	Im2colToVector.im2col(x2, out2, kh, kw, s);
-	 
-	//		
-	    	System.out.println((System.nanoTime() - start2) / 1e6 + "ms");
-    	}
-//    	System.out.println(JsonUtils.toJson(cpu));
-    	
-	    System.out.println(CheckArrayUtils.check(out, out2));
+//    	int N = 128;
+//    	int C = 64;
+//    	int H = 64;
+//    	int W = 64;
+//    	int kh = 3;
+//    	int kw = 3;
+//    	int s = 1;
+//    	int oHeight = ((H - kh ) / s) + 1;
+//		int oWidth = ((W - kw) / s) + 1;
+//		int ow = C * kh * kw;
+//		int oh = N * oHeight * oWidth;
+//    	
+//    	float[] x = RandomUtils.gaussianRandom(N * C * H * W, 0.1f);
+//    	float[][][][] x2 = MatrixUtils.transform(x, N, C, H, W);
+//
+//    	float[] out = new float[oh * ow];
+//    	
+////    	System.out.println(x.length+"start.");
+//
+//    	for(int i = 0;i<10;i++) {
+//
+//    		long start = System.nanoTime();
+//    		
+//        	Im2colKernelStream k = new Im2colKernelStream(x, out, N, C, H, W, kh, kw, s);
+//        	
+//        	k.im2col();
+//        	
+//        	System.out.println((System.nanoTime() - start) / 1e6 + "ms.");
+//        	
+//    	}
+//    	
+////    	System.out.println(JsonUtils.toJson(out));
+//    	
+//    	System.out.println("==============================>");
+//		
+//    	float[] out2 = new float[oh * ow];
+//    	
+//	    for(int i = 0;i<10;i++) {
+//	    	
+//	    	long start2 = System.nanoTime();
+//	//    	
+//	//    	float[] cpu = MatrixOperation.im2col4d(x, N, C, H, W, kh, kw, s);
+//	//    	
+//	    	Im2colToVector.im2col(x2, out2, kh, kw, s);
+//	 
+//	//		
+//	    	System.out.println((System.nanoTime() - start2) / 1e6 + "ms");
+//    	}
+////    	System.out.println(JsonUtils.toJson(cpu));
+//    	
+//	    System.out.println(CheckArrayUtils.check(out, out2));
 	    
     }
 

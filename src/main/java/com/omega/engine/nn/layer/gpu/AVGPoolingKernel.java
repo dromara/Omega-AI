@@ -3,11 +3,10 @@ package com.omega.engine.nn.layer.gpu;
 import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 
 import com.omega.common.data.Tensor;
-import com.omega.common.lib.LibPaths;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
-import com.omega.engine.gpu.CUDAModules;
+import com.omega.engine.gpu.CUDAManager;
 
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
@@ -26,7 +25,8 @@ public class AVGPoolingKernel extends BaseKernel{
 	private Pointer forwardKernelParameters;
 	private Pointer backwardKernelParameters;
 	
-	public AVGPoolingKernel(int C,int H,int W) {
+	public AVGPoolingKernel(int C,int H,int W,CUDAManager cudaManager) {
+		super(cudaManager);
 		this.C = C;
 		this.H = H;
 		this.W = W;
@@ -39,12 +39,12 @@ public class AVGPoolingKernel extends BaseKernel{
 
 			if(forward_function == null) {
 				
-				forward_function = CUDAModules.getLocalFunctionByModule("AVGPoolingKernel.cu", "pooling_forward");
+				forward_function = getCudaManager().getLocalFunctionByModule("AVGPoolingKernel.cu", "pooling_forward");
 				
 			}
 			
 			if(backward_function == null) {
-				backward_function = CUDAModules.getLocalFunctionByModule("AVGPoolingKernel.cu", "pooling_backward");
+				backward_function = getCudaManager().getLocalFunctionByModule("AVGPoolingKernel.cu", "pooling_backward");
 			}
 			
 		} catch (Exception e) {
@@ -156,8 +156,6 @@ public class AVGPoolingKernel extends BaseKernel{
 	
     public static void main(String args[]){	
 
-    	CUDAModules.initContext();
-    	
     	int N = 2;
     	int C = 3;
     	int H = 4;
@@ -176,8 +174,10 @@ public class AVGPoolingKernel extends BaseKernel{
     	Tensor delta = new Tensor(N, C, oHeight, oWidth, d, true);
     	
     	Tensor diff = new Tensor(N, C, H, W, true);
-
-    	AVGPoolingKernel pooling = new AVGPoolingKernel(C, H, W);
+    	
+    	CUDAManager cudaManager = new CUDAManager(0);
+    	
+    	AVGPoolingKernel pooling = new AVGPoolingKernel(C, H, W, cudaManager);
     	
     	long start = System.nanoTime();
 

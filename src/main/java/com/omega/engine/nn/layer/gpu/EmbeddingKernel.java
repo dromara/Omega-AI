@@ -4,14 +4,12 @@ import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixUtils;
-import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
-import com.omega.engine.gpu.CUDAModules;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.example.transformer.utils.bpe.BPETokenizerEN;
 
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
-import jcuda.driver.JCudaDriver;
 import jcuda.runtime.cudaError;
 
 public class EmbeddingKernel extends BaseKernel{
@@ -32,7 +30,8 @@ public class EmbeddingKernel extends BaseKernel{
 	
 	private Pointer kernelBackParameters;
 	
-	public EmbeddingKernel() {
+	public EmbeddingKernel(CUDAManager cudaManager) {
+		super(cudaManager);
 		init();
 	}
 	
@@ -50,25 +49,25 @@ public class EmbeddingKernel extends BaseKernel{
 
 			if(function == null) {
 
-				function = CUDAModules.getLocalFunctionByModule("EmbeddingKernel.cu", "EmbeddingFW");
+				function = getCudaManager().getLocalFunctionByModule("EmbeddingKernel.cu", "EmbeddingFW");
 				
 			}
 			
 			if(function2 == null) {
 
-				function2 = CUDAModules.getLocalFunctionByModule("EmbeddingKernel.cu", "embedding_forward_kernel");
+				function2 = getCudaManager().getLocalFunctionByModule("EmbeddingKernel.cu", "embedding_forward_kernel");
 				
 			}
 			
 			if(get_time_embedding_function == null) {
 
-				get_time_embedding_function = CUDAModules.getLocalFunctionByModule("EmbeddingKernel.cu", "get_time_embedding");
+				get_time_embedding_function = getCudaManager().getLocalFunctionByModule("EmbeddingKernel.cu", "get_time_embedding");
 				
 			}
 			
 			if(back_function == null) {
 
-				back_function = CUDAModules.getLocalFunctionByModule("EmbeddingKernel.cu", "EmbeddingGrad");
+				back_function = getCudaManager().getLocalFunctionByModule("EmbeddingKernel.cu", "EmbeddingGrad");
 				
 			}
 			
@@ -114,7 +113,7 @@ public class EmbeddingKernel extends BaseKernel{
 //			weight.showShape("weight");
 		    this.N = input.number;
 
-			int gridx = 2 * CUDAModules.props.multiProcessorCount;
+			int gridx = 2 * getCudaManager().props.multiProcessorCount;
 
 		    int[] threads = new int[] {256, 4, 1};
 		    int[] grids = new int[] {gridx, 1, 1};
@@ -205,7 +204,7 @@ public class EmbeddingKernel extends BaseKernel{
 		        
 			}
 			
-			int gridx = 2 * CUDAModules.props.multiProcessorCount;
+			int gridx = 2 * getCudaManager().props.multiProcessorCount;
 		    int[] threads = new int[] {128, 8, 1};
 		    int[] grids = new int[] {gridx, 1, 1};
 
@@ -285,6 +284,8 @@ public class EmbeddingKernel extends BaseKernel{
 		Tensor output = new Tensor(77, 1, 1, 512, true);
 
 		Tensor weight = new Tensor(1, 1, 49408, 512, MatrixUtils.order(49408 * 512, 0.00001f, 0.0001f), true);
+
+		CUDAManager cudaManager = new CUDAManager(0);
 		
 		for(int i = 0;i<4;i++) {
 
@@ -303,7 +304,7 @@ public class EmbeddingKernel extends BaseKernel{
 			label.hostToDevice();
 			label.showDM();
 			
-			EmbeddingKernel kernel = new EmbeddingKernel();
+			EmbeddingKernel kernel = new EmbeddingKernel(cudaManager);
 	    	
 	    	kernel.forward(label, weight, output);
 	    	

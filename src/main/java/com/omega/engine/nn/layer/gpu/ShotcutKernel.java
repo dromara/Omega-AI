@@ -3,10 +3,10 @@ package com.omega.engine.nn.layer.gpu;
 import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 
 import com.omega.common.data.Tensor;
-import com.omega.common.lib.LibPaths;
 import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.gpu.CUDAModules;
 
@@ -49,8 +49,8 @@ public class ShotcutKernel extends BaseKernel{
 	
 	private int size = 0;
 	
-	public ShotcutKernel(int c1,int h1,int w1,int c2,int h2,int w2) {
-		
+	public ShotcutKernel(int c1,int h1,int w1,int c2,int h2,int w2,CUDAManager cudaManager) {
+		super(cudaManager);
 		this.c1 = c1;
 		this.c2 = c2;
 		this.h1 = h1;
@@ -211,9 +211,11 @@ public class ShotcutKernel extends BaseKernel{
 	    	
 	    	Tensor delta = new Tensor(N, C2, H2, W2, d, true);
 	    	
-	    	ShotcutKernel k = new ShotcutKernel(C1, H1, W1, C2, H2, W2);
+	    	CUDAManager cudaManager = new CUDAManager(0);
 	    	
-	    	ShotcutKernel k2 = new ShotcutKernel(C1, H1, W1, C2, H2, W2);
+	    	ShotcutKernel k = new ShotcutKernel(C1, H1, W1, C2, H2, W2, cudaManager);
+	    	
+	    	ShotcutKernel k2 = new ShotcutKernel(C1, H1, W1, C2, H2, W2, cudaManager);
 
 //	    	output.showDM();
 	    	

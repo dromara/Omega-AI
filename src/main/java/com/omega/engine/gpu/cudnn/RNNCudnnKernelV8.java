@@ -7,6 +7,7 @@ import static jcuda.jcudnn.cudnnWgradMode.CUDNN_WGRAD_MODE_ADD;
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.nn.layer.gpu.RNNBaseKernel;
 import com.omega.engine.nn.network.RunModel;
@@ -89,7 +90,8 @@ public class RNNCudnnKernelV8 extends RNNBaseKernel{
 	
 	private int hidTensorSz;
 	
-	public RNNCudnnKernelV8(int time,int layerNum,int inputSize,int hiddenSize,boolean bidirectional,int rnnMode,float dropout,boolean hasBias) {
+	public RNNCudnnKernelV8(int time,int layerNum,int inputSize,int hiddenSize,boolean bidirectional,int rnnMode,float dropout,boolean hasBias,CUDAManager cudaManager) {
+		super(cudaManager);
 		this.hasBias = hasBias;
 		this.seqLength = time;
 		this.dropout = dropout;

@@ -63,7 +63,7 @@ public class TinyVAE2 extends Network {
 	public Tensor encoderDelta;
 	
 	public TinyVAE2(LossType lossType,UpdaterType updater,int latendDim,int imageSize,int[] encoderNumBlocks,int[] encoderBlockOutChannels,int[] decoderNumBlocks,int[] decoderBlockOutChannels) {
-		this.lossFunction = LossFactory.create(lossType);
+		this.lossFunction = LossFactory.create(lossType, this);
 		this.latendDim = latendDim;
 		this.imageSize = imageSize;
 		this.encoderNumBlocks = encoderNumBlocks;
@@ -83,7 +83,7 @@ public class TinyVAE2 extends Network {
 		this.addLayer(encoder);
 		this.addLayer(decoder);
 		
-		vaeKernel = new VAEKernel();
+		vaeKernel = new VAEKernel(cudaManager);
 	}
 	
 	@Override
@@ -295,6 +295,18 @@ public class TinyVAE2 extends Network {
 	
 	public void loadModel(RandomAccessFile inputStream) throws IOException {
 
+	}
+
+	@Override
+	public void putParamters() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void putParamterGrads() {
+		// TODO Auto-generated method stub
+		
 	}
 	
 }

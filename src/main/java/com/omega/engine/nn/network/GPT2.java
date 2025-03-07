@@ -38,7 +38,7 @@ public class GPT2 extends Network {
 	private FullyLayer fullyLayer;
 	
 	public GPT2(LossType lossType,UpdaterType updater,int headNum,int decoderNum,int vocabSize,int time,int embedDim,boolean bias,boolean dropout) {
-		this.lossFunction = LossFactory.create(lossType);
+		this.lossFunction = LossFactory.create(lossType, this);
 		this.bias = bias;
 		this.dropout = dropout;
 		this.decoderNum = decoderNum;
@@ -206,6 +206,18 @@ public class GPT2 extends Network {
 	public Tensor lossDiff(Tensor output, Tensor label,int igonre) {
 		// TODO Auto-generated method stub
 		return this.lossFunction.diff(output, label, igonre);
+	}
+
+	@Override
+	public void putParamters() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void putParamterGrads() {
+		// TODO Auto-generated method stub
+		
 	}
 	
 }

@@ -5,7 +5,6 @@ import java.io.RandomAccessFile;
 
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixOperation;
-import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.gpu.GPUOP;
 import com.omega.engine.loss.LossFactory;
 import com.omega.engine.loss.LossType;
@@ -63,7 +62,7 @@ public class TinyVAE extends Network {
 	public Tensor klLoss;
 	
 	public TinyVAE(LossType lossType,UpdaterType updater,int z_dims,int latendDim,int imageSize) {
-		this.lossFunction = LossFactory.create(lossType);
+		this.lossFunction = LossFactory.create(lossType, this);
 		this.z_dims = z_dims;
 		this.latendDim = latendDim;
 		this.imageSize = imageSize;
@@ -87,7 +86,7 @@ public class TinyVAE extends Network {
 		this.addLayer(conv_var);
 		this.addLayer(decoder);
 		
-		vaeKernel = new VAEKernel();
+		vaeKernel = new VAEKernel(cudaManager);
 	}
 	
 	@Override
@@ -204,7 +203,7 @@ public class TinyVAE extends Network {
 		
 		conv_var.back(dlogvar);
 		
-		TensorOP.add(conv_mu.diff, conv_var.diff, conv_mu.diff);
+		tensorOP.add(conv_mu.diff, conv_var.diff, conv_mu.diff);
 		
 		return conv_mu.diff;
 	}
@@ -300,6 +299,18 @@ public class TinyVAE extends Network {
 	
 	public void loadModel(RandomAccessFile inputStream) throws IOException {
 
+	}
+
+	@Override
+	public void putParamters() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void putParamterGrads() {
+		// TODO Auto-generated method stub
+		
 	}
 	
 }

@@ -5,7 +5,7 @@ import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
-import com.omega.engine.gpu.CUDAModules;
+import com.omega.engine.gpu.CUDAManager;
 
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
@@ -26,7 +26,8 @@ public class LPIPSKernel extends BaseKernel{
 	private Pointer forwardKernelParameters;
 
 	
-	public LPIPSKernel() {
+	public LPIPSKernel(CUDAManager cudaManager) {
+		super(cudaManager);
 		init();
 	}
 	
@@ -36,25 +37,25 @@ public class LPIPSKernel extends BaseKernel{
 			
 			if(lpip_l2_function == null) {
 				
-				lpip_l2_function = CUDAModules.getLocalFunctionByModule("lpipsKernel.cu", "lpip_l2_kernel");
+				lpip_l2_function = getCudaManager().getLocalFunctionByModule("lpipsKernel.cu", "lpip_l2_kernel");
 				
 			}
 			
 			if(lpip_l2_backward_function == null) {
 				
-				lpip_l2_backward_function = CUDAModules.getLocalFunctionByModule("lpipsKernel.cu", "lpip_l2_backward_kernel");
+				lpip_l2_backward_function = getCudaManager().getLocalFunctionByModule("lpipsKernel.cu", "lpip_l2_backward_kernel");
 				
 			}
 			
 			if(scaling_function == null) {
 				
-				scaling_function = CUDAModules.getLocalFunctionByModule("lpipsKernel.cu", "scaling_kernel");
+				scaling_function = getCudaManager().getLocalFunctionByModule("lpipsKernel.cu", "scaling_kernel");
 				
 			}
 			
 			if(scaling_backwad_function == null) {
 				
-				scaling_backwad_function = CUDAModules.getLocalFunctionByModule("lpipsKernel.cu", "scaling_back_kernel");
+				scaling_backwad_function = getCudaManager().getLocalFunctionByModule("lpipsKernel.cu", "scaling_back_kernel");
 				
 			}
 			
@@ -224,7 +225,9 @@ public class LPIPSKernel extends BaseKernel{
 		
     	Tensor scale = new Tensor(1, 1, 1, 3, new float[] {0.458f, 0.448f, 0.45f}, true);
     	
-    	LPIPSKernel kernel = new LPIPSKernel();
+    	CUDAManager cudaManager = new CUDAManager(0);
+    	
+    	LPIPSKernel kernel = new LPIPSKernel(cudaManager);
     	
     	kernel.scaling(input, shift, scale, output);
     	

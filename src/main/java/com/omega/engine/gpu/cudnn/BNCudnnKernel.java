@@ -5,6 +5,7 @@ import static jcuda.jcudnn.cudnnDataType.CUDNN_DATA_FLOAT;
 import static jcuda.jcudnn.cudnnTensorFormat.CUDNN_TENSOR_NCHW;
 
 import com.omega.common.data.Tensor;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.nn.layer.gpu.BNBaseKernel;
 import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.network.RunModel;
@@ -52,7 +53,8 @@ public class BNCudnnKernel extends BNBaseKernel{
 	private int CAFFE_CUDA_NUM_THREADS = 1024;
 	
 	
-	public BNCudnnKernel(BNType bnType,int C,int H,int W,Tensor runingMean,Tensor runingVar) {
+	public BNCudnnKernel(BNType bnType,int C,int H,int W,Tensor runingMean,Tensor runingVar,CUDAManager cudaManager) {
+		super(cudaManager);
 		this.bnType = bnType;
 		this.C = C;
 		this.H = H;

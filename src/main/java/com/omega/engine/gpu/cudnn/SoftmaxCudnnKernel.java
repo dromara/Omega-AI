@@ -7,6 +7,7 @@ import static jcuda.jcudnn.cudnnTensorFormat.CUDNN_TENSOR_NCHW;
 
 import com.omega.common.data.Tensor;
 import com.omega.engine.gpu.BaseKernel;
+import com.omega.engine.gpu.CUDAManager;
 
 import jcuda.Pointer;
 import jcuda.jcudnn.JCudnn;
@@ -27,7 +28,8 @@ public class SoftmaxCudnnKernel extends BaseKernel{
 	private cudnnTensorDescriptor diffDesc;
 	private cudnnTensorDescriptor yDesc;
 	
-	public SoftmaxCudnnKernel(int C,int H,int W) {
+	public SoftmaxCudnnKernel(int C,int H,int W,CUDAManager cudaManager) {
+		super(cudaManager);
 		this.C = C;
 		this.H = H;
 		this.W = W;

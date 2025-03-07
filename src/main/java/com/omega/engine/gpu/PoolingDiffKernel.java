@@ -2,10 +2,6 @@ package com.omega.engine.gpu;
 
 import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 
-import com.omega.common.lib.LibPaths;
-import com.omega.common.utils.JsonUtils;
-import com.omega.common.utils.MatrixUtils;
-import com.omega.common.utils.RandomUtils;
 import com.omega.engine.pooling.PoolingType;
 
 import jcuda.Pointer;
@@ -15,7 +11,7 @@ import jcuda.driver.CUfunction;
 import jcuda.driver.JCudaDriver;
 import jcuda.runtime.cudaError;
 
-public class PoolingDiffKernel {
+public class PoolingDiffKernel extends CUDAKernel{
 	private PoolingType type;
 	private float[] x;
 	private float[] out;
@@ -38,7 +34,8 @@ public class PoolingDiffKernel {
 	
 	private Pointer kernelParameters;
 	
-	public PoolingDiffKernel(PoolingType type,float[] out,int C,int H,int W,int ph,int pw,int s) {
+	public PoolingDiffKernel(PoolingType type,float[] out,int C,int H,int W,int ph,int pw,int s,CUDAManager cudaManager) {
+		super(cudaManager);
 		this.type = type;
 		this.C = C;
 		this.H = H;
@@ -62,12 +59,12 @@ public class PoolingDiffKernel {
 				switch (type) {
 				case MAX_POOLING:
 
-					function = CUDAModules.getLocalFunctionByModule("PoolingKernel.cu", "pooling_diff");
+					function = getCudaManager().getLocalFunctionByModule("PoolingKernel.cu", "pooling_diff");
 
 					break;
 				case MEAN_POOLING:
 
-					function = CUDAModules.getLocalFunctionByModule("PoolingKernel.cu", "pooling_diff");
+					function = getCudaManager().getLocalFunctionByModule("PoolingKernel.cu", "pooling_diff");
 
 					break;
 				}
@@ -169,69 +166,69 @@ public class PoolingDiffKernel {
 		JCudaDriver.cuMemFree(dy);
 	}
 
-    public static void main(String args[]){	
-
-    	int N = 2;
-    	int C = 3;
-    	int H = 8;
-    	int W = 8;
-    	int ph = 2;
-    	int pw = 2;
-    	int s = 2;
-    	int oHeight = (H - ph) / s + 1;
-		int oWidth = (W - pw) / s + 1;
-
-    	float[] x = MatrixUtils.order(N * C * H * W, 1, 1);
-    	
-    	float[] delta = RandomUtils.order(N * C * oHeight * oWidth, 0.1f, 0.1f);
-    	
-    	float[] once = new float[C * H * W];
-    	
-    	float[] onceDelta = new float[C * oHeight * oWidth];
-    	
-    	float[] out = new float[C * oHeight * oWidth];
-    	
-    	float[] mask = new float[C * oHeight * oWidth * ph * pw];
-    	
-    	float[] diff = new float[C * H * W];
-    	
-    	PoolingKernel pooling = new PoolingKernel(PoolingType.MAX_POOLING, out, mask, C, H, W, ph, pw, s);
-    	
-    	PoolingDiffKernel poolingDiff = new PoolingDiffKernel(PoolingType.MAX_POOLING, diff, C, H, W, ph, pw, s);
-    	
-    	long start = System.nanoTime();
-    	
-//		for(int c = 0;c<20;c++){
+//    public static void main(String args[]){	
 //
-//	    	long start3 = System.nanoTime();
-	    	for(int n = 0;n<N;n++) {
-	    		System.arraycopy(x, n * C * H * W, once, 0, C * H * W);
-	    		pooling.setX(once);
-	        	pooling.pooling();
-	        	System.arraycopy(delta, n * C * oHeight * oWidth, onceDelta, 0, C * oHeight * oWidth);
-	    		poolingDiff.setX(onceDelta);
-	    		poolingDiff.setMask(pooling.getMask());
-	    		poolingDiff.diff();
-	    		System.out.println(JsonUtils.toJson(diff));
-	    	}
-//	    	System.out.println((System.nanoTime() - start3) / 1e6 + "ms================>c.:"+c);
-//	    	
-//		}
-		
-		System.out.println((System.nanoTime() - start) / 1e6 + "ms.");
-//    	System.out.println(JsonUtils.toJson(out));
-//    	System.out.println(JsonUtils.toJson(mask));
-//    	System.out.println(JsonUtils.toJson(diff));
-    	
-    	pooling.free();
-		poolingDiff.free();
-	    
-//	    System.out.println(JsonUtils.toJson(out));
+//    	int N = 2;
+//    	int C = 3;
+//    	int H = 8;
+//    	int W = 8;
+//    	int ph = 2;
+//    	int pw = 2;
+//    	int s = 2;
+//    	int oHeight = (H - ph) / s + 1;
+//		int oWidth = (W - pw) / s + 1;
+//
+//    	float[] x = MatrixUtils.order(N * C * H * W, 1, 1);
+//    	
+//    	float[] delta = RandomUtils.order(N * C * oHeight * oWidth, 0.1f, 0.1f);
+//    	
+//    	float[] once = new float[C * H * W];
+//    	
+//    	float[] onceDelta = new float[C * oHeight * oWidth];
+//    	
+//    	float[] out = new float[C * oHeight * oWidth];
+//    	
+//    	float[] mask = new float[C * oHeight * oWidth * ph * pw];
+//    	
+//    	float[] diff = new float[C * H * W];
+//    	
+//    	PoolingKernel pooling = new PoolingKernel(PoolingType.MAX_POOLING, out, mask, C, H, W, ph, pw, s);
+//    	
+//    	PoolingDiffKernel poolingDiff = new PoolingDiffKernel(PoolingType.MAX_POOLING, diff, C, H, W, ph, pw, s);
+//    	
+//    	long start = System.nanoTime();
+//    	
+////		for(int c = 0;c<20;c++){
+////
+////	    	long start3 = System.nanoTime();
+//	    	for(int n = 0;n<N;n++) {
+//	    		System.arraycopy(x, n * C * H * W, once, 0, C * H * W);
+//	    		pooling.setX(once);
+//	        	pooling.pooling();
+//	        	System.arraycopy(delta, n * C * oHeight * oWidth, onceDelta, 0, C * oHeight * oWidth);
+//	    		poolingDiff.setX(onceDelta);
+//	    		poolingDiff.setMask(pooling.getMask());
+//	    		poolingDiff.diff();
+//	    		System.out.println(JsonUtils.toJson(diff));
+//	    	}
+////	    	System.out.println((System.nanoTime() - start3) / 1e6 + "ms================>c.:"+c);
+////	    	
+////		}
+//		
+//		System.out.println((System.nanoTime() - start) / 1e6 + "ms.");
+////    	System.out.println(JsonUtils.toJson(out));
+////    	System.out.println(JsonUtils.toJson(mask));
+////    	System.out.println(JsonUtils.toJson(diff));
+//    	
+//    	pooling.free();
+//		poolingDiff.free();
 //	    
-//	    System.out.println(JsonUtils.toJson(x));
+////	    System.out.println(JsonUtils.toJson(out));
+////	    
+////	    System.out.println(JsonUtils.toJson(x));
+////	    
+////	    System.out.println(JsonUtils.toJson(xout));
 //	    
-//	    System.out.println(JsonUtils.toJson(xout));
-	    
-    }
+//    }
 
 }

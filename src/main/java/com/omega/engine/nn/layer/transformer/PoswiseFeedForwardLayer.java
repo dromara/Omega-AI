@@ -3,8 +3,6 @@ package com.omega.engine.nn.layer.transformer;
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
-import com.omega.engine.ad.op.TensorOP;
-import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -35,8 +33,6 @@ public class PoswiseFeedForwardLayer extends Layer{
 	private ConvolutionLayer conv2;
 
 	private LNLayer lnLayer;
-	
-	private BaseKernel baseKernel;
 	
 	private Tensor it;
 	
@@ -77,10 +73,6 @@ public class PoswiseFeedForwardLayer extends Layer{
 			this.lnLayer = new LNLayer(this.conv2);
 		}
 		
-		if(baseKernel == null) {
-			baseKernel = new BaseKernel();
-		}
-		
 	}
 	
 	@Override
@@ -115,7 +107,7 @@ public class PoswiseFeedForwardLayer extends Layer{
 	public void output() {
 		// TODO Auto-generated method stub
 		
-		TensorOP.permute(input, it, new int[] {0, 3, 2, 1});
+		Tensor_OP().permute(input, it, new int[] {0, 3, 2, 1});
 		it.showShape();
 //		input.view(input.number, nChannel, 1, 1);
 		conv1.forward(input);
@@ -124,9 +116,9 @@ public class PoswiseFeedForwardLayer extends Layer{
 
 		conv2.forward(relu1.getOutput());
 		
-		TensorOP.permute(conv2.getOutput(), this.ro, new int[] {0, 3, 2, 1});
+		Tensor_OP().permute(conv2.getOutput(), this.ro, new int[] {0, 3, 2, 1});
 		
-		TensorOP.add(this.ro, this.input, this.ro);
+		Tensor_OP().add(this.ro, this.input, this.ro);
 		
 		if(this.layer_norm) {
 			this.lnLayer.forward(ro);
@@ -150,9 +142,9 @@ public class PoswiseFeedForwardLayer extends Layer{
 		this.ro.view(number, embedDim, 1, time);
 		if(this.layer_norm) {
 			this.lnLayer.back(delta);
-			TensorOP.permute(this.lnLayer.diff, this.ro, new int[] {0, 3, 2, 1});
+			Tensor_OP().permute(this.lnLayer.diff, this.ro, new int[] {0, 3, 2, 1});
 		}else {
-			TensorOP.permute(delta, this.ro, new int[] {0, 3, 2, 1});
+			Tensor_OP().permute(delta, this.ro, new int[] {0, 3, 2, 1});
 		}
 
 		this.conv2.back(this.ro);
@@ -162,9 +154,9 @@ public class PoswiseFeedForwardLayer extends Layer{
 		conv1.back(relu1.diff);
 		
 		this.ro.view(number, time, 1, embedDim);
-		TensorOP.permute(conv1.diff, this.ro, new int[] {0, 3, 2, 1});
+		Tensor_OP().permute(conv1.diff, this.ro, new int[] {0, 3, 2, 1});
 		
-		TensorOP.add(this.ro, delta, this.ro);
+		Tensor_OP().add(this.ro, delta, this.ro);
 
 		this.diff = this.ro;
 		

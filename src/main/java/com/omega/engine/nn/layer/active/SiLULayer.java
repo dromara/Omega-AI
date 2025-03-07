@@ -41,14 +41,14 @@ public class SiLULayer extends ActiveFunctionLayer {
 	public void init() {
 		super.init();
 		if(kernel == null) {
-			kernel = new SiLUKernel();
+			kernel = new SiLUKernel(network.cudaManager);
 		}
 	}
 	
 	public void init(Tensor input) {
 		super.init(input);
 		if(kernel == null) {
-			kernel = new SiLUKernel();
+			kernel = new SiLUKernel(network.cudaManager);
 		}
 	}
 	

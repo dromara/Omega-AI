@@ -3,13 +3,12 @@ package com.omega.engine.nn.layer.active.gpu;
 import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 
 import com.omega.common.data.Tensor;
-import com.omega.common.lib.LibPaths;
 import com.omega.common.task.ForkJobEngine;
 import com.omega.common.utils.CheckArrayUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
-import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.nn.layer.active.jobs.relu.ReluBackwardJob;
 
 import jcuda.Pointer;
@@ -30,7 +29,8 @@ public class ReluKernel extends BaseKernel{
 	
 	private Pointer backwardKernelParameters;
 	
-	public ReluKernel() {
+	public ReluKernel(CUDAManager cudaManager) {
+		super(cudaManager);
 		init();
 	}
 	
@@ -47,19 +47,19 @@ public class ReluKernel extends BaseKernel{
 
 			if(function == null) {
 
-				function = CUDAModules.getLocalFunctionByModule("activeFunction.cu", "relu_forward");
+				function = getCudaManager().getLocalFunctionByModule("activeFunction.cu", "relu_forward");
 				
 			}
 			
 			if(function_back == null) {
 
-				function_back = CUDAModules.getLocalFunctionByModule("activeFunction.cu", "relu_backward");
+				function_back = getCudaManager().getLocalFunctionByModule("activeFunction.cu", "relu_backward");
 				
 			}
 			
 			if(function_back_temp == null) {
 
-				function_back_temp = CUDAModules.getLocalFunctionByModule("activeFunction.cu", "relu_backward_temp");
+				function_back_temp = getCudaManager().getLocalFunctionByModule("activeFunction.cu", "relu_backward_temp");
 				
 			}
 			
@@ -314,7 +314,9 @@ public class ReluKernel extends BaseKernel{
 	    	
 	    	Tensor diff_cpu = new Tensor(N, C, H, W);
 	    	
-	    	ReluKernel k = new ReluKernel();
+	    	CUDAManager cudaManager = new CUDAManager(0);
+	    	
+	    	ReluKernel k = new ReluKernel(cudaManager);
 
 	    	k.forward(input, output);
 	    	

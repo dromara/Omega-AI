@@ -8,8 +8,8 @@ import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
-import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.nn.layer.transformer.RoPELayer;
 import com.omega.engine.nn.network.Transformer;
 
@@ -59,7 +59,8 @@ public class RoPEKernel extends BaseKernel{
 	private Pointer forwardParameters;
 	private Pointer backwardParameters;
 	
-	public RoPEKernel() {
+	public RoPEKernel(CUDAManager cudaManager) {
+		super(cudaManager);
 		init();
 	}
 	
@@ -68,35 +69,35 @@ public class RoPEKernel extends BaseKernel{
 		try {
 			
 			if(forward_function == null) {
-				forward_function = CUDAModules.getLocalFunctionByModule("RoPEKernel.cu", "rope_norm");
+				forward_function = getCudaManager().getLocalFunctionByModule("RoPEKernel.cu", "rope_norm");
 			}
 
 			if(backward_function == null) {
-				backward_function = CUDAModules.getLocalFunctionByModule("RoPEKernel.cu", "rope_backward");
+				backward_function = getCudaManager().getLocalFunctionByModule("RoPEKernel.cu", "rope_backward");
 			}
 			
 			if(forward_all_function == null) {
-				forward_all_function = CUDAModules.getLocalFunctionByModule("RoPEKernel.cu", "rope_all_norm");
+				forward_all_function = getCudaManager().getLocalFunctionByModule("RoPEKernel.cu", "rope_all_norm");
 			}
 
 			if(backward_all_function == null) {
-				backward_all_function = CUDAModules.getLocalFunctionByModule("RoPEKernel.cu", "rope_all_backward");
+				backward_all_function = getCudaManager().getLocalFunctionByModule("RoPEKernel.cu", "rope_all_backward");
 			}
 			
 			if(forward_32_function == null) {
-				forward_32_function = CUDAModules.getLocalFunctionByModule("RoPEKernel.cu", "rope_f32");
+				forward_32_function = getCudaManager().getLocalFunctionByModule("RoPEKernel.cu", "rope_f32");
 			}
 
 			if(backward_32_function == null) {
-				backward_32_function = CUDAModules.getLocalFunctionByModule("RoPEKernel.cu", "rope_backward_f32");
+				backward_32_function = getCudaManager().getLocalFunctionByModule("RoPEKernel.cu", "rope_backward_f32");
 			}
 			
 			if(forward_all_32_function == null) {
-				forward_all_32_function = CUDAModules.getLocalFunctionByModule("RoPEKernel.cu", "rope_all_f32");
+				forward_all_32_function = getCudaManager().getLocalFunctionByModule("RoPEKernel.cu", "rope_all_f32");
 			}
 
 			if(backward_all_32_function == null) {
-				backward_all_32_function = CUDAModules.getLocalFunctionByModule("RoPEKernel.cu", "rope_all_backward_f32");
+				backward_all_32_function = getCudaManager().getLocalFunctionByModule("RoPEKernel.cu", "rope_all_backward_f32");
 			}
 			
 		} catch (Exception e) {
@@ -483,8 +484,6 @@ public class RoPEKernel extends BaseKernel{
     	
     	 try {
 
-			CUDAModules.initContext();
-			
 			int N = 3;
 	    	int T = 5;
 	    	int HN = 2;
@@ -553,7 +552,7 @@ public class RoPEKernel extends BaseKernel{
 	    		rope.diff.showDM();
 	    	}
 	    	
-	    	RoPEKernel kernel = new RoPEKernel();
+	    	RoPEKernel kernel = new RoPEKernel(tf.cudaManager);
 	    	
 	    	float[] data2 = RandomUtils.order(N * T * HN *  W, 0.01f, 0.01f);
 	    	

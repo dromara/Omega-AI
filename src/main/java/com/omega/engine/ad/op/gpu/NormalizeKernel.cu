@@ -1,8 +1,7 @@
 #define BLOCK 1024
 
 extern "C"
-__global__ void norm(float *X, float *Y, int N)
-{
+__global__ void norm(float *X, float *Y, int N){
     int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
     if(i == 0){
     	Y[0] = 0.0f;

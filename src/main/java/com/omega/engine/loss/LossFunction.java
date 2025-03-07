@@ -3,11 +3,14 @@ package com.omega.engine.loss;
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixOperation;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.nn.network.Network;
 
 public abstract class LossFunction {
 	
-	public Network net;
+	private Network net;
+	
+	private CUDAManager cudaManager;
 	
 	public LossType lossType;
 	
@@ -45,6 +48,22 @@ public abstract class LossFunction {
 		System.out.println("gradientCheck:"+JsonUtils.toJson(temp));
 		float[] error = MatrixOperation.subtraction(diff.data, temp);
 		return MatrixOperation.sum(error);
+	}
+
+	public Network getNet() {
+		return net;
+	}
+
+	public void setNet(Network net) {
+		this.net = net;
+	}
+
+	public CUDAManager getCudaManager() {
+		return cudaManager;
+	}
+
+	public void setCudaManager(CUDAManager cudaManager) {
+		this.cudaManager = cudaManager;
 	} 
 	
 }

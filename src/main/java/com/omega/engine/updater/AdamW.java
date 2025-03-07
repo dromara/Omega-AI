@@ -25,7 +25,6 @@ public class AdamW extends Updater {
 	public void update(Layer layer) {
 		// TODO Auto-generated method stub
 		layer.learnRate = layer.network.learnRate;
-//		System.out.println(layer.learnRate);
 		/**
 		 * init
 		 */

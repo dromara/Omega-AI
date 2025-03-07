@@ -16,6 +16,8 @@ public enum NetworkType {
 	TTANSFORMER("TTANSFORMER"),
 	GPT("GPT"),
 	LLAMA("LLAMA"),
+	LLAMA2("LLAMA2"),
+	LLAMA3("LLAMA3"),
 	LLAVA("LLAVA"),
 	VAE("VAE"),
 	VQVAE("VQVAE"),

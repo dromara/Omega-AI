@@ -5,7 +5,7 @@ import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.gpu.BaseKernel;
-import com.omega.engine.gpu.CUDAModules;
+import com.omega.engine.gpu.CUDAManager;
 
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
@@ -21,7 +21,8 @@ public class AdaptiveAvgPool2DKernel extends BaseKernel{
 	private Pointer forwardKernelParameters;
 	private Pointer backwardKernelParameters;
 	
-	public AdaptiveAvgPool2DKernel() {
+	public AdaptiveAvgPool2DKernel(CUDAManager cudaManager) {
+		super(cudaManager);
 		init();
 	}
 	
@@ -31,13 +32,13 @@ public class AdaptiveAvgPool2DKernel extends BaseKernel{
 
 			if(forward_function == null) {
 				
-				forward_function = CUDAModules.getLocalFunctionByModule("AdaptiveAvgPool2DKernel.cu", "AdaptiveAvgPool2DKernel");
+				forward_function = getCudaManager().getLocalFunctionByModule("AdaptiveAvgPool2DKernel.cu", "AdaptiveAvgPool2DKernel");
 				
 			}
 			
 			if(backward_function == null) {
 				
-				backward_function = CUDAModules.getLocalFunctionByModule("AdaptiveAvgPool2DKernel.cu", "AdaptiveAvgPool2DGradKernel");
+				backward_function = getCudaManager().getLocalFunctionByModule("AdaptiveAvgPool2DKernel.cu", "AdaptiveAvgPool2DGradKernel");
 				
 			}
 			
@@ -146,8 +147,6 @@ public class AdaptiveAvgPool2DKernel extends BaseKernel{
 	
     public static void main(String args[]){	
 
-    	CUDAModules.initContext();
-    	
     	int N = 2;
     	int C = 3;
     	int H = 4;
@@ -161,7 +160,9 @@ public class AdaptiveAvgPool2DKernel extends BaseKernel{
     	
     	Tensor output = new Tensor(N, C, oHeight, oWidth, true);
     	
-    	AdaptiveAvgPool2DKernel pooling = new AdaptiveAvgPool2DKernel();
+    	CUDAManager cudaManager = new CUDAManager(0);
+    	
+    	AdaptiveAvgPool2DKernel pooling = new AdaptiveAvgPool2DKernel(cudaManager);
     	
     	long start = System.nanoTime();
 

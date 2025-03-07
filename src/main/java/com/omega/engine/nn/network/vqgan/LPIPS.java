@@ -35,7 +35,7 @@ public class LPIPS extends Network {
 	
 	
 	public LPIPS(LossType lossType,UpdaterType updater,int imageSize) {
-		this.lossFunction = LossFactory.create(lossType);
+		this.lossFunction = LossFactory.create(lossType, this);
 		this.imageSize = imageSize;
 		this.updater = updater;
 		initLayers();
@@ -190,6 +190,18 @@ public class LPIPS extends Network {
 	
 	public void loadModel(RandomAccessFile inputStream) throws IOException {
 
+	}
+
+	@Override
+	public void putParamters() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void putParamterGrads() {
+		// TODO Auto-generated method stub
+		
 	}
 	
 }

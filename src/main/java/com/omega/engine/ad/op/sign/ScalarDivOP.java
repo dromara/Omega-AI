@@ -4,8 +4,6 @@ import com.omega.common.data.Tensor;
 import com.omega.engine.ad.Tape;
 import com.omega.engine.ad.op.OPType;
 import com.omega.engine.ad.op.SignOP;
-import com.omega.engine.ad.op.TensorOP;
-import com.omega.engine.ad.op.gpu.OPKernel;
 
 
 /**
@@ -37,7 +35,7 @@ public class ScalarDivOP extends SignOP {
 		// TODO Auto-generated method stub
 		Tensor self = tape.getX();
 		Tensor y = tape.getOutput();
-		TensorOP.div(tape.getScalar(), self, y);
+		tape.getTensorOP().div(tape.getScalar(), self, y);
 		if(self.isRequiresGrad()) {
 			y.setRequiresGrad(true);
 		}
@@ -50,7 +48,7 @@ public class ScalarDivOP extends SignOP {
 		Tensor x = tape.getX();
 		if(x.isRequiresGrad()) {
 			if(x.getGrad().isHasGPU()) {
-				OPKernel.getInstance().div_scalar_bGrad_gpu(delta, tape.getScalar(), x, x.getGrad());
+				tape.getTensorOP().op.div_scalar_bGrad_gpu(delta, tape.getScalar(), x, x.getGrad());
 			}else {
 				bGrad(delta.data, tape.getScalar(), x.data, x.getGrad().data);
 			}

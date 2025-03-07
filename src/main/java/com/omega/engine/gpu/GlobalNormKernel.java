@@ -4,8 +4,6 @@ import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.JsonUtils;
-import com.omega.common.utils.MatrixUtils;
-import com.omega.engine.ad.op.gpu.NormalizeKernel;
 
 import jcuda.Pointer;
 import jcuda.Sizeof;
@@ -14,7 +12,7 @@ import jcuda.runtime.JCuda;
 import jcuda.runtime.cudaError;
 import jcuda.runtime.cudaMemcpyKind;
 
-public class GlobalNormKernel {
+public class GlobalNormKernel extends CUDAKernel{
 	
 	private int CAFFE_CUDA_NUM_THREADS = 512;
 	
@@ -22,11 +20,11 @@ public class GlobalNormKernel {
 	
 	private CUfunction globalNorm_gpu_function2;
 	
-	public GlobalNormKernel() {
+	public GlobalNormKernel(CUDAManager cudaManager) {
+		super(cudaManager);
+		globalNorm_gpu_function = cudaManager.getLocalFunctionByModule("GlobalNormKernel.cu", "vectorL2NormKernel");
 		
-		globalNorm_gpu_function = CUDAModules.getLocalFunctionByModule("GlobalNormKernel.cu", "vectorL2NormKernel");
-		
-		globalNorm_gpu_function2 = CUDAModules.getLocalFunctionByModule("GlobalNormKernel.cu", "l2NormKernel");
+		globalNorm_gpu_function2 = cudaManager.getLocalFunctionByModule("GlobalNormKernel.cu", "l2NormKernel");
 		
 	}
 	
@@ -114,56 +112,56 @@ public class GlobalNormKernel {
 		}
 	}
 	
-	public static void main(String[] args) {
-		
-		try {
-			
-			CUDAModules.initContext();
-			
-			int N = 1024;
-			int W = 1024;
-
-			float[] x_data = MatrixUtils.order(N * W, 1f, 1f);
-			
-			float tmp = 0.0f;
-			for(int i = 0;i<x_data.length;i++){
-				tmp += x_data[i] * x_data[i];
-			}
-			
-			System.out.println(Math.sqrt(tmp));
-			
-			Tensor x = new Tensor(1, 1, N, W, x_data, true);
-			
-			GlobalNormKernel kernel = new GlobalNormKernel();
-			
-			Tensor output = new Tensor(1, 1, 1, 1, true);
-			
-			Tensor output2 = new Tensor(1, 1, 1, 1, true);
-			
-			Tensor y = new Tensor(1, 1, 1, 1, true);
-			
-			kernel.globalNorm(output, x);
-			
-//			kernel.globalNorm2(output2, x);
+//	public static void main(String[] args) {
+//		
+//		try {
 //			
-//			NormalizeKernel kernel2 = new NormalizeKernel();
+//			CUDAModules.initContext();
 //			
-//			kernel2.norm(x, y);
-			
-			
-			System.out.println(Math.sqrt(output.syncHost()[0]));
-			
-			System.out.println(Math.sqrt(output2.syncHost()[0]));
-			
-			System.out.println(y.syncHost()[0]);
-			
-//			output.showDM();
-			
-		} catch (Exception e) {
-			// TODO: handle exception
-			e.printStackTrace();
-		}
-		
-	}
+//			int N = 1024;
+//			int W = 1024;
+//
+//			float[] x_data = MatrixUtils.order(N * W, 1f, 1f);
+//			
+//			float tmp = 0.0f;
+//			for(int i = 0;i<x_data.length;i++){
+//				tmp += x_data[i] * x_data[i];
+//			}
+//			
+//			System.out.println(Math.sqrt(tmp));
+//			
+//			Tensor x = new Tensor(1, 1, N, W, x_data, true);
+//			
+//			GlobalNormKernel kernel = new GlobalNormKernel();
+//			
+//			Tensor output = new Tensor(1, 1, 1, 1, true);
+//			
+//			Tensor output2 = new Tensor(1, 1, 1, 1, true);
+//			
+//			Tensor y = new Tensor(1, 1, 1, 1, true);
+//			
+//			kernel.globalNorm(output, x);
+//			
+////			kernel.globalNorm2(output2, x);
+////			
+////			NormalizeKernel kernel2 = new NormalizeKernel();
+////			
+////			kernel2.norm(x, y);
+//			
+//			
+//			System.out.println(Math.sqrt(output.syncHost()[0]));
+//			
+//			System.out.println(Math.sqrt(output2.syncHost()[0]));
+//			
+//			System.out.println(y.syncHost()[0]);
+//			
+////			output.showDM();
+//			
+//		} catch (Exception e) {
+//			// TODO: handle exception
+//			e.printStackTrace();
+//		}
+//		
+//	}
 	
 }

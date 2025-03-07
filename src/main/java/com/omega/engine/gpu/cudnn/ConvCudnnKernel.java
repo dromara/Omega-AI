@@ -7,6 +7,7 @@ import static jcuda.jcudnn.cudnnDataType.CUDNN_DATA_FLOAT;
 import static jcuda.jcudnn.cudnnTensorFormat.CUDNN_TENSOR_NCHW;
 
 import com.omega.common.data.Tensor;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.nn.layer.gpu.ConvBaseKernel;
 import com.omega.engine.nn.network.Network;
 
@@ -55,7 +56,8 @@ public class ConvCudnnKernel extends ConvBaseKernel{
 	private cudnnTensorDescriptor yDesc;
 	private cudnnConvolutionDescriptor convDesc;
 	
-	public ConvCudnnKernel(Network network,int C,int H,int W,int ko,int kh,int kw,int s,int p) {
+	public ConvCudnnKernel(Network network,int C,int H,int W,int ko,int kh,int kw,int s,int p,CUDAManager cudaManager) {
+		super(cudaManager);
 		this.network = network;
 		this.C = C;
 		this.H = H;

@@ -2,7 +2,6 @@ package com.omega.engine.nn.layer;
 
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.RandomUtils;
-import com.omega.engine.gpu.GPUOP;
 import com.omega.engine.nn.layer.gpu.EmbeddingKernel;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.updater.UpdaterFactory;
@@ -79,7 +78,7 @@ public class EmbeddingLayer extends Layer{
 	public void initParam() {
 		// TODO Auto-generated method stub
 		if(kernel == null) {
-			kernel = new EmbeddingKernel();
+			kernel = new EmbeddingKernel(cuda());
 		}
 		this.weight = new Tensor(1, 1, width, oWidth, RandomUtils.kaiming_uniform(this.width * this.oWidth, this.width, this.paramsInit), true);
 		if(this.network != null) {
@@ -97,7 +96,7 @@ public class EmbeddingLayer extends Layer{
 		
 		if(this.input != null) {
 
-			GPUOP.getInstance().multiplyFloat(number, oWidth, width, input.getGpuData(), weight.getGpuData(), output.getGpuData(),
+			GPU_OP().multiplyFloat(number, oWidth, width, input.getGpuData(), weight.getGpuData(), output.getGpuData(),
 					cublasOperation.CUBLAS_OP_N, cublasOperation.CUBLAS_OP_N, 1.0f, 0.0f);
 
 		}
@@ -115,7 +114,7 @@ public class EmbeddingLayer extends Layer{
 		 * number * ow
 		 * m = w,k = number,n = ow
 		 */
-		GPUOP.getInstance().multiplyFloat(this.width, this.oWidth, this.number, input.getGpuData(), delta.getGpuData(), diffW.getGpuData(),
+		GPU_OP().multiplyFloat(this.width, this.oWidth, this.number, input.getGpuData(), delta.getGpuData(), diffW.getGpuData(),
 				cublasOperation.CUBLAS_OP_T, cublasOperation.CUBLAS_OP_N, 1.0f, 0.0f);
 
 	}

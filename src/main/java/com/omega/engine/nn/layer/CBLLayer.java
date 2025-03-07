@@ -2,7 +2,6 @@ package com.omega.engine.nn.layer;
 
 import com.omega.common.data.Tensor;
 import com.omega.engine.active.ActiveType;
-import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.active.ActiveFunctionLayer;
 import com.omega.engine.nn.layer.active.LeakyReluLayer;
 import com.omega.engine.nn.layer.active.ReluLayer;
@@ -35,8 +34,6 @@ public class CBLLayer extends Layer{
 	private ActiveFunctionLayer activeLayer;
 	
 	private ActiveType activeType;
-	
-	private BaseKernel baseKernel;
 	
 	public CBLLayer(int channel,int oChannel,int height,int width,int kHeight,int kWidth,int stride,int padding, ActiveType activeType, Network network) {
 		this.network = network;
@@ -99,9 +96,6 @@ public class CBLLayer extends Layer{
 			throw new RuntimeException("The cbl layer is not support the ["+activeType+"] active function.");
 		}
 		
-		if(baseKernel == null) {
-			baseKernel = new BaseKernel();
-		}
 //		System.out.println("activeLayer.preLayer:"+activeLayer.preLayer);
 	}
 
@@ -144,7 +138,7 @@ public class CBLLayer extends Layer{
 	public void diff() {
 		// TODO Auto-generated method stub
 //		System.out.println("index:["+index+"]("+oChannel+")"+this.delta);
-		baseKernel.copy_gpu(delta, this.org_delta, delta.getDataLength(), 1, 1);
+		baseKernel().copy_gpu(delta, this.org_delta, delta.getDataLength(), 1, 1);
 		activeLayer.back(this.org_delta);
 		bnLayer.back(activeLayer.diff);
 		convLayer.back(bnLayer.diff);

@@ -2,7 +2,6 @@ package com.omega.engine.gpu;
 
 import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 
-import com.omega.common.lib.LibPaths;
 import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.pooling.PoolingType;
@@ -12,10 +11,9 @@ import jcuda.Sizeof;
 import jcuda.driver.CUdeviceptr;
 import jcuda.driver.CUfunction;
 import jcuda.driver.JCudaDriver;
-import jcuda.runtime.JCuda;
 import jcuda.runtime.cudaError;
 
-public class PoolingKernel {
+public class PoolingKernel extends CUDAKernel{
 	private PoolingType type;
 	private float[] x;
 	private float[] out;
@@ -38,7 +36,8 @@ public class PoolingKernel {
 	
 	private Pointer kernelParameters;
 	
-	public PoolingKernel(PoolingType type,float[] out,float[] mask,int C,int H,int W,int ph,int pw,int s) {
+	public PoolingKernel(PoolingType type,float[] out,float[] mask,int C,int H,int W,int ph,int pw,int s,CUDAManager cudaManager) {
+		super(cudaManager);
 		this.type = type;
 		this.C = C;
 		this.H = H;
@@ -63,12 +62,12 @@ public class PoolingKernel {
 				switch (type) {
 				case MAX_POOLING:
 
-					function = CUDAModules.getLocalFunctionByModule("PoolingKernel.cu", "max_pooling");
+					function = getCudaManager().getLocalFunctionByModule("PoolingKernel.cu", "max_pooling");
 
 					break;
 				case MEAN_POOLING:
 
-					function = CUDAModules.getLocalFunctionByModule("PoolingKernel.cu", "mean_pooling");
+					function = getCudaManager().getLocalFunctionByModule("PoolingKernel.cu", "mean_pooling");
 
 					break;
 				}
@@ -192,7 +191,9 @@ public class PoolingKernel {
     	
     	float[] allout = new float[N * C * oHeight * oWidth];
     	
-    	PoolingKernel pooling = new PoolingKernel(PoolingType.MEAN_POOLING, out, mask, C, H, W, ph, pw, s);
+    	CUDAManager cudaManager = new CUDAManager(0);
+    	
+    	PoolingKernel pooling = new PoolingKernel(PoolingType.MEAN_POOLING, out, mask, C, H, W, ph, pw, s, cudaManager);
     	
 //    	long start = System.nanoTime();
     	

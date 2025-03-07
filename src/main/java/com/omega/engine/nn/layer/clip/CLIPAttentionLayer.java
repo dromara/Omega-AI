@@ -9,8 +9,6 @@ import java.io.RandomAccessFile;
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
-import com.omega.engine.ad.op.TensorOP;
-import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.gpu.GPUOP;
 import com.omega.engine.gpu.cudnn.SoftmaxCudnnKernel;
@@ -51,8 +49,6 @@ public class CLIPAttentionLayer extends Layer{
 	private DropoutLayer dropoutLayer;
 	
 	private DropoutLayer dropoutLayer2;
-	
-	private BaseKernel baseKernel;
 	
 	private AttentionKernel attentionKernel;
 	
@@ -152,12 +148,8 @@ public class CLIPAttentionLayer extends Layer{
 			this.dropoutLayer2 = new DropoutLayer(0.1f, getoLinerLayer());
 		}
 		
-		if(baseKernel == null) {
-			baseKernel = new BaseKernel();
-		}
-		
 		if(attentionKernel == null) {
-			attentionKernel = new AttentionKernel();
+			attentionKernel = new AttentionKernel(network.cudaManager);
 		}
 		
 	}
@@ -174,7 +166,7 @@ public class CLIPAttentionLayer extends Layer{
 		this.batchSize = this.number / this.time;
 		
 		if(network.CUDNN && softmaxKernel == null) {
-			softmaxKernel = new SoftmaxCudnnKernel(time, 1, 1);
+			softmaxKernel = new SoftmaxCudnnKernel(time, 1, 1, network.cudaManager);
 		}
 		
 		if(this.qt != null) {
@@ -295,11 +287,11 @@ public class CLIPAttentionLayer extends Layer{
 		Tensor key = this.getkLinerLayer().getOutput().view(batchSize, time, headNum, dk);
 		Tensor value = this.getvLinerLayer().getOutput().view(batchSize, time, headNum, dk);
 
-		TensorOP.mul(query, d_k, query);
+		Tensor_OP().mul(query, d_k, query);
 
-		TensorOP.permute(query, qt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(key, kt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(value, vt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(query, qt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(key, kt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(value, vt, new int[] {0, 2, 1, 3});
 
 		scaledDotProductAttention(qt, kt, vt);
 		
@@ -329,11 +321,11 @@ public class CLIPAttentionLayer extends Layer{
 		Tensor key = this.getkLinerLayer().getOutput().view(batchSize, time, headNum, dk);
 		Tensor value = this.getvLinerLayer().getOutput().view(batchSize, time, headNum, dk);
 
-		TensorOP.mul(query, d_k, query);
+		Tensor_OP().mul(query, d_k, query);
 
-		TensorOP.permute(query, qt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(key, kt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(value, vt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(query, qt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(key, kt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(value, vt, new int[] {0, 2, 1, 3});
 
 		scaledDotProductAttention(qt, kt, vt);
 		
@@ -358,7 +350,7 @@ public class CLIPAttentionLayer extends Layer{
 		GPUOP.getInstance().bmmEX(CUBLAS_OP_T, CUBLAS_OP_N, time, time, dk, 1.0f, key.getGpuData(), dk, time * dk, query.getGpuData(), dk, time * dk, 0.0f, preatt.getGpuData(), time, time * time, batchSize * headNum);
 
 		if(mask) {
-			TensorOP.add(preatt, attnMask, preatt);
+			Tensor_OP().add(preatt, attnMask, preatt);
 		}
 		
 		if(network.CUDNN) {

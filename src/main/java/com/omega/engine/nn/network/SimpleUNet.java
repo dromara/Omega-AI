@@ -69,7 +69,7 @@ public class SimpleUNet extends Network {
 	public int height;
 	
 	public SimpleUNet(LossType lossType,UpdaterType updater,int inChannel,int outChannel,int width,int height,boolean bias) {
-		this.lossFunction = LossFactory.create(lossType);
+		this.lossFunction = LossFactory.create(lossType, this);
 		this.bias = bias;
 		this.updater = updater;
 		this.setWidth(width);
@@ -284,6 +284,18 @@ public class SimpleUNet extends Network {
 	public Tensor lossDiff(Tensor output, Tensor label,int igonre) {
 		// TODO Auto-generated method stub
 		return this.lossFunction.diff(output, label, igonre);
+	}
+
+	@Override
+	public void putParamters() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void putParamterGrads() {
+		// TODO Auto-generated method stub
+		
 	}
 	
 //	public void saveModel(RandomAccessFile outputStream) throws IOException {

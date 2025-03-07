@@ -4,7 +4,7 @@ import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 
 import com.omega.common.data.Tensor;
 import com.omega.engine.gpu.BaseKernel;
-import com.omega.engine.gpu.CUDAModules;
+import com.omega.engine.gpu.CUDAManager;
 
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
@@ -22,7 +22,8 @@ public class MSELossKernel extends BaseKernel {
 	
 	private Pointer backKernelParameters;
 	
-	public MSELossKernel() {
+	public MSELossKernel(CUDAManager cudaManager) {
+		super(cudaManager);
 		init();
 	}
 	
@@ -32,13 +33,13 @@ public class MSELossKernel extends BaseKernel {
 
 			if(loss_function == null) {
 				
-				loss_function = CUDAModules.getLocalFunctionByModule("MSELossKernel.cu", "loss");
+				loss_function = getCudaManager().getLocalFunctionByModule("MSELossKernel.cu", "loss");
         
 			}
 			
 			if(loss_backward_function == null) {
 				
-				loss_backward_function = CUDAModules.getLocalFunctionByModule("MSELossKernel.cu", "loss_back");
+				loss_backward_function = getCudaManager().getLocalFunctionByModule("MSELossKernel.cu", "loss_back");
         
 			}
 			

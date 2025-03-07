@@ -53,6 +53,26 @@ public class ModelUtils {
 		}
 	}
 	
+	public static void readIntLine(String txt,int[] data) throws IOException {
+		String[] bs = txt.split("");
+		byte[] buffer = new byte[Sizeof.INT];
+		int idx = 0;
+		for(int i = 0;i<bs.length;i++) {
+			buffer[i % 4] = Byte.parseByte(bs[i]);
+			if(i+1 % 4 == 0){
+				int s = readInt(buffer);
+				data[idx] = s;
+				idx++;
+			}
+		}
+		/**
+		 * padding
+		 */
+		for(int j = idx;j<data.length;j++) {
+			data[j] = 0;
+		}
+	}
+	
 	public static void readShort(RandomAccessFile inputStream,short[] data) throws IOException {
 		for(int i = 0;i<data.length;i++) {
 			short v = readShort(inputStream);
@@ -71,6 +91,50 @@ public class ModelUtils {
 			if(v == Float.NaN) {
 				System.err.println(v);
 			}
+		}
+	}
+
+	public static void readShort2IntLine(RandomAccessFile inputStream,int[] data) throws IOException {
+		byte b;
+		byte[] buffer = new byte[Sizeof.SHORT];
+		int i = 0;
+		int idx = 0;
+		while ((b = inputStream.readByte()) != 10) {
+			buffer[i++] = b;
+			if(i == 1) {
+				i = 0;
+				short s = readShort(buffer);
+				if(idx < data.length) {
+					data[idx] = s;
+				}
+				idx++;
+			}
+		}
+		/**
+		 * padding
+		 */
+		for(int j = idx;j<data.length;j++) {
+			data[j] = 0;
+		}
+	}
+	
+	public static void readShort2IntLine(String txt,int[] data) throws IOException {
+		String[] bs = txt.split("");
+		byte[] buffer = new byte[Sizeof.SHORT];
+		int idx = 0;
+		for(int i = 0;i<bs.length;i++) {
+			buffer[i % 2] = Byte.parseByte(bs[i]);
+			if(i+1 % 2 == 0){
+				short s = readShort(buffer);
+				data[idx] = s;
+				idx++;
+			}
+		}
+		/**
+		 * padding
+		 */
+		for(int j = idx;j<data.length;j++) {
+			data[j] = 0;
 		}
 	}
 	
@@ -126,12 +190,36 @@ public class ModelUtils {
 	 * @throws IOException
 	 */
 	public static short readShort(RandomAccessFile inputStream) throws IOException {
-		short retVal;
 	    byte[] buffer = new byte[Sizeof.SHORT];
 	    inputStream.readFully(buffer);
+	    return b2s(buffer);
+	}
+	
+	/**
+	 * unint16
+	 * @param inputStream
+	 * @return
+	 * @throws IOException
+	 */
+	public static short readShort(byte[] buffer) throws IOException {
+		short retVal;
 	    ByteBuffer wrapped = ByteBuffer.wrap(buffer);
 	    wrapped.order(ByteOrder.LITTLE_ENDIAN);
 	    retVal = wrapped.getShort();
+	    return retVal;
+	}
+	
+	/**
+	 * unint16
+	 * @param inputStream
+	 * @return
+	 * @throws IOException
+	 */
+	public static int readInt(byte[] buffer) throws IOException {
+		int retVal;
+	    ByteBuffer wrapped = ByteBuffer.wrap(buffer);
+	    wrapped.order(ByteOrder.LITTLE_ENDIAN);
+	    retVal = wrapped.getInt();
 	    return retVal;
 	}
 	
@@ -213,11 +301,46 @@ public class ModelUtils {
 	    return Float.intBitsToFloat(l);                    
 	}
 	
-	public static byte[] short2byte(short s) {
-		byte[] bytes = new byte[2];
-		bytes[0] = (byte)(s >> 8);
-		bytes[1] = (byte)s;
+//	public static byte[] short2byte(short s) {
+//		byte[] bytes = new byte[2];
+//		bytes[0] = (byte)(s >> 8);
+//		bytes[1] = (byte)s;
+//		return bytes;
+//	}
+//	
+//	public static short byte2short(byte[] bytes) {
+//		return (short) ((bytes[0] & 0xff) | ((bytes[1] & 0xff) << 8));
+//	}
+	
+	public static byte[] s2b(short num) {
+		ByteBuffer buffer = ByteBuffer.allocate(2);
+		buffer.putShort(num);
+		byte[] bytes = buffer.array();
 		return bytes;
 	}
+	
+	public static short b2s(byte[] b) {
+		ByteBuffer byteBuffer2 = ByteBuffer.allocate(2);
+		byteBuffer2.put(b);
+		return byteBuffer2.getShort(0);
+	}
+	
+	public static byte[] short2byte(short s){
+         byte[] b = new byte[2]; 
+         for(int i = 0; i < 2; i++){
+             int offset = 16 - (i+1)*8; //因为byte占4个字节，所以要计算偏移量
+             b[i] = (byte)((s >> offset)&0xff); //把16位分为2个8位进行分别存储
+         }
+         return b;
+    }
+
+    public static short byte2short(byte[] b){
+        short l = 0;
+        for (int i = 0; i < 2; i++) {
+            l<<=8; //<<=和我们的 +=是一样的，意思就是 l = l << 8 
+            l |= (b[i] & 0xff); //和上面也是一样的  l = l | (b[i]&0xff)
+        }
+        return l;
+    }
 	
 }

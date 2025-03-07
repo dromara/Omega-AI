@@ -3,9 +3,8 @@ package com.omega.engine.nn.layer.gpu;
 import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 
 import com.omega.common.data.Tensor;
-import com.omega.common.lib.LibPaths;
 import com.omega.engine.gpu.BaseKernel;
-import com.omega.engine.gpu.CUDAModules;
+import com.omega.engine.gpu.CUDAManager;
 
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
@@ -18,10 +17,9 @@ public class BasicBlockKernel extends BaseKernel{
 	
 	private Pointer kernelParameters;
 	
-	public BasicBlockKernel(){
-		
+	public BasicBlockKernel(CUDAManager cudaManager){
+		super(cudaManager);
 		init();
-		
 	}
 	
 	public void init() {
@@ -37,7 +35,7 @@ public class BasicBlockKernel extends BaseKernel{
 
 			if(function == null) {
 
-				function = CUDAModules.getLocalFunctionByModule("BaseMathKernel.cu", "add");
+				function = getCudaManager().getLocalFunctionByModule("BaseMathKernel.cu", "add");
 				
 			}
 			

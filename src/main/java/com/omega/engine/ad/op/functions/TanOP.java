@@ -4,7 +4,6 @@ import com.omega.common.data.Tensor;
 import com.omega.engine.ad.Tape;
 import com.omega.engine.ad.op.FunctionOP;
 import com.omega.engine.ad.op.OPType;
-import com.omega.engine.ad.op.TensorOP;
 
 /**
  * TanOP
@@ -35,7 +34,7 @@ public class TanOP extends FunctionOP{
 		// TODO Auto-generated method stub
 		Tensor self = tape.getX();
 		Tensor y = tape.getOutput();
-		TensorOP.tan(self, y);
+		tape.getTensorOP().tan(self, y);
 		if(self.isRequiresGrad()) {
 			y.setRequiresGrad(true);
 		}
@@ -48,8 +47,8 @@ public class TanOP extends FunctionOP{
 		Tensor x = tape.getX();
 		if(x.isRequiresGrad()) {
 			Tensor dy = tape.getTmp();
-			TensorOP.tan_back(x, dy);
-			TensorOP.mulPlus(delta, dy, x.getGrad());
+			tape.getTensorOP().tan_back(x, dy);
+			tape.getTensorOP().mulPlus(delta, dy, x.getGrad());
 		}
 	}
 

@@ -4,7 +4,6 @@ import com.omega.common.data.Tensor;
 import com.omega.engine.ad.Tape;
 import com.omega.engine.ad.op.FunctionOP;
 import com.omega.engine.ad.op.OPType;
-import com.omega.engine.ad.op.TensorOP;
 
 public class MaxOP extends FunctionOP {
 
@@ -30,7 +29,7 @@ public class MaxOP extends FunctionOP {
 		// TODO Auto-generated method stub
 		Tensor self = tape.getX();
 		Tensor y = tape.getOutput();
-		TensorOP.max(self, y, tape.getPosition()[0]);
+		tape.getTensorOP().max(self, y, tape.getPosition()[0]);
 		if(self.isRequiresGrad()) {
 			y.setRequiresGrad(true);
 		}
@@ -45,7 +44,7 @@ public class MaxOP extends FunctionOP {
 		// TODO Auto-generated method stub
 		Tensor x = tape.getX();
 		if(x.isRequiresGrad()) {
-			TensorOP.max_backward(delta, x, x.getGrad(), tape.getPosition()[0]);
+			tape.getTensorOP().max_backward(delta, x, x.getGrad(), tape.getPosition()[0]);
 		}
 	}
 

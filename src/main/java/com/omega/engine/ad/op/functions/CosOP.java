@@ -4,7 +4,6 @@ import com.omega.common.data.Tensor;
 import com.omega.engine.ad.Tape;
 import com.omega.engine.ad.op.FunctionOP;
 import com.omega.engine.ad.op.OPType;
-import com.omega.engine.ad.op.TensorOP;
 
 public class CosOP extends FunctionOP{
 
@@ -30,7 +29,7 @@ public class CosOP extends FunctionOP{
 		// TODO Auto-generated method stub
 		Tensor self = tape.getX();
 		Tensor y = tape.getOutput();
-		TensorOP.cos(self, y);
+		tape.getTensorOP().cos(self, y);
 		if(self.isRequiresGrad()) {
 			y.setRequiresGrad(true);
 		}
@@ -43,9 +42,9 @@ public class CosOP extends FunctionOP{
 		Tensor x = tape.getX();
 		if(x.isRequiresGrad()) {
 			Tensor dy = tape.getTmp();
-			TensorOP.sin(x, dy);
-			TensorOP.mul(dy, -1, dy);
-			TensorOP.mulPlus(delta, dy, x.getGrad());
+			tape.getTensorOP().sin(x, dy);
+			tape.getTensorOP().mul(dy, -1, dy);
+			tape.getTensorOP().mulPlus(delta, dy, x.getGrad());
 		}
 	}
 

@@ -4,7 +4,7 @@ import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 
 import com.omega.common.data.Tensor;
 import com.omega.engine.gpu.BaseKernel;
-import com.omega.engine.gpu.CUDAModules;
+import com.omega.engine.gpu.CUDAManager;
 
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
@@ -34,7 +34,8 @@ public class BiasKernel extends BaseKernel{
 	
 	private Pointer backConvKernelParameters;
 	
-	public BiasKernel() {
+	public BiasKernel(CUDAManager cudaManager) {
+		super(cudaManager);
 		init();
 	}
 	
@@ -48,25 +49,25 @@ public class BiasKernel extends BaseKernel{
 
 			if(function == null) {
 
-				function = CUDAModules.getLocalFunctionByModule("BiasKernel.cu", "add_bias");
+				function = getCudaManager().getLocalFunctionByModule("BiasKernel.cu", "add_bias");
 				
 			}
 			
 			if(fast_function == null) {
 
-				fast_function = CUDAModules.getLocalFunctionByModule("BiasKernel.cu", "add_bias_kernel");
+				fast_function = getCudaManager().getLocalFunctionByModule("BiasKernel.cu", "add_bias_kernel");
 				
 			}
 			
 			if(back_function == null) {
 
-				back_function = CUDAModules.getLocalFunctionByModule("BiasKernel.cu", "backward_bias_conn_kernel");
+				back_function = getCudaManager().getLocalFunctionByModule("BiasKernel.cu", "backward_bias_conn_kernel");
 				
 			}
 			
 			if(back_conv_function == null) {
 
-				back_conv_function = CUDAModules.getLocalFunctionByModule("BiasKernel.cu", "backward_bias_kernel");
+				back_conv_function = getCudaManager().getLocalFunctionByModule("BiasKernel.cu", "backward_bias_kernel");
 				
 			}
 			

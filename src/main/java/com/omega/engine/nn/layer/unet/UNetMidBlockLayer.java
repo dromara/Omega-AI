@@ -4,8 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.omega.common.data.Tensor;
-import com.omega.engine.ad.op.TensorOP;
-import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
@@ -49,8 +47,6 @@ public class UNetMidBlockLayer extends Layer{
 	
 	public List<ConvolutionLayer> residualInputs;
 
-	private BaseKernel baseKernel;
-	
 	private Tensor[] t_out;
 	
 	private Tensor[] res_out;
@@ -135,10 +131,6 @@ public class UNetMidBlockLayer extends Layer{
 			residualInputs.add(c);
 		}
 		
-		if(baseKernel == null) {
-			baseKernel = new BaseKernel();
-		}
-
 	}
 
 	@Override
@@ -214,7 +206,7 @@ public class UNetMidBlockLayer extends Layer{
 		resnetSecond.get(0).forward(resnetFirst.get(0).getOutput());
 		residualInputs.get(0).forward(x);
 		
-		TensorOP.add(resnetSecond.get(0).getOutput(), residualInputs.get(0).getOutput(), res_out[0]);
+		Tensor_OP().add(resnetSecond.get(0).getOutput(), residualInputs.get(0).getOutput(), res_out[0]);
 		
 		x = res_out[0];
 		
@@ -227,7 +219,7 @@ public class UNetMidBlockLayer extends Layer{
 			resnetSecond.get(i+1).forward(resnetFirst.get(i+1).getOutput());
 			residualInputs.get(i+1).forward(x);
 			
-			TensorOP.add(resnetSecond.get(i+1).getOutput(), residualInputs.get(i+1).getOutput(), res_out[i+1]);
+			Tensor_OP().add(resnetSecond.get(i+1).getOutput(), residualInputs.get(i+1).getOutput(), res_out[i+1]);
 			
 			x = res_out[i+1];
 
@@ -247,13 +239,13 @@ public class UNetMidBlockLayer extends Layer{
 		
 		Tensor r1 = resnetFirst.get(0).getOutput();
 		
-		TensorOP.add(r1, tEmbLayers.get(0).getOutput(), t_out[0], r1.height * r1.width);
+		Tensor_OP().add(r1, tEmbLayers.get(0).getOutput(), t_out[0], r1.height * r1.width);
 
 		resnetSecond.get(0).forward(t_out[0]);
 		
 		residualInputs.get(0).forward(x);
 		
-		TensorOP.add(resnetSecond.get(0).getOutput(), residualInputs.get(0).getOutput(), res_out[0]);
+		Tensor_OP().add(resnetSecond.get(0).getOutput(), residualInputs.get(0).getOutput(), res_out[0]);
 		
 		x = res_out[0];
 		
@@ -269,13 +261,13 @@ public class UNetMidBlockLayer extends Layer{
 			
 			Tensor r = resnetFirst.get(i+1).getOutput();
 			
-			TensorOP.add(r, tEmbLayers.get(i+1).getOutput(), t_out[i+1], r.height * r.width);
+			Tensor_OP().add(r, tEmbLayers.get(i+1).getOutput(), t_out[i+1], r.height * r.width);
 			
 			resnetSecond.get(i+1).forward(t_out[i+1]);
 			
 			residualInputs.get(i+1).forward(x);
 			
-			TensorOP.add(resnetSecond.get(i+1).getOutput(), residualInputs.get(i+1).getOutput(), res_out[i+1]);
+			Tensor_OP().add(resnetSecond.get(i+1).getOutput(), residualInputs.get(i+1).getOutput(), res_out[i+1]);
 			
 			x = res_out[i+1];
 			
@@ -296,13 +288,13 @@ public class UNetMidBlockLayer extends Layer{
 		
 		Tensor r1 = resnetFirst.get(0).getOutput();
 		
-		TensorOP.add(r1, tEmbLayers.get(0).getOutput(), t_out[0], r1.height * r1.width);
+		Tensor_OP().add(r1, tEmbLayers.get(0).getOutput(), t_out[0], r1.height * r1.width);
 
 		resnetSecond.get(0).forward(t_out[0]);
 		
 		residualInputs.get(0).forward(x);
 		
-		TensorOP.add(resnetSecond.get(0).getOutput(), residualInputs.get(0).getOutput(), res_out[0]);
+		Tensor_OP().add(resnetSecond.get(0).getOutput(), residualInputs.get(0).getOutput(), res_out[0]);
 		
 		x = res_out[0];
 		
@@ -324,13 +316,13 @@ public class UNetMidBlockLayer extends Layer{
 			
 			Tensor r = resnetFirst.get(i+1).getOutput();
 			
-			TensorOP.add(r, tEmbLayers.get(i+1).getOutput(), t_out[i+1], r.height * r.width);
+			Tensor_OP().add(r, tEmbLayers.get(i+1).getOutput(), t_out[i+1], r.height * r.width);
 			
 			resnetSecond.get(i+1).forward(t_out[i+1]);
 			
 			residualInputs.get(i+1).forward(x);
 			
-			TensorOP.add(resnetSecond.get(i+1).getOutput(), residualInputs.get(i+1).getOutput(), res_out[i+1]);
+			Tensor_OP().add(resnetSecond.get(i+1).getOutput(), residualInputs.get(i+1).getOutput(), res_out[i+1]);
 			
 			x = res_out[i+1];
 			
@@ -366,16 +358,16 @@ public class UNetMidBlockLayer extends Layer{
 			
 			if(tEmbDim > 0) {
 				dt.clearGPU();
-				TensorOP.sum(d, dt, 2);
+				Tensor_OP().sum(d, dt, 2);
 				tEmbLayers.get(i+1).back(dt);
-				TensorOP.add(tDiff, tEmbLayers.get(i+1).diff, tDiff);
+				Tensor_OP().add(tDiff, tEmbLayers.get(i+1).diff, tDiff);
 			}
 			
 			resnetFirst.get(i+1).back(d);
 			
 			d = resnetFirst.get(i+1).diff;
 			
-			TensorOP.add(d, residualInputs.get(i+1).diff, d);
+			Tensor_OP().add(d, residualInputs.get(i+1).diff, d);
 			
 //			d.showDM("mids.crossDelta");
 			
@@ -397,16 +389,16 @@ public class UNetMidBlockLayer extends Layer{
 		d = resnetSecond.get(0).diff;
 		
 		if(tEmbDim > 0) {
-			TensorOP.sum(d, dt, 2);
+			Tensor_OP().sum(d, dt, 2);
 			tEmbLayers.get(0).back(dt);
-			TensorOP.add(tDiff, tEmbLayers.get(0).diff, tDiff);
+			Tensor_OP().add(tDiff, tEmbLayers.get(0).diff, tDiff);
 		}
 		
 		resnetFirst.get(0).back(d);
 		
 		d = resnetFirst.get(0).diff;
 		
-		TensorOP.add(d, residualInputs.get(0).diff, d);
+		Tensor_OP().add(d, residualInputs.get(0).diff, d);
 		
 		this.diff = d;
 

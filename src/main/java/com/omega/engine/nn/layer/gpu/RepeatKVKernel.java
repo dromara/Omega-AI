@@ -6,8 +6,8 @@ import com.omega.common.data.Tensor;
 import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
-import com.omega.engine.gpu.CUDAModules;
 
 import jcuda.Pointer;
 import jcuda.Sizeof;
@@ -38,7 +38,8 @@ public class RepeatKVKernel extends BaseKernel{
 	private Pointer forwardParameters;
 	private Pointer backwardParameters;
 	
-	public RepeatKVKernel() {
+	public RepeatKVKernel(CUDAManager cudaManager) {
+		super(cudaManager);
 		init();
 	}
 	
@@ -47,19 +48,19 @@ public class RepeatKVKernel extends BaseKernel{
 		try {
 			
 			if(forward_once_function == null) {
-				forward_once_function = CUDAModules.getLocalFunctionByModule("RepeatKVKernel.cu", "repeat_once_forward");
+				forward_once_function = getCudaManager().getLocalFunctionByModule("RepeatKVKernel.cu", "repeat_once_forward");
 			}
 			
 			if(forward_function == null) {
-				forward_function = CUDAModules.getLocalFunctionByModule("RepeatKVKernel.cu", "repeat_kv_forward");
+				forward_function = getCudaManager().getLocalFunctionByModule("RepeatKVKernel.cu", "repeat_kv_forward");
 			}
 			
 			if(backward_once_function == null) {
-				backward_once_function = CUDAModules.getLocalFunctionByModule("RepeatKVKernel.cu", "repeat_once_backward");
+				backward_once_function = getCudaManager().getLocalFunctionByModule("RepeatKVKernel.cu", "repeat_once_backward");
 			}
 			
 			if(backward_function == null) {
-				backward_function = CUDAModules.getLocalFunctionByModule("RepeatKVKernel.cu", "repeat_kv_backward");
+				backward_function = getCudaManager().getLocalFunctionByModule("RepeatKVKernel.cu", "repeat_kv_backward");
 			}
 			
 		} catch (Exception e) {
@@ -241,8 +242,6 @@ public class RepeatKVKernel extends BaseKernel{
     	
     	 try {
 
-			CUDAModules.initContext();
-			
 			int N = 2;
 	    	int T = 3;
 	    	int HN = 2;
@@ -263,8 +262,10 @@ public class RepeatKVKernel extends BaseKernel{
 	    	
 	    	Tensor dk = new Tensor(N, T, HN, W, true);
 	    	Tensor dv = new Tensor(N, T, HN, W, true);
-
-	    	RepeatKVKernel kernel = new RepeatKVKernel();
+	    	
+	    	CUDAManager cudaManager = new CUDAManager(0);
+	    	
+	    	RepeatKVKernel kernel = new RepeatKVKernel(cudaManager);
 	    	
 	    	for(int i = 0;i<10;i++) {
 	    		kernel.forward(k, v, ok, ov, nRep);

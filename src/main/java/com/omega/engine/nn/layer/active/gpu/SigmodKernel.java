@@ -3,9 +3,9 @@ package com.omega.engine.nn.layer.active.gpu;
 import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 
 import com.omega.common.data.Tensor;
-import com.omega.common.lib.LibPaths;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.gpu.BaseKernel;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.gpu.CUDAModules;
 
@@ -27,8 +27,8 @@ public class SigmodKernel extends BaseKernel{
 	
 	private Pointer backwardKernelParameters;
 	
-	public SigmodKernel() {
-		
+	public SigmodKernel(CUDAManager cudaManager) {
+		super(cudaManager);
 		init();
 	}
 	
@@ -374,7 +374,9 @@ public class SigmodKernel extends BaseKernel{
 	    	
 	    	Tensor diff = new Tensor(N, C, H, W, true);
 	    	
-	    	SigmodKernel k = new SigmodKernel();
+	    	CUDAManager cudaManager = new CUDAManager(0);
+	    	
+	    	SigmodKernel k = new SigmodKernel(cudaManager);
 
 	    	k.forward(input, output);
 	    	

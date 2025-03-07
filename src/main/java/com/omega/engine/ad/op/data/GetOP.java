@@ -1,12 +1,10 @@
 package com.omega.engine.ad.op.data;
 
 import com.omega.common.data.Tensor;
-import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.ad.Tape;
 import com.omega.engine.ad.op.OP;
 import com.omega.engine.ad.op.OPType;
-import com.omega.engine.ad.op.gpu.OPKernel;
 
 /**
  * 获取指定向量数据
@@ -36,7 +34,7 @@ public class GetOP extends OP{
 	public Tensor forward(Tape tape) {
 		Tensor self = tape.getX();
 		Tensor y = tape.getOutput();
-		getByPosition(self, y, tape.getPosition());
+		getByPosition(self, y, tape.getPosition(), tape);
 		if(self.isRequiresGrad()) {
 			y.setRequiresGrad(true);
 		}
@@ -48,21 +46,21 @@ public class GetOP extends OP{
 		// TODO Auto-generated method stub
 		Tensor x = tape.getX();
 		if(x.isRequiresGrad()) {
-			addByPosition(x.getGrad(), delta, tape.getPosition());
+			addByPosition(x.getGrad(), delta, tape.getPosition(), tape);
 		}
 	}
 	
-	public void addByPosition(Tensor a,Tensor b,int[] position) {
+	public void addByPosition(Tensor a,Tensor b,int[] position, Tape tape) {
 		int dims = position[0];
 		int start = position[1];
 		int count = position[2];
 		if(a.isHasGPU()) {
 			switch (dims) {
 			case 0:
-				OPKernel.getInstance().add_number_gpu(a, b, start * count);
+				tape.getTensorOP().op.add_number_gpu(a, b, start * count);
 				break;
 			case 1:
-				OPKernel.getInstance().add_channel_gpu(a, b, start * count);
+				tape.getTensorOP().op.add_channel_gpu(a, b, start * count);
 				break;
 			}
 		}else {
@@ -74,7 +72,7 @@ public class GetOP extends OP{
 		}
 	}
 	
-	public void getByPosition(Tensor org,Tensor target,int[] position) {
+	public void getByPosition(Tensor org,Tensor target,int[] position, Tape tape) {
 		
 		int dims = position[0];
 		int start = position[1];
@@ -82,10 +80,10 @@ public class GetOP extends OP{
 		
 		switch (dims) {
 		case 0:
-			getByNumber(org, target, start, count);
+			getByNumber(org, target, start, count, tape);
 			break;
 		case 1:
-			getByChannel(org, target, start, count);
+			getByChannel(org, target, start, count, tape);
 			break;
 		default:
 			break;
@@ -93,23 +91,23 @@ public class GetOP extends OP{
 		
 	}
 	
-	public void getByNumber(Tensor org,Tensor target,int start,int count) {
+	public void getByNumber(Tensor org,Tensor target,int start,int count, Tape tape) {
 		
 		assert org.getNumber() >= (start + count - 1);
 		
 		if(org.isHasGPU()) {
-			OPKernel.getInstance().copy_number_gpu(org, target, start * count, 0);
+			tape.getTensorOP().op.copy_number_gpu(org, target, start * count, 0);
 		}else {
 			System.arraycopy(org.data, start * count * org.channel * org.height * org.width, target.data, 0, target.dataLength);
 		}
 	}
 	
-	public void getByChannel(Tensor org,Tensor target,int start,int count) {
+	public void getByChannel(Tensor org,Tensor target,int start,int count, Tape tape) {
 		
 		assert org.getChannel() >= (start + count - 1);
 		
 		if(org.isHasGPU()) {
-			OPKernel.getInstance().copy_channel_gpu(org, target, start, 0);
+			tape.getTensorOP().op.copy_channel_gpu(org, target, start, 0);
 		}else {
 			int size = org.height * org.width;
 			for(int n = 0;n<org.number;n++) {

@@ -4,6 +4,7 @@ import static jcuda.jcudnn.cudnnDataType.CUDNN_DATA_FLOAT;
 import static jcuda.jcudnn.cudnnTensorFormat.CUDNN_TENSOR_NCHW;
 
 import com.omega.common.data.Tensor;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.nn.layer.gpu.BNBaseKernel;
 import com.omega.engine.nn.network.RunModel;
 
@@ -39,7 +40,8 @@ public class InstanceNormalizationCudnnKernel extends BNBaseKernel{
 	private cudnnTensorDescriptor yTensorDesc;
 	
 	
-	public InstanceNormalizationCudnnKernel(int C,int H,int W) {
+	public InstanceNormalizationCudnnKernel(int C,int H,int W,CUDAManager cudaManager) {
+		super(cudaManager);
 		this.C = C;
 		this.H = H;
 		this.W = W;

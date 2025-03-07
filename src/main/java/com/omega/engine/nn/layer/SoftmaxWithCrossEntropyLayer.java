@@ -31,7 +31,7 @@ public class SoftmaxWithCrossEntropyLayer extends Layer {
 	}
 	
 	public void initKernel() {
-		kernel = new SoftmaxKernel();
+		kernel = new SoftmaxKernel(cuda());
 	}
 	
 	@Override

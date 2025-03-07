@@ -8,8 +8,6 @@ import java.io.RandomAccessFile;
 
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixUtils;
-import com.omega.engine.ad.op.TensorOP;
-import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.gpu.GPUOP;
 import com.omega.engine.nn.layer.ConvolutionLayer;
@@ -48,8 +46,6 @@ public class DiffusionAttentionBlockLayer extends Layer{
 	private DropoutLayer dropoutLayer;
 	
 	private DropoutLayer dropoutLayer2;
-	
-	private BaseKernel baseKernel;
 	
 	private AttentionKernel attentionKernel;
 	
@@ -128,12 +124,8 @@ public class DiffusionAttentionBlockLayer extends Layer{
 			this.dropoutLayer2 = new DropoutLayer(0.1f, oLayer);
 		}
 		
-		if(baseKernel == null) {
-			baseKernel = new BaseKernel();
-		}
-		
 		if(attentionKernel == null) {
-			attentionKernel = new AttentionKernel();
+			attentionKernel = new AttentionKernel(network.cudaManager);
 		}
 		
 	}
@@ -211,15 +203,15 @@ public class DiffusionAttentionBlockLayer extends Layer{
 		this.kLayer.forward(this.gn.getOutput());
 		this.vLayer.forward(this.gn.getOutput());
 		
-		TensorOP.permute(this.qLayer.getOutput(), qt, new int[] {0, 2, 3, 1});
-		TensorOP.permute(this.vLayer.getOutput(), vt, new int[] {0, 2, 3, 1});
+		Tensor_OP().permute(this.qLayer.getOutput(), qt, new int[] {0, 2, 3, 1});
+		Tensor_OP().permute(this.vLayer.getOutput(), vt, new int[] {0, 2, 3, 1});
 		
 		qt.view(batchSize, height * width, 1, inChannel);
 		vt.view(batchSize, height * width, 1, inChannel);
 		
 		scaledDotProductAttention(qt, this.kLayer.getOutput(), vt);
 		
-		TensorOP.permute(vaccum, oi, new int[] {0, 3, 2, 1});
+		Tensor_OP().permute(vaccum, oi, new int[] {0, 3, 2, 1});
 		
 		oi.view(batchSize, inChannel, height, width);
 		
@@ -234,7 +226,7 @@ public class DiffusionAttentionBlockLayer extends Layer{
 //		System.err.println("tmp:");
 //		tmp.showDM();
 //		this.input.showDM();
-		TensorOP.add(tmp, this.input, this.output);
+		Tensor_OP().add(tmp, this.input, this.output);
 //		System.err.println("o:");
 //		this.output.showDM();
 //		this.output.showDMByOffset(0, 100);
@@ -324,15 +316,15 @@ public class DiffusionAttentionBlockLayer extends Layer{
 		
 		oi.view(batchSize, inChannel, 1, height * width);
 
-		TensorOP.permute(oi, dvaccum, new int[] {0, 3, 2, 1});
+		Tensor_OP().permute(oi, dvaccum, new int[] {0, 3, 2, 1});
 		
 		scaledDotProductAttentionBackward(qt, this.kLayer.getOutput(), vt);
 		
 		qt.view(batchSize, inChannel, 1, height * width);
 		vt.view(batchSize, inChannel, 1, height * width);
 
-		TensorOP.permute(dqt, qt, new int[] {0, 3, 2, 1});
-		TensorOP.permute(dvt, vt, new int[] {0, 3, 2, 1});
+		Tensor_OP().permute(dqt, qt, new int[] {0, 3, 2, 1});
+		Tensor_OP().permute(dvt, vt, new int[] {0, 3, 2, 1});
 
 		Tensor queryDelta = qt.view(batchSize, inChannel, height, width);
 		Tensor keyDelta = dk;
@@ -342,12 +334,12 @@ public class DiffusionAttentionBlockLayer extends Layer{
 		this.kLayer.back(keyDelta);
 		this.vLayer.back(valueDelta);
 
-		TensorOP.add(this.qLayer.diff, this.kLayer.diff, this.qLayer.diff);
-		TensorOP.add(this.qLayer.diff, this.vLayer.diff, this.qLayer.diff);
+		Tensor_OP().add(this.qLayer.diff, this.kLayer.diff, this.qLayer.diff);
+		Tensor_OP().add(this.qLayer.diff, this.vLayer.diff, this.qLayer.diff);
 		
 		this.gn.back(this.qLayer.diff);
 		
-		TensorOP.add(this.gn.diff, delta, this.gn.diff);
+		Tensor_OP().add(this.gn.diff, delta, this.gn.diff);
 
 		this.diff = this.gn.diff;
 		

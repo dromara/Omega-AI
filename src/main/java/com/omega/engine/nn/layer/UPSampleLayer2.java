@@ -53,7 +53,7 @@ public class UPSampleLayer2 extends Layer {
 		}
 
 		if(kernel == null) {
-			kernel = new UpSampleKernel2(this.scale, ndim);
+			kernel = new UpSampleKernel2(this.scale, ndim, cuda());
 		}
 		
 	}

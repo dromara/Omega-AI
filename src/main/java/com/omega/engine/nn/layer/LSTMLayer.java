@@ -2,7 +2,6 @@ package com.omega.engine.nn.layer;
 
 import com.omega.common.data.Tensor;
 import com.omega.engine.active.ActiveType;
-import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.active.ActiveFunctionLayer;
 import com.omega.engine.nn.layer.active.LeakyReluLayer;
@@ -147,10 +146,6 @@ public class LSTMLayer extends Layer{
 		this.oa = createActiveLayer(ActiveType.sigmoid, ohl);
 		this.ha = createActiveLayer(ActiveType.tanh, fhl);
 		
-		if(baseKernel == null) {
-			baseKernel = new BaseKernel();
-		}
-
 	}
 	
 	public ActiveFunctionLayer createActiveLayer(ActiveType activeType,Layer preLayer) {
@@ -237,10 +232,10 @@ public class LSTMLayer extends Layer{
 				 * gt = tanh(Wg * ht-1 + Ug * xt + bg)
 				 * ot = sigmoid(Wo * ht-1 + Uo * xt + bo)
 				 */
-				TensorOP.add(fxl.getOutput(), fhl.getOutput(), this.f, t * onceSize, onceSize);
-				TensorOP.add(ixl.getOutput(), ihl.getOutput(), this.i, t * onceSize, onceSize);
-				TensorOP.add(gxl.getOutput(), ghl.getOutput(), this.g, t * onceSize, onceSize);
-				TensorOP.add(oxl.getOutput(), ohl.getOutput(), this.o, t * onceSize, onceSize);
+				Tensor_OP().add(fxl.getOutput(), fhl.getOutput(), this.f, t * onceSize, onceSize);
+				Tensor_OP().add(ixl.getOutput(), ihl.getOutput(), this.i, t * onceSize, onceSize);
+				Tensor_OP().add(gxl.getOutput(), ghl.getOutput(), this.g, t * onceSize, onceSize);
+				Tensor_OP().add(oxl.getOutput(), ohl.getOutput(), this.o, t * onceSize, onceSize);
 				fa.forward(this.f, batch, t);
 				ia.forward(this.i, batch, t);
 				ga.forward(this.g, batch, t);
@@ -249,17 +244,17 @@ public class LSTMLayer extends Layer{
 				/**
 				 * ct = ct-1 ⊙ ft + it ⊙ gt
 				 */
-				TensorOP.mul(ia.getOutput(), ga.getOutput(), temp, t * onceSize, onceSize);
+				Tensor_OP().mul(ia.getOutput(), ga.getOutput(), temp, t * onceSize, onceSize);
 				if(t > 0) {
-					TensorOP.mul(c, fa.getOutput(), c, (t - 1) * onceSize, t * onceSize, t * onceSize, onceSize);
+					Tensor_OP().mul(c, fa.getOutput(), c, (t - 1) * onceSize, t * onceSize, t * onceSize, onceSize);
 				}
-				TensorOP.add(temp, c, c, t * onceSize, onceSize);
+				Tensor_OP().add(temp, c, c, t * onceSize, onceSize);
 				
 				/**
 				 * ht = ot ⊙  tanh(ct)
 				 */
 				ha.forward(c, batch, t);
-				TensorOP.mul(oa.getOutput(), ha.getOutput(), this.h, t * onceSize, onceSize);
+				Tensor_OP().mul(oa.getOutput(), ha.getOutput(), this.h, t * onceSize, onceSize);
 				
 //				baseKernel.copy_gpu(ha.getOutput(), this.h, onceSize, t * onceSize, 1, t * onceSize, 1);
 	
@@ -305,11 +300,11 @@ public class LSTMLayer extends Layer{
 			}
 
 			// detlaXo = delta_t * o_t 
-			TensorOP.mul(delta, oa.getOutput(), this.detlaXo, t * onceSize, t * onceSize, 0, onceSize);
+			Tensor_OP().mul(delta, oa.getOutput(), this.detlaXo, t * onceSize, t * onceSize, 0, onceSize);
 			// d_tanh(ct) = 1 - tanh_c * tanh_c
-			TensorOP.mul(ha.getOutput(), ha.getOutput(), d_tanhc, t * onceSize, t * onceSize, 0, onceSize);
-			TensorOP.sub(1.0f, d_tanhc, d_tanhc, 0, onceSize);
-			TensorOP.mul(this.detlaXo, d_tanhc, this.detlaXo, 0, onceSize);
+			Tensor_OP().mul(ha.getOutput(), ha.getOutput(), d_tanhc, t * onceSize, t * onceSize, 0, onceSize);
+			Tensor_OP().sub(1.0f, d_tanhc, d_tanhc, 0, onceSize);
+			Tensor_OP().mul(this.detlaXo, d_tanhc, this.detlaXo, 0, onceSize);
 			
 			/**
 			 * delta_ct = delta_ct + delta_t * o_t * d_tanh(ct)
@@ -318,32 +313,32 @@ public class LSTMLayer extends Layer{
 				/**
 				 * delta_ct-1 = delta_t * o_t * d_tanh(ct) * ft
 				 */
-				TensorOP.mul(detlaXo, fa.getOutput(), this.c_diff, 0, t * onceSize, (t - 1) * onceSize, onceSize);
-				TensorOP.add(this.detlaXo, this.c_diff, this.detlaXo, 0, t * onceSize, 0, onceSize);
+				Tensor_OP().mul(detlaXo, fa.getOutput(), this.c_diff, 0, t * onceSize, (t - 1) * onceSize, onceSize);
+				Tensor_OP().add(this.detlaXo, this.c_diff, this.detlaXo, 0, t * onceSize, 0, onceSize);
 			}
 			
 			/**
 			 * delta_o = delta_t * tanh_c * d_sigmoid(o)
 			 */
-			TensorOP.mul(delta, ha.getOutput(), temp, t * onceSize, onceSize);
+			Tensor_OP().mul(delta, ha.getOutput(), temp, t * onceSize, onceSize);
 			oa.back(temp, batch, t);
 			
 			/**
 			 * delta_f = delta_t * o_t * d_tanh(ct) * c_t-1 * d_sigmoid(f)
 			 */
-			TensorOP.mul(detlaXo, c, temp, 0, (t - 1) * onceSize, t * onceSize, onceSize);
+			Tensor_OP().mul(detlaXo, c, temp, 0, (t - 1) * onceSize, t * onceSize, onceSize);
 			fa.back(temp, batch, t);
 			
 			/**
 			 * delta_i = delta_t * o_t * d_tanh(ct) * c_t * d_sigmoid(i)
 			 */
-			TensorOP.mul(detlaXo, c, temp, 0, t * onceSize, t * onceSize, onceSize);
+			Tensor_OP().mul(detlaXo, c, temp, 0, t * onceSize, t * onceSize, onceSize);
 			ia.back(temp, batch, t);
 			
 			/**
 			 * delta_g = delta_t * o_t * d_tanh(ct) * i_t * d_sigmoid(g)
 			 */
-			TensorOP.mul(detlaXo, ia.getOutput(), temp, 0, t * onceSize, t * onceSize, onceSize);
+			Tensor_OP().mul(detlaXo, ia.getOutput(), temp, 0, t * onceSize, t * onceSize, onceSize);
 			ga.back(temp, batch, t);
 			
 			fxl.back(fa.diff, batch, t);
@@ -356,13 +351,13 @@ public class LSTMLayer extends Layer{
 			ghl.back(ga.diff, batch, t, t, t - 1);
 			ohl.back(oa.diff, batch, t, t, t - 1);
 			
-			TensorOP.add(fhl.diff, ihl.diff, h_diff, (t - 1) * onceSize, onceSize);
-			TensorOP.add(h_diff, ghl.diff, h_diff, (t - 1) * onceSize, onceSize);
-			TensorOP.add(h_diff, ohl.diff, h_diff, (t - 1) * onceSize, onceSize);
+			Tensor_OP().add(fhl.diff, ihl.diff, h_diff, (t - 1) * onceSize, onceSize);
+			Tensor_OP().add(h_diff, ghl.diff, h_diff, (t - 1) * onceSize, onceSize);
+			Tensor_OP().add(h_diff, ohl.diff, h_diff, (t - 1) * onceSize, onceSize);
 			
-			TensorOP.add(fxl.diff, ixl.diff, this.diff, t * onceSize, onceSize);
-			TensorOP.add(this.diff, gxl.diff, this.diff, t * onceSize, onceSize);
-			TensorOP.add(this.diff, oxl.diff, this.diff, t * onceSize, onceSize);
+			Tensor_OP().add(fxl.diff, ixl.diff, this.diff, t * onceSize, onceSize);
+			Tensor_OP().add(this.diff, gxl.diff, this.diff, t * onceSize, onceSize);
+			Tensor_OP().add(this.diff, oxl.diff, this.diff, t * onceSize, onceSize);
 		}
 
 	}

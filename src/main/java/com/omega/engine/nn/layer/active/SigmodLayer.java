@@ -41,14 +41,14 @@ public class SigmodLayer extends ActiveFunctionLayer {
 	public void init() {
 		super.init();
 		if(kernel == null) {
-			kernel = new SigmodKernel();
+			kernel = new SigmodKernel(network.cudaManager);
 		}
 	}
 	
 	public void init(Tensor input) {
 		super.init(input);
 		if(kernel == null) {
-			kernel = new SigmodKernel();
+			kernel = new SigmodKernel(network.cudaManager);
 		}
 	}
 	

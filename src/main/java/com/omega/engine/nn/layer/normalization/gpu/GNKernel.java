@@ -7,8 +7,8 @@ import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
-import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.nn.layer.normalization.BNType;
 
 import jcuda.Pointer;
@@ -80,7 +80,8 @@ public class GNKernel extends BaseKernel{
 	
 	private float eps = 1e-6f;
 	
-	public GNKernel(int G,BNType bnType) {
+	public GNKernel(int G,BNType bnType,CUDAManager cudaManager) {
+		super(cudaManager);
 		this.bnType = bnType;
 		this.G = G;
 		init();
@@ -115,31 +116,31 @@ public class GNKernel extends BaseKernel{
 		try {
 			
 			if(forward_function == null) {
-				forward_function = CUDAModules.getLocalFunctionByModule("GNKernel.cu", "groupnorm_forward_kernel");
+				forward_function = getCudaManager().getLocalFunctionByModule("GNKernel.cu", "groupnorm_forward_kernel");
 			}
 			
 			if(forward2_function == null) {
-				forward2_function = CUDAModules.getLocalFunctionByModule("GNKernel2.cu", "groupnorm_forward_kernel2");
+				forward2_function = getCudaManager().getLocalFunctionByModule("GNKernel2.cu", "groupnorm_forward_kernel2");
 			}
 			
 			if(forward3_function == null) {
-				forward3_function = CUDAModules.getLocalFunctionByModule("GNKernel3.cu", "GroupNormKernel");
+				forward3_function = getCudaManager().getLocalFunctionByModule("GNKernel3.cu", "GroupNormKernel");
 			}
 
 			if(backward_function == null) {
-				backward_function = CUDAModules.getLocalFunctionByModule("GNKernel.cu", "groupnorm_backward_kernel");
+				backward_function = getCudaManager().getLocalFunctionByModule("GNKernel.cu", "groupnorm_backward_kernel");
 			}
 			
 			if(backward_input_function == null) {
-				backward_input_function = CUDAModules.getLocalFunctionByModule("GNGradKernel3.cu", "InputPropKernel");
+				backward_input_function = getCudaManager().getLocalFunctionByModule("GNGradKernel3.cu", "InputPropKernel");
 			}
 			
 			if(backward_scale_function == null) {
-				backward_scale_function = CUDAModules.getLocalFunctionByModule("GNGradKernel3.cu", "CalDsAndDbKernel");
+				backward_scale_function = getCudaManager().getLocalFunctionByModule("GNGradKernel3.cu", "CalDsAndDbKernel");
 			}
 			
 			if(backward_param_function == null) {
-				backward_param_function = CUDAModules.getLocalFunctionByModule("GNGradKernel3.cu", "GammaAndBetaPropKernel");
+				backward_param_function = getCudaManager().getLocalFunctionByModule("GNGradKernel3.cu", "GammaAndBetaPropKernel");
 			}
 
 		} catch (Exception e) {
@@ -560,8 +561,6 @@ public class GNKernel extends BaseKernel{
     	
    	  try {
 
-			CUDAModules.initContext();
-			
 //			int N = 2;
 //	    	int C = 64;
 //	    	int H = 4;
@@ -647,7 +646,9 @@ public class GNKernel extends BaseKernel{
 	    	
 	    	Tensor dbeta2 = new Tensor(1, 1, 1, C, true);
 	    	
-			GNKernel kernel = new GNKernel(G, BNType.conv_bn);
+	    	CUDAManager cudaManager = new CUDAManager(0);
+	    	
+			GNKernel kernel = new GNKernel(G, BNType.conv_bn, cudaManager);
 	    	
 //			kernel.forward(gamma, beta, input, output3);
 //			output3.showDM();

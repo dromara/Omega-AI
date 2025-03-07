@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.omega.common.data.Tensor;
-import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.nn.layer.AdaptiveAvgPool2DLayer;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
@@ -15,8 +14,6 @@ import com.omega.engine.nn.layer.PoolingLayer;
 import com.omega.engine.nn.layer.active.ReluLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.pooling.PoolingType;
-
-import jcuda.runtime.JCuda;
 
 /**
  * VGG
@@ -346,7 +343,7 @@ public class VGG extends Layer {
 			d = l.diff;
 
 			if(i > 0 && index >= 0 && i-1 == featuresIndex[index]) {
-				TensorOP.add(d, deltas[index], d);
+				Tensor_OP().add(d, deltas[index], d);
 				index--;
 			}
 			

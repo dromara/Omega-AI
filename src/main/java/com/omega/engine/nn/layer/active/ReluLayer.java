@@ -34,14 +34,14 @@ public class ReluLayer extends ActiveFunctionLayer {
 	public void init() {
 		super.init();
 		if(kernel == null) {
-			kernel = new ReluKernel();
+			kernel = new ReluKernel(network.cudaManager);
 		}
 	}
 	
 	public void init(Tensor input) {
 		super.init(input);
 		if(kernel == null) {
-			kernel = new ReluKernel();
+			kernel = new ReluKernel(network.cudaManager);
 		}
 	}
 	

@@ -28,12 +28,12 @@ public class RNN extends Network {
 	}
 	
 	public RNN(LossType lossType,UpdaterType updater) {
-		this.lossFunction = LossFactory.create(lossType);
+		this.lossFunction = LossFactory.create(lossType, this);
 		this.updater = updater;
 	}
 	
 	public RNN(LossType lossType,UpdaterType updater,int time) {
-		this.lossFunction = LossFactory.create(lossType);
+		this.lossFunction = LossFactory.create(lossType, this);
 		this.updater = updater;
 		this.time = time;
 	}
@@ -169,6 +169,18 @@ public class RNN extends Network {
 	public Tensor lossDiff(Tensor output, Tensor label, Tensor diff) {
 		// TODO Auto-generated method stub
 		return this.lossFunction.diff(output, label, diff);
+	}
+
+	@Override
+	public void putParamters() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void putParamterGrads() {
+		// TODO Auto-generated method stub
+		
 	}
 
 }

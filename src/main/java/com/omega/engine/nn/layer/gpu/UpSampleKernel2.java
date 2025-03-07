@@ -6,7 +6,7 @@ import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
-import com.omega.engine.gpu.CUDAModules;
+import com.omega.engine.gpu.CUDAManager;
 
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
@@ -31,7 +31,8 @@ public class UpSampleKernel2 extends BaseKernel{
 	private Pointer forwardKernelParameters;
 	private Pointer backwardKernelParameters;
 	
-	public UpSampleKernel2(int scale,int ndim) {
+	public UpSampleKernel2(int scale,int ndim, CUDAManager cudaManager) {
+		super(cudaManager);
 		this.scale = scale;
 		this.ndim = ndim;
 		init();
@@ -43,13 +44,13 @@ public class UpSampleKernel2 extends BaseKernel{
 
 			if(forward_function == null) {
 				
-				forward_function = CUDAModules.getLocalFunctionByModule("UpSampleKernel2.cu", "upscale");
+				forward_function = getCudaManager().getLocalFunctionByModule("UpSampleKernel2.cu", "upscale");
 				
 			}
 			
 			if(backward_function == null) {
 				
-				backward_function = CUDAModules.getLocalFunctionByModule("UpSampleKernel2.cu", "downscale");
+				backward_function = getCudaManager().getLocalFunctionByModule("UpSampleKernel2.cu", "downscale");
 				
 			}
 			
@@ -196,8 +197,6 @@ public class UpSampleKernel2 extends BaseKernel{
     	
     	try {
 
-        	CUDAModules.initContext();
-        	
         	int N = 2;
         	int C = 3;
         	int H = 4;
@@ -220,7 +219,9 @@ public class UpSampleKernel2 extends BaseKernel{
         	delta.showShape();
         	Tensor diff = new Tensor(N, C, H, W, true);
         	
-        	UpSampleKernel2 pooling = new UpSampleKernel2(scale, ndim);
+        	CUDAManager cudaManager = new CUDAManager(0);
+        	
+        	UpSampleKernel2 pooling = new UpSampleKernel2(scale, ndim, cudaManager);
         	
         	long start = System.nanoTime();
 

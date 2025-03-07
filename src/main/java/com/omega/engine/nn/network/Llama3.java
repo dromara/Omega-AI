@@ -45,7 +45,7 @@ public class Llama3 extends Network {
 	private FullyLayer fullyLayer;
 	
 	public Llama3(LossType lossType,UpdaterType updater,int headNum,int nKVHeadNum,int decoderNum,int vocabSize,int time,int embedDim,boolean bias,boolean dropout) {
-		this.lossFunction = LossFactory.create(lossType);
+		this.lossFunction = LossFactory.create(lossType, this);
 		this.bias = bias;
 		this.dropout = dropout;
 		this.decoderNum = decoderNum;
@@ -65,7 +65,28 @@ public class Llama3 extends Network {
 	
 	public Llama3(LossType lossType,UpdaterType updater,int headNum,int nKVHeadNum,int decoderNum,int vocabSize,int time,int embedDim,boolean bias,boolean dropout,boolean flashAttention) {
 		this.flashAttention = flashAttention;
-		this.lossFunction = LossFactory.create(lossType);
+		this.lossFunction = LossFactory.create(lossType, this);
+		this.bias = bias;
+		this.dropout = dropout;
+		this.decoderNum = decoderNum;
+		this.updater = updater;
+		this.headNum = headNum;
+		this.nKVHeadNum = nKVHeadNum;
+		this.time = time;
+		this.vocabSize = vocabSize;
+		this.embedDim = embedDim;
+		this.inputLayer = new InputLayer(1, 1, vocabSize);
+		this.setDecoder(new LlamaTransformerDecoder(this.vocabSize, this.decoderNum, this.headNum, this.nKVHeadNum, this.time, this.embedDim, this.multiple_of, this.bias, this.dropout, this.flashAttention, this));
+		this.setFullyLayer(new FullyLayer(embedDim, vocabSize, false, this));
+		this.addLayer(inputLayer);
+		this.addLayer(getDecoder());
+		this.addLayer(getFullyLayer());
+	}
+	
+	public Llama3(LossType lossType,UpdaterType updater,int headNum,int nKVHeadNum,int decoderNum,int vocabSize,int time,int embedDim,boolean bias,boolean dropout,boolean flashAttention,int randId) {
+		super(randId);
+		this.flashAttention = flashAttention;
+		this.lossFunction = LossFactory.create(lossType, this);
 		this.bias = bias;
 		this.dropout = dropout;
 		this.decoderNum = decoderNum;
@@ -118,7 +139,7 @@ public class Llama3 extends Network {
 	@Override
 	public NetworkType getNetworkType() {
 		// TODO Auto-generated method stub
-		return NetworkType.LLAMA;
+		return NetworkType.LLAMA3;
 	}
 
 	@Override
@@ -253,7 +274,7 @@ public class Llama3 extends Network {
 	
 	public Tensor lossDiff(Tensor output, Tensor label,int igonre,int count) {
 		// TODO Auto-generated method stub
-		return this.lossFunction.diff(output, label, igonre);
+		return this.lossFunction.diff(output, label, igonre, count);
 	}
 	
 	public void saveModel(RandomAccessFile outputStream) throws IOException {
@@ -264,6 +285,18 @@ public class Llama3 extends Network {
 	public void loadModel(RandomAccessFile inputStream) throws IOException {
 		getDecoder().loadModel(inputStream);
 		getFullyLayer().loadModel(inputStream);
+	}
+	
+	@Override
+	public void putParamters() {
+		getDecoder().putParamters();
+		getFullyLayer().putParamters();
+	}
+	
+	@Override
+	public void putParamterGrads() {
+		getDecoder().putParamterGrads();
+		getFullyLayer().putParamterGrads();
 	}
 	
 	public LlamaTransformerDecoder getDecoder() {

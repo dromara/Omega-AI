@@ -8,12 +8,11 @@ import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
-import com.omega.engine.gpu.CUDAModules;
+import com.omega.engine.gpu.CUDAManager;
 
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUfunction;
-import jcuda.runtime.JCuda;
 import jcuda.runtime.cudaError;
 
 /**
@@ -92,7 +91,8 @@ public class CrossEntropyKernel extends BaseKernel {
 	
 	private Pointer crossSoftmaxBackwardParameters;
 	
-	public CrossEntropyKernel() {
+	public CrossEntropyKernel(CUDAManager cudaManager) {
+		super(cudaManager);
 		init();
 	}
 	
@@ -102,82 +102,82 @@ public class CrossEntropyKernel extends BaseKernel {
 
 			if(loss_function == null) {
 				
-				loss_function = CUDAModules.getLocalFunctionByModule("CrossEntropyKernel.cu", "loss");
+				loss_function = getCudaManager().getLocalFunctionByModule("CrossEntropyKernel.cu", "loss");
         
 			}
 			
 			if(nl_loss_function == null) {
 				
-				nl_loss_function = CUDAModules.getLocalFunctionByModule("CrossEntropyKernel.cu", "nl_loss");
+				nl_loss_function = getCudaManager().getLocalFunctionByModule("CrossEntropyKernel.cu", "nl_loss");
         
 			}
 			
 			if(log_softmax_nl_loss_function == null) {
 				
-				log_softmax_nl_loss_function = CUDAModules.getLocalFunctionByModule("CrossEntropyKernel.cu", "log_softmax_nl_loss");
+				log_softmax_nl_loss_function = getCudaManager().getLocalFunctionByModule("CrossEntropyKernel.cu", "log_softmax_nl_loss");
         
 			}
 			
 			if(log_softmax_nl_loss_igonre_function == null) {
 				
-				log_softmax_nl_loss_igonre_function = CUDAModules.getLocalFunctionByModule("CrossEntropyKernel.cu", "log_softmax_nl_loss_igone");
+				log_softmax_nl_loss_igonre_function = getCudaManager().getLocalFunctionByModule("CrossEntropyKernel.cu", "log_softmax_nl_loss_igone");
         
 			}
 			
 			if(log_softmax_nl_loss_igonre_idx_function == null) {
 				
-				log_softmax_nl_loss_igonre_idx_function = CUDAModules.getLocalFunctionByModule("CrossEntropyKernel.cu", "log_softmax_nl_loss_igone_idx");
+				log_softmax_nl_loss_igonre_idx_function = getCudaManager().getLocalFunctionByModule("CrossEntropyKernel.cu", "log_softmax_nl_loss_igone_idx");
         
 			}
 			
 			if(check_function == null) {
 				
-				check_function = CUDAModules.getLocalFunctionByModule("CrossEntropyKernel.cu", "check");
+				check_function = getCudaManager().getLocalFunctionByModule("CrossEntropyKernel.cu", "check");
         
 			}
 			
 			if(loss_backward_function == null) {
 				
-				loss_backward_function = CUDAModules.getLocalFunctionByModule("CrossEntropyKernel.cu", "loss_back2");
+				loss_backward_function = getCudaManager().getLocalFunctionByModule("CrossEntropyKernel.cu", "loss_back2");
         
 			}
 			
 			if(loss_igonre_backward_function == null) {
 				
-				loss_igonre_backward_function = CUDAModules.getLocalFunctionByModule("CrossEntropyKernel.cu", "loss_back_igonre2");
+				loss_igonre_backward_function = getCudaManager().getLocalFunctionByModule("CrossEntropyKernel.cu", "loss_back_igonre2");
         
 			}
 			
 			if(loss_igonre_backward_idx_function == null) {
-				loss_igonre_backward_idx_function = CUDAModules.getLocalFunctionByModule("CrossEntropyKernel.cu", "loss_back_igonre2_idx");
+				loss_igonre_backward_idx_function = getCudaManager().getLocalFunctionByModule("CrossEntropyKernel.cu", "loss_back_igonre2_idx");
 			}
 			
 			if(softmax_function == null) {
-				softmax_function = CUDAModules.getLocalFunctionByModule("CrossEntropyKernel.cu", "softmax_forward_kernel7");
+				softmax_function = getCudaManager().getLocalFunctionByModule("CrossEntropyKernel.cu", "softmax_forward_kernel7");
 			}
 			
 			if(cross_function == null) {
-				cross_function = CUDAModules.getLocalFunctionByModule("CrossEntropyKernel.cu", "crossentropy_forward_kernel");
+				cross_function = getCudaManager().getLocalFunctionByModule("CrossEntropyKernel.cu", "crossentropy_forward_kernel");
 			}
 			
 			if(cross_igone_function == null) {
-				cross_igone_function = CUDAModules.getLocalFunctionByModule("CrossEntropyKernel.cu", "crossentropy_forward_kernel_igone");
+				cross_igone_function = getCudaManager().getLocalFunctionByModule("CrossEntropyKernel.cu", "crossentropy_forward_kernel_igone");
 			}
 			
 			if(cross_backward_function == null) {
-				cross_backward_function = CUDAModules.getLocalFunctionByModule("CrossEntropyKernel.cu", "crossentropy_softmax_backward_kernel");
+				cross_backward_function = getCudaManager().getLocalFunctionByModule("CrossEntropyKernel.cu", "crossentropy_softmax_backward_kernel");
 			}
 			
 			if(cross_igone_backward_function == null) {
-				cross_igone_backward_function = CUDAModules.getLocalFunctionByModule("CrossEntropyKernel.cu", "crossentropy_softmax_igone_backward_kernel");
+				cross_igone_backward_function = getCudaManager().getLocalFunctionByModule("CrossEntropyKernel.cu", "crossentropy_softmax_igone_backward_kernel");
 			}
 			
 			if(cross_softmax_function == null) {
-				cross_softmax_function = CUDAModules.getLocalFunctionByModule("CrossEntropyKernel.cu", "cross_softmax_forward_kernel");
+				cross_softmax_function = getCudaManager().getLocalFunctionByModule("CrossEntropyKernel.cu", "cross_softmax_forward_kernel");
 			}
 			
 			if(cross_softmax_back_function == null) {
-				cross_softmax_back_function = CUDAModules.getLocalFunctionByModule("CrossEntropyKernel.cu", "cross_softmax_backward_kernel");
+				cross_softmax_back_function = getCudaManager().getLocalFunctionByModule("CrossEntropyKernel.cu", "cross_softmax_backward_kernel");
 			}
 
 		} catch (Exception e) {
@@ -719,7 +719,9 @@ public class CrossEntropyKernel extends BaseKernel {
 	
 	public static void loss_gpu(Tensor input,Tensor label,Tensor output) {
 		
-		CrossEntropyKernel kernel = new CrossEntropyKernel();
+		CUDAManager cudaManager = new CUDAManager(0);
+		
+		CrossEntropyKernel kernel = new CrossEntropyKernel(cudaManager);
 		
 		kernel.forward(input, label, output);
 		

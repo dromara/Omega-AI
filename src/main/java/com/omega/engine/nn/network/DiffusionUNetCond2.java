@@ -51,7 +51,7 @@ public class DiffusionUNetCond2 extends Network {
 	public int height;
 	
 	public DiffusionUNetCond2(LossType lossType,UpdaterType updater,int inChannel,int width,int height,int[] downChannels,int headNum,int numLayer,int timeSteps,int tEmbDim,int maxContextLen,int textEmbedDim,int groupNum) {
-		this.lossFunction = LossFactory.create(lossType);
+		this.lossFunction = LossFactory.create(lossType, this);
 		this.updater = updater;
 		this.inChannel = inChannel;
 		this.width = width;
@@ -253,6 +253,18 @@ public class DiffusionUNetCond2 extends Network {
 	public void loadModel(RandomAccessFile inputStream) throws IOException {
 		unet.loadModel(inputStream);
 		System.out.println("tail load success...");
+	}
+
+	@Override
+	public void putParamters() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void putParamterGrads() {
+		// TODO Auto-generated method stub
+		
 	}
 	
 }

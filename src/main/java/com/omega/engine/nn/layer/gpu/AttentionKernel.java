@@ -1,19 +1,13 @@
 package com.omega.engine.nn.layer.gpu;
 
 import static jcuda.driver.JCudaDriver.cuLaunchKernel;
-import static jcuda.jcublas.cublasOperation.CUBLAS_OP_N;
-import static jcuda.jcublas.cublasOperation.CUBLAS_OP_T;
 
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixUtils;
-import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
-import com.omega.engine.gpu.CUDAModules;
-import com.omega.engine.gpu.GPUOP;
-import com.omega.engine.gpu.cudnn.PoolingCudnnKernel;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.cudnn.SoftmaxCudnnKernel;
 import com.omega.engine.nn.network.Transformer;
-import com.omega.engine.pooling.PoolingType;
 
 import jcuda.Pointer;
 import jcuda.Sizeof;
@@ -79,7 +73,8 @@ public class AttentionKernel extends BaseKernel{
 	
 	private CUfunction softmax_backward_unmask_kv_function;
 	
-	public AttentionKernel() {
+	public AttentionKernel(CUDAManager cudaManager) {
+		super(cudaManager);
 		init();
 	}
 	
@@ -96,86 +91,86 @@ public class AttentionKernel extends BaseKernel{
 		try {
 
 			if(permute_function == null) {
-				permute_function = CUDAModules.getLocalFunctionByModule("AttentionKernel.cu", "permute_kernel");
+				permute_function = getCudaManager().getLocalFunctionByModule("AttentionKernel.cu", "permute_kernel");
 			}
 			
 			if(unpermute_function == null) {
 
-				unpermute_function = CUDAModules.getLocalFunctionByModule("AttentionKernel.cu", "unpermute_kernel");
+				unpermute_function = getCudaManager().getLocalFunctionByModule("AttentionKernel.cu", "unpermute_kernel");
 				
 			}
 			
 			if(permute_backward_function == null) {
 
-				permute_backward_function = CUDAModules.getLocalFunctionByModule("AttentionKernel.cu", "permute_kernel_backward");
+				permute_backward_function = getCudaManager().getLocalFunctionByModule("AttentionKernel.cu", "permute_kernel_backward");
 				
 			}
 			
 			if(unpermute_backward_function == null) {
 
-				unpermute_backward_function = CUDAModules.getLocalFunctionByModule("AttentionKernel.cu", "unpermute_kernel_backward");
+				unpermute_backward_function = getCudaManager().getLocalFunctionByModule("AttentionKernel.cu", "unpermute_kernel_backward");
 				
 			}
 
 			if(softmax_forward_function == null) {
-//				softmax_forward_function = CUDAModules.getLocalFunctionByModule("AttentionKernel.cu", "softmax_forward_kernel"); 
-				softmax_forward_function = CUDAModules.getLocalFunctionByModule("AttentionKernel.cu", "softmax_forward_kernel5");
+//				softmax_forward_function = getCudaManager().getLocalFunctionByModule("AttentionKernel.cu", "softmax_forward_kernel"); 
+				softmax_forward_function = getCudaManager().getLocalFunctionByModule("AttentionKernel.cu", "softmax_forward_kernel5");
 			}
 			
 			if(softmax_unmask_forward_function == null) {
-				softmax_unmask_forward_function = CUDAModules.getLocalFunctionByModule("AttentionKernel.cu", "softmax_forward_kernel5_no_mask");
+				softmax_unmask_forward_function = getCudaManager().getLocalFunctionByModule("AttentionKernel.cu", "softmax_forward_kernel5_no_mask");
 			}
 			
 			if(softmax_test_forward_function == null) {
-//				softmax_forward_function = CUDAModules.getLocalFunctionByModule("AttentionKernel.cu", "softmax_forward_kernel"); 
-				softmax_test_forward_function = CUDAModules.getLocalFunctionByModule("AttentionKernel.cu", "softmax_forward_kernel4");
+//				softmax_forward_function = getCudaManager().getLocalFunctionByModule("AttentionKernel.cu", "softmax_forward_kernel"); 
+				softmax_test_forward_function = getCudaManager().getLocalFunctionByModule("AttentionKernel.cu", "softmax_forward_kernel4");
 			}
 			
 			if(softmax_scale_test_forward_function == null) {
-				softmax_scale_test_forward_function = CUDAModules.getLocalFunctionByModule("AttentionKernel.cu", "softmax_scale_forward_kernel4");
+				softmax_scale_test_forward_function = getCudaManager().getLocalFunctionByModule("AttentionKernel.cu", "softmax_scale_forward_kernel4");
 			}
 			
 			if(softmax_unmask_test_forward_function == null) {
-				softmax_unmask_test_forward_function = CUDAModules.getLocalFunctionByModule("AttentionKernel.cu", "softmax_unmask_forward_kernel4");
+				softmax_unmask_test_forward_function = getCudaManager().getLocalFunctionByModule("AttentionKernel.cu", "softmax_unmask_forward_kernel4");
 			}
 			
 			if(softmax_backward_function == null) {
-//				softmax_backward_function = CUDAModules.getLocalFunctionByModule("AttentionKernel.cu", "softmax_autoregressive_backward_kernel");
-				softmax_backward_function = CUDAModules.getLocalFunctionByModule("AttentionKernel.cu", "softmax_autoregressive_backward_kernel8");
+//				softmax_backward_function = getCudaManager().getLocalFunctionByModule("AttentionKernel.cu", "softmax_autoregressive_backward_kernel");
+				softmax_backward_function = getCudaManager().getLocalFunctionByModule("AttentionKernel.cu", "softmax_autoregressive_backward_kernel8");
 			}
 			
 			if(softmax_unmask_backward_function == null) {
-				softmax_unmask_backward_function = CUDAModules.getLocalFunctionByModule("AttentionKernel.cu", "softmax_autoregressive_nomask_backward_kernel8");
+				softmax_unmask_backward_function = getCudaManager().getLocalFunctionByModule("AttentionKernel.cu", "softmax_autoregressive_nomask_backward_kernel8");
 			}
 			
 			if(softmax_test_backward_function == null) {
-//				softmax_forward_function = CUDAModules.getLocalFunctionByModule("AttentionKernel.cu", "softmax_forward_kernel"); 
-				softmax_test_backward_function = CUDAModules.getLocalFunctionByModule("AttentionKernel.cu", "softmax_autoregressive_backward_kernel4");
+//				softmax_forward_function = getCudaManager().getLocalFunctionByModule("AttentionKernel.cu", "softmax_forward_kernel"); 
+				softmax_test_backward_function = getCudaManager().getLocalFunctionByModule("AttentionKernel.cu", "softmax_autoregressive_backward_kernel4");
 			}
 			
 			if(softmax_forward_2_function == null) {
-				softmax_forward_2_function = CUDAModules.getLocalFunctionByModule("AttentionKernel.cu", "softmax_forward_kernel52");
+				softmax_forward_2_function = getCudaManager().getLocalFunctionByModule("AttentionKernel.cu", "softmax_forward_kernel52");
 			}
 			
 			if(softmax_backward_2_function == null) {
-				softmax_backward_2_function = CUDAModules.getLocalFunctionByModule("AttentionKernel.cu", "softmax_autoregressive_backward_inplace_kernel");
+				softmax_backward_2_function = getCudaManager().getLocalFunctionByModule("AttentionKernel.cu", "softmax_autoregressive_backward_inplace_kernel");
 			}
 			
 			if(softmax_backward_unmask_2_function == null) {
-				softmax_backward_unmask_2_function = CUDAModules.getLocalFunctionByModule("AttentionKernel.cu", "softmax_autoregressive_unmask_backward_inplace_kernel");
+				softmax_backward_unmask_2_function = getCudaManager().getLocalFunctionByModule("AttentionKernel.cu", "softmax_autoregressive_unmask_backward_inplace_kernel");
 			}
 			
 			if(softmax_backward_unmask_kv_function == null) {
-				softmax_backward_unmask_kv_function = CUDAModules.getLocalFunctionByModule("AttentionKernel.cu", "softmax_kv_unmask_backward_inplace_kernel");
+				softmax_backward_unmask_kv_function = getCudaManager().getLocalFunctionByModule("AttentionKernel.cu", "softmax_kv_unmask_backward_inplace_kernel");
 			}
 			
 			
 			if(scale_function == null) {
-				scale_function = CUDAModules.getLocalFunctionByModule("AttentionKernel.cu", "scale_kernel");
+				scale_function = getCudaManager().getLocalFunctionByModule("AttentionKernel.cu", "scale_kernel");
 			}
 			
 			if(add_mask_function == null) {
-				add_mask_function = CUDAModules.getLocalFunctionByModule("AttentionKernel.cu", "add_mask");
+				add_mask_function = getCudaManager().getLocalFunctionByModule("AttentionKernel.cu", "add_mask");
 			}
 			
 		} catch (Exception e) {
@@ -1003,8 +998,6 @@ public class AttentionKernel extends BaseKernel{
 
 	public static void main(String args[]) {
 		
-//		CUDAModules.initContext();
-		
 		int N = 4;
 		int NH = 8;
 		int T = 64;
@@ -1035,9 +1028,9 @@ public class AttentionKernel extends BaseKernel{
 //		
 //		Tensor dpreatt = new Tensor(N, NH, T, T, true);
 		
-		AttentionKernel kernel = new AttentionKernel();
+		AttentionKernel kernel = new AttentionKernel(tf.cudaManager);
 		
-		SoftmaxCudnnKernel cudnnKernel = new SoftmaxCudnnKernel(T2, 1, 1);
+		SoftmaxCudnnKernel cudnnKernel = new SoftmaxCudnnKernel(T2, 1, 1, tf.cudaManager);
 		
 //		kernel.softmax_forward(x, output2, N, NH, T, 1);
 		

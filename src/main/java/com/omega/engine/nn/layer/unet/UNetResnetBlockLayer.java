@@ -1,7 +1,6 @@
 package com.omega.engine.nn.layer.unet;
 
 import com.omega.common.data.Tensor;
-import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -27,8 +26,6 @@ public class UNetResnetBlockLayer extends Layer{
 	
 	public ConvolutionLayer conv;
 	
-	private BaseKernel baseKernel;
-	
 	public UNetResnetBlockLayer(int channel,int oChannel,int height,int width,int groups, Network network) {
 		this.network = network;
 		this.groups = groups;
@@ -51,10 +48,6 @@ public class UNetResnetBlockLayer extends Layer{
 		conv = new ConvolutionLayer(channel, oc, width, height, 3, 3, 1, 1, true, this.network);
 		conv.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
 		conv.paramsInit = ParamsInit.silu;
-		
-		if(baseKernel == null) {
-			baseKernel = new BaseKernel();
-		}
 		
 		this.oChannel = oc;
 		this.oHeight = conv.oHeight;

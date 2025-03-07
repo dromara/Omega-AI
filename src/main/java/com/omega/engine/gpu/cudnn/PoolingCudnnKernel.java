@@ -7,6 +7,7 @@ import static jcuda.jcudnn.cudnnPoolingMode.CUDNN_POOLING_MAX;
 import static jcuda.jcudnn.cudnnTensorFormat.CUDNN_TENSOR_NCHW;
 
 import com.omega.common.data.Tensor;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.nn.layer.gpu.PoolingBaseKernel;
 import com.omega.engine.pooling.PoolingType;
 
@@ -43,8 +44,8 @@ public class PoolingCudnnKernel extends PoolingBaseKernel{
 	private cudnnPoolingDescriptor poolingDesc;
 	private cudnnTensorDescriptor yDesc;
 
-	public PoolingCudnnKernel(PoolingType poolingType,int C,int H,int W,int oh,int ow,int pWidth,int pHeight,int stride,int padding) {
-		
+	public PoolingCudnnKernel(PoolingType poolingType,int C,int H,int W,int oh,int ow,int pWidth,int pHeight,int stride,int padding,CUDAManager cudaManager) {
+		super(cudaManager);
 		this.C = C;
 		this.H = H;
 		this.W = W;

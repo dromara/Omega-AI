@@ -4,7 +4,6 @@ import com.omega.common.data.Tensor;
 import com.omega.engine.ad.Tape;
 import com.omega.engine.ad.op.FunctionOP;
 import com.omega.engine.ad.op.OPType;
-import com.omega.engine.ad.op.TensorOP;
 
 public class ClampOP extends FunctionOP{
 
@@ -30,7 +29,7 @@ public class ClampOP extends FunctionOP{
 		// TODO Auto-generated method stub
 		Tensor self = tape.getX();
 		Tensor y = tape.getOutput();
-		TensorOP.clamp(self, tape.getScalar(), tape.getConstant(), y);
+		tape.getTensorOP().clamp(self, tape.getScalar(), tape.getConstant(), y);
 		if(self.isRequiresGrad()) {
 			y.setRequiresGrad(true);
 		}
@@ -43,8 +42,8 @@ public class ClampOP extends FunctionOP{
 		Tensor x = tape.getX();
 		if(x.isRequiresGrad()) {
 			Tensor dy = tape.getTmp();
-			TensorOP.clamp_back(x, tape.getScalar(), tape.getConstant(), dy);
-			TensorOP.mulPlus(delta, dy, x.getGrad());
+			tape.getTensorOP().clamp_back(x, tape.getScalar(), tape.getConstant(), dy);
+			tape.getTensorOP().mulPlus(delta, dy, x.getGrad());
 		}
 	}
 

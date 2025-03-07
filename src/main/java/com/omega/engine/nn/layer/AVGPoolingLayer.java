@@ -40,7 +40,7 @@ public class AVGPoolingLayer extends Layer {
 		}
 
 		if(kernel == null) {
-			kernel = new AVGPoolingKernel(channel, height, width);
+			kernel = new AVGPoolingKernel(channel, height, width, cuda());
 		}
 		
 	}

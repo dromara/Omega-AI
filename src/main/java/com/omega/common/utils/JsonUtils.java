@@ -7,7 +7,7 @@ public class JsonUtils {
 	public static Gson gson = new Gson();
 	
 	public static String toJson(Object object){
-		String data = ""; 
+		String data = null; 
 		if(object!=null){
 			data = gson.toJson(object);
 		}

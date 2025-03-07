@@ -16,4 +16,8 @@ public abstract class LlamaAttentionLayer extends Layer{
 	
 	public abstract void loadModel(RandomAccessFile inputStream) throws IOException;
 	
+	public abstract void putParamters();
+	
+	public abstract void putParamterGrads();
+	
 }	

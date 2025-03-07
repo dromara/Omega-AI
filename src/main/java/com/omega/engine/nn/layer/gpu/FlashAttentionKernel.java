@@ -6,6 +6,7 @@ import com.omega.common.data.Tensor;
 import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.gpu.BaseKernel;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAModules;
 
 import jcuda.Pointer;
@@ -35,7 +36,8 @@ public class FlashAttentionKernel extends BaseKernel{
 	
 	private int headDim;
 	
-	public FlashAttentionKernel(int headNum,int time,int headDim) {
+	public FlashAttentionKernel(int headNum,int time,int headDim,CUDAManager cudaManager) {
+		super(cudaManager);
 		this.headNum = headNum;
 		this.time = time;
 		this.headDim = headDim;
@@ -76,7 +78,7 @@ public class FlashAttentionKernel extends BaseKernel{
 //			}
 			
 			if(forward_function2 == null) {
-				forward_function2 = CUDAModules.getLocalFunctionByModule("FlashAttentionKernel.cu", "forward_kernel"); 
+				forward_function2 = getCudaManager().getLocalFunctionByModule("FlashAttentionKernel.cu", "forward_kernel"); 
 			}
 			
 //			if(backward_function == null) {
@@ -323,7 +325,9 @@ public class FlashAttentionKernel extends BaseKernel{
 		
 		Tensor delta = new Tensor(batchSize, headNum, time, headDim, MatrixUtils.order(len, 0.01f, 0.1f), true);
 		
-		FlashAttentionKernel kernel = new FlashAttentionKernel(headNum, time, headDim);
+		CUDAManager cudaManager = new CUDAManager(0);
+		
+		FlashAttentionKernel kernel = new FlashAttentionKernel(headNum, time, headDim, cudaManager);
 		
 		for(int i = 0;i<10;i++) {
 			long startTime = System.nanoTime();

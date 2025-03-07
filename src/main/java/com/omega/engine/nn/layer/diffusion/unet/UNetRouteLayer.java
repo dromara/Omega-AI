@@ -1,9 +1,6 @@
 package com.omega.engine.nn.layer.diffusion.unet;
 
 import com.omega.common.data.Tensor;
-import com.omega.common.utils.MatrixUtils;
-import com.omega.common.utils.RandomUtils;
-import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -18,8 +15,6 @@ public class UNetRouteLayer extends Layer{
 	private Layer layer_start;
 	
 	private Layer layer_end;
-	
-	private BaseKernel kernel;
 	
 	public UNetRouteLayer(Layer layer_start, Layer layer_end) {
 		this.layer_start = layer_start;
@@ -42,12 +37,8 @@ public class UNetRouteLayer extends Layer{
 		
 		if(this.output == null || this.output.number != this.number) {
 			this.output = Tensor.createTensor(this.output, number, oChannel, oHeight, oWidth, true);
-//			this.output = new Tensor(number, oChannel, oHeight, oWidth, true);
 		}
 
-		if(kernel == null) {
-			kernel = new BaseKernel();
-		}
 	}
 
 	@Override
@@ -67,7 +58,7 @@ public class UNetRouteLayer extends Layer{
 	@Override
 	public void output() {
 		// TODO Auto-generated method stub
-		TensorOP.cat(layer_start.getOutput(), layer_end.input, this.output);
+		Tensor_OP().cat(layer_start.getOutput(), layer_end.input, this.output);
 	}
 
 	@Override
@@ -79,57 +70,7 @@ public class UNetRouteLayer extends Layer{
 	@Override
 	public void diff() {
 		// TODO Auto-generated method stub
-		TensorOP.cat_back(this.delta, layer_start.cache_delta, layer_end.diff);
-	}
-	
-	public static void main(String[] args) {
-		
-		int N = 2;
-    	int C = 3;
-    	int C2 = 2;
-    	int H = 4;
-    	int W = 4;
-    	
-    	int oHeight = H;
-		int oWidth = W;
-		int oChannel = C + C2;
-		
-    	float[] x = MatrixUtils.order(N * C * H * W, 1, 1);
-    	
-    	float[] x2 = MatrixUtils.order(N * C2 * H * W, 1, 1);
-    	
-    	float[] d = RandomUtils.order(N * oChannel * oHeight * oWidth, 1, 1);
-
-    	Tensor input = new Tensor(N, C, H, W, x, true);
-    	
-    	Tensor input2 = new Tensor(N, C2, H, W, x2, true);
-    	
-    	Tensor[] inputs = new Tensor[] {input,input2};
-    	
-    	Tensor output = new Tensor(N, oChannel, oHeight, oWidth, true);
-    	
-    	Tensor delta = new Tensor(N, oChannel, oHeight, oWidth, d, true);
-    	
-    	Tensor diff1 = new Tensor(N, C, H, W, true);
-    	
-    	Tensor diff2 = new Tensor(N, C2, H, W, true);
-    	
-    	Tensor[] diffs = new Tensor[] {diff1,diff2};
-    	
-    	BaseKernel kernel = new BaseKernel();
-    	
-    	testForward(inputs, output, kernel);
-    	
-    	output.showDM();
-    	
-    	testBackward(diffs, delta, kernel);
-    	
-    	delta.showDM();
-    	
-    	for(Tensor diff:diffs) {
-    		diff.showDM();
-    	}
-    	
+		Tensor_OP().cat_back(this.delta, layer_start.cache_delta, layer_end.diff);
 	}
 	
 	public static void testForward(Tensor[] x,Tensor output,BaseKernel kernel) {

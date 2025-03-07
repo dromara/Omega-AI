@@ -31,7 +31,7 @@ public class ClipTextModel extends Network {
 	private Tensor output;
 	
 	public ClipTextModel(LossType lossType,UpdaterType updater,int headNum,int time,int vocabSize,int embedDim,int maxPositionEmbeddingsSize,int n_layers) {
-		this.lossFunction = LossFactory.create(lossType);
+		this.lossFunction = LossFactory.create(lossType, this);
 		this.vocabSize = vocabSize;
 		this.embedDim = embedDim;
 		this.maxPositionEmbeddingsSize = maxPositionEmbeddingsSize;
@@ -177,6 +177,18 @@ public class ClipTextModel extends Network {
 	}
 	
 	public void loadModel(RandomAccessFile inputStream) throws IOException {
+		
+	}
+
+	@Override
+	public void putParamters() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void putParamterGrads() {
+		// TODO Auto-generated method stub
 		
 	}
 

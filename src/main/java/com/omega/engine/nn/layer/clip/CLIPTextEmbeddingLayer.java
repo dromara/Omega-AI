@@ -5,8 +5,6 @@ import java.io.RandomAccessFile;
 
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.RandomUtils;
-import com.omega.engine.ad.op.TensorOP;
-import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.EmbeddingIDLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -32,8 +30,6 @@ public class CLIPTextEmbeddingLayer extends Layer{
 	private EmbeddingIDLayer positionEmbedding;
 	
 	private Tensor positionIDS;
-	
-	private BaseKernel kernel;
 	
 	public CLIPTextEmbeddingLayer(int vocabSize,int embedDim,int maxPositionEmbeddings,Network network) {
 		this.network = network;
@@ -71,10 +67,6 @@ public class CLIPTextEmbeddingLayer extends Layer{
 			positionIDS = new Tensor(maxPositionEmbeddings, 1, 1, 1, data, true);
 		}
 		
-		if(kernel == null) {
-			kernel = new BaseKernel();
-		}
-		
 	}
 	
 	@Override
@@ -99,7 +91,7 @@ public class CLIPTextEmbeddingLayer extends Layer{
 		
 		this.positionEmbedding.forward(positionIDS);
 		
-		TensorOP.addAxis(getTokenEmbedding().getOutput(), positionEmbedding.getOutput(), getTokenEmbedding().getOutput(), positionEmbedding.getOutput().getDataLength());
+		Tensor_OP().addAxis(getTokenEmbedding().getOutput(), positionEmbedding.getOutput(), getTokenEmbedding().getOutput(), positionEmbedding.getOutput().getDataLength());
 		
 		this.output = getTokenEmbedding().getOutput();
 		

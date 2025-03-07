@@ -38,8 +38,8 @@ public class ShortcutLayer extends Layer {
 	}
 	
 	public void initKernel() {
-		kernel = new ShotcutKernel(channel, width, height, oChannel, oWidth, oHeight);
-		back_kernel = new ShotcutKernel(oChannel, oWidth, oHeight, channel, width, height);
+		kernel = new ShotcutKernel(channel, width, height, oChannel, oWidth, oHeight, cuda());
+		back_kernel = new ShotcutKernel(oChannel, oWidth, oHeight, channel, width, height, cuda());
 	}
 	
 	@Override

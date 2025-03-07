@@ -10,8 +10,6 @@ import java.util.Map;
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
-import com.omega.engine.ad.op.TensorOP;
-import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.GPUOP;
 import com.omega.engine.gpu.cudnn.SoftmaxCudnnKernel;
 import com.omega.engine.nn.layer.DropoutLayer;
@@ -57,8 +55,6 @@ public class UNetCrossAttentionLayer extends Layer{
 	private DropoutLayer dropoutLayer;
 	
 	private DropoutLayer dropoutLayer2;
-	
-	private BaseKernel baseKernel;
 	
 	private AttentionKernel attentionKernel;
 	
@@ -143,16 +139,12 @@ public class UNetCrossAttentionLayer extends Layer{
 			this.dropoutLayer2 = new DropoutLayer(0.1f, getoLinerLayer());
 		}
 		
-		if(baseKernel == null) {
-			baseKernel = new BaseKernel();
-		}
-		
 		if(attentionKernel == null) {
-			attentionKernel = new AttentionKernel();
+			attentionKernel = new AttentionKernel(network.cudaManager);
 		}
 		
 		if(softmaxKernel == null) {
-			softmaxKernel = new SoftmaxCudnnKernel(kvTime, 1, 1);
+			softmaxKernel = new SoftmaxCudnnKernel(kvTime, 1, 1, network.cudaManager);
 		}
 
 	}
@@ -232,9 +224,9 @@ public class UNetCrossAttentionLayer extends Layer{
 		Tensor key = this.kLinerLayer.getOutput().view(batchSize, kvTime, headNum, dk);
 		Tensor value = this.vLinerLayer.getOutput().view(batchSize, kvTime, headNum, dk);
 		
-		TensorOP.permute(query, qt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(key, kt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(value, vt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(query, qt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(key, kt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(value, vt, new int[] {0, 2, 1, 3});
 
 		scaledDotProductAttention(qt, kt, vt);
 
@@ -260,7 +252,7 @@ public class UNetCrossAttentionLayer extends Layer{
 		
 		GPUOP.getInstance().bmmEX(CUBLAS_OP_T, CUBLAS_OP_N, kvTime, time, dk, 1.0f, key.getGpuData(), dk, kvTime * dk, query.getGpuData(), dk, time * dk, 0.0f, preatt.getGpuData(), kvTime, time * kvTime, batchSize * headNum);
 
-		TensorOP.mul(preatt, d_k, preatt);
+		Tensor_OP().mul(preatt, d_k, preatt);
 
 		softmaxKernel.softmax(preatt, attn, batchSize * headNum * time);
 
@@ -358,9 +350,9 @@ public class UNetCrossAttentionLayer extends Layer{
 //		dkt.showDM("dkt");
 //		dvt.showDM("dvt");
 		
-		TensorOP.permute(dqt, qt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(dkt, kt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(dvt, vt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(dqt, qt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(dkt, kt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(dvt, vt, new int[] {0, 2, 1, 3});
 
 		Tensor queryDelta = qt.view(batchSize * time, 1, 1, headNum * dk);
 		Tensor keyDelta = kt.view(batchSize * kvTime, 1, 1, headNum * dk);
@@ -395,9 +387,9 @@ public class UNetCrossAttentionLayer extends Layer{
 		kt.view(this.kLinerLayer.getOutput().shape());
 		vt.view(this.vLinerLayer.getOutput().shape());
 
-		TensorOP.permute(dqt, qt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(dkt, kt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(dvt, vt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(dqt, qt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(dkt, kt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(dvt, vt, new int[] {0, 2, 1, 3});
 
 		Tensor queryDelta = qt.view(batchSize * time, 1, 1, headNum * dk);
 		Tensor keyDelta = kt.view(batchSize * time, 1, 1, headNum * dk);
@@ -409,7 +401,7 @@ public class UNetCrossAttentionLayer extends Layer{
 		
 		kvDiff = this.kLinerLayer.diff;
 		
-		TensorOP.add(kvDiff, this.vLinerLayer.diff, kvDiff);
+		Tensor_OP().add(kvDiff, this.vLinerLayer.diff, kvDiff);
 
 		this.diff = qLinerLayer.diff;
 		

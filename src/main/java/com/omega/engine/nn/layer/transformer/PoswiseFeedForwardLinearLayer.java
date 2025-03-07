@@ -1,8 +1,6 @@
 package com.omega.engine.nn.layer.transformer;
 
 import com.omega.common.data.Tensor;
-import com.omega.engine.ad.op.TensorOP;
-import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -31,8 +29,6 @@ public class PoswiseFeedForwardLinearLayer extends Layer{
 	private FullyLayer linear2;
 
 	private LNLayer lnLayer;
-	
-	private BaseKernel baseKernel;
 	
 	private Tensor ro;
 
@@ -72,10 +68,6 @@ public class PoswiseFeedForwardLinearLayer extends Layer{
 
 		if(this.layer_norm) {
 			this.lnLayer = new LNLayer(this.linear2);
-		}
-		
-		if(baseKernel == null) {
-			baseKernel = new BaseKernel();
 		}
 		
 	}
@@ -118,7 +110,7 @@ public class PoswiseFeedForwardLinearLayer extends Layer{
 
 		linear2.forward(relu1.getOutput());
 		
-		TensorOP.add(linear2.getOutput(), this.input, this.ro);
+		Tensor_OP().add(linear2.getOutput(), this.input, this.ro);
 		
 		if(this.layer_norm) {
 			this.lnLayer.forward(ro);
@@ -150,7 +142,7 @@ public class PoswiseFeedForwardLinearLayer extends Layer{
 		
 		linear1.back(relu1.diff);
 		
-		TensorOP.add(this.linear1.diff, this.lnLayer.diff, this.linear1.diff);
+		Tensor_OP().add(this.linear1.diff, this.lnLayer.diff, this.linear1.diff);
 
 		this.diff = this.linear1.diff;
 		

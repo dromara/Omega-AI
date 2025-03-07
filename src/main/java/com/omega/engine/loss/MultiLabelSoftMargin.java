@@ -2,6 +2,9 @@ package com.omega.engine.loss;
 
 import com.omega.common.data.Tensor;
 import com.omega.engine.ad.Graph;
+import com.omega.engine.ad.op.TensorOP;
+import com.omega.engine.gpu.CUDAManager;
+import com.omega.engine.nn.network.Network;
 
 public class MultiLabelSoftMargin extends LossFunction {
 	
@@ -11,15 +14,20 @@ public class MultiLabelSoftMargin extends LossFunction {
 	
 	private Graph g;
 	
-	public MultiLabelSoftMargin() {
-		g = new Graph();
-	}
-	
-	public static MultiLabelSoftMargin operation() {
+	public static MultiLabelSoftMargin operation(CUDAManager cudaManager) {
 		if(instance == null) {
-			instance = new MultiLabelSoftMargin();
+			instance = new MultiLabelSoftMargin(cudaManager);
 		}
 		return instance;
+	}
+	
+	public MultiLabelSoftMargin(Network network) {
+		setNet(network);
+		g = new Graph(getNet().tensorOP);
+	}
+	
+	public MultiLabelSoftMargin(CUDAManager cudaManager) {
+		g = new Graph(new TensorOP(cudaManager));
 	}
 	
 	public void initGraph(Tensor x,Tensor label) {

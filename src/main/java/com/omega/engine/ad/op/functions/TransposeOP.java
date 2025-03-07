@@ -1,15 +1,9 @@
 package com.omega.engine.ad.op.functions;
 
-import static jcuda.jcublas.cublasOperation.CUBLAS_OP_N;
-import static jcuda.jcublas.cublasOperation.CUBLAS_OP_T;
-
 import com.omega.common.data.Tensor;
-import com.omega.common.utils.RandomUtils;
 import com.omega.engine.ad.Tape;
 import com.omega.engine.ad.op.FunctionOP;
 import com.omega.engine.ad.op.OPType;
-import com.omega.engine.ad.op.TensorOP;
-import com.omega.engine.gpu.GPUOP;
 
 public class TransposeOP extends FunctionOP {
 
@@ -35,7 +29,7 @@ public class TransposeOP extends FunctionOP {
 		// TODO Auto-generated method stub
 		Tensor self = tape.getX();
 		Tensor y = tape.getOutput();
-		TensorOP.transpose(self, y);
+		tape.getTensorOP().transpose(self, y);
 		if(self.isRequiresGrad()) {
 			y.setRequiresGrad(true);
 		}
@@ -51,36 +45,9 @@ public class TransposeOP extends FunctionOP {
 		Tensor x = tape.getX();
 		if(x.isRequiresGrad()) {
 			Tensor dy = tape.getTmp();
-			TensorOP.transpose(delta, dy);
-			TensorOP.mulPlus(dy, 1.0f, x.getGrad());
+			tape.getTensorOP().transpose(delta, dy);
+			tape.getTensorOP().mulPlus(dy, 1.0f, x.getGrad());
 		}
-	}
-	
-	public static void main(String[] args) {
-		
-		testPermute();
-		
-	}
-	
-	public static void testPermute() {
-	    	
-	    	int batch = 2;
-	    	int m = 5;
-	    	int n = 2;
-	    	int k = 2;
-	    	
-	    	float[] a = RandomUtils.order(batch * m * n * k, 1, 0);
-	    	
-	    	Tensor at = new Tensor(batch, m, n, k, a, true);
-	    	
-	    	Tensor ct = new Tensor(batch, n, m, k, true);
-	    	
-	    	at.showDM();
-	    	
-	    	TensorOP.permute(at, ct, new int[] {0, 2, 1, 3});
-	    	
-	    	ct.showDM();
-	    	
 	}
 	
 }

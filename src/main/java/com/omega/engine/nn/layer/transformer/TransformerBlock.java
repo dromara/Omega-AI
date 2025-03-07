@@ -4,8 +4,6 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 
 import com.omega.common.data.Tensor;
-import com.omega.engine.ad.op.TensorOP;
-import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.normalization.LNLayer;
@@ -38,8 +36,6 @@ public class TransformerBlock extends Layer{
 	 */
 	private MLPLayer mlp;
 	private LNLayer ln2;
-	
-	private BaseKernel baseKernel;
 	
 	private Tensor tmp1;
 	
@@ -84,10 +80,6 @@ public class TransformerBlock extends Layer{
 		
 		this.mlp = new MLPLayer(embedDim, embedDim * 4, bias, network);
 		
-		if(baseKernel == null) {
-			baseKernel = new BaseKernel();
-		}
-
 	}
 	
 	@Override
@@ -126,13 +118,13 @@ public class TransformerBlock extends Layer{
 //		System.out.println("in2");
 		attn.forward(ln1.getOutput());
 //		System.out.println("in3");
-		TensorOP.add(attn.getOutput(), input, tmp1);
+		Tensor_OP().add(attn.getOutput(), input, tmp1);
 //		System.out.println("in4");
 		ln2.forward(tmp1);
 		
 		mlp.forward(ln2.getOutput());
 		
-		TensorOP.add(mlp.getOutput(), tmp1, tmp2);
+		Tensor_OP().add(mlp.getOutput(), tmp1, tmp2);
 		
 		this.output = tmp2;
 		
@@ -172,13 +164,13 @@ public class TransformerBlock extends Layer{
 		
 		ln2.back(mlp.diff);
 		
-		TensorOP.add(ln2.diff, delta, ln2.diff);
+		Tensor_OP().add(ln2.diff, delta, ln2.diff);
 		
 		attn.back(ln2.diff);
 		
 		ln1.back(attn.diff);
 		
-		TensorOP.add(ln1.diff, ln2.diff, tmp2);
+		Tensor_OP().add(ln1.diff, ln2.diff, tmp2);
 		
 		this.diff = tmp2;
 		

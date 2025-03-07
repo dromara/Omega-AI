@@ -4,7 +4,6 @@ import com.omega.common.data.Tensor;
 import com.omega.engine.ad.Tape;
 import com.omega.engine.ad.op.OPType;
 import com.omega.engine.ad.op.SignOP;
-import com.omega.engine.ad.op.TensorOP;
 
 public class SubOP extends SignOP{
 
@@ -32,9 +31,9 @@ public class SubOP extends SignOP{
 		Tensor other = tape.getY();
 		Tensor y = tape.getOutput();
 		if(other != null) {
-			TensorOP.sub(self, other, y);
+			tape.getTensorOP().sub(self, other, y);
 		}else {
-			TensorOP.sub(self, tape.getScalar(), y);
+			tape.getTensorOP().sub(self, tape.getScalar(), y);
 		}
 		if(self.isRequiresGrad() || other.isRequiresGrad()) {
 			y.setRequiresGrad(true);
@@ -48,10 +47,10 @@ public class SubOP extends SignOP{
 		Tensor x = tape.getX();
 		Tensor y = tape.getY();
 		if(x.isRequiresGrad()) {
-			TensorOP.mulPlus(delta, 1.0f, x.getGrad());
+			tape.getTensorOP().mulPlus(delta, 1.0f, x.getGrad());
 		}
 		if(y !=null && y.isRequiresGrad()) {
-			TensorOP.mulPlus(delta, -1.0f, y.getGrad());
+			tape.getTensorOP().mulPlus(delta, -1.0f, y.getGrad());
 		}
 	}
 

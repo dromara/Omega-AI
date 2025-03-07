@@ -14,6 +14,8 @@ import jcuda.runtime.cudaMemcpyKind;
 
 public class BaseKernel {
 	
+	private CUDAManager cudaManager;
+	
 	public int N = 0;
 	
 	public int BN = 0;
@@ -44,31 +46,33 @@ public class BaseKernel {
 	
 	private CUfunction unMul_grad_function;
 	
-	public BaseKernel() {
+	public BaseKernel(CUDAManager cudaManager) {
 		
-		copy_gpu_function = CUDAModules.getLocalFunctionByModule("BaseKernel.cu", "copy_kernel");
+		this.cudaManager = cudaManager;
 		
-		axpy_gpu_function = CUDAModules.getLocalFunctionByModule("BaseKernel.cu", "axpy_kernel");
+		copy_gpu_function = cudaManager.getLocalFunctionByModule("BaseKernel.cu", "copy_kernel");
 		
-		fill_gpu_function = CUDAModules.getLocalFunctionByModule("BaseKernel.cu", "fill_kernel");
+		axpy_gpu_function = cudaManager.getLocalFunctionByModule("BaseKernel.cu", "axpy_kernel");
 		
-		scal_add_function = CUDAModules.getLocalFunctionByModule("BaseKernel.cu", "scal_add_kernel");
+		fill_gpu_function = cudaManager.getLocalFunctionByModule("BaseKernel.cu", "fill_kernel");
 		
-		constrain_function = CUDAModules.getLocalFunctionByModule("BaseKernel.cu", "constrain_kernel");
+		scal_add_function = cudaManager.getLocalFunctionByModule("BaseKernel.cu", "scal_add_kernel");
 		
-		concat_channel_function = CUDAModules.getLocalFunctionByModule("BaseKernel.cu", "concat_channel_forward_kernel");
+		constrain_function = cudaManager.getLocalFunctionByModule("BaseKernel.cu", "constrain_kernel");
 		
-		concat_channel_backward_function = CUDAModules.getLocalFunctionByModule("BaseKernel.cu", "concat_channel_backward_kernel");
+		concat_channel_function = cudaManager.getLocalFunctionByModule("BaseKernel.cu", "concat_channel_forward_kernel");
 		
-		replace_channel_forward_function = CUDAModules.getLocalFunctionByModule("BaseKernel.cu", "replace_channel_forward_kernel");
+		concat_channel_backward_function = cudaManager.getLocalFunctionByModule("BaseKernel.cu", "concat_channel_backward_kernel");
 		
-		replace_channel_backward_function = CUDAModules.getLocalFunctionByModule("BaseKernel.cu", "replace_channel_backward_kernel");
+		replace_channel_forward_function = cudaManager.getLocalFunctionByModule("BaseKernel.cu", "replace_channel_forward_kernel");
 		
-		addMul_function = CUDAModules.getLocalFunctionByModule("BaseKernel.cu", "add_mul_kernel");
+		replace_channel_backward_function = cudaManager.getLocalFunctionByModule("BaseKernel.cu", "replace_channel_backward_kernel");
 		
-		unMul_function = CUDAModules.getLocalFunctionByModule("BaseKernel.cu", "un_mul_kernel");
+		addMul_function = cudaManager.getLocalFunctionByModule("BaseKernel.cu", "add_mul_kernel");
 		
-		unMul_grad_function = CUDAModules.getLocalFunctionByModule("BaseKernel.cu", "un_mul_grad_kernel");
+		unMul_function = cudaManager.getLocalFunctionByModule("BaseKernel.cu", "un_mul_kernel");
+		
+		unMul_grad_function = cudaManager.getLocalFunctionByModule("BaseKernel.cu", "un_mul_grad_kernel");
 		
 	}
 	
@@ -77,7 +81,7 @@ public class BaseKernel {
 		try {
 
 			if(concat_channel_function == null) {
-				concat_channel_function = CUDAModules.getLocalFunctionByModule("BaseKernel.cu", "concat_channel_forward_kernel");
+				concat_channel_function = getCudaManager().getLocalFunctionByModule("BaseKernel.cu", "concat_channel_forward_kernel");
 			}
 			
 			/**
@@ -115,7 +119,7 @@ public class BaseKernel {
 		try {
 
 			if(concat_channel_backward_function == null) {
-				concat_channel_backward_function = CUDAModules.getLocalFunctionByModule("BaseKernel.cu", "concat_channel_backward_kernel");
+				concat_channel_backward_function = getCudaManager().getLocalFunctionByModule("BaseKernel.cu", "concat_channel_backward_kernel");
 			}
 			
 			/**
@@ -153,7 +157,7 @@ public class BaseKernel {
 		try {
 
 			if(replace_channel_forward_function == null) {
-				replace_channel_forward_function = CUDAModules.getLocalFunctionByModule("BaseKernel.cu", "replace_channel_forward_kernel");
+				replace_channel_forward_function = getCudaManager().getLocalFunctionByModule("BaseKernel.cu", "replace_channel_forward_kernel");
 			}
 			
 			/**
@@ -191,7 +195,7 @@ public class BaseKernel {
 		try {
 
 			if(replace_channel_forward_function == null) {
-				replace_channel_forward_function = CUDAModules.getLocalFunctionByModule("BaseKernel.cu", "replace_channel_forward_kernel");
+				replace_channel_forward_function = getCudaManager().getLocalFunctionByModule("BaseKernel.cu", "replace_channel_forward_kernel");
 			}
 			
 			/**
@@ -229,7 +233,7 @@ public class BaseKernel {
 		try {
 
 			if(replace_channel_backward_function == null) {
-				replace_channel_backward_function = CUDAModules.getLocalFunctionByModule("BaseKernel.cu", "replace_channel_backward_kernel");
+				replace_channel_backward_function = getCudaManager().getLocalFunctionByModule("BaseKernel.cu", "replace_channel_backward_kernel");
 			}
 			
 			/**
@@ -266,7 +270,7 @@ public class BaseKernel {
 		try {
 
 			if(replace_channel_backward_function == null) {
-				replace_channel_backward_function = CUDAModules.getLocalFunctionByModule("BaseKernel.cu", "replace_channel_backward_kernel");
+				replace_channel_backward_function = getCudaManager().getLocalFunctionByModule("BaseKernel.cu", "replace_channel_backward_kernel");
 			}
 			
 			/**
@@ -303,7 +307,7 @@ public class BaseKernel {
 		try {
 
 			if(constrain_function == null) {
-				constrain_function = CUDAModules.getLocalFunctionByModule("BaseKernel.cu", "constrain_kernel");
+				constrain_function = getCudaManager().getLocalFunctionByModule("BaseKernel.cu", "constrain_kernel");
 			}
 			
 			/**
@@ -335,7 +339,7 @@ public class BaseKernel {
 		try {
 
 			if(constrain_function == null) {
-				constrain_function = CUDAModules.getLocalFunctionByModule("BaseKernel.cu", "constrain_kernel");
+				constrain_function = getCudaManager().getLocalFunctionByModule("BaseKernel.cu", "constrain_kernel");
 			}
 			
 			/**
@@ -367,7 +371,7 @@ public class BaseKernel {
 		try {
 
 			if(fill_gpu_function == null) {
-				fill_gpu_function = CUDAModules.getLocalFunctionByModule("BaseKernel.cu", "fill_kernel");
+				fill_gpu_function = getCudaManager().getLocalFunctionByModule("BaseKernel.cu", "fill_kernel");
 			}
 			
 			/**
@@ -432,7 +436,7 @@ public class BaseKernel {
 		try {
 			
 			if(axpy_gpu_function == null) {
-				axpy_gpu_function = CUDAModules.getLocalFunctionByModule("BaseKernel.cu", "axpy_kernel");
+				axpy_gpu_function = getCudaManager().getLocalFunctionByModule("BaseKernel.cu", "axpy_kernel");
 			}
 			
 			/**
@@ -468,7 +472,7 @@ public class BaseKernel {
 		try {
 			
 			if(copy_gpu_function == null) {
-				copy_gpu_function = CUDAModules.getLocalFunctionByModule("BaseKernel.cu", "copy_kernel");
+				copy_gpu_function = getCudaManager().getLocalFunctionByModule("BaseKernel.cu", "copy_kernel");
 			}
 			
 			Pointer kernelParameter = Pointer.to(
@@ -500,7 +504,7 @@ public class BaseKernel {
 		try {
 			
 			if(copy_gpu_function == null) {
-				copy_gpu_function = CUDAModules.getLocalFunctionByModule("BaseKernel.cu", "copy_kernel");
+				copy_gpu_function = getCudaManager().getLocalFunctionByModule("BaseKernel.cu", "copy_kernel");
 			}
 			
 			Pointer kernelParameter = Pointer.to(
@@ -532,7 +536,7 @@ public class BaseKernel {
 		try {
 			
 			if(copy_gpu_function == null) {
-				copy_gpu_function = CUDAModules.getLocalFunctionByModule("BaseKernel.cu", "copy_kernel");
+				copy_gpu_function = getCudaManager().getLocalFunctionByModule("BaseKernel.cu", "copy_kernel");
 			}
 			
 			Pointer kernelParameter = Pointer.to(
@@ -564,7 +568,7 @@ public class BaseKernel {
 		try {
 			
 			if(addMul_function == null) {
-				addMul_function = CUDAModules.getLocalFunctionByModule("BaseKernel.cu", "add_mul_kernel");
+				addMul_function = getCudaManager().getLocalFunctionByModule("BaseKernel.cu", "add_mul_kernel");
 			}
 			
 			/**
@@ -599,7 +603,7 @@ public class BaseKernel {
 		try {
 			
 			if(unMul_function == null) {
-				unMul_function = CUDAModules.getLocalFunctionByModule("BaseKernel.cu", "un_mul_kernel");
+				unMul_function = getCudaManager().getLocalFunctionByModule("BaseKernel.cu", "un_mul_kernel");
 			}
 			
 			/**
@@ -634,7 +638,7 @@ public class BaseKernel {
 		try {
 			
 			if(unMul_grad_function == null) {
-				unMul_grad_function = CUDAModules.getLocalFunctionByModule("BaseKernel.cu", "un_mul_grad_kernel");
+				unMul_grad_function = getCudaManager().getLocalFunctionByModule("BaseKernel.cu", "un_mul_grad_kernel");
 			}
 			
 			/**
@@ -688,6 +692,10 @@ public class BaseKernel {
 		if(code != cudaError.cudaSuccess) {
 			System.err.println("Error code "+code+":"+cudaError.stringFor(code));
 		}
+	}
+
+	public CUDAManager getCudaManager() {
+		return cudaManager;
 	}
 	
 }

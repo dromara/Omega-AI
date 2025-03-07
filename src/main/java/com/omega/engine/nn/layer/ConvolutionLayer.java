@@ -7,7 +7,6 @@ import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.active.ActiveType;
-import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.gpu.cudnn.ConvCudnnKernel;
 import com.omega.engine.nn.layer.gpu.BiasKernel;
 import com.omega.engine.nn.layer.gpu.ConvBaseKernel;
@@ -257,12 +256,12 @@ public class ConvolutionLayer extends Layer {
 		}
 		if(kernel == null){
 			if(this.network.CUDNN) {
-				kernel = new ConvCudnnKernel(this.network, channel, height, width, kernelNum, kHeight, kWidth, stride, padding);
+				kernel = new ConvCudnnKernel(this.network, channel, height, width, kernelNum, kHeight, kWidth, stride, padding, cuda());
 			}else {
-				kernel = new ConvKernel(channel, height, width, kernelNum, kHeight, kWidth, stride, padding);
+				kernel = new ConvKernel(channel, height, width, kernelNum, kHeight, kWidth, stride, padding, cuda());
 			}
 			if(this.hasBias) {
-				biasKernel = new BiasKernel();
+				biasKernel = new BiasKernel(cuda());
 			} 
 		}
 	}
@@ -275,12 +274,12 @@ public class ConvolutionLayer extends Layer {
 		}
 		if(kernel == null){
 			if(this.network.CUDNN) {
-				kernel = new ConvCudnnKernel(this.network, channel, height, width, kernelNum, kHeight, kWidth, stride, padding);
+				kernel = new ConvCudnnKernel(this.network, channel, height, width, kernelNum, kHeight, kWidth, stride, padding, cuda());
 			}else {
-				kernel = new ConvKernel(channel, height, width, kernelNum, kHeight, kWidth, stride, padding);
+				kernel = new ConvKernel(channel, height, width, kernelNum, kHeight, kWidth, stride, padding, cuda());
 			}
 			if(this.hasBias) {
-				biasKernel = new BiasKernel();
+				biasKernel = new BiasKernel(cuda());
 			} 
 		}
 	}
@@ -643,9 +642,7 @@ public class ConvolutionLayer extends Layer {
 		
 		Tensor input = new Tensor(N, T, 1, E, data, true);
 		Tensor it = new Tensor(N, E, 1, T, true);
-		TensorOP.permute(input, it, new int[] {0, 3, 2, 1});
-		input = it;
-		input.showDM();
+		
 		
 		float[] delta_data = MatrixUtils.val(N * NC * T, 1.0f);
 		
@@ -654,6 +651,11 @@ public class ConvolutionLayer extends Layer {
 		CNN nn = new CNN(null);
 		nn.CUDNN = true;
 		nn.number = N;
+		
+		nn.tensorOP.permute(input, it, new int[] {0, 3, 2, 1});
+		input = it;
+		input.showDM();
+		
 		ConvolutionLayer conv1 = new ConvolutionLayer(E, NC, T, 1, 1, 1, 0, 1, true, nn);
 		
 		conv1.weight = new Tensor(NC, E, 1, 1, RandomUtils.order(NC * E, 0.1f, 0.1f), true);
@@ -675,7 +677,7 @@ public class ConvolutionLayer extends Layer {
 		conv1.diff.showDM();
 		
 		Tensor difft = new Tensor(N, T, 1, E, true);
-		TensorOP.permute(conv1.diff, difft, new int[] {0, 3, 2, 1});
+		nn.tensorOP.permute(conv1.diff, difft, new int[] {0, 3, 2, 1});
 		conv1.diff = difft;
 		conv1.diff.showDM();
 		

@@ -5,7 +5,6 @@ import java.io.RandomAccessFile;
 
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.RandomUtils;
-import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.nn.layer.EmbeddingIDLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -119,8 +118,8 @@ public class BertEmbeddingsLayer extends Layer{
 		
 		tokenTypeEmbeddings.forward(tokenIds);
 		
-		TensorOP.add(wordEmbeddings.getOutput(), positionEmbeddings.getOutput(), wordEmbeddings.getOutput());
-		TensorOP.add(wordEmbeddings.getOutput(), tokenTypeEmbeddings.getOutput(), wordEmbeddings.getOutput());
+		Tensor_OP().add(wordEmbeddings.getOutput(), positionEmbeddings.getOutput(), wordEmbeddings.getOutput());
+		Tensor_OP().add(wordEmbeddings.getOutput(), tokenTypeEmbeddings.getOutput(), wordEmbeddings.getOutput());
 
 		norm.forward(wordEmbeddings.getOutput());
 

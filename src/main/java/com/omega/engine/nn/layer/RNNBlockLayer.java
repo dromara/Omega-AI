@@ -96,7 +96,7 @@ public class RNNBlockLayer extends BaseRNNLayer{
 	public void initKernel() {
 		
 		if(kernel == null) {
-			kernel = new RNNCudnnKernelV8(time, layerNum, inputSize, hiddenSize, bidirectional, rnnMode, dropout, hasBias);
+			kernel = new RNNCudnnKernelV8(time, layerNum, inputSize, hiddenSize, bidirectional, rnnMode, dropout, hasBias, cuda());
 //			kernel = new RNNCudnnKernel(time, layerNum, inputSize, hiddenSize, bidirectional, rnnMode, dropout);
 		}
 

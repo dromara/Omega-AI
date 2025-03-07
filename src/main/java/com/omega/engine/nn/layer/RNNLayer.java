@@ -3,8 +3,6 @@ package com.omega.engine.nn.layer;
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.active.ActiveType;
-import com.omega.engine.ad.op.TensorOP;
-import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.active.ActiveFunctionLayer;
 import com.omega.engine.nn.layer.active.LeakyReluLayer;
 import com.omega.engine.nn.layer.active.ReluLayer;
@@ -39,8 +37,6 @@ public class RNNLayer extends Layer{
 	private Tensor h;
 	
 	private Tensor h_0;
-	
-	private BaseKernel baseKernel;
 	
 	public RNNLayer(int inputNum,int hiddenNum,int time,ActiveType activeType,boolean bias) {
 		this.time = time;
@@ -84,10 +80,6 @@ public class RNNLayer extends Layer{
 //		this.selfLayer.bias = new Tensor(1, 1, 1, hiddenSize, RandomUtils.val(this.hiddenSize, 0.2f), true);
 		
 		this.outputActive = createActiveLayer(activeType, selfLayer);
-		
-		if(baseKernel == null) {
-			baseKernel = new BaseKernel();
-		}
 		
 //		System.out.println(JsonUtils.toJson(this.inputLayer.weight.syncHost()));
 //		System.out.println(JsonUtils.toJson(this.inputLayer.bias.syncHost()));
@@ -166,11 +158,11 @@ public class RNNLayer extends Layer{
 					selfLayer.forward(this.h, batch, t - 1, t);
 				}
 
-				TensorOP.add(inputLayer.getOutput(), selfLayer.getOutput(), this.h, t * onceSize, onceSize);
+				Tensor_OP().add(inputLayer.getOutput(), selfLayer.getOutput(), this.h, t * onceSize, onceSize);
 				
 				outputActive.forward(this.h, batch, t);
 				
-				baseKernel.copy_gpu(outputActive.getOutput(), this.h, onceSize, t * onceSize, 1, t * onceSize, 1);
+				baseKernel().copy_gpu(outputActive.getOutput(), this.h, onceSize, t * onceSize, 1, t * onceSize, 1);
 				
 //				this.h = outputActive.output;
 				
@@ -197,7 +189,7 @@ public class RNNLayer extends Layer{
 		for(int t = time-1;t>=0;t--) {
 			
 			if(t < time - 1) {
-				baseKernel.axpy_gpu(selfLayer.diff, this.delta, onceSize, 1, t * onceSize, 1, t * onceSize, 1);
+				baseKernel().axpy_gpu(selfLayer.diff, this.delta, onceSize, 1, t * onceSize, 1, t * onceSize, 1);
 			}
 			
 			outputActive.back(this.delta, batch, t);

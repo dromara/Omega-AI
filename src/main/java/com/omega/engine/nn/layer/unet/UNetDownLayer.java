@@ -2,7 +2,6 @@ package com.omega.engine.nn.layer.unet;
 
 import com.omega.common.data.Tensor;
 import com.omega.engine.active.ActiveType;
-import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.DoubleConvLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -23,8 +22,6 @@ public class UNetDownLayer extends Layer{
 	
 	private DoubleConvLayer conv;
 	
-	private BaseKernel baseKernel;
-	
 	public UNetDownLayer(int channel,int oChannel,int height,int width,ActiveType activeType, Network network) {
 		this.network = network;
 		this.activeType = activeType;
@@ -40,10 +37,6 @@ public class UNetDownLayer extends Layer{
 		this.pooling = new PoolingLayer(channel, width, height, 2, 2, 2, PoolingType.MAX_POOLING, network);
 		
 		this.conv = new DoubleConvLayer(channel, oChannel, pooling.oHeight, pooling.oWidth, activeType, network);
-		
-		if(baseKernel == null) {
-			baseKernel = new BaseKernel();
-		}
 		
 		this.oHeight = this.conv.oHeight;
 		this.oWidth = this.conv.oWidth;

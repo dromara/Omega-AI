@@ -4,8 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.omega.common.data.Tensor;
-import com.omega.engine.ad.op.TensorOP;
-import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.ConvolutionTransposeLayer;
 import com.omega.engine.nn.layer.FullyLayer;
@@ -58,8 +56,6 @@ public class UNetUpBlockLayer extends Layer{
 	public List<ConvolutionLayer> residualInputs;
 	
 	public ConvolutionTransposeLayer upSampleConv;
-	
-	private BaseKernel baseKernel;
 	
 	private Tensor[] t_out;
 	
@@ -172,10 +168,6 @@ public class UNetUpBlockLayer extends Layer{
 			residualInputs.add(c);
 		}
 
-		if(baseKernel == null) {
-			baseKernel = new BaseKernel();
-		}
-
 	}
 
 	@Override
@@ -262,7 +254,7 @@ public class UNetUpBlockLayer extends Layer{
 			resnetSecond.get(i).forward(resnetFirst.get(i).getOutput());
 			residualInputs.get(i).forward(res_i);
 			
-			TensorOP.add(resnetSecond.get(i).getOutput(), residualInputs.get(i).getOutput(), res_out[i]);
+			Tensor_OP().add(resnetSecond.get(i).getOutput(), residualInputs.get(i).getOutput(), res_out[i]);
 			
 			x = res_out[i];
 			
@@ -309,7 +301,7 @@ public class UNetUpBlockLayer extends Layer{
 			
 //			tEmbLayers.get(i).getOutput().showDMByOffset(0, 100, "temb");
 			
-			TensorOP.add(r1, tEmbLayers.get(i).getOutput(), t_out[i], r1.height * r1.width);
+			Tensor_OP().add(r1, tEmbLayers.get(i).getOutput(), t_out[i], r1.height * r1.width);
 
 //			t_out[i].showDMByOffset(0, 100, "t_out[i]");
 			
@@ -317,7 +309,7 @@ public class UNetUpBlockLayer extends Layer{
 
 			residualInputs.get(i).forward(res_i);
 			
-			TensorOP.add(resnetSecond.get(i).getOutput(), residualInputs.get(i).getOutput(), res_out[i]);
+			Tensor_OP().add(resnetSecond.get(i).getOutput(), residualInputs.get(i).getOutput(), res_out[i]);
 			
 			x = res_out[i];
 			
@@ -368,7 +360,7 @@ public class UNetUpBlockLayer extends Layer{
 			
 //			tEmbLayers.get(i).getOutput().showDMByOffset(0, 100, "temb");
 			
-			TensorOP.add(r1, tEmbLayers.get(i).getOutput(), t_out[i], r1.height * r1.width);
+			Tensor_OP().add(r1, tEmbLayers.get(i).getOutput(), t_out[i], r1.height * r1.width);
 
 //			t_out[i].showDMByOffset(0, 100, "t_out[i]");
 			
@@ -376,7 +368,7 @@ public class UNetUpBlockLayer extends Layer{
 
 			residualInputs.get(i).forward(res_i);
 			
-			TensorOP.add(resnetSecond.get(i).getOutput(), residualInputs.get(i).getOutput(), res_out[i]);
+			Tensor_OP().add(resnetSecond.get(i).getOutput(), residualInputs.get(i).getOutput(), res_out[i]);
 			
 			x = res_out[i];
 			
@@ -446,9 +438,9 @@ public class UNetUpBlockLayer extends Layer{
 			
 			if(tEmbDim > 0) {
 				dt.clearGPU();
-				TensorOP.sum(d, dt, 2);
+				Tensor_OP().sum(d, dt, 2);
 				tEmbLayers.get(i).back(dt);
-				TensorOP.add(tDiff, tEmbLayers.get(i).diff, tDiff);
+				Tensor_OP().add(tDiff, tEmbLayers.get(i).diff, tDiff);
 			}
 
 			resnetFirst.get(i).back(d);
@@ -457,7 +449,7 @@ public class UNetUpBlockLayer extends Layer{
 			
 //			d.showDM("n-diff0");
 			
-			TensorOP.add(d, residualInputs.get(i).diff, d);
+			Tensor_OP().add(d, residualInputs.get(i).diff, d);
 			
 //			d.showDM("n-diff2");
 		}

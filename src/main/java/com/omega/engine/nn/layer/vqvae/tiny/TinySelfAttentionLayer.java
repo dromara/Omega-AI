@@ -9,10 +9,7 @@ import java.io.RandomAccessFile;
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
-import com.omega.engine.ad.op.TensorOP;
-import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAMemoryManager;
-import com.omega.engine.gpu.GPUOP;
 import com.omega.engine.gpu.cudnn.SoftmaxCudnnKernel;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
@@ -45,8 +42,6 @@ public class TinySelfAttentionLayer extends Layer{
 	public FullyLayer vLinerLayer;
 	
 	public FullyLayer oLinerLayer;
-	
-	private BaseKernel baseKernel;
 	
 	private AttentionKernel attentionKernel;
 	
@@ -114,16 +109,12 @@ public class TinySelfAttentionLayer extends Layer{
 		this.oLinerLayer = new FullyLayer(embedDim, embedDim, true, this.network);
 //		this.oLinerLayer.weight = new Tensor(1, 1, embedDim, embedDim, RandomUtils.order(this.embedDim * this.embedDim, 0.1f, 0.1f), true);
 
-		if(baseKernel == null) {
-			baseKernel = new BaseKernel();
-		}
-		
 		if(attentionKernel == null) {
-			attentionKernel = new AttentionKernel();
+			attentionKernel = new AttentionKernel(cuda());
 		}
 		
 		if(softmaxKernel == null) {
-			softmaxKernel = new SoftmaxCudnnKernel(time, 1, 1);
+			softmaxKernel = new SoftmaxCudnnKernel(time, 1, 1, cuda());
 		}
 
 	}
@@ -219,9 +210,9 @@ public class TinySelfAttentionLayer extends Layer{
 		Tensor k = this.kLinerLayer.getOutput().view(batchSize, time, headNum, dk);
 		Tensor v = this.vLinerLayer.getOutput().view(batchSize, time, headNum, dk);
 		
-		TensorOP.permute(q, qt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(k, kt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(v, vt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(q, qt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(k, kt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(v, vt, new int[] {0, 2, 1, 3});
 		
 		scaledDotProductAttention(qt, kt, vt);
 
@@ -244,9 +235,9 @@ public class TinySelfAttentionLayer extends Layer{
 		Tensor k = this.kLinerLayer.getOutput().view(batchSize, time, headNum, dk);
 		Tensor v = this.vLinerLayer.getOutput().view(batchSize, time, headNum, dk);
 		
-		TensorOP.permute(q, qt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(k, kt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(v, vt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(q, qt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(k, kt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(v, vt, new int[] {0, 2, 1, 3});
 		
 		scaledDotProductAttention(qt, kt, vt);
 
@@ -264,38 +255,38 @@ public class TinySelfAttentionLayer extends Layer{
 		
 		Tensor preatt = temp;
 		
-		GPUOP.getInstance().bmmEX(CUBLAS_OP_T, CUBLAS_OP_N, time, time, dk, 1.0f, key.getGpuData(), dk, time * dk, query.getGpuData(), dk, time * dk, 0.0f, preatt.getGpuData(), time, time * time, batchSize * headNum);
+		GPU_OP().bmmEX(CUBLAS_OP_T, CUBLAS_OP_N, time, time, dk, 1.0f, key.getGpuData(), dk, time * dk, query.getGpuData(), dk, time * dk, 0.0f, preatt.getGpuData(), time, time * time, batchSize * headNum);
 		
-		TensorOP.mul(preatt, d_k, preatt);
+		Tensor_OP().mul(preatt, d_k, preatt);
 		
 		softmaxKernel.softmax(preatt, attn, batchSize * headNum * time);
 
 		Tensor tmp = attn;
 		
 		Tensor vaccum = temp;
-		GPUOP.getInstance().bmmEX(CUBLAS_OP_N, CUBLAS_OP_N, dk, time, time, 1.0f, value.getGpuData(), dk, time * dk, tmp.getGpuData(), time, time * time, 0.0f, vaccum.getGpuData(), dk, time * dk, batchSize * headNum);
+		GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_N, dk, time, time, 1.0f, value.getGpuData(), dk, time * dk, tmp.getGpuData(), time, time * time, 0.0f, vaccum.getGpuData(), dk, time * dk, batchSize * headNum);
 	}
 
 //	public void scaledDotProductAttentionBackward() {
 //		
 //		Tensor dvaccum = temp;
 //	    // backward into datt
-//		GPUOP.getInstance().bmmEX(CUBLAS_OP_T, CUBLAS_OP_N, time, time, dk, 1.0f, vt.getGpuData(), dk, time * dk, dvaccum.getGpuData(), dk, time * dk, 0.0f, dattn.getGpuData(), time, time * time, batchSize * headNum);
+//		GPU_OP().bmmEX(CUBLAS_OP_T, CUBLAS_OP_N, time, time, dk, 1.0f, vt.getGpuData(), dk, time * dk, dvaccum.getGpuData(), dk, time * dk, 0.0f, dattn.getGpuData(), time, time * time, batchSize * headNum);
 //		
 //		// backward into dv
-//		GPUOP.getInstance().bmmEX(CUBLAS_OP_N, CUBLAS_OP_T, dk, time, time, 1.0f, dvaccum.getGpuData(), dk, time * dk, attn.getGpuData(), time, time * time, 0.0f, dqkvt.getGpuData(), dk, time * dk, batchSize * headNum);
+//		GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_T, dk, time, time, 1.0f, dvaccum.getGpuData(), dk, time * dk, attn.getGpuData(), time, time * time, 0.0f, dqkvt.getGpuData(), dk, time * dk, batchSize * headNum);
 //
 //		// backward into preatt
 //		softmaxKernel.softmax_backward(attn, dattn, dattn);
 //		float d_k = (float) (1.0f / Math.sqrt(dk));
-//		TensorOP.mul(dattn, d_k, dattn);
+//		Tensor_OP().mul(dattn, d_k, dattn);
 //		Tensor dpreatt = dattn;
 //
 //		// backward into q
-//		GPUOP.getInstance().bmmEX(CUBLAS_OP_N, CUBLAS_OP_N, dk, time, time, 1.0f, kt.getGpuData(), dk, time * dk, dpreatt.getGpuData(), time, time * time, 0.0f, dqt.getGpuData(), dk, time * dk, batchSize * headNum);
+//		GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_N, dk, time, time, 1.0f, kt.getGpuData(), dk, time * dk, dpreatt.getGpuData(), time, time * time, 0.0f, dqt.getGpuData(), dk, time * dk, batchSize * headNum);
 //		
 //		// backward into k
-//		GPUOP.getInstance().bmmEX(CUBLAS_OP_N, CUBLAS_OP_T, dk, time, time, 1.0f, qt.getGpuData(), dk, time * dk, dpreatt.getGpuData(), time, time * time, 0.0f, dkt.getGpuData(), dk, time * dk, batchSize * headNum);
+//		GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_T, dk, time, time, 1.0f, qt.getGpuData(), dk, time * dk, dpreatt.getGpuData(), time, time * time, 0.0f, dkt.getGpuData(), dk, time * dk, batchSize * headNum);
 //	}
 
 	@Override
@@ -314,37 +305,37 @@ public class TinySelfAttentionLayer extends Layer{
 		
 		Tensor dvaccum = temp;
 	    // backward into datt
-		GPUOP.getInstance().bmmEX(CUBLAS_OP_T, CUBLAS_OP_N, time, time, dk, 1.0f, vt.getGpuData(), dk, time * dk, dvaccum.getGpuData(), dk, time * dk, 0.0f, dattn.getGpuData(), time, time * time, batchSize * headNum);
+		GPU_OP().bmmEX(CUBLAS_OP_T, CUBLAS_OP_N, time, time, dk, 1.0f, vt.getGpuData(), dk, time * dk, dvaccum.getGpuData(), dk, time * dk, 0.0f, dattn.getGpuData(), time, time * time, batchSize * headNum);
 		
 		// backward into preatt
 		softmaxKernel.softmax_backward(attn, dattn, dattn);
 		float d_k = (float) (1.0f / Math.sqrt(dk));
-		TensorOP.mul(dattn, d_k, dattn);
+		Tensor_OP().mul(dattn, d_k, dattn);
 		Tensor dpreatt = dattn;
 		
 		// backward into dv
-		GPUOP.getInstance().bmmEX(CUBLAS_OP_N, CUBLAS_OP_T, dk, time, time, 1.0f, dvaccum.getGpuData(), dk, time * dk, attn.getGpuData(), time, time * time, 0.0f, dqkvt.getGpuData(), dk, time * dk, batchSize * headNum);
+		GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_T, dk, time, time, 1.0f, dvaccum.getGpuData(), dk, time * dk, attn.getGpuData(), time, time * time, 0.0f, dqkvt.getGpuData(), dk, time * dk, batchSize * headNum);
 		vt.view(batchSize, time, headNum, dk);
-		TensorOP.permute(dqkvt, vt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(dqkvt, vt, new int[] {0, 2, 1, 3});
 		Tensor vDelta = vt.view(batchSize * time, 1, 1, headNum * dk);
 		this.vLinerLayer.back(vDelta);
 		
 		// backward into q
-		GPUOP.getInstance().bmmEX(CUBLAS_OP_N, CUBLAS_OP_N, dk, time, time, 1.0f, kt.getGpuData(), dk, time * dk, dpreatt.getGpuData(), time, time * time, 0.0f, dqkvt.getGpuData(), dk, time * dk, batchSize * headNum);
+		GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_N, dk, time, time, 1.0f, kt.getGpuData(), dk, time * dk, dpreatt.getGpuData(), time, time * time, 0.0f, dqkvt.getGpuData(), dk, time * dk, batchSize * headNum);
 		qt.view(batchSize, time, headNum, dk);
-		TensorOP.permute(dqkvt, qt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(dqkvt, qt, new int[] {0, 2, 1, 3});
 		Tensor qDelta = qt.view(batchSize * time, 1, 1, headNum * dk);
 		this.qLinerLayer.back(qDelta);
 		
 		// backward into k
-		GPUOP.getInstance().bmmEX(CUBLAS_OP_N, CUBLAS_OP_T, dk, time, time, 1.0f, qt.getGpuData(), dk, time * dk, dpreatt.getGpuData(), time, time * time, 0.0f, dqkvt.getGpuData(), dk, time * dk, batchSize * headNum);
+		GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_T, dk, time, time, 1.0f, qt.getGpuData(), dk, time * dk, dpreatt.getGpuData(), time, time * time, 0.0f, dqkvt.getGpuData(), dk, time * dk, batchSize * headNum);
 		kt.view(batchSize, time, headNum, dk);
-		TensorOP.permute(dqkvt, kt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(dqkvt, kt, new int[] {0, 2, 1, 3});
 		Tensor kDelta = kt.view(batchSize * time, 1, 1, headNum * dk);
 		this.kLinerLayer.back(kDelta);
 		
-		TensorOP.add(this.qLinerLayer.diff, this.kLinerLayer.diff, this.qLinerLayer.diff);
-		TensorOP.add(this.qLinerLayer.diff, this.vLinerLayer.diff, this.qLinerLayer.diff);
+		Tensor_OP().add(this.qLinerLayer.diff, this.kLinerLayer.diff, this.qLinerLayer.diff);
+		Tensor_OP().add(this.qLinerLayer.diff, this.vLinerLayer.diff, this.qLinerLayer.diff);
 		
 		this.diff = this.qLinerLayer.diff;
 		

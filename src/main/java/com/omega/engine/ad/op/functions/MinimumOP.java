@@ -4,7 +4,6 @@ import com.omega.common.data.Tensor;
 import com.omega.engine.ad.Tape;
 import com.omega.engine.ad.op.FunctionOP;
 import com.omega.engine.ad.op.OPType;
-import com.omega.engine.ad.op.TensorOP;
 
 /**
  * MinimumOP
@@ -36,7 +35,7 @@ public class MinimumOP extends FunctionOP{
 		Tensor self = tape.getX();
 		Tensor other = tape.getY();
 		Tensor y = tape.getOutput();
-		TensorOP.minimum(self, other, y);
+		tape.getTensorOP().minimum(self, other, y);
 		if(self.isRequiresGrad()) {
 			y.setRequiresGrad(true);
 		}
@@ -50,13 +49,13 @@ public class MinimumOP extends FunctionOP{
 		Tensor y = tape.getY();
 		if(x.isRequiresGrad()) {
 			Tensor dy = tape.getTmp();
-			TensorOP.minimum_back(x, y, dy);
-			TensorOP.mulPlus(delta, dy, x.getGrad());
+			tape.getTensorOP().minimum_back(x, y, dy);
+			tape.getTensorOP().mulPlus(delta, dy, x.getGrad());
 		}
 		if(y != null && y.isRequiresGrad()) {
 			Tensor dy = tape.getTmp();
-			TensorOP.maximum_back(x, y, dy);
-			TensorOP.mulPlus(delta, dy, y.getGrad());
+			tape.getTensorOP().maximum_back(x, y, dy);
+			tape.getTensorOP().mulPlus(delta, dy, y.getGrad());
 		}
 	}
 

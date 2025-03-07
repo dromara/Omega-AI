@@ -64,7 +64,7 @@ public class DiffusionUNetCond extends Network {
 	public int height;
 	
 	public DiffusionUNetCond(LossType lossType,UpdaterType updater,int inChannel,int width,int height,int convOutChannels,int headNum,int[] downChannels,int[] midChannels,boolean[] downSamples,int numDowns,int numMids,int numUps,int timeSteps,int tEmbDim,boolean[] attns) {
-		this.lossFunction = LossFactory.create(lossType);
+		this.lossFunction = LossFactory.create(lossType, this);
 		this.updater = updater;
 		this.inChannel = inChannel;
 		this.width = width;
@@ -87,7 +87,7 @@ public class DiffusionUNetCond extends Network {
 	}
 	
 	public DiffusionUNetCond(LossType lossType,UpdaterType updater,int inChannel,int width,int height,int convOutChannels,int headNum,int[] downChannels,int[] midChannels,boolean[] downSamples,int numDowns,int numMids,int numUps,int timeSteps,int tEmbDim,int textEmbedDim,int maxContextLen,boolean hasCond,boolean[] attns) {
-		this.lossFunction = LossFactory.create(lossType);
+		this.lossFunction = LossFactory.create(lossType, this);
 		this.updater = updater;
 		this.inChannel = inChannel;
 		this.width = width;
@@ -296,6 +296,18 @@ public class DiffusionUNetCond extends Network {
 	public void loadModel(RandomAccessFile inputStream) throws IOException {
 //		unet.loadModel(inputStream);
 		System.out.println("tail load success...");
+	}
+
+	@Override
+	public void putParamters() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void putParamterGrads() {
+		// TODO Auto-generated method stub
+		
 	}
 	
 }

@@ -1,7 +1,6 @@
 package com.omega.engine.nn.layer;
 
 import com.omega.common.data.Tensor;
-import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.active.gpu.SigmodKernel;
 
 /**
@@ -14,8 +13,6 @@ import com.omega.engine.nn.layer.active.gpu.SigmodKernel;
 public class YoloLayer extends Layer {
 	
 	private SigmodKernel kernel;
-	
-	private BaseKernel baseKernel;
 	
 	private Layer preLayer;
 	
@@ -83,14 +80,10 @@ public class YoloLayer extends Layer {
 			this.oWidth = this.width;
 		}
 
-		if(baseKernel == null) {
-			baseKernel = new BaseKernel();
-		}
-
 		if(this.active == 1) {
 
 			if(kernel == null) {
-				kernel = new SigmodKernel();
+				kernel = new SigmodKernel(cuda());
 			}
 
 		}
@@ -125,7 +118,7 @@ public class YoloLayer extends Layer {
 	@Override
 	public void output() {
 		// TODO Auto-generated method stub
-		baseKernel.copy_gpu(input, output, input.dataLength, 1, 1);
+		baseKernel().copy_gpu(input, output, input.dataLength, 1, 1);
 		
 		for(int b = 0;b<this.input.number;b++) {
 			for(int n = 0;n<bbox_num;n++) {
@@ -137,7 +130,7 @@ public class YoloLayer extends Layer {
 					kernel.forward(input, output, index2, (1+class_number) * input.width * input.height);
 				}
 				
-				baseKernel.scal_add_gpu(output, 2 * input.width * input.height, scaleXY, -0.5f*(scaleXY - 1), index, 1);
+				baseKernel().scal_add_gpu(output, 2 * input.width * input.height, scaleXY, -0.5f*(scaleXY - 1), index, 1);
 				
 			}
 		}

@@ -28,7 +28,7 @@ public class CNN extends Network {
 	}
 	
 	public CNN(LossType lossType,UpdaterType updater) {
-		this.lossFunction = LossFactory.create(lossType);
+		this.lossFunction = LossFactory.create(lossType, this);
 		this.updater = updater;
 	}
 
@@ -185,6 +185,18 @@ public class CNN extends Network {
 			
 		}
 		JCuda.cudaDeviceSynchronize();
+	}
+
+	@Override
+	public void putParamters() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void putParamterGrads() {
+		// TODO Auto-generated method stub
+		
 	}
 
 }

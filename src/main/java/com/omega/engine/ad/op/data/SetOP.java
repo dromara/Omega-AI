@@ -5,7 +5,6 @@ import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.ad.Tape;
 import com.omega.engine.ad.op.OP;
 import com.omega.engine.ad.op.OPType;
-import com.omega.engine.ad.op.gpu.OPKernel;
 
 /**
  * 获取指定向量数据
@@ -35,7 +34,7 @@ public class SetOP extends OP{
 	public Tensor forward(Tape tape) {
 		Tensor self = tape.getX();
 		Tensor y = tape.getY();
-		setByPosition(self, y, tape.getPosition());
+		setByPosition(self, y, tape.getPosition(), tape);
 		if(self.isRequiresGrad()) {
 			y.setRequiresGrad(true);
 		}
@@ -47,17 +46,17 @@ public class SetOP extends OP{
 		// TODO Auto-generated method stub
 		Tensor y = tape.getY();
 		if(y.isRequiresGrad()) {
-			addByPosition(y.getGrad(), delta, tape.getPosition());
+			addByPosition(y.getGrad(), delta, tape.getPosition(), tape);
 		}
 	}
 	
-	public void addByPosition(Tensor a,Tensor b,int[] position) {
+	public void addByPosition(Tensor a,Tensor b,int[] position, Tape tape) {
 		int dims = position[0];
 		int start = position[1];
 		if(a.isHasGPU()) {
 			switch (dims) {
 			case 0:
-				OPKernel.getInstance().axpy_gpu(b, a, start * a.channel * a.height * a.width, 0);
+				tape.getTensorOP().op.axpy_gpu(b, a, start * a.channel * a.height * a.width, 0);
 				break;
 			}
 		}else {
@@ -69,14 +68,14 @@ public class SetOP extends OP{
 		}
 	}
 	
-	public void setByPosition(Tensor org,Tensor target,int[] position) {
+	public void setByPosition(Tensor org,Tensor target,int[] position, Tape tape) {
 		
 		int dims = position[0];
 		int start = position[1];
 		
 		switch (dims) {
 		case 0:
-			setByNumber(org, target, start);
+			setByNumber(org, target, start, tape);
 			break;
 		case 1:
 
@@ -87,12 +86,12 @@ public class SetOP extends OP{
 		
 	}
 
-	public void setByNumber(Tensor org,Tensor target,int start) {
+	public void setByNumber(Tensor org,Tensor target,int start, Tape tape) {
 		
 		assert org.getNumber() >= (start - 1);
 		
 		if(org.isHasGPU()) {
-			OPKernel.getInstance().copy_gpu(target, org, 0, start * target.channel * target.height * target.width);
+			tape.getTensorOP().op.copy_gpu(target, org, 0, start * target.channel * target.height * target.width);
 		}else {
 			System.arraycopy(target.data, 0, org.data, start * target.channel * target.height * target.width, target.dataLength);
 		}

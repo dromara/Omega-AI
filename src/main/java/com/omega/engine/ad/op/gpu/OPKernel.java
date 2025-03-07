@@ -5,10 +5,9 @@ import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 import java.io.Serializable;
 
 import com.omega.common.data.Tensor;
-import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.gpu.BaseKernel;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
-import com.omega.engine.gpu.CUDAModules;
 
 import jcuda.Pointer;
 import jcuda.Sizeof;
@@ -170,155 +169,150 @@ public class OPKernel extends BaseKernel implements Serializable{
 	
 	private CUfunction mean_back_function;
 	
-	public OPKernel() {
+	public OPKernel(CUDAManager cudaManager) {
 		
-		fill_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "fill_kernel");
+		super(cudaManager);
 		
-		axpy_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "axpy_kernel"); 
+		fill_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "fill_kernel");
 		
-		copy_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "copy_kernel");
+		axpy_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "axpy_kernel"); 
 		
-		copy_number_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "copy_number_kernel");
+		copy_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "copy_kernel");
 		
-		copy_channel_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "copy_channel_kernel");
+		copy_number_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "copy_number_kernel");
 		
-		add_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "add_kernel");
+		copy_channel_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "copy_channel_kernel");
 		
-		add_axis_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "add_axis_kernel");
+		add_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "add_kernel");
 		
-		add_axis_function2 = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "add_axis_kernel2");
+		add_axis_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "add_axis_kernel");
 		
-		add_scalar_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "add_scalar_kernel");
+		add_axis_function2 = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "add_axis_kernel2");
 		
-		add_number_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "add_number_kernel");
+		add_scalar_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "add_scalar_kernel");
 		
-		add_channel_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "add_channel_kernel");
+		add_number_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "add_number_kernel");
+		
+		add_channel_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "add_channel_kernel");
 
-		sub_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "sub_kernel");
+		sub_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "sub_kernel");
 		
-		sub_axis_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "sub_axis_kernel");
+		sub_axis_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "sub_axis_kernel");
 		
-		sub_scalar_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "sub_scalar_kernel");
+		sub_scalar_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "sub_scalar_kernel");
 		
-		scalar_sub_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "scalar_sub_kernel"); 
+		scalar_sub_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "scalar_sub_kernel"); 
 		
-		mul_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "mul_kernel");
+		mul_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "mul_kernel");
 		
-		mul_scalar_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "mul_scalar_kernel");
+		mul_scalar_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "mul_scalar_kernel");
 		
-		mul_plus_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "mul_plus_kernel");
+		mul_plus_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "mul_plus_kernel");
 		
-		mul_plus_scalar_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "mul_plus_scalar_kernel");
+		mul_plus_scalar_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "mul_plus_scalar_kernel");
 		
-		mul_plus_scalar_axis_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "mul_plus_scalar_axis_kernel");
+		mul_plus_scalar_axis_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "mul_plus_scalar_axis_kernel");
 		
-		div_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "div_kernel");
+		div_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "div_kernel");
 		
-		div_axis_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "div_axis_kernel");
+		div_axis_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "div_axis_kernel");
 		
-		div_scalar_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "div_scalar_kernel");
+		div_scalar_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "div_scalar_kernel");
 		
-		scalar_div_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "scalar_div_kernel");
+		scalar_div_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "scalar_div_kernel");
 		
-		div_plus_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "div_plus_kernel");
+		div_plus_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "div_plus_kernel");
 		
-		div_plus_axis_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "div_plus_axis_kernel");
+		div_plus_axis_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "div_plus_axis_kernel");
 		
-		div_plus_scalar_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "div_plus_scalar_kernel");
+		div_plus_scalar_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "div_plus_scalar_kernel");
 		
-		scalar_plus_div_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "scalar_plus_div_kernel");
+		scalar_plus_div_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "scalar_plus_div_kernel");
 		
-		div_bGrad_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "div_bGrad_kernel");
+		div_bGrad_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "div_bGrad_kernel");
 		
-		div_bGrad_axis_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "div_bGrad_axis_kernel");
+		div_bGrad_axis_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "div_bGrad_axis_kernel");
 		
-		div_scalar_bGrad_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "div_scalar_bGrad_kernel");
+		div_scalar_bGrad_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "div_scalar_bGrad_kernel");
 		
-		pow_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "pow_kernel");
+		pow_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "pow_kernel");
 		
-		log_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "log_kernel");
+		log_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "log_kernel");
 		
-		exp_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "exp_kernel");
+		exp_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "exp_kernel");
 		
-		sin_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "sin_kernel");
+		sin_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "sin_kernel");
 		
-		cos_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "cos_kernel");
+		cos_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "cos_kernel");
 		
-		tan_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "tan_kernel");
+		tan_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "tan_kernel");
 		
-		atan_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "atan_kernel");
+		atan_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "atan_kernel");
 		
-		tan_back_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "tan_back_kernel");
+		tan_back_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "tan_back_kernel");
 		
-		atan_back_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "atan_back_kernel");
+		atan_back_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "atan_back_kernel");
 		
-		sum_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "sum_kernel");
+		sum_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "sum_kernel");
 		
-		sum_channel_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "sum_channel_kernel");
+		sum_channel_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "sum_channel_kernel");
 		
-		sum_height_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "sum_height_kernel");
+		sum_height_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "sum_height_kernel");
 		
-		sum_pow_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "sum_pow_kernel");
+		sum_pow_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "sum_pow_kernel");
 		
-		sum_pow_channel_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "sum_pow_channel_kernel");
+		sum_pow_channel_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "sum_pow_channel_kernel");
 		
-		sum_pow_height_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "sum_pow_height_kernel");
+		sum_pow_height_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "sum_pow_height_kernel");
 		
-		max_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "max_kernel");
+		max_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "max_kernel");
 		
-		max_channel_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "max_channel_kernel");
+		max_channel_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "max_channel_kernel");
 		
-		max_backward_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "max_backward_kernel");
+		max_backward_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "max_backward_kernel");
 		
-		max_channel_backward_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "max_channel_backward_kernel");
+		max_channel_backward_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "max_channel_backward_kernel");
 		
-		broadcast_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "broadcast_kernel");
+		broadcast_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "broadcast_kernel");
 		
-		broadcast_channel_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "broadcast_number_kernel");
+		broadcast_channel_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "broadcast_number_kernel");
 		
-		broadcast_plus_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "broadcast_plus_kernel");
+		broadcast_plus_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "broadcast_plus_kernel");
 		
-		broadcast_channel_plus_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "broadcast_number_plus_kernel");
+		broadcast_channel_plus_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "broadcast_number_plus_kernel");
 		
-		broadcast_row_plus_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "broadcast_row_plus_kernel");
+		broadcast_row_plus_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "broadcast_row_plus_kernel");
 		
-		clamp_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "clamp_kernel");
+		clamp_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "clamp_kernel");
 		
-		clamp_back_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "clamp_back_kernel");
+		clamp_back_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "clamp_back_kernel");
 		
-		maximum_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "maximum_kernel");
+		maximum_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "maximum_kernel");
 		
-		minimum_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "minimum_kernel");
+		minimum_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "minimum_kernel");
 		
-		maximum_back_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "maximum_back_kernel");
+		maximum_back_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "maximum_back_kernel");
 		
-		minimum_back_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "minimum_back_kernel");
+		minimum_back_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "minimum_back_kernel");
 		
-		transpose_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "transpose_kernel");
+		transpose_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "transpose_kernel");
 		
-		permute_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "permute_kernel");
+		permute_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "permute_kernel");
 		
-		sqrt_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "sqrt_kernel");
+		sqrt_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "sqrt_kernel");
 		
-		bool_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "bool_kernel");
+		bool_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "bool_kernel");
 		
-		expand_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "expand_kernel");
+		expand_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "expand_kernel");
 		
-		permute_add_gpu_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "permute_add_kernel");
+		permute_add_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "permute_add_kernel");
 		
-		onehot_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "one_hot_kernel");
+		onehot_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "one_hot_kernel");
 		
-		mean_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "mean_kernel");
+		mean_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "mean_kernel");
 		
-		mean_back_function = CUDAModules.getLocalFunctionByModule("OPKernel.cu", "mean_back_kernel");
+		mean_back_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "mean_back_kernel");
 		
-	}
-	
-	public static OPKernel getInstance() {
-		if(kernel == null) {
-			kernel = new OPKernel();
-		}
-		return kernel;
 	}
 	
 	public void fill_gpu(Tensor x,float val) {
@@ -1388,9 +1382,16 @@ public class OPKernel extends BaseKernel implements Serializable{
 		
 	}
 	
+	public int getAxis(Tensor a,Tensor b) {
+		if(a.getDataLength() == b.getDataLength()) {
+			return -1;
+		}
+		return 0;
+	}
+	
 	public void div_bGrad_gpu(Tensor a,Tensor b,Tensor c,Tensor y) {
 		
-		int axis = TensorOP.getAxis(a, y);
+		int axis = this.getAxis(a, y);
 		if(axis >= 0) {
 			div_bGrad_gpu(a, b, c, y, axis);
 			return;
@@ -2328,13 +2329,13 @@ public class OPKernel extends BaseKernel implements Serializable{
 			int[] strides_in = getStrides(x.shape());
 			int[] strides_out = getStrides(y.shape());
 			
-			Pointer permutes_p = CUDAMemoryManager.getPointer(permutes.length, Sizeof.INT);
+			Pointer permutes_p = this.getCudaManager().getMemoryManager().getCUPointer(permutes.length, Sizeof.INT);
 			JCuda.cudaMemcpy(permutes_p, Pointer.to(permutes), permutes.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
 			
-			Pointer sip = CUDAMemoryManager.getPointer(permutes.length, Sizeof.INT);
+			Pointer sip = this.getCudaManager().getMemoryManager().getCUPointer(permutes.length, Sizeof.INT);
 			JCuda.cudaMemcpy(sip, Pointer.to(strides_in), permutes.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
 			
-			Pointer sop = CUDAMemoryManager.getPointer(permutes.length, Sizeof.INT);
+			Pointer sop = this.getCudaManager().getMemoryManager().getCUPointer(permutes.length, Sizeof.INT);
 			JCuda.cudaMemcpy(sop, Pointer.to(strides_out), permutes.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
 			
 			/**
@@ -2375,13 +2376,13 @@ public class OPKernel extends BaseKernel implements Serializable{
 			int[] strides_in = getStrides(x.shape());
 			int[] strides_out = getStrides(y.shape());
 			
-			Pointer permutes_p = CUDAMemoryManager.getPointer(permutes.length, Sizeof.INT);
+			Pointer permutes_p = this.getCudaManager().getMemoryManager().getCUPointer(permutes.length, Sizeof.INT);
 			JCuda.cudaMemcpy(permutes_p, Pointer.to(permutes), permutes.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
 			
-			Pointer sip = CUDAMemoryManager.getPointer(permutes.length, Sizeof.INT);
+			Pointer sip = this.getCudaManager().getMemoryManager().getCUPointer(permutes.length, Sizeof.INT);
 			JCuda.cudaMemcpy(sip, Pointer.to(strides_in), permutes.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
 			
-			Pointer sop = CUDAMemoryManager.getPointer(permutes.length, Sizeof.INT);
+			Pointer sop = this.getCudaManager().getMemoryManager().getCUPointer(permutes.length, Sizeof.INT);
 			JCuda.cudaMemcpy(sop, Pointer.to(strides_out), permutes.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
 			
 			/**

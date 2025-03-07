@@ -1,8 +1,6 @@
 package com.omega.engine.nn.layer.unet;
 
 import com.omega.common.data.Tensor;
-import com.omega.engine.ad.op.TensorOP;
-import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -28,8 +26,6 @@ public class UNetFFNBlockLayer extends Layer{
 	
 	public FullyLayer linear2;
 	
-	private BaseKernel baseKernel;
-	
 	public UNetFFNBlockLayer(int channel,int height,int width,int mult, Network network) {
 		this.network = network;
 		this.mult = mult;
@@ -54,10 +50,6 @@ public class UNetFFNBlockLayer extends Layer{
 		act = new GeluLayer(linear1);
 		
 		linear2 = new FullyLayer(ow, iw, true, network);
-		
-		if(baseKernel == null) {
-			baseKernel = new BaseKernel();
-		}
 		
 	}
 
@@ -107,7 +99,7 @@ public class UNetFFNBlockLayer extends Layer{
 		
 		this.output.view(number * channel, 1, 1, width);
 		
-		TensorOP.add(input, linear2.getOutput(), this.output);
+		Tensor_OP().add(input, linear2.getOutput(), this.output);
 		
 		norm.getOutput().viewOrg();
 		
@@ -135,7 +127,7 @@ public class UNetFFNBlockLayer extends Layer{
 		
 		norm.back(linear1.diff);
 		
-		TensorOP.add(norm.diff, delta, delta);
+		Tensor_OP().add(norm.diff, delta, delta);
 		
 		delta.viewOrg();
 		

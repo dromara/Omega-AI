@@ -12,6 +12,7 @@ import com.omega.engine.ad.op.OPType;
 import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.ad.op.gpu.OPKernel;
 import com.omega.engine.gpu.CUDAMemoryManager;
+import com.omega.engine.parallel.ddp.distributed.SerializablePointer;
 
 import jcuda.Pointer;
 import jcuda.Sizeof;
@@ -44,6 +45,8 @@ public class Tensor implements Serializable{
 	public float[] data;
 	
 	private Pointer gpuData;
+	
+	private SerializablePointer shareGPU;
 	
 	public float[] once;
 	
@@ -196,6 +199,22 @@ public class Tensor implements Serializable{
 		if(hasGPU) {
 			gpuData = CUDAMemoryManager.getPointer(dataLength);
 			JCuda.cudaMemcpy(gpuData, Pointer.to(data), this.dataLength * (long)Sizeof.FLOAT, cudaMemcpyKind.cudaMemcpyHostToDevice);
+			JCuda.cudaDeviceSynchronize();
+		}
+	}
+	
+	public Tensor(int number,int channel,int height,int width,float[] data,boolean hasGPU,boolean share) {
+		this.number = number;
+		this.channel = channel;
+		this.height = height;
+		this.width = width;
+		this.dataLength = number * channel * height * width;
+		this.data = data;
+		this.orgShape = new int[] {number, channel, height, width};
+		this.setHasGPU(hasGPU);
+		if(hasGPU) {
+			setShareGPU(CUDAMemoryManager.getSharePointer(dataLength));
+			JCuda.cudaMemcpy(getShareGPU(), Pointer.to(data), this.dataLength * (long)Sizeof.FLOAT, cudaMemcpyKind.cudaMemcpyHostToDevice);
 			JCuda.cudaDeviceSynchronize();
 		}
 	}
@@ -721,7 +740,7 @@ public class Tensor implements Serializable{
 		}
 	}
 	
-	public void setGrad(Tensor grad,int[] position) {
+	public void setGrad(Tensor grad,int[] position,OPKernel kenel) {
 		
 		if(this.grad == null) {
 			this.grad = new Tensor(number, channel, height, width, this.hasGPU);
@@ -734,14 +753,14 @@ public class Tensor implements Serializable{
 		switch (dims) {
 		case 0:
 			if(isHasGPU()){
-				OPKernel.getInstance().copy_number_gpu(this.grad, grad, start, 1);
+				kenel.copy_number_gpu(this.grad, grad, start, 1);
 			}else {
 				setGradByNumber(grad.data, start, count);
 			}
 			break;
 		case 1:
 			if(isHasGPU()){
-				OPKernel.getInstance().copy_channel_gpu(this.grad, grad, start, 1);
+				kenel.copy_channel_gpu(this.grad, grad, start, 1);
 			}else {
 				setGradByChannel(grad.data, start, count);
 			}
@@ -752,9 +771,9 @@ public class Tensor implements Serializable{
 		
 	}
 	
-	public void zeroGrad() {
+	public void zeroGrad(OPKernel op) {
 		if(this.grad != null) {
-			this.grad.fill(0.0f);
+			this.grad.fill(0.0f, op);
 		}
 	}
 	
@@ -840,11 +859,11 @@ public class Tensor implements Serializable{
 		return g.OP(OPType.pow, this, 2.0f);
 	}
 	
-	public float norm() {
+	public float norm(TensorOP op) {
 		getTmpOnce().valueGPU(0);
-		TensorOP.pow(this, 2, getTmp());
-    	TensorOP.sum(getTmp(), getTmpOnce(), 0);
-    	TensorOP.sqrt(getTmpOnce(), getTmpOnce());
+		op.pow(this, 2, getTmp());
+		op.sum(getTmp(), getTmpOnce(), 0);
+		op.sqrt(getTmpOnce(), getTmpOnce());
 //    	System.out.println("sqrt:"+getTmpOnce().syncHost()[0]);
     	return getTmpOnce().syncHost()[0];
 	}
@@ -945,9 +964,9 @@ public class Tensor implements Serializable{
 		}
 	}
 	
-	public void fill(float val) {
+	public void fill(float val,OPKernel kernel) {
 		if(this.isHasGPU()) {
-			OPKernel.getInstance().fill_gpu(this, val);
+			kernel.fill_gpu(this, val);
 		}else {
 			MatrixUtils.val(this.data, val);
 		}
@@ -983,6 +1002,14 @@ public class Tensor implements Serializable{
 		}else {
 			return false;
 		}
+	}
+
+	public SerializablePointer getShareGPU() {
+		return shareGPU;
+	}
+
+	public void setShareGPU(SerializablePointer shareGPU) {
+		this.shareGPU = shareGPU;
 	}
 	
 //	public void backward() {

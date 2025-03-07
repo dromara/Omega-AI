@@ -25,33 +25,45 @@ public class LossFactory {
 	 * momentum
 	 * adam
 	 */
-	public static LossFunction create(LossType type) {
+	public static LossFunction create(LossType type,Network network) {
 		//square_loss,cross_entropy,softmax_with_cross_entropy
+		LossFunction lossFN = null;
 		switch (type) {
-		case MSE:
-			return new MSELoss();
-		case MSE_SUM:
-			return new MSESumLoss();
-		case BCE:
-			return new BCELoss();
-		case cross_entropy:
-			return new CrossEntropyLoss();
-		case softmax_with_cross_entropy:
-			return new CrossEntropyLoss2();
-		case softmax_with_cross_entropy_idx:
-			return new CrossEntropyLossIdx();
-		case yolo:
-			return new YoloLoss(1);
-		case yolov3:
-			return null;
-		case yolov7:
-			return null;
-		case multiLabel_soft_margin:
-			return new MultiLabelSoftMargin();
-		default:
-			return null;
+			case MSE:
+				lossFN = new MSELoss(network);
+				break;
+			case MSE_SUM:
+				lossFN = new MSESumLoss(network);
+				break;
+			case BCE:
+				lossFN = new BCELoss(network);
+				break;
+			case cross_entropy:
+				lossFN = new CrossEntropyLoss();
+				break;
+			case softmax_with_cross_entropy:
+				lossFN = new CrossEntropyLoss2(network);
+				break;
+			case softmax_with_cross_entropy_idx:
+				lossFN = new CrossEntropyLossIdx(network);
+				break;
+			case yolo:
+				lossFN = new YoloLoss(1);
+				break;
+			case yolov3:
+				break;
+			case yolov7:
+				break;
+			case multiLabel_soft_margin:
+				lossFN = new MultiLabelSoftMargin(network);
+				break;
+			default:
+				break;
 		}
-		
+		if(lossFN != null && lossFN.getNet() == null) {
+			lossFN.setNet(network);
+		}
+		return lossFN;
 	}
 	
 	/**
@@ -62,31 +74,42 @@ public class LossFactory {
 	 * momentum
 	 * adam
 	 */
-	public static LossFunction create(LossType type,int classNum) {
+	public static LossFunction create(LossType type,int classNum,Network network) {
 		//square_loss,cross_entropy,softmax_with_cross_entropy
+		LossFunction lossFN = null;
 		switch (type) {
 		case MSE:
-			return new MSELoss();
+			lossFN = new MSELoss(network);
+			break;
 		case BCE:
-			return new BCELoss();
+			lossFN = new BCELoss(network);
+			break;
 		case cross_entropy:
-			return new CrossEntropyLoss();
+			lossFN = new CrossEntropyLoss();
+			break;
 		case softmax_with_cross_entropy:
-			return new CrossEntropyLoss2();
+			lossFN = new CrossEntropyLoss2(network);
+			break;
 		case softmax_with_cross_entropy_idx:
-			return new CrossEntropyLossIdx();
+			lossFN = new CrossEntropyLossIdx(network);
+			break;
 		case yolo:
-			return new YoloLoss(classNum);
+			lossFN = new YoloLoss(classNum);
+			break;
 		case yolov3:
-			return null;
+			break;
 		case yolov7:
-			return null;
+			break;
 		case multiLabel_soft_margin:
-			return new MultiLabelSoftMargin();
+			lossFN = new MultiLabelSoftMargin(network);
+			break;
 		default:
-			return null;
+			break;
 		}
-		
+		if(lossFN != null && lossFN.getNet() == null) {
+			lossFN.setNet(network);
+		}
+		return lossFN;
 	}
 	
 	public static LossFunction[] create(LossType type,List<Layer> outputs,Network net) {
@@ -96,17 +119,19 @@ public class LossFactory {
 
 			switch (type) {
 			case MSE:
-				losses[i] = new MSELoss();
+				losses[i] = new MSELoss(net);
 				break;
 			case BCE:
-				losses[i] = new BCELoss();
+				losses[i] = new BCELoss(net);
+				break;
 			case cross_entropy:
 				losses[i] = new CrossEntropyLoss();
 				break;
 			case softmax_with_cross_entropy:
-				losses[i] = new CrossEntropyLoss2();
+				losses[i] = new CrossEntropyLoss2(net);
+				break;
 			case softmax_with_cross_entropy_idx:
-				losses[i] = new CrossEntropyLossIdx();
+				losses[i] = new CrossEntropyLossIdx(net);
 				break;
 			case yolo:
 				losses[i] = new YoloLoss(1);
@@ -124,13 +149,13 @@ public class LossFactory {
 				losses[i] = new YoloLoss7(yolo7.class_number, yolo7.bbox_num, yolo7.mask, yolo7.anchors, yolo7.network.getHeight(), yolo7.network.getWidth(), yolo7.maxBox, yolo7.total, yolo7.ignoreThresh, yolo7.truthThresh);
 				break;
 			case multiLabel_soft_margin:
-				losses[i] = new MultiLabelSoftMargin();
+				losses[i] = new MultiLabelSoftMargin(net);
 				break;
 			default:
 				break;
 			}
-			if(losses[i] != null) {
-				losses[i].net = net;
+			if(losses[i] != null && losses[i].getNet() == null) {
+				losses[i].setNet(net);
 			}
 		}
 		
@@ -144,19 +169,19 @@ public class LossFactory {
 
 			switch (type) {
 			case MSE:
-				losses[i] = new MSELoss();
+				losses[i] = new MSELoss(net);
 				break;
 			case BCE:
-				losses[i] = new BCELoss();
+				losses[i] = new BCELoss(net);
 				break;
 			case cross_entropy:
 				losses[i] = new CrossEntropyLoss();
 				break;
 			case softmax_with_cross_entropy:
-				losses[i] = new CrossEntropyLoss2();
+				losses[i] = new CrossEntropyLoss2(net);
 				break;
 			case softmax_with_cross_entropy_idx:
-				losses[i] = new CrossEntropyLossIdx();
+				losses[i] = new CrossEntropyLossIdx(net);
 				break;
 			case yolo:
 				losses[i] = new YoloLoss(classNum);
@@ -174,13 +199,13 @@ public class LossFactory {
 				losses[i] = new YoloLoss7(yolo7.class_number, yolo7.bbox_num, yolo7.mask, yolo7.anchors, yolo7.network.getHeight(), yolo7.network.getWidth(), yolo7.maxBox, yolo7.total, yolo7.ignoreThresh, yolo7.truthThresh);
 				break;
 			case multiLabel_soft_margin:
-				losses[i] = new MultiLabelSoftMargin();
+				losses[i] = new MultiLabelSoftMargin(net);
 				break;
 			default:
 				break;
 			}
-			if(losses[i] != null) {
-				losses[i].net = net;
+			if(losses[i] != null && losses[i].getNet() == null) {
+				losses[i].setNet(net);
 			}
 		}
 		

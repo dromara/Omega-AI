@@ -117,12 +117,12 @@ public class BNLayer extends NormalizationLayer {
 		
 		if(kernel == null) {
 			if(this.network.CUDNN) {
-				kernel = new BNCudnnKernel(this.getBnType(), channel, height, width, this.runingMean, this.runingVar);
+				kernel = new BNCudnnKernel(this.getBnType(), channel, height, width, this.runingMean, this.runingVar, cuda());
 			}else {
 				if(this.getBnType() == BNType.fully_bn) {
-					kernel = new BNKernel3(width, 1, 1, this.runingMean, this.runingVar);
+					kernel = new BNKernel3(width, 1, 1, this.runingMean, this.runingVar, cuda());
 				}else {
-					kernel = new BNKernel3(channel, height, width, this.runingMean, this.runingVar);
+					kernel = new BNKernel3(channel, height, width, this.runingMean, this.runingVar, cuda());
 				}
 			}
 		}
@@ -189,12 +189,12 @@ public class BNLayer extends NormalizationLayer {
 		
 		if(kernel == null) {
 			if(this.network.CUDNN) {
-				kernel = new BNCudnnKernel(this.getBnType(), channel, height, width, this.runingMean, this.runingVar);
+				kernel = new BNCudnnKernel(this.getBnType(), channel, height, width, this.runingMean, this.runingVar, cuda());
 			}else {
 				if(this.getBnType() == BNType.fully_bn) {
-					kernel = new BNKernel3(width, 1, 1, this.runingMean, this.runingVar);
+					kernel = new BNKernel3(width, 1, 1, this.runingMean, this.runingVar, cuda());
 				}else {
-					kernel = new BNKernel3(channel, height, width, this.runingMean, this.runingVar);
+					kernel = new BNKernel3(channel, height, width, this.runingMean, this.runingVar, cuda());
 				}
 			}
 		}

@@ -3,10 +3,9 @@ package com.omega.engine.nn.layer.active.gpu;
 import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 
 import com.omega.common.data.Tensor;
-import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
-import com.omega.engine.gpu.CUDAModules;
 
 import jcuda.Pointer;
 import jcuda.Sizeof;
@@ -32,7 +31,8 @@ public class GeluKernel extends BaseKernel{
 	
 	private Pointer backwardKernelParameters;
 	
-	public GeluKernel() {
+	public GeluKernel(CUDAManager cudaManager) {
+		super(cudaManager);
 		init();
 	}
 	
@@ -49,33 +49,33 @@ public class GeluKernel extends BaseKernel{
 
 			if(function == null) {
 
-				function = CUDAModules.getLocalFunctionByModule("activeFunction.cu", "gelu_forward");
+				function = getCudaManager().getLocalFunctionByModule("activeFunction.cu", "gelu_forward");
 				
 			}
 			
 			if(oldFunction == null) {
-				oldFunction = CUDAModules.getLocalFunctionByModule("activeFunction.cu", "gelu_old_forward");
+				oldFunction = getCudaManager().getLocalFunctionByModule("activeFunction.cu", "gelu_old_forward");
 			}
 			
 			if(oldHalfFunction == null) {
-				oldHalfFunction = CUDAModules.getLocalFunctionByModule("activeFunction.cu", "gelu_old_half_forward");
+				oldHalfFunction = getCudaManager().getLocalFunctionByModule("activeFunction.cu", "gelu_old_half_forward");
 			}
 			
 			if(function_back == null) {
 
-				function_back = CUDAModules.getLocalFunctionByModule("activeFunction.cu", "gelu_backward");
+				function_back = getCudaManager().getLocalFunctionByModule("activeFunction.cu", "gelu_backward");
 				
 			}
 			
 			if(fast_function == null) {
 
-				fast_function = CUDAModules.getLocalFunctionByModule("activeFunction.cu", "gelu_fwd_cuda");
+				fast_function = getCudaManager().getLocalFunctionByModule("activeFunction.cu", "gelu_fwd_cuda");
 				
 			}
 			
 			if(fast_function_back == null) {
 
-				fast_function_back = CUDAModules.getLocalFunctionByModule("activeFunction.cu", "gelu_bwd_cuda");
+				fast_function_back = getCudaManager().getLocalFunctionByModule("activeFunction.cu", "gelu_bwd_cuda");
 
 			}
 			
@@ -414,7 +414,9 @@ public class GeluKernel extends BaseKernel{
 	    	
 	    	Tensor output = new Tensor(N, C, H, W, true);
 	    	
-	    	GeluKernel k = new GeluKernel();
+	    	CUDAManager cudaManager = new CUDAManager(0);
+	    	
+	    	GeluKernel k = new GeluKernel(cudaManager);
 	    	
 	    	input.showDM();
 	    	

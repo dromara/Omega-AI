@@ -82,7 +82,7 @@ public class InstanceNormaliztionLayer extends NormalizationLayer {
 		
 		if(kernel == null) {
 			if(this.network.CUDNN) {
-				kernel = new InstanceNormalizationCudnnKernel(channel, height, width);
+				kernel = new InstanceNormalizationCudnnKernel(channel, height, width, cuda());
 			}
 		}
 		
@@ -318,7 +318,7 @@ public class InstanceNormaliztionLayer extends NormalizationLayer {
 		
 		if(kernel == null) {
 //			if(this.network.CUDNN) {
-				kernel = new InstanceNormalizationCudnnKernel(channel, height, width);
+				kernel = new InstanceNormalizationCudnnKernel(channel, height, width, cuda());
 //			}
 		}
 		

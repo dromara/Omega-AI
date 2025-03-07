@@ -73,10 +73,10 @@ public class PoolingLayer extends Layer {
 		
 		if(kernel == null) {
 			if(this.network.CUDNN) {
-				kernel = new PoolingCudnnKernel(poolingType, channel, height, width, oHeight, oWidth, pWidth, pHeight, stride, padding);
+				kernel = new PoolingCudnnKernel(poolingType, channel, height, width, oHeight, oWidth, pWidth, pHeight, stride, padding, cuda());
 //				kernel = new PoolingKernel(poolingType, channel, height, width, pHeight, pWidth, stride, padding);
 			}else {
-				kernel = new PoolingKernel(poolingType, channel, height, width, pHeight, pWidth, stride, padding);
+				kernel = new PoolingKernel(poolingType, channel, height, width, pHeight, pWidth, stride, padding, cuda());
 			}
 		}
 	}

@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 
 import com.omega.common.data.Tensor;
-import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.loss.LossFactory;
 import com.omega.engine.loss.LossType;
 import com.omega.engine.loss.gpu.HingeLossKernel;
@@ -41,7 +40,7 @@ public class PatchGANDiscriminator extends Network {
 	
 	
 	public PatchGANDiscriminator(LossType lossType,UpdaterType updater,int imageSize,int[] convChannels,int[] kernels,int[] strides,int[] paddings) {
-		this.lossFunction = LossFactory.create(lossType);
+		this.lossFunction = LossFactory.create(lossType, this);
 		this.imageSize = imageSize;
 		this.convChannels = convChannels;
 		this.kernels = kernels;
@@ -53,7 +52,7 @@ public class PatchGANDiscriminator extends Network {
 	
 	public void initLayers() {
 		
-		hingeLossKernel = new HingeLossKernel();
+		hingeLossKernel = new HingeLossKernel(cudaManager);
 		
 		this.inputLayer = new InputLayer(3, imageSize, imageSize);
 		
@@ -148,7 +147,7 @@ public class PatchGANDiscriminator extends Network {
 	}
 	
 	public void hingeGLoss(Tensor output,Tensor loss) {
-		TensorOP.mean(output, 0, loss);
+		tensorOP.mean(output, 0, loss);
 	}
 	
 	public void hingeDLoss(Tensor real,Tensor fake,Tensor loss) {
@@ -216,6 +215,18 @@ public class PatchGANDiscriminator extends Network {
 	
 	public void loadModel(RandomAccessFile inputStream) throws IOException {
 
+	}
+
+	@Override
+	public void putParamters() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void putParamterGrads() {
+		// TODO Auto-generated method stub
+		
 	}
 	
 }

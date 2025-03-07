@@ -4,6 +4,7 @@ import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
+import com.omega.engine.gpu.CUDAManager;
 
 /**
  * 路由层
@@ -13,8 +14,6 @@ import com.omega.engine.gpu.BaseKernel;
 public class RouteLayer extends Layer{
 	
 	private Layer[] layers;
-	
-	private BaseKernel kernel;
 	
 	private int groups = 1;
 	
@@ -66,9 +65,6 @@ public class RouteLayer extends Layer{
 //			this.output = new Tensor(number, oChannel, oHeight, oWidth, true);
 		}
 
-		if(kernel == null) {
-			kernel = new BaseKernel();
-		}
 	}
 
 	@Override
@@ -98,7 +94,7 @@ public class RouteLayer extends Layer{
 //			input.showDM("l"+l);
 			int part_input_size = input.getOnceSize() / groups;
 			for(int n = 0;n<this.number;n++) {
-				kernel.copy_gpu(input, this.output, part_input_size, n * input.getOnceSize() + part_input_size * groupId, 1, offset + n * output.getOnceSize(), 1);
+				baseKernel().copy_gpu(input, this.output, part_input_size, n * input.getOnceSize() + part_input_size * groupId, 1, offset + n * output.getOnceSize(), 1);
 			}
 			offset += part_input_size;
 		}
@@ -119,8 +115,8 @@ public class RouteLayer extends Layer{
 //			System.out.println(layers[l].index+":"+delta);
 			int part_input_size = delta.getOnceSize() / groups;
 			for(int n = 0;n<this.number;n++) {
-				kernel.axpy_gpu(this.delta, delta, part_input_size, 1, offset + n * this.delta.getOnceSize(), 1, n * delta.getOnceSize() + part_input_size * groupId, 1);
-//				kernel.copy_gpu(this.delta, delta, delta.getOnceSize(), offset + n * this.delta.getOnceSize(), 1, n * delta.getOnceSize(), 1);
+				baseKernel().axpy_gpu(this.delta, delta, part_input_size, 1, offset + n * this.delta.getOnceSize(), 1, n * delta.getOnceSize() + part_input_size * groupId, 1);
+//				baseKernel().copy_gpu(this.delta, delta, delta.getOnceSize(), offset + n * this.delta.getOnceSize(), 1, n * delta.getOnceSize(), 1);
 			}
 			offset += part_input_size;
 		}
@@ -135,8 +131,8 @@ public class RouteLayer extends Layer{
 //				System.out.println(layers[l].index+":"+delta);
 				int part_input_size = delta.getOnceSize() / groups;
 				for(int n = 0;n<this.number;n++) {
-					kernel.axpy_gpu(this.delta, delta, part_input_size, 1, offset + n * this.delta.getOnceSize(), 1, n * delta.getOnceSize() + part_input_size * groupId, 1);
-//					kernel.copy_gpu(this.delta, delta, delta.getOnceSize(), offset + n * this.delta.getOnceSize(), 1, n * delta.getOnceSize(), 1);
+					baseKernel().axpy_gpu(this.delta, delta, part_input_size, 1, offset + n * this.delta.getOnceSize(), 1, n * delta.getOnceSize() + part_input_size * groupId, 1);
+//					baseKernel().copy_gpu(this.delta, delta, delta.getOnceSize(), offset + n * this.delta.getOnceSize(), 1, n * delta.getOnceSize(), 1);
 				}
 				offset += part_input_size;
 			}
@@ -177,7 +173,9 @@ public class RouteLayer extends Layer{
     	
     	Tensor[] diffs = new Tensor[] {diff1,diff2};
     	
-    	BaseKernel kernel = new BaseKernel();
+    	CUDAManager cudaManager = new CUDAManager(0);
+    	
+    	BaseKernel kernel = new BaseKernel(cudaManager);
     	
     	testForward(inputs, output, kernel);
     	

@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.omega.common.data.Tensor;
-import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.normalization.LNLayer;
@@ -42,8 +41,6 @@ public class CLIPVisionTransformer extends Layer{
 	private LNLayer preLayrnorm;
 	private List<CLIPEncoderLayer> encoders;
 	private LNLayer postLayernorm;
-	
-	private BaseKernel baseKernel;
 	
 	private Tensor imageEncoders;
 	
@@ -100,10 +97,6 @@ public class CLIPVisionTransformer extends Layer{
 		}
 		
 		postLayernorm = new LNLayer(getEncoders().get(n_layers - 1));
-		
-		if(baseKernel == null) {
-			baseKernel = new BaseKernel();
-		}
 		
 	}
 	

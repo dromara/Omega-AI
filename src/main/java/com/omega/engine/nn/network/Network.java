@@ -7,12 +7,16 @@ import java.util.Map;
 
 import com.omega.common.data.Tensor;
 import com.omega.engine.ad.op.TensorOP;
+import com.omega.engine.gpu.BaseKernel;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.GlobalNormKernel;
 import com.omega.engine.loss.LossFunction;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.RouteLayer;
 import com.omega.engine.nn.layer.normalization.NormalizationLayer;
 import com.omega.engine.nn.model.NetworkInit;
+import com.omega.engine.parallel.cuda.CUDACommonManager;
+import com.omega.engine.parallel.cuda.CUDAPool;
 import com.omega.engine.updater.UpdaterFactory;
 import com.omega.engine.updater.UpdaterType;
 
@@ -28,6 +32,12 @@ import jcuda.runtime.JCuda;
 public abstract class Network {
 	
 	public boolean CUDNN = false;
+	
+	public CUDAManager cudaManager;
+	
+	public TensorOP tensorOP;
+	
+	public BaseKernel baseKernel;
 	
 	private int threadNum = 8;
 	
@@ -46,6 +56,8 @@ public abstract class Network {
 	private Map<Layer,Tensor[]> grads = new HashMap<Layer,Tensor[]>();
 	
 	public boolean GRADIENT_CHECK = false;
+	
+	public int rankId = 0;
 	
 	public int layerCount = 0;
 	
@@ -121,8 +133,30 @@ public abstract class Network {
 	public abstract NetworkType getNetworkType();
 	
 	public abstract void clearGrad();
+
+	public abstract void putParamters();
+	
+	public abstract void putParamterGrads();
 	
 	public List<RouteLayer> routeLayers;
+	
+	public List<Tensor> deltaParamters;
+	
+	public Network() {
+		initCUDA();
+	}
+	
+	public Network(int rankId) {
+		this.rankId = rankId;
+		initCUDA();
+	}
+	
+	private void initCUDA() {
+		CUDACommonManager cuda = CUDAPool.cudaCommonManager(rankId);
+		cudaManager = cuda.getCudaManager();
+		tensorOP = cuda.getTensorOP();
+		baseKernel = cuda.getBaseKernel();
+	}
 	
 	public Tensor createParamterGrad(int number,int channel,int height,int width,boolean hasGPU) {
 		Tensor pGrad = new Tensor(number, channel, height, width, hasGPU);
@@ -131,7 +165,17 @@ public abstract class Network {
 	}
 	
 	public void addPamamter(Tensor pGrad) {
+		if(this.paramters == null) {
+			this.paramters = new ArrayList<Tensor>();
+		}
 		this.paramters.add(pGrad);
+	}
+	
+	public void addDeltaParamters(Tensor pGrad) {
+		if(this.deltaParamters == null) {
+			this.deltaParamters = new ArrayList<Tensor>();
+		}
+		this.deltaParamters.add(pGrad);
 	}
 	
 	public Tensor getDiff() {
@@ -224,11 +268,11 @@ public abstract class Network {
 	public void update() {
 		
 		this.train_time += 1;
-		
+
 		for(int i = layerCount - 1;i>=0;i--) {
 			
 			Layer layer = layerList.get(i);
-			
+
 			layer.learnRate = this.learnRate;
 //			System.out.println(layer.getLayerType());
 			layer.update();
@@ -340,7 +384,7 @@ public abstract class Network {
 
 	public void getGradNorm(Layer layer) {
 		if(normKernel == null) {
-			normKernel = new GlobalNormKernel();
+			normKernel = new GlobalNormKernel(cudaManager);
 		}
 		Tensor[] gradList = null;
 		if(grads.containsKey(layer)) {
@@ -371,7 +415,7 @@ public abstract class Network {
 	
 	public void getAccGradNorm(Layer layer) {
 		if(normKernel == null) {
-			normKernel = new GlobalNormKernel();
+			normKernel = new GlobalNormKernel(cudaManager);
 		}
 		Tensor[] gradList = null;
 		if(grads.containsKey(layer)) {
@@ -419,30 +463,30 @@ public abstract class Network {
 			if(layer instanceof NormalizationLayer) {
 				NormalizationLayer nl = (NormalizationLayer) layer;
 				if(nl.accDW != null) {
-					TensorOP.mul(nl.accDW, clip_coef, nl.accDW);
+					tensorOP.mul(nl.accDW, clip_coef, nl.accDW);
 				}else {
-					TensorOP.mul(nl.diffGamma, clip_coef, nl.diffGamma);
+					tensorOP.mul(nl.diffGamma, clip_coef, nl.diffGamma);
 				}
 				if(nl.diffBeta != null) {
 					if(nl.accDB != null) {
-						TensorOP.mul(nl.accDB, clip_coef, nl.accDB);
+						tensorOP.mul(nl.accDB, clip_coef, nl.accDB);
 					}else {
-						TensorOP.mul(nl.diffBeta, clip_coef, nl.diffBeta);
+						tensorOP.mul(nl.diffBeta, clip_coef, nl.diffBeta);
 					}
 				}
 			}else {
 				if(layer.diffW != null) {
 					if(layer.accDW != null) {
-						TensorOP.mul(layer.accDW, clip_coef, layer.accDW);
+						tensorOP.mul(layer.accDW, clip_coef, layer.accDW);
 					}else {
-						TensorOP.mul(layer.diffW, clip_coef, layer.diffW);
+						tensorOP.mul(layer.diffW, clip_coef, layer.diffW);
 					}
 				}
 				if(layer.diffB != null) {
 					if(layer.accDB != null) {
-						TensorOP.mul(layer.accDB, clip_coef, layer.accDB);
+						tensorOP.mul(layer.accDB, clip_coef, layer.accDB);
 					}else {
-						TensorOP.mul(layer.diffB, clip_coef, layer.diffB);
+						tensorOP.mul(layer.diffB, clip_coef, layer.diffB);
 					}
 				}
 			}

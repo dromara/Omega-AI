@@ -9,8 +9,6 @@ import java.io.RandomAccessFile;
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
-import com.omega.engine.ad.op.TensorOP;
-import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.GPUOP;
 import com.omega.engine.gpu.cudnn.SoftmaxCudnnKernel;
 import com.omega.engine.nn.layer.DropoutLayer;
@@ -46,8 +44,6 @@ public class UNetSelfAttentionLayer extends Layer{
 	private DropoutLayer dropoutLayer;
 	
 	private DropoutLayer dropoutLayer2;
-	
-	private BaseKernel baseKernel;
 	
 	private AttentionKernel attentionKernel;
 	
@@ -124,16 +120,12 @@ public class UNetSelfAttentionLayer extends Layer{
 			this.dropoutLayer2 = new DropoutLayer(0.1f, getoLinerLayer());
 		}
 		
-		if(baseKernel == null) {
-			baseKernel = new BaseKernel();
-		}
-		
 		if(attentionKernel == null) {
-			attentionKernel = new AttentionKernel();
+			attentionKernel = new AttentionKernel(network.cudaManager);
 		}
 		
 		if(softmaxKernel == null) {
-			softmaxKernel = new SoftmaxCudnnKernel(time, 1, 1);
+			softmaxKernel = new SoftmaxCudnnKernel(time, 1, 1, network.cudaManager);
 		}
 
 	}
@@ -224,7 +216,7 @@ public class UNetSelfAttentionLayer extends Layer{
 		
 		GPUOP.getInstance().bmmEX(CUBLAS_OP_T, CUBLAS_OP_N, time, time, dk, 1.0f, key.getGpuData(), dk, time * dk, query.getGpuData(), dk, time * dk, 0.0f, preatt.getGpuData(), time, time * time, batchSize * headNum);
 		
-		TensorOP.mul(preatt, d_k, preatt);
+		Tensor_OP().mul(preatt, d_k, preatt);
 		
 		softmaxKernel.softmax(preatt, attn, batchSize * headNum * time);
 
@@ -261,7 +253,7 @@ public class UNetSelfAttentionLayer extends Layer{
 		// backward into preatt
 		softmaxKernel.softmax_backward(attn, dattn, dattn);
 		float d_k = (float) (1.0f / Math.sqrt(dk));
-		TensorOP.mul(dattn, d_k, dattn);
+		Tensor_OP().mul(dattn, d_k, dattn);
 		Tensor dpreatt = dattn;
 
 		// backward into q

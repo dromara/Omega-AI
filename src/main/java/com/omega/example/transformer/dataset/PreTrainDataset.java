@@ -153,6 +153,7 @@ public class PreTrainDataset extends BaseTokenizer{
 	
 	public void initReader() {
 		try {
+			index = 0;
 			fileReader = new FileReader(this.dataPath);
 			bufferedReader = new BufferedReader(fileReader);
 			System.out.println("dataset is ready.");

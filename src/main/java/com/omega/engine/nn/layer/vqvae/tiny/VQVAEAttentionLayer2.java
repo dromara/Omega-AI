@@ -5,7 +5,6 @@ import java.io.RandomAccessFile;
 
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixUtils;
-import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -130,18 +129,18 @@ public class VQVAEAttentionLayer2 extends Layer{
 		}
 		x = x.view(batchSize, channel, 1, time);
 		// B,C,HW ==> B,HW,C
-		TensorOP.permute(x, xt, new int[] {0, 3, 2, 1});
+		Tensor_OP().permute(x, xt, new int[] {0, 3, 2, 1});
 		xt = xt.view(batchSize * time, 1, 1, embedDim);
 		
 		attn.forward(xt);
 		
 		attn.getOutput().view(batchSize, time, 1, channel);
 		output.view(batchSize, channel, 1, time);
-		TensorOP.permute(attn.getOutput(), output, new int[] {0, 3, 2, 1});
+		Tensor_OP().permute(attn.getOutput(), output, new int[] {0, 3, 2, 1});
 		
 		output.viewOrg();
 		
-		TensorOP.add(this.input, output, output);
+		Tensor_OP().add(this.input, output, output);
 
 		gn.getOutput().viewOrg();
 		attn.getOutput().viewOrg();
@@ -159,13 +158,13 @@ public class VQVAEAttentionLayer2 extends Layer{
 		
 		// B,C,H,W ==> B,HW,C
 		this.output.view(batchSize, height, width, channel);
-		TensorOP.permute(delta, this.output, new int[] {0, 2, 3, 1});
+		Tensor_OP().permute(delta, this.output, new int[] {0, 2, 3, 1});
 		this.output.view(batchSize, time, 1, channel);
 		
 		attn.back(this.output);
 		attn.diff.view(batchSize, time, 1, channel);
 		xt.view(batchSize, channel, 1, time);
-		TensorOP.permute(attn.diff, xt, new int[] {0, 3, 2, 1});
+		Tensor_OP().permute(attn.diff, xt, new int[] {0, 3, 2, 1});
 		
 		if(gn != null) {
 			gn.back(xt);
@@ -174,7 +173,7 @@ public class VQVAEAttentionLayer2 extends Layer{
 			this.diff = xt;
 		}
 		
-		TensorOP.add(this.diff, this.delta, this.diff);
+		Tensor_OP().add(this.diff, this.delta, this.diff);
 		
 		attn.diff.viewOrg();
 		xt.viewOrg();

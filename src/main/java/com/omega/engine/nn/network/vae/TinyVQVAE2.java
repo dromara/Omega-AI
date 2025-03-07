@@ -5,9 +5,7 @@ import java.io.RandomAccessFile;
 
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixOperation;
-import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
-import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.gpu.GPUOP;
 import com.omega.engine.loss.LossFactory;
 import com.omega.engine.loss.LossType;
@@ -107,7 +105,7 @@ public class TinyVQVAE2 extends Network {
 	private Tensor avg_probs_log;
 	
 	public TinyVQVAE2(LossType lossType,UpdaterType updater,int z_dims,int latendDim,int num_vq_embeddings,int imageSize,int[] channels,boolean[] attn_resolutions,int num_res_blocks) {
-		this.lossFunction = LossFactory.create(lossType);
+		this.lossFunction = LossFactory.create(lossType, this);
 		this.z_dims = z_dims;
 		this.latendDim = latendDim;
 		this.num_vq_embeddings = num_vq_embeddings;
@@ -143,7 +141,7 @@ public class TinyVQVAE2 extends Network {
 		this.addLayer(post_quant_conv);
 		this.addLayer(decoder);
 		
-		vaeKernel = new VAEKernel();
+		vaeKernel = new VAEKernel(cudaManager);
 	}
 	
 	@Override
@@ -274,7 +272,7 @@ public class TinyVQVAE2 extends Network {
 			}
 		}
 	
-		TensorOP.permute(ze, z_flattened, new int[] {0, 2, 3, 1});  //B,C,H,W ==> B,H,W,C
+		tensorOP.permute(ze, z_flattened, new int[] {0, 2, 3, 1});  //B,C,H,W ==> B,H,W,C
 
 		z_flattened = z_flattened.view(ze.number * ze.height * ze.width, 1, 1, this.latendDim);
 		
@@ -293,7 +291,7 @@ public class TinyVQVAE2 extends Network {
 
 		Tensor emo = embedding.getOutput().view(new int[] {ze.number, ze.height, ze.width, ze.channel});
 		
-		TensorOP.permute(emo, zq, new int[] {0, 3, 1, 2}); //B*H*W*C ==> B*C*H*W
+		tensorOP.permute(emo, zq, new int[] {0, 3, 1, 2}); //B*H*W*C ==> B*C*H*W
 		
 //		if(this.RUN_MODEL == RunModel.TRAIN) {
 //			vaeKernel.mean(idx, avg_probs);
@@ -322,13 +320,13 @@ public class TinyVQVAE2 extends Network {
 		}
 //		long start1 = System.nanoTime();
 
-		TensorOP.sum_pow(z_flattened, zc, 2, 1);
+		tensorOP.sum_pow(z_flattened, zc, 2, 1);
 		
-		TensorOP.sum_pow(embedding.weight.view(num_vq_embeddings, 1, 1, latendDim), ec, 2, 1);
+		tensorOP.sum_pow(embedding.weight.view(num_vq_embeddings, 1, 1, latendDim), ec, 2, 1);
 
-		TensorOP.broadcast(zc, ie, 1);
+		tensorOP.broadcast(zc, ie, 1);
 
-		TensorOP.broadcast_row(ec, ie);
+		tensorOP.broadcast_row(ec, ie);
 
 		GPUOP.getInstance().multiplyFloat(z_flattened.number, embedding.weight.number, embedding.weight.width, z_flattened.getGpuData(), embedding.weight.getGpuData(), ie.getGpuData(),
 				cublasOperation.CUBLAS_OP_N, cublasOperation.CUBLAS_OP_T, -2.0f, 1.0f);
@@ -357,9 +355,9 @@ public class TinyVQVAE2 extends Network {
 		
 		ema();
 
-		TensorOP.permute(dzeT, dze, new int[] {0, 3, 1, 2});  //B,H,W,C ==》 B,C,H,W
+		tensorOP.permute(dzeT, dze, new int[] {0, 3, 1, 2});  //B,H,W,C ==》 B,C,H,W
 		
-		TensorOP.add(dze, delta, dze);
+		tensorOP.add(dze, delta, dze);
 //		System.err.println("dze:");
 //		dze.showDMByOffset(0, 32);
 		return dze;
@@ -383,13 +381,13 @@ public class TinyVQVAE2 extends Network {
 			ema_count_n.clearGPU();
 		}
 
-		TensorOP.onehot(idx, onehot);
+		tensorOP.onehot(idx, onehot);
 
 		vaeKernel.ema_count(idx, sum_encodings);
 
 		vaeKernel.move_ema_count(sum_encodings, ema_count, decay);
 
-		TensorOP.sum(ema_count, ema_count_n, 0);
+		tensorOP.sum(ema_count, ema_count_n, 0);
 
 		vaeKernel.move_ema_count2(ema_count, ema_count_n, 1e-5f, num_vq_embeddings);
 		
@@ -400,63 +398,63 @@ public class TinyVQVAE2 extends Network {
 		
 	}
 	
-	public static void main(String args[]) {
-		
-		int N = 3;
-		int D = 4;
-		int num_embeddings = 3;
-		
-		float decay = 0.999f;
-		float epsilon = 1e-5f;
-		
-		Tensor sum_encodings = new Tensor(1, 1, 1, num_embeddings, true);
-		Tensor ema_count = new Tensor(1, 1, 1, num_embeddings, true);
-		Tensor ema_count_n = new Tensor(1, 1, 1, 1, true);
-		Tensor onehot = new Tensor(N, 1, 1, num_embeddings, true);
-		
-		Tensor ema_weight = new Tensor(1, 1, num_embeddings, D, MatrixUtils.order(N * D, 0.1f, 0.1f), true);
-		
-		Tensor weight = new Tensor(1, 1, num_embeddings, D, true);
-		
-		Tensor dw = new Tensor(1, 1, num_embeddings, D, true);
-		
-		Tensor z_flattened = new Tensor(N, 1, 1, D, MatrixUtils.order(N * D, 0.1f, 0.1f), true);
-		
-		float[] t = new float[] {1, 2, 0};
-		
-		Tensor idx = new Tensor(N, 1, 1, 1, t, true);
-		
-		VAEKernel vaeKernel = new VAEKernel();
-		
-		TensorOP.onehot(idx, onehot);
-
-		vaeKernel.ema_count(idx, sum_encodings);
-		
-		sum_encodings.showDM();
-		
-		vaeKernel.move_ema_count(sum_encodings, ema_count, decay);
-		
-		TensorOP.sum(ema_count, ema_count_n, 0);
-		
-		ema_count_n.showDM();
-		
-		vaeKernel.move_ema_count2(ema_count, ema_count_n, epsilon, num_embeddings);
-		
-		ema_count.showDM();
-		
-		onehot.showDM();
-		z_flattened.showDM();
-		
-		GPUOP.getInstance().multiplyFloat(onehot.width, z_flattened.width, onehot.number, onehot.getGpuData(), z_flattened.getGpuData(), dw.getGpuData(),
-				cublasOperation.CUBLAS_OP_T, cublasOperation.CUBLAS_OP_N, 1.0f, 0.0f);
-		
-		dw.showDM();
-		
-		vaeKernel.update_emb_weight(dw, weight, ema_weight, ema_count, decay);
-		
-		weight.showDM();
-		
-	}
+//	public static void main(String args[]) {
+//		
+//		int N = 3;
+//		int D = 4;
+//		int num_embeddings = 3;
+//		
+//		float decay = 0.999f;
+//		float epsilon = 1e-5f;
+//		
+//		Tensor sum_encodings = new Tensor(1, 1, 1, num_embeddings, true);
+//		Tensor ema_count = new Tensor(1, 1, 1, num_embeddings, true);
+//		Tensor ema_count_n = new Tensor(1, 1, 1, 1, true);
+//		Tensor onehot = new Tensor(N, 1, 1, num_embeddings, true);
+//		
+//		Tensor ema_weight = new Tensor(1, 1, num_embeddings, D, MatrixUtils.order(N * D, 0.1f, 0.1f), true);
+//		
+//		Tensor weight = new Tensor(1, 1, num_embeddings, D, true);
+//		
+//		Tensor dw = new Tensor(1, 1, num_embeddings, D, true);
+//		
+//		Tensor z_flattened = new Tensor(N, 1, 1, D, MatrixUtils.order(N * D, 0.1f, 0.1f), true);
+//		
+//		float[] t = new float[] {1, 2, 0};
+//		
+//		Tensor idx = new Tensor(N, 1, 1, 1, t, true);
+//		
+//		VAEKernel vaeKernel = new VAEKernel();
+//		
+//		TensorOP.onehot(idx, onehot);
+//
+//		vaeKernel.ema_count(idx, sum_encodings);
+//		
+//		sum_encodings.showDM();
+//		
+//		vaeKernel.move_ema_count(sum_encodings, ema_count, decay);
+//		
+//		TensorOP.sum(ema_count, ema_count_n, 0);
+//		
+//		ema_count_n.showDM();
+//		
+//		vaeKernel.move_ema_count2(ema_count, ema_count_n, epsilon, num_embeddings);
+//		
+//		ema_count.showDM();
+//		
+//		onehot.showDM();
+//		z_flattened.showDM();
+//		
+//		GPUOP.getInstance().multiplyFloat(onehot.width, z_flattened.width, onehot.number, onehot.getGpuData(), z_flattened.getGpuData(), dw.getGpuData(),
+//				cublasOperation.CUBLAS_OP_T, cublasOperation.CUBLAS_OP_N, 1.0f, 0.0f);
+//		
+//		dw.showDM();
+//		
+//		vaeKernel.update_emb_weight(dw, weight, ema_weight, ema_count, decay);
+//		
+//		weight.showDM();
+//		
+//	}
 	
 	public void initBack() {
 		if(this.dzqT == null || this.dzqT.number != zq.number) {
@@ -584,6 +582,18 @@ public class TinyVQVAE2 extends Network {
 		post_quant_conv.loadModel(inputStream);
 		
 		decoder.loadModel(inputStream);
+		
+	}
+
+	@Override
+	public void putParamters() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void putParamterGrads() {
+		// TODO Auto-generated method stub
 		
 	}
 	

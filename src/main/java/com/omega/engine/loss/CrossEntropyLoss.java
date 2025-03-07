@@ -3,6 +3,7 @@ package com.omega.engine.loss;
 import com.omega.common.data.Tensor;
 import com.omega.common.data.Tensors;
 import com.omega.common.utils.JsonUtils;
+import com.omega.engine.nn.network.Network;
 
 /**
  * Cross Entropy loss function
@@ -28,6 +29,14 @@ public class CrossEntropyLoss extends LossFunction {
 		return instance;
 	}
 
+	public CrossEntropyLoss() {
+
+	}
+	
+	public CrossEntropyLoss(Network network) {
+		setNet(network);
+	}
+	
 	@Override
 	public LossType getLossType() {
 		// TODO Auto-generated method stub

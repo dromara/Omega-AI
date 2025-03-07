@@ -4,12 +4,10 @@ import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.JsonUtils;
-import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
-import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.gpu.BaseKernel;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
-import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.gpu.GPUOP;
 import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.LNLayer;
@@ -52,7 +50,7 @@ public class LNKernel extends BaseKernel{
 	private CUfunction fused_params_function;
 	private CUfunction forward_fused_function;
 	
-	private CUfunction inter_grad_function;
+//	private CUfunction inter_grad_function;
 	private CUfunction backward_fused_function;
 	private CUfunction ln_backward_function;
 	
@@ -90,7 +88,7 @@ public class LNKernel extends BaseKernel{
 	private Pointer fusedParameters;
 	private Pointer forwardFusedParams;
 	
-	private Pointer interGradParameters;
+//	private Pointer interGradParameters;
 	private Pointer backwardFusedParameters;
 	private Pointer lnBKParameters;
 	
@@ -134,7 +132,8 @@ public class LNKernel extends BaseKernel{
 	private Tensor X_scale;
 	private Tensor ones;
 	
-	public LNKernel(int W,BNType bnType) {
+	public LNKernel(int W,BNType bnType,CUDAManager cudaManager) {
+		super(cudaManager);
 		this.W = W;
 		this.bnType = bnType;
 		init();
@@ -246,11 +245,11 @@ public class LNKernel extends BaseKernel{
 //			}
 			
 			if(forward_llm_function == null) {
-				forward_llm_function = CUDAModules.getLocalFunctionByModule("LNKernel.cu", "layernorm_forward_kernel5");
+				forward_llm_function = getCudaManager().getLocalFunctionByModule("LNKernel.cu", "layernorm_forward_kernel5");
 			}
 
 			if(backward_llm_function == null) {
-				backward_llm_function = CUDAModules.getLocalFunctionByModule("LNKernel.cu", "layernorm_backward_kernel7");
+				backward_llm_function = getCudaManager().getLocalFunctionByModule("LNKernel.cu", "layernorm_backward_kernel7");
 			}
 
 		} catch (Exception e) {
@@ -715,7 +714,7 @@ public class LNKernel extends BaseKernel{
 				
 //			}
 
-			int grid_size = (1024/CAFFE_CUDA_NUM_THREADS) * CUDAModules.props.multiProcessorCount;
+			int grid_size = (1024/CAFFE_CUDA_NUM_THREADS) * getCudaManager().props.multiProcessorCount;
 			int shared_mem_size = (2 * W + 1) * Sizeof.FLOAT;
 //			int grid_size = this.CAFFE_GET_BLOCKS(B);
 			cuLaunchKernel(backward_llm_function,
@@ -935,45 +934,45 @@ public class LNKernel extends BaseKernel{
 //		}
 		
 	}
-	
-	public void interGrad(Tensor delta,Tensor input,Tensor gamma,Tensor dYxX) {
-		
-		try {
-			
-			TensorOP.mul(delta, input, dYxX);
-
-			if(interGradParameters == null) {
-				/**
-				 * const int N,
-			    const float *const dYxX,
-			    const float *const dY,
-			    const float *const gamma,
-			    float *const ds,
-			    float *const db
-				 */
-				interGradParameters = Pointer.to(
-						Pointer.to(new int[] {W}),
-						Pointer.to(dYxX.getGpuData()),
-						Pointer.to(delta.getGpuData()),
-						Pointer.to(gamma.getGpuData()),
-						Pointer.to(ds.getGpuData()),
-		                Pointer.to(db.getGpuData())
-		            );
-			}
-			
-			cuLaunchKernel(inter_grad_function,
-					B,  1, 1,      // Grid dimension
-					CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
-					0, null,               // Shared memory size and stream
-					interGradParameters, null // Kernel- and extra parameters
-		        );
-			
-		} catch (Exception e) {
-			// TODO: handle exception
-			e.printStackTrace();
-		}
-		
-	}
+//	
+//	public void interGrad(Tensor delta,Tensor input,Tensor gamma,Tensor dYxX) {
+//		
+//		try {
+//			
+//			TensorOP.mul(delta, input, dYxX);
+//
+//			if(interGradParameters == null) {
+//				/**
+//				 * const int N,
+//			    const float *const dYxX,
+//			    const float *const dY,
+//			    const float *const gamma,
+//			    float *const ds,
+//			    float *const db
+//				 */
+//				interGradParameters = Pointer.to(
+//						Pointer.to(new int[] {W}),
+//						Pointer.to(dYxX.getGpuData()),
+//						Pointer.to(delta.getGpuData()),
+//						Pointer.to(gamma.getGpuData()),
+//						Pointer.to(ds.getGpuData()),
+//		                Pointer.to(db.getGpuData())
+//		            );
+//			}
+//			
+//			cuLaunchKernel(inter_grad_function,
+//					B,  1, 1,      // Grid dimension
+//					CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+//					0, null,               // Shared memory size and stream
+//					interGradParameters, null // Kernel- and extra parameters
+//		        );
+//			
+//		} catch (Exception e) {
+//			// TODO: handle exception
+//			e.printStackTrace();
+//		}
+//		
+//	}
 	
 	public void backwardFusedParams() {
 	
@@ -1080,17 +1079,17 @@ public class LNKernel extends BaseKernel{
 		}
 	}
 	
-	public void backward_aten(Tensor input,Tensor delta,Tensor diff,Tensor gamma,Tensor dgamma,Tensor dbeta) {
-		
-		interGrad(delta, input, gamma, diff);
-		
-		backwardFusedParams();
-		
-		gammaBetaBackward(diff, delta, dgamma, dbeta);
-		
-		lnBackward(delta, input, gamma, diff);
-		
-	}
+//	public void backward_aten(Tensor input,Tensor delta,Tensor diff,Tensor gamma,Tensor dgamma,Tensor dbeta) {
+//		
+//		interGrad(delta, input, gamma, diff);
+//		
+//		backwardFusedParams();
+//		
+//		gammaBetaBackward(diff, delta, dgamma, dbeta);
+//		
+//		lnBackward(delta, input, gamma, diff);
+//		
+//	}
 	
 	public void checkCUDA(int code) {
 		if(code != cudaError.cudaSuccess) {

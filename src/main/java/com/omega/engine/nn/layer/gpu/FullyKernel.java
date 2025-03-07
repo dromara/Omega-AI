@@ -3,12 +3,11 @@ package com.omega.engine.nn.layer.gpu;
 import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 
 import com.omega.common.data.Tensor;
-import com.omega.common.lib.LibPaths;
 import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
-import com.omega.engine.gpu.CUDAModules;
 
 import jcuda.Pointer;
 import jcuda.Sizeof;
@@ -29,7 +28,8 @@ public class FullyKernel extends BaseKernel{
 	
 	private Pointer kernelBackParameters;
 	
-	public FullyKernel() {
+	public FullyKernel(CUDAManager cudaManager) {
+		super(cudaManager);
 		init();
 	}
 	
@@ -47,19 +47,19 @@ public class FullyKernel extends BaseKernel{
 
 			if(function == null) {
 
-				function = CUDAModules.getLocalFunctionByModule("BiasKernel.cu", "add_bias");
+				function = getCudaManager().getLocalFunctionByModule("BiasKernel.cu", "add_bias");
 				
 			}
 			
 			if(function_bias == null) {
 
-				function_bias = CUDAModules.getLocalFunctionByModule("BiasKernel.cu", "add_full_bias");
+				function_bias = getCudaManager().getLocalFunctionByModule("BiasKernel.cu", "add_full_bias");
 				
 			}
 			
 			if(back_function == null) {
 
-				back_function = CUDAModules.getLocalFunctionByModule("BiasKernel.cu", "backward_bias_conn_kernel");
+				back_function = getCudaManager().getLocalFunctionByModule("BiasKernel.cu", "backward_bias_conn_kernel");
 				
 			}
 			
@@ -275,7 +275,9 @@ public class FullyKernel extends BaseKernel{
 	    	
 	    	Tensor delta = new Tensor(N, C, H, W, d, true);
 	    	
-	    	FullyKernel k = new FullyKernel();
+	    	CUDAManager cudaManager = new CUDAManager(0);
+	    	
+	    	FullyKernel k = new FullyKernel(cudaManager);
 
 //	    	output.showDM(new float[N * C * H * W]);
 	    	

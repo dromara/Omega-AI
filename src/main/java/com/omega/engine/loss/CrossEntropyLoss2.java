@@ -5,7 +5,9 @@ import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.PrintUtils;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.loss.gpu.CrossEntropyKernel;
+import com.omega.engine.nn.network.Network;
 
 /**
  * Cross Entropy loss function
@@ -32,15 +34,20 @@ public class CrossEntropyLoss2 extends LossFunction {
 	
 	private CrossEntropyKernel crossEntropyKernel;
 	
-	public CrossEntropyLoss2() {
-		initKernel();
-	}
-	
-	public static CrossEntropyLoss2 operation() {
+	public static CrossEntropyLoss2 operation(CUDAManager cudaManager) {
 		if(instance == null) {
-			instance = new CrossEntropyLoss2();
+			instance = new CrossEntropyLoss2(cudaManager);
 		}
 		return instance;
+	}
+	
+	public CrossEntropyLoss2(Network network) {
+		setNet(network);
+		crossEntropyKernel = new CrossEntropyKernel(network.cudaManager);
+	}
+	
+	public CrossEntropyLoss2(CUDAManager cudaManager) {
+		crossEntropyKernel = new CrossEntropyKernel(cudaManager);
 	}
 	
 	public void init(Tensor input) {
@@ -49,11 +56,6 @@ public class CrossEntropyLoss2 extends LossFunction {
 //			this.output = new Tensor(input.number, input.channel, input.height, input.width, true);
 			this.diff = new Tensor(input.number, input.channel, input.height, input.width, true);
 		}
-	}
-	
-	public void initKernel() {
-//		softmaxKernel = new SoftmaxKernel();
-		crossEntropyKernel = new CrossEntropyKernel();
 	}
 	
 	@Override
@@ -93,6 +95,7 @@ public class CrossEntropyLoss2 extends LossFunction {
 	}
 	
 	public static void main(String[] args) {
+		CUDAManager cudaManager = new CUDAManager(0);
 		float[] x = MatrixUtils.order(20, 0.01f, 0.1f);
 		Tensor xt = new Tensor(2, 1, 1, 10, x, true);
 		float[] label = new float[] {0,1,0,0,0,0,0,0,0,0,
@@ -107,7 +110,7 @@ public class CrossEntropyLoss2 extends LossFunction {
 		
 		PrintUtils.printImage(MatrixOperation.subtraction(tmp, ln));
 		
-		Tensor loss = CrossEntropyLoss2.operation().loss(xt, labelt);
+		Tensor loss = CrossEntropyLoss2.operation(cudaManager).loss(xt, labelt);
 		
 		PrintUtils.printImage(loss.syncHost());
 		
@@ -115,7 +118,7 @@ public class CrossEntropyLoss2 extends LossFunction {
 		
 		System.out.println("loss:"+JsonUtils.toJson(MatrixOperation.sum(loss.syncHost())/2));
 		
-		Tensor diff = CrossEntropyLoss2.operation().diff(xt, labelt);
+		Tensor diff = CrossEntropyLoss2.operation(cudaManager).diff(xt, labelt);
 		
 		System.out.println("diff:"+JsonUtils.toJson(diff.syncHost()));
 		

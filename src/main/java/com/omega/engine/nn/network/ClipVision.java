@@ -36,7 +36,7 @@ public class ClipVision extends Network {
 	private CLIPVisionTransformer encoder;
 	
 	public ClipVision(LossType lossType,UpdaterType updater,int channel,int imgSize,int patchSize,int headNum,int decoderNum,int time,int embedDim,boolean bias,boolean dropout) {
-		this.lossFunction = LossFactory.create(lossType);
+		this.lossFunction = LossFactory.create(lossType, this);
 		this.bias = bias;
 		this.dropout = dropout;
 		this.channel = channel;
@@ -186,6 +186,18 @@ public class ClipVision extends Network {
 
 	public CLIPVisionTransformer getEncoder() {
 		return encoder;
+	}
+
+	@Override
+	public void putParamters() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void putParamterGrads() {
+		// TODO Auto-generated method stub
+		
 	}
 
 }

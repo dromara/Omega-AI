@@ -2,7 +2,6 @@ package com.omega.engine.nn.network;
 
 import com.omega.common.data.Tensor;
 import com.omega.engine.active.ActiveType;
-import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.loss.LossFactory;
 import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.layer.EmbeddingLayer;
@@ -50,10 +49,8 @@ public class Seq2SeqRNN extends Network {
 	
 	private Tensor en_delta;
 	
-	private BaseKernel baseKernel;
-
 	public Seq2SeqRNN(LossType lossType,UpdaterType updater,int en_time,int de_time,int en_em,int en_hidden,int en_len,int de_em,int de_hidden,int de_len) {
-		this.lossFunction = LossFactory.create(lossType);
+		this.lossFunction = LossFactory.create(lossType, this);
 		this.updater = updater;
 		this.en_time = en_time;
 		this.de_time = de_time;
@@ -96,10 +93,6 @@ public class Seq2SeqRNN extends Network {
 		if((layerList.get(layerList.size() - 1).getLayerType() == LayerType.softmax || layerList.get(layerList.size() - 1).getLayerType() == LayerType.softmax_cross_entropy)
 				&& this.lossFunction.getLossType() != LossType.cross_entropy) {
 			throw new Exception("The softmax function support only cross entropy loss function now.");
-		}
-		
-		if(baseKernel == null) {
-			baseKernel = new BaseKernel();
 		}
 		
 		System.out.println("the network is ready.");
@@ -291,6 +284,18 @@ public class Seq2SeqRNN extends Network {
 		this.fullyLayer.forward(this.de_rnnLayer.getOutput());
 //		this.fullyLayer.getOutput().showDM();
 		return this.fullyLayer.getOutput();
+	}
+
+	@Override
+	public void putParamters() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void putParamterGrads() {
+		// TODO Auto-generated method stub
+		
 	}
 	
 }

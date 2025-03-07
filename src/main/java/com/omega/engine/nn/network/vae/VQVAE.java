@@ -5,7 +5,6 @@ import java.io.RandomAccessFile;
 
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixOperation;
-import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.gpu.GPUOP;
 import com.omega.engine.loss.LossFactory;
 import com.omega.engine.loss.LossType;
@@ -88,7 +87,7 @@ public class VQVAE extends Network {
 	private Tensor ie;
 	
 	public VQVAE(LossType lossType,UpdaterType updater,int latendDim,int imageSize,int numLayers,int headNum,int num_vq_embeddings,int[] downChannels,boolean[] downSample,int[] midChannels) {
-		this.lossFunction = LossFactory.create(lossType);
+		this.lossFunction = LossFactory.create(lossType, this);
 		this.downChannels = downChannels;
 		this.downSample = downSample;
 		this.num_vq_embeddings = num_vq_embeddings;
@@ -123,7 +122,7 @@ public class VQVAE extends Network {
 		this.addLayer(post_quant_conv);
 		this.addLayer(decoder);
 		
-		vaeKernel = new VAEKernel();
+		vaeKernel = new VAEKernel(cudaManager);
 	}
 	
 	@Override
@@ -229,7 +228,7 @@ public class VQVAE extends Network {
 			z_flattened.viewOrg();
 		}
 	
-		TensorOP.permute(ze, z_flattened, new int[] {0, 2, 3, 1});  //B,C,H,W ==> B,H,W,C
+		tensorOP.permute(ze, z_flattened, new int[] {0, 2, 3, 1});  //B,C,H,W ==> B,H,W,C
 
 		z_flattened = z_flattened.view(ze.number * ze.height * ze.width, 1, 1, this.latendDim);
 
@@ -244,7 +243,7 @@ public class VQVAE extends Network {
 
 		Tensor emo = embedding.getOutput().view(new int[] {ze.number, ze.height, ze.width, ze.channel});
 		
-		TensorOP.permute(emo, zq, new int[] {0, 3, 1, 2}); //B*H*W*C ==> B*C*H*W
+		tensorOP.permute(emo, zq, new int[] {0, 3, 1, 2}); //B*H*W*C ==> B*C*H*W
 		
 	}
 	
@@ -263,12 +262,12 @@ public class VQVAE extends Network {
 			ec.clearGPU();
 		}
 //		long start1 = System.nanoTime();
-		TensorOP.sum_pow(z_flattened, zc, 2, 1);
-		TensorOP.sum_pow(embedding.weight.view(num_vq_embeddings, 1, 1, latendDim), ec, 2, 1);
+		tensorOP.sum_pow(z_flattened, zc, 2, 1);
+		tensorOP.sum_pow(embedding.weight.view(num_vq_embeddings, 1, 1, latendDim), ec, 2, 1);
 
-		TensorOP.broadcast(zc, ie, 1);
+		tensorOP.broadcast(zc, ie, 1);
 
-		TensorOP.broadcast_row(ec, ie);
+		tensorOP.broadcast_row(ec, ie);
 
 		GPUOP.getInstance().multiplyFloat(z_flattened.number, embedding.weight.number, embedding.weight.width, z_flattened.getGpuData(), embedding.weight.getGpuData(), ie.getGpuData(),
 				cublasOperation.CUBLAS_OP_N, cublasOperation.CUBLAS_OP_T, -2.0f, 1.0f);
@@ -287,12 +286,12 @@ public class VQVAE extends Network {
 		// dzq , dze
 		vaeKernel.MSE_BACK(embedding.getOutput(), z_flattened, dzqT, dzeT, beta);
 		
-		TensorOP.permute(dzeT, dze, new int[] {0, 3, 1, 2});  //B,H,W,C ==》 B,C,H,W
+		tensorOP.permute(dzeT, dze, new int[] {0, 3, 1, 2});  //B,H,W,C ==》 B,C,H,W
 
 		dzqT.view(dzqT.number * dzqT.height * dzqT.width, 1, 1, latendDim);
 		embedding.back(dzqT);
 		
-		TensorOP.add(dze, delta, dze);
+		tensorOP.add(dze, delta, dze);
 
 		return dze;
 	}
@@ -393,6 +392,18 @@ public class VQVAE extends Network {
 	
 	public void loadModel(RandomAccessFile inputStream) throws IOException {
 
+	}
+
+	@Override
+	public void putParamters() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void putParamterGrads() {
+		// TODO Auto-generated method stub
+		
 	}
 	
 }

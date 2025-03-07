@@ -6,8 +6,6 @@ import java.io.RandomAccessFile;
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
-import com.omega.engine.ad.op.TensorOP;
-import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.DropoutLayer;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.LayerType;
@@ -45,8 +43,6 @@ public class LlamaFlashAttentionLayer extends LlamaAttentionLayer{
 //	private DropoutLayer dropoutLayer;
 	
 	private DropoutLayer dropoutLayer2;
-	
-	private BaseKernel baseKernel;
 	
 	private AttentionKernel attentionKernel;
 	
@@ -135,7 +131,7 @@ public class LlamaFlashAttentionLayer extends LlamaAttentionLayer{
 //		this.oLinerLayer.weight = new Tensor(1, 1, embedDim, embedDim, RandomUtils.order(this.embedDim * this.embedDim, 0.01f, 0.01f), true);
 		
 		if(kernel == null) {
-			kernel = new FlashAttentionV2Kernel(headNum, time, dk);
+			kernel = new FlashAttentionV2Kernel(headNum, time, dk, cuda());
 		}
 		
 		if(this.dropout) {
@@ -143,16 +139,12 @@ public class LlamaFlashAttentionLayer extends LlamaAttentionLayer{
 			this.dropoutLayer2 = new DropoutLayer(0.1f, oLinerLayer);
 		}
 		
-		if(baseKernel == null) {
-			baseKernel = new BaseKernel();
-		}
-		
 		if(attentionKernel == null) {
-			attentionKernel = new AttentionKernel();
+			attentionKernel = new AttentionKernel(cuda());
 		}
 		
 		if(ropeKernel == null) {
-			ropeKernel = new RoPEKernel();
+			ropeKernel = new RoPEKernel(cuda());
 		}
 		
 	}
@@ -236,9 +228,9 @@ public class LlamaFlashAttentionLayer extends LlamaAttentionLayer{
 		 */
 		ropeKernel.forward(cos, sin, query, key, rq, rk);
 		
-		TensorOP.permute(rq, qt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(rk, kt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(value, vt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(rq, qt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(rk, kt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(value, vt, new int[] {0, 2, 1, 3});
 		
 		kernel.forward(qt, kt, vt, vaccum);
 
@@ -286,9 +278,9 @@ public class LlamaFlashAttentionLayer extends LlamaAttentionLayer{
 		kt.view(this.kLinerLayer.getOutput().shape());
 		vt.view(this.vLinerLayer.getOutput().shape());
 		
-		TensorOP.permute(dqt, qt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(dkt, kt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(dvt, vt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(dqt, qt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(dkt, kt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(dvt, vt, new int[] {0, 2, 1, 3});
 		
 		/**
 		 * RoPE backward
@@ -303,8 +295,8 @@ public class LlamaFlashAttentionLayer extends LlamaAttentionLayer{
 		this.kLinerLayer.back(keyDelta);
 		this.vLinerLayer.back(valueDelta);
 		
-		TensorOP.add(this.qLinerLayer.diff, this.kLinerLayer.diff, this.qLinerLayer.diff);
-		TensorOP.add(this.qLinerLayer.diff, this.vLinerLayer.diff, this.qLinerLayer.diff);
+		Tensor_OP().add(this.qLinerLayer.diff, this.kLinerLayer.diff, this.qLinerLayer.diff);
+		Tensor_OP().add(this.qLinerLayer.diff, this.vLinerLayer.diff, this.qLinerLayer.diff);
 
 		this.diff = this.qLinerLayer.diff;
 		
@@ -379,6 +371,22 @@ public class LlamaFlashAttentionLayer extends LlamaAttentionLayer{
 		kLinerLayer.update();
 		vLinerLayer.update();
 		oLinerLayer.update();
+	}
+	
+	@Override
+	public void putParamters() {
+		qLinerLayer.putParamters();
+		kLinerLayer.putParamters();
+		vLinerLayer.putParamters();
+		oLinerLayer.putParamters();
+	}
+	
+	@Override
+	public void putParamterGrads() {
+		qLinerLayer.putParamterGrads();
+		kLinerLayer.putParamterGrads();
+		vLinerLayer.putParamterGrads();
+		oLinerLayer.putParamterGrads();
 	}
 
 	@Override

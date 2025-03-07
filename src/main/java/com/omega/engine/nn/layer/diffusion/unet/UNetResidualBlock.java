@@ -6,7 +6,6 @@ import java.util.Map;
 
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.RandomUtils;
-import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -125,7 +124,7 @@ public class UNetResidualBlock extends Layer{
 		conv_feature.forward(act_feature.getOutput());
 		
 		temb.forward(time);
-		TensorOP.add(conv_feature.getOutput(), temb.getOutput(), tout, height * width);
+		Tensor_OP().add(conv_feature.getOutput(), temb.getOutput(), tout, height * width);
 		
 		gn_merged.forward(tout);
 		act_merged.forward(gn_merged.getOutput());
@@ -138,7 +137,7 @@ public class UNetResidualBlock extends Layer{
 			x = residual_layer.getOutput();
 		}
 
-		TensorOP.add(x, this.conv_merged.getOutput(), this.conv_merged.getOutput());
+		Tensor_OP().add(x, this.conv_merged.getOutput(), this.conv_merged.getOutput());
 		
 		this.output = this.conv_merged.getOutput();
 	}
@@ -162,9 +161,9 @@ public class UNetResidualBlock extends Layer{
 		gn_merged.back(act_merged.diff);
 		
 		dt.clearGPU();
-		TensorOP.sum(gn_merged.diff, dt, 2);
+		Tensor_OP().sum(gn_merged.diff, dt, 2);
 		temb.back(dt);
-		TensorOP.add(timeDiff, temb.diff, timeDiff);
+		Tensor_OP().add(timeDiff, temb.diff, timeDiff);
 		
 		conv_feature.back(gn_merged.diff);
 		act_feature.back(conv_feature.diff);
@@ -172,9 +171,9 @@ public class UNetResidualBlock extends Layer{
 		
 		if(channel != oChannel) {
 			residual_layer.back(delta);
-			TensorOP.add(gn_feature.diff, residual_layer.diff, gn_feature.diff);
+			Tensor_OP().add(gn_feature.diff, residual_layer.diff, gn_feature.diff);
 		}else {
-			TensorOP.add(gn_feature.diff, delta, gn_feature.diff);
+			Tensor_OP().add(gn_feature.diff, delta, gn_feature.diff);
 		}
 
 		this.diff = gn_feature.diff;

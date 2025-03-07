@@ -54,7 +54,7 @@ public class RoPELayer extends Layer {
 		}
 		
 		if(kernel == null) {
-			kernel = new RoPEKernel();
+			kernel = new RoPEKernel(cuda());
 		}
 		this.number = this.network.number;
 		initParam();
@@ -70,7 +70,7 @@ public class RoPELayer extends Layer {
 		this.oWidth = this.width;
 		
 		if(kernel == null) {
-			kernel = new RoPEKernel();
+			kernel = new RoPEKernel(cuda());
 		}
 		this.number = input.number;
 		initParam();

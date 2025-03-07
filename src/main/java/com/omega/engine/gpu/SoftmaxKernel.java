@@ -36,7 +36,8 @@ public class SoftmaxKernel extends BaseKernel{
 	
 	private Pointer backKernelParameters2;
 	
-	public SoftmaxKernel() {
+	public SoftmaxKernel(CUDAManager cudaManager) {
+		super(cudaManager);
 		init();
 	}
 	
@@ -46,37 +47,37 @@ public class SoftmaxKernel extends BaseKernel{
 
 			if(softmax_function == null) {
 				
-				softmax_function = CUDAModules.getLocalFunctionByModule("SoftmaxKernel.cu", "softmax");
+				softmax_function = getCudaManager().getLocalFunctionByModule("SoftmaxKernel.cu", "softmax");
         
 			}
 			
 			if(softmax_mask_function == null) {
 				
-				softmax_mask_function = CUDAModules.getLocalFunctionByModule("SoftmaxKernel.cu", "softmax_mask");
+				softmax_mask_function = getCudaManager().getLocalFunctionByModule("SoftmaxKernel.cu", "softmax_mask");
         
 			}
 			
 			if(log_softmax_function == null) {
 				
-				log_softmax_function = CUDAModules.getLocalFunctionByModule("SoftmaxKernel.cu", "log_softmax");
+				log_softmax_function = getCudaManager().getLocalFunctionByModule("SoftmaxKernel.cu", "log_softmax");
         
 			}
 			
 			if(softmax_backward_function == null) {
 				
-				softmax_backward_function = CUDAModules.getLocalFunctionByModule("SoftmaxKernel.cu", "softmax_back");
+				softmax_backward_function = getCudaManager().getLocalFunctionByModule("SoftmaxKernel.cu", "softmax_back");
         
 			}
 			
 			if(log_softmax_backward_function == null) {
 				
-				log_softmax_backward_function = CUDAModules.getLocalFunctionByModule("SoftmaxKernel.cu", "log_softmax_back");
+				log_softmax_backward_function = getCudaManager().getLocalFunctionByModule("SoftmaxKernel.cu", "log_softmax_back");
         
 			}
 			
 			if(log_softmax_backward_function2 == null) {
 				
-				log_softmax_backward_function2 = CUDAModules.getLocalFunctionByModule("SoftmaxKernel.cu", "log_softmax_back2");
+				log_softmax_backward_function2 = getCudaManager().getLocalFunctionByModule("SoftmaxKernel.cu", "log_softmax_back2");
         
 			}
 			

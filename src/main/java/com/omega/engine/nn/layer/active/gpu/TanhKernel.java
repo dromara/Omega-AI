@@ -3,11 +3,10 @@ package com.omega.engine.nn.layer.active.gpu;
 import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 
 import com.omega.common.data.Tensor;
-import com.omega.common.lib.LibPaths;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.gpu.BaseKernel;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
-import com.omega.engine.gpu.CUDAModules;
 
 import jcuda.Pointer;
 import jcuda.Sizeof;
@@ -27,8 +26,8 @@ public class TanhKernel extends BaseKernel{
 	
 	private Pointer backwardKernelParameters;
 	
-	public TanhKernel() {
-		
+	public TanhKernel(CUDAManager cudaManager) {
+		super(cudaManager);
 		init();
 	}
 	
@@ -45,16 +44,16 @@ public class TanhKernel extends BaseKernel{
 		try {
 
 			if(function == null) {
-				function = CUDAModules.getLocalFunctionByModule("activeFunction.cu", "tanh_forward");
+				function = getCudaManager().getLocalFunctionByModule("activeFunction.cu", "tanh_forward");
 			}
 			
 			if(function_back == null) {
-				function_back = CUDAModules.getLocalFunctionByModule("activeFunction.cu", "tanh_backward");
+				function_back = getCudaManager().getLocalFunctionByModule("activeFunction.cu", "tanh_backward");
 			}
 			
 			if(function_back_temp == null) {
 
-				function_back_temp = CUDAModules.getLocalFunctionByModule("activeFunction.cu", "tanh_backward_temp");
+				function_back_temp = getCudaManager().getLocalFunctionByModule("activeFunction.cu", "tanh_backward_temp");
 				
 			}
 			
@@ -329,7 +328,9 @@ public class TanhKernel extends BaseKernel{
 	    	
 	    	Tensor diff = new Tensor(N, C, H, W, true);
 	    	
-	    	TanhKernel k = new TanhKernel();
+	    	CUDAManager cudaManager = new CUDAManager(0);
+	    	
+	    	TanhKernel k = new TanhKernel(cudaManager);
 
 	    	k.forward(input, output);
 	    	

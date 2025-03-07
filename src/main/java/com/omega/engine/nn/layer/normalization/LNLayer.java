@@ -138,7 +138,7 @@ public class LNLayer extends NormalizationLayer {
 		}
 
 		if(kernel == null) {
-			kernel = new LNKernel(width, bnType);
+			kernel = new LNKernel(width, bnType, cuda());
 		}
 		
 		if(this.gamma == null) {
@@ -187,7 +187,7 @@ public class LNLayer extends NormalizationLayer {
 		}
 		
 		if(kernel == null) {
-			kernel = new LNKernel(width, bnType);
+			kernel = new LNKernel(width, bnType, cuda());
 		}
 		
 		if(this.gamma == null) {

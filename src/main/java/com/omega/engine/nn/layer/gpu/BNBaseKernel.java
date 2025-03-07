@@ -2,10 +2,16 @@ package com.omega.engine.nn.layer.gpu;
 
 import com.omega.common.data.Tensor;
 import com.omega.engine.gpu.BaseKernel;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.nn.network.RunModel;
 
 public abstract class BNBaseKernel extends BaseKernel{
 	
+	public BNBaseKernel(CUDAManager cudaManager) {
+		super(cudaManager);
+		// TODO Auto-generated constructor stub
+	}
+
 	public Tensor runingMean;
 	
 	public Tensor runingVar;

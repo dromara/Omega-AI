@@ -155,7 +155,7 @@ public class GNLayer extends NormalizationLayer {
 		}
 
 		if(kernel == null) {
-			kernel = new GNKernel(groupNum ,bnType);
+			kernel = new GNKernel(groupNum ,bnType, cuda());
 		}
 		
 		if(this.gamma == null) {
@@ -197,7 +197,7 @@ public class GNLayer extends NormalizationLayer {
 		}
 
 		if(kernel == null) {
-			kernel = new GNKernel(groupNum, bnType);
+			kernel = new GNKernel(groupNum, bnType, cuda());
 		}
 		
 		if(this.gamma == null) {

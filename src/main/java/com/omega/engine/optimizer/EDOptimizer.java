@@ -28,8 +28,10 @@ import com.omega.engine.nn.network.Seq2Seq;
 import com.omega.engine.nn.network.Seq2SeqRNN;
 import com.omega.engine.optimizer.lr.LearnRateUpdate;
 import com.omega.example.rnn.data.IndexDataLoader;
+import com.omega.example.transformer.dataset.JSONDatasetLoader;
 import com.omega.example.transformer.dataset.LVMPreTrainDataset;
 import com.omega.example.transformer.dataset.PreTrainDataset;
+import com.omega.example.transformer.dataset.PreTrainDataset2;
 import com.omega.example.transformer.dataset.SFTDataset;
 import com.omega.example.transformer.utils.CNChatTokenizer;
 import com.omega.example.transformer.utils.CNChatTokenizer2;
@@ -3256,6 +3258,173 @@ public class EDOptimizer extends Optimizer {
 					 * save model
 					 */
 					String model_path = "/omega/models/llama3-26m-chinese_"+trainIndex+".model";
+					
+					ModelUtils.saveModel(network, model_path);
+				}
+				
+			}
+			
+			/**
+			 * 停止训练
+			 */
+			System.out.println("training finish. ["+this.trainIndex+"] finalError:"+this.currentError);
+
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+	}
+	
+	public void trainLlama3_chinese(JSONDatasetLoader trainingData,int gradAccSteps,boolean saveWeight,String modelPath) {
+		// TODO Auto-generated method stub
+		try {
+			
+			CUDAModules.initCUDAFunctions();
+
+			this.dataSize = trainingData.number;
+			
+			if(isWarmUp()) {
+				this.network.learnRate = (float) (this.lr * Math.pow(batchIndex * 1.0f/burnIn * 1.0f, power));
+			}
+			
+			Llama3 network = (Llama3) this.network;
+			
+			Tensor input = new Tensor(batchSize * network.time, 1, 1, 1, true);
+			
+			float[] tmpInput = new float[batchSize * network.time];
+
+			Tensor label = new Tensor(batchSize , 1, 1, network.time, true);
+			
+			float[] tmpLabel = new float[batchSize * network.time];
+			
+			int[] padCount = new int[] {0};
+
+			Tensor[] cs = RoPEKernel.getCosAndSin(network.time, network.embedDim, network.headNum);
+			
+			Tensor cos = cs[0];
+			
+			Tensor sin = cs[1];
+
+			int pad = trainingData.tokenizer.pad();
+			
+			trainingData.loadData(input, label, tmpInput, tmpLabel, padCount, 0);
+
+			for(int i = 0;i<this.trainTime;i++) {
+				
+				if(this.trainIndex >= this.minTrainTime) {
+					break;
+				}
+				
+				this.trainIndex = i + 1;
+
+				Tensor output = null;
+				
+				/**
+				 * 遍历整个训练集
+				 */
+				for(int it = 0;it<trainingData.count_it;it++) {
+
+					if(Math.abs(this.currentError) <= this.error) {
+						break;
+					}
+					
+					long start = System.nanoTime();
+					
+					this.loss.clear();
+
+					this.lossDiff.clear();
+
+					/**
+					 * 读取训练数据
+					 */
+					trainingData.loadData(input, label, tmpInput, tmpLabel, padCount, it);
+
+					/**
+					 * forward
+					 */
+					output = network.forward(cos, sin, input);
+
+					/**
+					 * loss
+					 */
+					this.loss = network.loss(output, label, pad);
+
+					/**
+					 * loss diff
+					 */
+					if(pad >= 0) {
+						this.lossDiff = network.lossDiff(output, label, pad, padCount[0]);
+					}else {
+						this.lossDiff = network.lossDiff(output, label, pad);
+					}
+
+					/**
+					 * back
+					 */
+					network.back(cos, sin, this.lossDiff);
+
+					/**
+					 * update
+					 */
+					if(gradAccSteps > 1) {
+						this.network.accGrad(gradAccSteps);
+					}
+					if(it > 1 && it % gradAccSteps == 0) {
+						if(this.network.CLIP_GRAD_NORM) {
+							this.network.clipGradNorm(1.0f);
+						}
+						this.network.update();
+					}
+					
+					/**
+					 * current time error
+					 */
+					if(this.loss.isHasGPU()) {
+						int count = input.number;
+						if(pad >= 0) {
+							count = padCount[0];
+						}
+						this.currentError = MatrixOperation.sum(this.loss.syncHost()) / count;
+					}else {
+						this.currentError = MatrixOperation.sum(this.loss.data) / input.number;
+					}
+
+					if(it % 100 == 0) {
+						int time = output.number / batchSize;
+						if(trainingData.tokenizer != null) {
+							float error = this.accuracyBatchFisrt(input, output, label, time, batchSize, trainingData.tokenizer, pad);
+						}else {
+							float error = this.accuracyBatchFisrt(input, output, label, time, batchSize, trainingData.vocab, pad);
+						}
+					}
+
+					String msg = "training["+this.trainIndex+"]{"+it+"/"+trainingData.count_it+"} (lr:"+this.network.learnRate+") train_loss:" + this.currentError + " [costTime:"+(System.nanoTime() - start)/1e6+"ms.]";
+					
+					System.out.println(msg);
+					
+					/**
+					 * dynamic update learnRate
+					 */
+					updateLRDynamic(i * trainingData.count_it + it, this.trainTime * trainingData.count_it);
+					
+					this.batchIndex++;
+					
+					if(saveWeight && it > 1 && it % 20000 == 0) {
+						/**
+						 * save model
+						 */
+						String model_path = modelPath+trainIndex+"_"+it+".model";
+						
+						ModelUtils.saveModel(network, model_path);
+					}
+					
+				}
+
+				if(saveWeight) {
+					/**
+					 * save model
+					 */
+					String model_path = modelPath+"_it:"+trainIndex+".model";
 					
 					ModelUtils.saveModel(network, model_path);
 				}

@@ -5,7 +5,6 @@ import java.io.RandomAccessFile;
 
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixUtils;
-import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.nn.layer.ConvolutionLayer;
@@ -147,7 +146,7 @@ public class ResidualBlockLayer extends Layer{
 		/**
 		 * block1 + temb_proj
 		 */
-		TensorOP.add(block1[2].getOutput(), temb_proj[1].getOutput(), h, block1[2].getOutput().height * block1[2].getOutput().width);
+		Tensor_OP().add(block1[2].getOutput(), temb_proj[1].getOutput(), h, block1[2].getOutput().height * block1[2].getOutput().width);
 		
 //		System.err.println("h:");
 //		h.showDM();
@@ -169,7 +168,7 @@ public class ResidualBlockLayer extends Layer{
 			shortcut.forward(input);
 			tmp = shortcut.getOutput();
 		}
-		TensorOP.add(block2[2].getOutput(), tmp, g);
+		Tensor_OP().add(block2[2].getOutput(), tmp, g);
 		
 		/**
 		 * attn
@@ -215,7 +214,7 @@ public class ResidualBlockLayer extends Layer{
 		/**
 		 * temb_proj backward
 		 */
-		TensorOP.sum(block2[0].diff, dt, 2);
+		Tensor_OP().sum(block2[0].diff, dt, 2);
 		temb_proj[1].back(dt);
 		temb_proj[0].back(temb_proj[1].diff);
 		
@@ -234,7 +233,7 @@ public class ResidualBlockLayer extends Layer{
 			shortcut.back(tmpDelta);
 			tmp = shortcut.diff;
 		}
-		TensorOP.add(block1[0].diff, tmp, block1[0].diff);
+		Tensor_OP().add(block1[0].diff, tmp, block1[0].diff);
 		
 		this.diff = block1[0].diff;
 	}
@@ -262,11 +261,11 @@ public class ResidualBlockLayer extends Layer{
 		/**
 		 * temb_proj backward
 		 */
-		TensorOP.sum(block2[0].diff, dt, 2);
+		Tensor_OP().sum(block2[0].diff, dt, 2);
 //		dt.showDMByOffset(0, 10);
 		temb_proj[1].back(dt);
 		temb_proj[0].back(temb_proj[1].diff);
-		TensorOP.add(t_diff, temb_proj[0].diff, t_diff);
+		Tensor_OP().add(t_diff, temb_proj[0].diff, t_diff);
 		
 		/**
 		 * block1 backward
@@ -280,7 +279,7 @@ public class ResidualBlockLayer extends Layer{
 			shortcut.back(tmpDelta);
 			tmp = shortcut.diff;
 		}
-		TensorOP.add(block1[0].diff, tmp, block1[0].diff);
+		Tensor_OP().add(block1[0].diff, tmp, block1[0].diff);
 		
 		this.diff = block1[0].diff;
 	}

@@ -10,6 +10,7 @@ import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.network.CNN;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.updater.UpdaterFactory;
 
 /**
@@ -36,8 +37,6 @@ public class TransformerDecoderLayer extends Layer{
 //	private PoswiseFeedForwardLayer feed_forward;
 	private LNLayer ln1;
 	private LNLayer ln2;
-	
-	private BaseKernel baseKernel;
 	
 	private Tensor ln1i;
 	
@@ -72,7 +71,6 @@ public class TransformerDecoderLayer extends Layer{
 	}
 	
 	public void initLayers() {
-		baseKernel = new BaseKernel();
 		this.attn = new MultiHeadAttentionLayer(embedDim, headNum, time, bias, layer_norm, network);
 		this.feed_forward = new PoswiseFeedForwardLinearLayer(embedDim, nChannel, bias, layer_norm, network);
 //		this.feed_forward = new PoswiseFeedForwardLayer(time, embedDim, nChannel, bias, layer_norm, network);
@@ -144,13 +142,13 @@ public class TransformerDecoderLayer extends Layer{
 		
 		this.attn.forward(input, mask);
 		
-		TensorOP.add(this.attn.getOutput(), input, ln1i);
+		Tensor_OP().add(this.attn.getOutput(), input, ln1i);
 		
 		this.ln1.forward(ln1i);
 		
 		this.feed_forward.forward(this.ln1.getOutput());
 		
-		TensorOP.add(this.feed_forward.getOutput(), this.ln1.getOutput(), ln2i);
+		Tensor_OP().add(this.feed_forward.getOutput(), this.ln1.getOutput(), ln2i);
 		
 		this.ln2.forward(ln2i);
 		
@@ -175,18 +173,18 @@ public class TransformerDecoderLayer extends Layer{
 //		this.diff = this.attn.diff;
 		
 		this.ln2.back(delta);
-		baseKernel.copy_gpu(this.ln2.diff, this.ln2i, this.ln2.diff.getDataLength(), 1, 1);
+		baseKernel().copy_gpu(this.ln2.diff, this.ln2i, this.ln2.diff.getDataLength(), 1, 1);
 		
 		this.feed_forward.back(this.ln2.diff);
 		
-		TensorOP.add(this.feed_forward.diff, ln2i, ln2.getOutput());
+		Tensor_OP().add(this.feed_forward.diff, ln2i, ln2.getOutput());
 		
 		this.ln1.back(ln2.getOutput());
-		baseKernel.copy_gpu(this.ln1.diff, this.ln1i, this.ln1.diff.getDataLength(), 1, 1);
+		baseKernel().copy_gpu(this.ln1.diff, this.ln1i, this.ln1.diff.getDataLength(), 1, 1);
 		
 		this.attn.back(ln1.diff);
 		
-		TensorOP.add(this.attn.diff, ln1i, ln1i);
+		Tensor_OP().add(this.attn.diff, ln1i, ln1i);
 
 		this.diff = ln1i;
 		
@@ -331,10 +329,12 @@ public class TransformerDecoderLayer extends Layer{
 
 		int nChannel = 4;
 		
-		CNN tf = new CNN(null);
-		tf.CUDNN = true;
-		tf.number = batchSize;
+		Transformer tf = new Transformer();
+//		tf.CUDNN = true;
+		tf.number = batchSize * time;
 		
+		TransformerDecoderLayer mal = new TransformerDecoderLayer(time, embedDim, nChannel, false, true, tf);
+
 		float[] data = RandomUtils.order(batchSize * time * embedDim, 0.1f, 0.1f);
 		
 		Tensor input = new Tensor(batchSize , time, 1, embedDim, data, true);
@@ -346,7 +346,7 @@ public class TransformerDecoderLayer extends Layer{
 		
 		Tensor delta = new Tensor(batchSize, time, 1, embedDim, delta_data, true);
 		
-		TransformerDecoderLayer mal = new TransformerDecoderLayer(time, embedDim, nChannel, false, true, tf);
+		tf.tensorOP.add(input, delta, delta);
 		
 //		mal.forward(input);
 		

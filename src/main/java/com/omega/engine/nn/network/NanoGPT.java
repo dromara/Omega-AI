@@ -39,7 +39,7 @@ public class NanoGPT extends Network {
 	private FullyLayer fullyLayer;
 	
 	public NanoGPT(LossType lossType,UpdaterType updater,int headNum,int decoderNum,int vocabSize,int time,int embedDim,boolean bias,boolean dropout) {
-		this.lossFunction = LossFactory.create(lossType);
+		this.lossFunction = LossFactory.create(lossType, this);
 		this.bias = bias;
 		this.dropout = dropout;
 		this.decoderNum = decoderNum;
@@ -58,7 +58,7 @@ public class NanoGPT extends Network {
 	
 	public NanoGPT(LossType lossType,UpdaterType updater,int headNum,int decoderNum,int vocabSize,int time,int embedDim,boolean bias,boolean dropout,boolean cudnn) {
 		this.CUDNN = cudnn;
-		this.lossFunction = LossFactory.create(lossType);
+		this.lossFunction = LossFactory.create(lossType, this);
 		this.bias = bias;
 		this.dropout = dropout;
 		this.decoderNum = decoderNum;
@@ -238,6 +238,18 @@ public class NanoGPT extends Network {
 	public void loadModel(RandomAccessFile inputStream) throws IOException {
 		decoder.loadModel(inputStream);
 		fullyLayer.loadModel(inputStream);
+	}
+
+	@Override
+	public void putParamters() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void putParamterGrads() {
+		// TODO Auto-generated method stub
+		
 	}
 	
 }

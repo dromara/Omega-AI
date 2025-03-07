@@ -92,9 +92,9 @@ public class Yolo extends OutputsNetwork{
 		}else {
 			
 			if(class_num != 1 && class_num != 0) {
-				this.lossFunction = LossFactory.create(lossType, class_num);
+				this.lossFunction = LossFactory.create(lossType, class_num, this);
 			}else {
-				this.lossFunction = LossFactory.create(lossType);
+				this.lossFunction = LossFactory.create(lossType, this);
 			}
 		}
 		
@@ -290,6 +290,18 @@ public class Yolo extends OutputsNetwork{
 	public Tensor lossDiff(Tensor output, Tensor label, Tensor diff) {
 		// TODO Auto-generated method stub
 		return this.lossFunction.diff(output, label, diff);
+	}
+
+	@Override
+	public void putParamters() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void putParamterGrads() {
+		// TODO Auto-generated method stub
+		
 	}
 	
 //	public void clearGrad() {

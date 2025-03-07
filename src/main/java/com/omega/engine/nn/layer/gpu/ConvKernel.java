@@ -3,12 +3,10 @@ package com.omega.engine.nn.layer.gpu;
 import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 
 import com.omega.common.data.Tensor;
-import com.omega.common.lib.LibPaths;
 import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.RandomUtils;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
-import com.omega.engine.gpu.CUDAModules;
-import com.omega.engine.gpu.GPUOP;
 
 import jcuda.Pointer;
 import jcuda.Sizeof;
@@ -63,7 +61,8 @@ public class ConvKernel extends ConvBaseKernel{
 	
 	private Pointer dx_t;
 	
-	public ConvKernel(int C,int H,int W,int ko,int kh,int kw,int s,int p) {
+	public ConvKernel(int C,int H,int W,int ko,int kh,int kw,int s,int p,CUDAManager cudaManager) {
+		super(cudaManager);
 		this.C = C;
 		this.H = H;
 		this.W = W;
@@ -101,19 +100,19 @@ public class ConvKernel extends ConvBaseKernel{
 		try {
 
 			if(im2col_function == null) {
-				im2col_function = CUDAModules.getLocalFunctionByModule("Im2colKernel.cu", "im2col_gpu_kernelV2");
+				im2col_function = getCudaManager().getLocalFunctionByModule("Im2colKernel.cu", "im2col_gpu_kernelV2");
 			}
 			
 			if(bias_function == null) {
-				bias_function = CUDAModules.getLocalFunctionByModule("BiasKernel.cu", "add_bias");
+				bias_function = getCudaManager().getLocalFunctionByModule("BiasKernel.cu", "add_bias");
 			}
 			
 			if(back_back_function == null) {
-				back_back_function = CUDAModules.getLocalFunctionByModule("BiasKernel.cu", "backward_bias_kernel");
+				back_back_function = getCudaManager().getLocalFunctionByModule("BiasKernel.cu", "backward_bias_kernel");
 			}
 			
 			if(col2im_function == null) {
-				col2im_function = CUDAModules.getLocalFunctionByModule("Col2imKernel.cu", "col2im_gpu_kernelV2");
+				col2im_function = getCudaManager().getLocalFunctionByModule("Col2imKernel.cu", "col2im_gpu_kernelV2");
 			}
 			
 		} catch (Exception e) {
@@ -249,7 +248,7 @@ public class ConvKernel extends ConvBaseKernel{
 		/**
 		 * m k n
 		 */
-		GPUOP.getInstance().multiplyFloat(ko, iw, ih, 
+		getCudaManager().getOp().multiplyFloat(ko, iw, ih, 
 				kernel.getGpuData(), dy, output.getGpuData().withByteOffset(index * ko * oHeight * oWidth * Sizeof.FLOAT), cublasOperation.CUBLAS_OP_N, cublasOperation.CUBLAS_OP_N, 1.0f, 0.0f);
 
 	}
@@ -258,7 +257,7 @@ public class ConvKernel extends ConvBaseKernel{
 		/**
 		 * m k n
 		 */
-		GPUOP.getInstance().multiplyFloat(ko, ih, iw, 
+		getCudaManager().getOp().multiplyFloat(ko, ih, iw, 
 				delta.getGpuData().withByteOffset(index * ko * iw  * Sizeof.FLOAT), dy, diffW.getGpuData(), cublasOperation.CUBLAS_OP_N, cublasOperation.CUBLAS_OP_T, 1.0f, 1.0f);
 	}
 	
@@ -266,7 +265,7 @@ public class ConvKernel extends ConvBaseKernel{
 		/**
 		 * k n m
 		 */
-		GPUOP.getInstance().multiplyFloat(ih, iw, ko, 
+		getCudaManager().getOp().multiplyFloat(ih, iw, ko, 
 				kernel.getGpuData(), delta.getGpuData().withByteOffset(index * ko * iw  * Sizeof.FLOAT), p, cublasOperation.CUBLAS_OP_T, cublasOperation.CUBLAS_OP_N, 1.0f, 0.0f);
 	}
 	
@@ -364,8 +363,6 @@ public class ConvKernel extends ConvBaseKernel{
 	
 	public static void main(String args[]) {
 		
-		CUDAModules.initContext();
-		
 		int N = 2;
     	int C = 64;
     	int H = 8;
@@ -397,7 +394,9 @@ public class ConvKernel extends ConvBaseKernel{
     	
     	Tensor diffW = new Tensor(ko, C, kh, kw, true);
 		
-    	ConvKernel k = new ConvKernel(C, H, W, ko, kh, kw, s, p);
+    	CUDAManager cudaManager = new CUDAManager(0);
+    	
+    	ConvKernel k = new ConvKernel(C, H, W, ko, kh, kw, s, p, cudaManager);
     	
     	k.conv(input, kernel, output);
     	

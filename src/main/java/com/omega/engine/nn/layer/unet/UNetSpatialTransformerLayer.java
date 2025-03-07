@@ -1,7 +1,6 @@
 package com.omega.engine.nn.layer.unet;
 
 import com.omega.common.data.Tensor;
-import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -102,7 +101,7 @@ public class UNetSpatialTransformerLayer extends Layer{
 		// TODO Auto-generated method stub
 		//[b, c, h, w] --> [b, h*w, c]
 		
-		TensorOP.permute(input, xt, new int[] {0, 2, 3, 1});
+		Tensor_OP().permute(input, xt, new int[] {0, 2, 3, 1});
 		
 		xt.view(number, height * width, 1, channel);
 		
@@ -120,13 +119,13 @@ public class UNetSpatialTransformerLayer extends Layer{
 		this.output.view(number, channel, 1, height * width);
 //		transformer.getOutput().showDM("to");
 
-		TensorOP.permute(transformer.getOutput(), this.output, new int[] {0, 3, 2, 1});
+		Tensor_OP().permute(transformer.getOutput(), this.output, new int[] {0, 3, 2, 1});
 
 		this.output.viewOrg();
 		
 //		this.output.showDM("to1111");
 //		this.input.showDM("input1111");
-		TensorOP.add(this.output, this.input, this.output);
+		Tensor_OP().add(this.output, this.input, this.output);
 		
 //		this.output.showDM("to2222");
 	}
@@ -142,7 +141,7 @@ public class UNetSpatialTransformerLayer extends Layer{
 		// TODO Auto-generated method stub
 		//[b, c, h, w] --> [b, h*w, c]
 		Tensor deltaT = this.output.view(number, height, width, channel);
-		TensorOP.permute(delta, deltaT, new int[] {0, 2, 3, 1});
+		Tensor_OP().permute(delta, deltaT, new int[] {0, 2, 3, 1});
 		deltaT.view(number, height * width, 1, channel);
 		
 		transformer.back(deltaT, kvDiff);
@@ -152,9 +151,9 @@ public class UNetSpatialTransformerLayer extends Layer{
 		}
 		
 		this.diff = this.output.view(number, channel, 1, height * width);
-		TensorOP.permute(transformer.diff, this.diff, new int[] {0, 3, 2, 1});
+		Tensor_OP().permute(transformer.diff, this.diff, new int[] {0, 3, 2, 1});
 		this.diff.view(number, channel, height, width);
-		TensorOP.add(delta, this.diff, this.diff);
+		Tensor_OP().add(delta, this.diff, this.diff);
 	}
 
 	@Override

@@ -4,8 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.omega.common.data.Tensor;
-import com.omega.engine.ad.op.TensorOP;
-import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.EmbeddingLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -40,8 +38,6 @@ public class TransformerDecoder extends Layer{
 	private EmbeddingLayer pos_emb;
 	private List<TransformerDecoderLayer> decoderLayers;
 	private LNLayer ln;
-	
-	private BaseKernel baseKernel;
 	
 	private Tensor positions;
 
@@ -81,9 +77,6 @@ public class TransformerDecoder extends Layer{
 			TransformerDecoderLayer decoderLayer = new TransformerDecoderLayer(time, embedDim, nChannel, bias, layer_norm, network);
 			decoderLayers.add(decoderLayer);
 		}
-		if(baseKernel == null) {
-			baseKernel = new BaseKernel();
-		}
 
 		this.ln = new LNLayer(decoderLayers.get(decoderLayers.size() - 1));
 		
@@ -115,7 +108,7 @@ public class TransformerDecoder extends Layer{
 		
 		pos_emb.forward(positions);
 		
-		TensorOP.add(src_emb.getOutput(), pos_emb.getOutput(), src_emb.getOutput());
+		Tensor_OP().add(src_emb.getOutput(), pos_emb.getOutput(), src_emb.getOutput());
 		
 		Tensor decoderOutput = src_emb.getOutput();
 		
@@ -137,7 +130,7 @@ public class TransformerDecoder extends Layer{
 		
 		pos_emb.forward(positions);
 		
-		TensorOP.add(src_emb.getOutput(), pos_emb.getOutput(), src_emb.getOutput());
+		Tensor_OP().add(src_emb.getOutput(), pos_emb.getOutput(), src_emb.getOutput());
 		
 		Tensor decoderOutput = src_emb.getOutput();
 		

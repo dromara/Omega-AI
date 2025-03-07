@@ -171,12 +171,12 @@ public class ConvolutionTransposeLayer extends Layer {
 		}
 		if(kernel == null){
 			if(this.network.CUDNN) {
-				kernel = new ConvTransposeCudnnKernel(network, channel, height, width, kernelNum, kHeight, kWidth, stride, padding, dilation, output_padding);
+				kernel = new ConvTransposeCudnnKernel(network, channel, height, width, kernelNum, kHeight, kWidth, stride, padding, dilation, output_padding, cuda());
 			}else {
 //				kernel = new ConvKernel(channel, height, width, kernelNum, kHeight, kWidth, stride, padding);
 			}
 			if(this.hasBias) {
-				biasKernel = new BiasKernel();
+				biasKernel = new BiasKernel(cuda());
 			} 
 		}
 	}

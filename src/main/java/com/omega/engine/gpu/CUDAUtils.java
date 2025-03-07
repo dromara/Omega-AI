@@ -23,6 +23,7 @@ public class CUDAUtils {
     private static CUcontext context = null;
     
     private CUDAUtils() {
+    	
     }
 
     private synchronized static void createInstance() {

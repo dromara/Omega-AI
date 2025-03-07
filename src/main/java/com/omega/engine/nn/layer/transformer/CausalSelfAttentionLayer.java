@@ -6,8 +6,6 @@ import static jcuda.jcublas.cublasOperation.CUBLAS_OP_T;
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
-import com.omega.engine.ad.op.TensorOP;
-import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.GPUOP;
 import com.omega.engine.gpu.SoftmaxKernel;
 import com.omega.engine.nn.layer.DropoutLayer;
@@ -47,8 +45,6 @@ public class CausalSelfAttentionLayer extends Layer{
 	private FullyLayer oLinerLayer;
 	
 	private DropoutLayer dropoutLayer;
-	
-	private BaseKernel baseKernel;
 	
 	private Tensor qt;
 	private Tensor kt;
@@ -148,12 +144,8 @@ public class CausalSelfAttentionLayer extends Layer{
 			this.dropoutLayer = new DropoutLayer(dropput_probability, this.oLinerLayer);
 		}
 		
-		if(baseKernel == null) {
-			baseKernel = new BaseKernel();
-		}
-		
 		if(softmax == null) {
-			softmax = new SoftmaxKernel();
+			softmax = new SoftmaxKernel(cuda());
 		}
 		
 //		System.out.println(JsonUtils.toJson(this.inputLayer.weight.syncHost()));
@@ -264,13 +256,13 @@ public class CausalSelfAttentionLayer extends Layer{
 		Tensor value = this.vLinerLayer.getOutput().view(batchSize, time, headNum, dk);
 //		query.showShape();
 //		qt.showShape();
-		TensorOP.permute(query, qt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(key, kt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(value, vt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(query, qt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(key, kt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(value, vt, new int[] {0, 2, 1, 3});
 
 		scaledDotProductAttention(qt, kt, vt, null);
 
-		TensorOP.permute(attn_outputs, ot, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(attn_outputs, ot, new int[] {0, 2, 1, 3});
 
 		ot.view(batchSize * time, 1, 1, headNum * dk);
 
@@ -296,13 +288,13 @@ public class CausalSelfAttentionLayer extends Layer{
 		Tensor key = this.kLinerLayer.getOutput().view(batchSize, time, headNum, dk);
 		Tensor value = this.vLinerLayer.getOutput().view(batchSize, time, headNum, dk);
 		
-		TensorOP.permute(query, qt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(key, kt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(value, vt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(query, qt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(key, kt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(value, vt, new int[] {0, 2, 1, 3});
 		
 		scaledDotProductAttention(qt, kt, vt, mask);
 
-		TensorOP.permute(attn_outputs, ot, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(attn_outputs, ot, new int[] {0, 2, 1, 3});
 
 		ot.view(batchSize * time, 1, 1, headNum * dk);
 		
@@ -427,7 +419,7 @@ public class CausalSelfAttentionLayer extends Layer{
 		
 		oi.view(batchSize, time, headNum, dk);
 		
-		TensorOP.permute(oi, attn_outputs, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(oi, attn_outputs, new int[] {0, 2, 1, 3});
 		
 		int[] qo_shape = this.qLinerLayer.getOutput().shape();
 		int[] ko_shape = this.kLinerLayer.getOutput().shape();
@@ -436,9 +428,9 @@ public class CausalSelfAttentionLayer extends Layer{
 		qt.view(qo_shape);
 		kt.view(ko_shape);
 		vt.view(vo_shape);
-		TensorOP.permute(this.qLinerLayer.getOutput(), qt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(this.kLinerLayer.getOutput(), kt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(this.vLinerLayer.getOutput(), vt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(this.qLinerLayer.getOutput(), qt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(this.kLinerLayer.getOutput(), kt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(this.vLinerLayer.getOutput(), vt, new int[] {0, 2, 1, 3});
 		
 		Tensor queryDelta = qt.view(batchSize * time, 1, 1, headNum * dk);
 		Tensor keyDelta = kt.view(batchSize * time, 1, 1, headNum * dk);
@@ -448,8 +440,8 @@ public class CausalSelfAttentionLayer extends Layer{
 		this.kLinerLayer.back(keyDelta);
 		this.vLinerLayer.back(valueDelta);
 		
-		TensorOP.add(this.qLinerLayer.diff, this.kLinerLayer.diff, this.qLinerLayer.diff);
-		TensorOP.add(this.qLinerLayer.diff, this.vLinerLayer.diff, this.qLinerLayer.diff);
+		Tensor_OP().add(this.qLinerLayer.diff, this.kLinerLayer.diff, this.qLinerLayer.diff);
+		Tensor_OP().add(this.qLinerLayer.diff, this.vLinerLayer.diff, this.qLinerLayer.diff);
 
 		this.diff = this.qLinerLayer.diff;
 		

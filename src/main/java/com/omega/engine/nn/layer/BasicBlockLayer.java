@@ -1,7 +1,6 @@
 package com.omega.engine.nn.layer;
 
 import com.omega.common.data.Tensor;
-import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.active.ActiveFunctionLayer;
 import com.omega.engine.nn.layer.active.ReluLayer;
 import com.omega.engine.nn.layer.gpu.BasicBlockKernel;
@@ -41,9 +40,7 @@ public class BasicBlockLayer extends Layer {
 	private int fisrtLayerStride = 2;
 	
 	private boolean downsample = false;
-	
-	private BaseKernel baseKernel;
-	
+
 	private Tensor cache_delta;
 	
 	public BasicBlockLayer(int channel,int oChannel,int height,int width,int fisrtLayerStride, Network network) {
@@ -67,9 +64,7 @@ public class BasicBlockLayer extends Layer {
 			downsample = true;
 		}
 		
-		kernel = new BasicBlockKernel();
-		
-		baseKernel = new BaseKernel();
+		kernel = new BasicBlockKernel(cuda());
 		
 		initLayers();
 		
@@ -160,7 +155,7 @@ public class BasicBlockLayer extends Layer {
 		/**
 		 * deltax = deltao * (f'(x) + 1)
 		 */
-		baseKernel.copy_gpu(delta, this.cache_delta, delta.getDataLength(), 1, 1);
+		baseKernel().copy_gpu(delta, this.cache_delta, delta.getDataLength(), 1, 1);
 		
 		bn2.back(delta);
 		conv2.back(bn2.diff);

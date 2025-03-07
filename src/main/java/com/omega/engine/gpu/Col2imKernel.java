@@ -3,10 +3,6 @@ package com.omega.engine.gpu;
 import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 import static jcuda.driver.JCudaDriver.cuMemAlloc;
 
-import com.omega.common.lib.LibPaths;
-import com.omega.common.utils.JsonUtils;
-import com.omega.common.utils.MatrixUtils;
-
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUdeviceptr;
@@ -14,7 +10,7 @@ import jcuda.driver.CUfunction;
 import jcuda.driver.JCudaDriver;
 import jcuda.runtime.JCuda;
 
-public class Col2imKernel {
+public class Col2imKernel extends CUDAKernel{
 	
 	private float[] x;
 	private float[] out;
@@ -35,7 +31,8 @@ public class Col2imKernel {
 	private int CAFFE_CUDA_NUM_THREADS = 1024;
 
 	
-	public Col2imKernel(float[] x,float[] out,int N,int C,int H,int W,int kh,int kw,int s,int p) {
+	public Col2imKernel(float[] x,float[] out,int N,int C,int H,int W,int kh,int kw,int s,int p,CUDAManager cudaManager) {
+		super(cudaManager);
 		this.x = x;
 		this.N = N;
 		this.C = C;
@@ -60,7 +57,7 @@ public class Col2imKernel {
 
 			if(function == null) {
 				
-				function = CUDAModules.getLocalFunctionByModule("Col2imKernel.cu", "col2im_gpu_kernelV2");
+				function = getCudaManager().getLocalFunctionByModule("Col2imKernel.cu", "col2im_gpu_kernelV2");
 
 			}
 			
@@ -137,45 +134,45 @@ public class Col2imKernel {
 		return out;
 	}
 
-    public static void main(String args[]){	
-
-    	int N = 1;
-    	int C = 1;
-    	int H = 8;
-    	int W = 8;
-    	int kh = 3;
-    	int kw = 3;
-    	int s = 1;
-    	int p = 1;
-    	int oHeight = ((H + 2 * p - kh) / s) + 1;
-		int oWidth = ((W + 2 * p - kw) / s) + 1;
-		int oh = C * kh * kw;
-		int ow = oHeight * oWidth;
-    	
-    	float[] x = MatrixUtils.order(N * C * H * W, 1, 1);
-    	
-    	float[] out = new float[oh * ow];
-    	
-    	float[] xout = new float[C * H * W];
-    	
-	    Im2colKernel im2col = new Im2colKernel(x, out, N, C, H, W, kh, kw, s, p);
-    	
-	    Col2imKernel col2im = new Col2imKernel(out, xout, N, C, H, H, kh, kw, s, p);
-	    
-	    im2col.im2col();
-	    
-	    col2im.col2im();
-	    
-	    col2im.col2im();
-	    
-	    System.out.println(x.length+":"+xout.length);
-	    
-	    System.out.println(JsonUtils.toJson(out));
-	    
-	    System.out.println(JsonUtils.toJson(x));
-	    
-	    System.out.println(JsonUtils.toJson(xout));
-	    
-    }
+//    public static void main(String args[]){	
+//
+//    	int N = 1;
+//    	int C = 1;
+//    	int H = 8;
+//    	int W = 8;
+//    	int kh = 3;
+//    	int kw = 3;
+//    	int s = 1;
+//    	int p = 1;
+//    	int oHeight = ((H + 2 * p - kh) / s) + 1;
+//		int oWidth = ((W + 2 * p - kw) / s) + 1;
+//		int oh = C * kh * kw;
+//		int ow = oHeight * oWidth;
+//    	
+//    	float[] x = MatrixUtils.order(N * C * H * W, 1, 1);
+//    	
+//    	float[] out = new float[oh * ow];
+//    	
+//    	float[] xout = new float[C * H * W];
+//    	
+//	    Im2colKernel im2col = new Im2colKernel(x, out, N, C, H, W, kh, kw, s, p);
+//    	
+//	    Col2imKernel col2im = new Col2imKernel(out, xout, N, C, H, H, kh, kw, s, p);
+//	    
+//	    im2col.im2col();
+//	    
+//	    col2im.col2im();
+//	    
+//	    col2im.col2im();
+//	    
+//	    System.out.println(x.length+":"+xout.length);
+//	    
+//	    System.out.println(JsonUtils.toJson(out));
+//	    
+//	    System.out.println(JsonUtils.toJson(x));
+//	    
+//	    System.out.println(JsonUtils.toJson(xout));
+//	    
+//    }
 
 }

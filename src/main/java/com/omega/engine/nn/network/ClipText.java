@@ -4,8 +4,6 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 
 import com.omega.common.data.Tensor;
-import com.omega.engine.ad.op.TensorOP;
-import com.omega.engine.gpu.GPUOP;
 import com.omega.engine.loss.LossFactory;
 import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.layer.InputLayer;
@@ -13,8 +11,6 @@ import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.SoftmaxWithCrossEntropyLayer;
 import com.omega.engine.nn.layer.clip.bert.Bert;
 import com.omega.engine.updater.UpdaterType;
-
-import jcuda.jcublas.cublasOperation;
 
 public class ClipText extends Network {
 	
@@ -45,7 +41,7 @@ public class ClipText extends Network {
 	private Tensor output;
 	
 	public ClipText(LossType lossType,UpdaterType updater,int headNum,int time,int vocabSize,int hiddenSize,int embedDim,int maxPositionEmbeddingsSize,int typeVocabSize,int intermediateSize,int numHiddenLayers) {
-		this.lossFunction = LossFactory.create(lossType);
+		this.lossFunction = LossFactory.create(lossType, this);
 		this.vocabSize = vocabSize;
 		this.hiddenSize = hiddenSize;
 		this.embedDim = embedDim;
@@ -130,7 +126,7 @@ public class ClipText extends Network {
 			output = Tensor.createGPUTensor(output, number, 1, 1, embedDim, true);
 		}
 		
-		TensorOP.dot(bert.getOutput(), textProjection, output);
+		tensorOP.dot(bert.getOutput(), textProjection, output);
 		
 		return this.output;
 	}
@@ -155,7 +151,7 @@ public class ClipText extends Network {
 			output = Tensor.createGPUTensor(output, number, 1, 1, embedDim, true);
 		}
 		
-		TensorOP.dot(bert.getOutput(), textProjection, output);
+		tensorOP.dot(bert.getOutput(), textProjection, output);
 		
 //		output.showDM();
 //		output.showShape();
@@ -235,6 +231,18 @@ public class ClipText extends Network {
 	}
 	
 	public void loadModel(RandomAccessFile inputStream) throws IOException {
+		
+	}
+
+	@Override
+	public void putParamters() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void putParamterGrads() {
+		// TODO Auto-generated method stub
 		
 	}
 

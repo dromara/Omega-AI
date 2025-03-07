@@ -58,7 +58,7 @@ public class VQVAEResidual extends Layer {
 			shortcut = true;
 		}
 		
-		kernel = new BasicBlockKernel();
+		kernel = new BasicBlockKernel(cuda());
 		
 		initLayers(oChannel);
 		

@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.omega.common.data.Tensor;
-import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.ad.op.gpu.NormalizeKernel;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -80,9 +79,9 @@ public class LPIPSBlock extends Layer {
 			lins.add(n);
 		}
 		
-		normKernel = new NormalizeKernel();
+		normKernel = new NormalizeKernel(cuda());
 		
-		lpipsKernel = new LPIPSKernel();
+		lpipsKernel = new LPIPSKernel(cuda());
 		
 	}
 
@@ -168,7 +167,7 @@ public class LPIPSBlock extends Layer {
 
 			lins.get(i).forward(diffs[i]);
 
-			TensorOP.mean2Dim(lins.get(i).getOutput(), this.output);
+			Tensor_OP().mean2Dim(lins.get(i).getOutput(), this.output);
 			
 		}
 
@@ -187,7 +186,7 @@ public class LPIPSBlock extends Layer {
 
 		for(int i = feats1.length - 1;i>=0;i--) {
 			
-			TensorOP.mean2DimBack(delta, lins.get(i).getOutput());
+			Tensor_OP().mean2DimBack(delta, lins.get(i).getOutput());
 			lins.get(i).back(lins.get(i).getOutput());
 			lpipsKernel.lpip_l2_backward(lins.get(i).diff, feats0[i], feats1[i], feats1[i]);
 			normKernel.l2norm1Dim_back2(outputs[i], feats1[i], feats0[i]);

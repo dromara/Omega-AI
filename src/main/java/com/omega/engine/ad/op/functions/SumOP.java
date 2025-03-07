@@ -4,7 +4,6 @@ import com.omega.common.data.Tensor;
 import com.omega.engine.ad.Tape;
 import com.omega.engine.ad.op.FunctionOP;
 import com.omega.engine.ad.op.OPType;
-import com.omega.engine.ad.op.TensorOP;
 
 public class SumOP extends FunctionOP {
 
@@ -30,7 +29,7 @@ public class SumOP extends FunctionOP {
 		// TODO Auto-generated method stub
 		Tensor self = tape.getX();
 		Tensor y = tape.getOutput();
-		TensorOP.sum(self, y, tape.getPosition()[0]);
+		tape.getTensorOP().sum(self, y, tape.getPosition()[0]);
 		if(self.isRequiresGrad()) {
 			y.setRequiresGrad(true);
 		}
@@ -45,7 +44,7 @@ public class SumOP extends FunctionOP {
 		// TODO Auto-generated method stub
 		Tensor x = tape.getX();
 		if(x.isRequiresGrad()) {
-			TensorOP.broadcast(delta, x.getGrad(), tape.getPosition()[0]);
+			tape.getTensorOP().broadcast(delta, x.getGrad(), tape.getPosition()[0]);
 		}
 	}
 

@@ -9,8 +9,6 @@ import java.io.RandomAccessFile;
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
-import com.omega.engine.ad.op.TensorOP;
-import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.gpu.GPUOP;
 import com.omega.engine.gpu.cudnn.SoftmaxCudnnKernel;
@@ -43,8 +41,6 @@ public class BertSelfAttentionLayer extends Layer{
 	private FullyLayer qLinerLayer;
 	private FullyLayer kLinerLayer;
 	private FullyLayer vLinerLayer;
-	
-	private BaseKernel baseKernel;
 	
 	private AttentionKernel attentionKernel;
 	
@@ -112,12 +108,8 @@ public class BertSelfAttentionLayer extends Layer{
 		this.setvLinerLayer(new FullyLayer(embedDim, embedDim, bias, this.network));
 //		this.vLinerLayer.weight = new Tensor(1, 1, embedDim, embedDim, RandomUtils.order(this.embedDim * this.embedDim, 0.1f, 0.1f), true);
 		
-		if(baseKernel == null) {
-			baseKernel = new BaseKernel();
-		}
-		
 		if(attentionKernel == null) {
-			attentionKernel = new AttentionKernel();
+			attentionKernel = new AttentionKernel(network.cudaManager);
 		}
 		
 	}
@@ -132,7 +124,7 @@ public class BertSelfAttentionLayer extends Layer{
 		// TODO Auto-generated method stub
 		
 		if(network.CUDNN && softmaxKernel == null) {
-			softmaxKernel = new SoftmaxCudnnKernel(time, 1, 1);
+			softmaxKernel = new SoftmaxCudnnKernel(time, 1, 1, network.cudaManager);
 		}
 		
 		this.number = input.number;
@@ -215,9 +207,9 @@ public class BertSelfAttentionLayer extends Layer{
 		Tensor key = this.getkLinerLayer().getOutput().view(batchSize, time, headNum, dk);
 		Tensor value = this.getvLinerLayer().getOutput().view(batchSize, time, headNum, dk);
 
-		TensorOP.permute(query, qt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(key, kt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(value, vt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(query, qt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(key, kt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(value, vt, new int[] {0, 2, 1, 3});
 
 		scaledDotProductAttention(qt, kt, vt);
 		
@@ -248,9 +240,9 @@ public class BertSelfAttentionLayer extends Layer{
 		Tensor key = this.getkLinerLayer().getOutput().view(batchSize, time, headNum, dk);
 		Tensor value = this.getvLinerLayer().getOutput().view(batchSize, time, headNum, dk);
 
-		TensorOP.permute(query, qt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(key, kt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(value, vt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(query, qt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(key, kt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(value, vt, new int[] {0, 2, 1, 3});
 
 		scaledDotProductAttention(qt, kt, vt, mask);
 		
@@ -276,9 +268,9 @@ public class BertSelfAttentionLayer extends Layer{
 		Tensor key = this.getkLinerLayer().getOutput().view(batchSize, time, headNum, dk);
 		Tensor value = this.getvLinerLayer().getOutput().view(batchSize, time, headNum, dk);
 
-		TensorOP.permute(query, qt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(key, kt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(value, vt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(query, qt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(key, kt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(value, vt, new int[] {0, 2, 1, 3});
 
 		scaledDotProductAttention(qt, kt, vt, mask);
 		
@@ -298,7 +290,7 @@ public class BertSelfAttentionLayer extends Layer{
 		
 		GPUOP.getInstance().bmmEX(CUBLAS_OP_T, CUBLAS_OP_N, time, time, dk, 1.0f, key.getGpuData(), dk, time * dk, query.getGpuData(), dk, time * dk, 0.0f, preatt.getGpuData(), time, time * time, batchSize * headNum);
 		
-		TensorOP.mul(preatt, d_k, preatt);
+		Tensor_OP().mul(preatt, d_k, preatt);
 		
 		attentionKernel.addMask(preatt, mask, preatt);
 		

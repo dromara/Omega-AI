@@ -13,7 +13,6 @@ import com.omega.common.utils.MathUtils;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
-import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.check.BaseCheck;
 import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.nn.data.BaseData;
@@ -3288,7 +3287,7 @@ public class MBSGDOptimizer extends Optimizer {
 					/**
 					 * current time error
 					 */
-					TensorOP.mean(lpipsOutput, 0, lpipLoss);
+					network.tensorOP.mean(lpipsOutput, 0, lpipLoss);
 					
 					/**
 					 * loss
@@ -3302,7 +3301,7 @@ public class MBSGDOptimizer extends Optimizer {
 					
 					lpips.back(lpipsLossDiff);
 					
-					TensorOP.add(this.lossDiff, lpips.lpips.diff, this.lossDiff);
+					network.tensorOP.add(this.lossDiff, lpips.lpips.diff, this.lossDiff);
 					
 					/**
 					 * back
@@ -3440,7 +3439,7 @@ public class MBSGDOptimizer extends Optimizer {
 					/**
 					 * current time error
 					 */
-					TensorOP.mean(lpipsOutput, 0, lpipLoss);
+					network.tensorOP.mean(lpipsOutput, 0, lpipLoss);
 					
 					/**
 					 * loss
@@ -3454,7 +3453,7 @@ public class MBSGDOptimizer extends Optimizer {
 					
 					lpips.back(lpipsLossDiff);
 					
-					TensorOP.add(this.lossDiff, lpips.lpips.diff, this.lossDiff);
+					network.tensorOP.add(this.lossDiff, lpips.lpips.diff, this.lossDiff);
 					
 					/**
 					 * back
@@ -3619,7 +3618,7 @@ public class MBSGDOptimizer extends Optimizer {
 					/**
 					 * current time error
 					 */
-					TensorOP.mean(lpipsOutput, 0, lpipLoss);
+					network.tensorOP.mean(lpipsOutput, 0, lpipLoss);
 
 					/**
 					 * loss
@@ -3633,7 +3632,7 @@ public class MBSGDOptimizer extends Optimizer {
 					
 					lpips.back(lpipsLossDiff);
 					
-					TensorOP.add(this.lossDiff, lpips.lpips.diff, this.lossDiff);
+					network.tensorOP.add(this.lossDiff, lpips.lpips.diff, this.lossDiff);
 					
 					Tensor discFakePred = null;
 					
@@ -3647,7 +3646,7 @@ public class MBSGDOptimizer extends Optimizer {
 						Tensor fakeGLoss = disc.loss(discFakePred, ones);
 						Tensor fakeGDiff = disc.lossDiff(discFakePred, ones);
 
-						TensorOP.mul(fakeGDiff, disc_weight, fakeGDiff);
+						network.tensorOP.mul(fakeGDiff, disc_weight, fakeGDiff);
 						
 						disc.back(fakeGDiff);
 						
@@ -3655,7 +3654,7 @@ public class MBSGDOptimizer extends Optimizer {
 						
 						loss += fakeGloss * disc_weight;
 						
-						TensorOP.add(this.lossDiff, disc.disc.diff, this.lossDiff);
+						network.tensorOP.add(this.lossDiff, disc.disc.diff, this.lossDiff);
 					}
 					
 					/**
@@ -3674,7 +3673,7 @@ public class MBSGDOptimizer extends Optimizer {
 					if(stepCount > discStepStart) {
 						Tensor fakeDLoss = disc.loss(discFakePred, zeros);
 						Tensor fakeDDiff = disc.lossDiff(discFakePred, zeros);
-						TensorOP.mul(fakeDDiff, disc_weight, fakeDDiff);
+						network.tensorOP.mul(fakeDDiff, disc_weight, fakeDDiff);
 						disc.back(fakeDDiff);
 						/**
 						 * 梯度叠加
@@ -3685,7 +3684,7 @@ public class MBSGDOptimizer extends Optimizer {
 						
 						Tensor realDLoss = disc.loss(discRealPred, ones);
 						Tensor realDDiff = disc.lossDiff(discRealPred, ones);
-						TensorOP.mul(realDDiff, disc_weight, realDDiff);
+						network.tensorOP.mul(realDDiff, disc_weight, realDDiff);
 						disc.back(realDDiff);
 						/**
 						 * 梯度叠加
@@ -3833,7 +3832,7 @@ public class MBSGDOptimizer extends Optimizer {
 					/**
 					 * current time error
 					 */
-					TensorOP.mean(lpipsOutput, 0, lpipLoss);
+					network.tensorOP.mean(lpipsOutput, 0, lpipLoss);
 
 					/**
 					 * loss
@@ -3847,7 +3846,7 @@ public class MBSGDOptimizer extends Optimizer {
 					
 					lpips.back(lpipsLossDiff);
 					
-					TensorOP.add(this.lossDiff, lpips.lpips.diff, this.lossDiff);
+					network.tensorOP.add(this.lossDiff, lpips.lpips.diff, this.lossDiff);
 					
 					/**
 					 * back
@@ -3990,7 +3989,7 @@ public class MBSGDOptimizer extends Optimizer {
 					/**
 					 * current time error
 					 */
-					TensorOP.mean(lpipsOutput, 0, lpipLoss);
+					network.tensorOP.mean(lpipsOutput, 0, lpipLoss);
 
 					/**
 					 * loss
@@ -4004,7 +4003,7 @@ public class MBSGDOptimizer extends Optimizer {
 					
 					lpips.back(lpipsLossDiff);
 //					lossDiff.showDMByOffsetRed(0, 100, "lossDiff");
-					TensorOP.add(this.lossDiff, lpips.lpips.diff, this.lossDiff);
+					network.tensorOP.add(this.lossDiff, lpips.lpips.diff, this.lossDiff);
 //					lossDiff.showDMByOffsetRed(0, 100, "lossDiff2");
 					/**
 					 * back
@@ -4156,7 +4155,7 @@ public class MBSGDOptimizer extends Optimizer {
 					/**
 					 * current time error
 					 */
-					TensorOP.mean(lpipsOutput, 0, lpipLoss);
+					network.tensorOP.mean(lpipsOutput, 0, lpipLoss);
 
 					/**
 					 * loss
@@ -4170,7 +4169,7 @@ public class MBSGDOptimizer extends Optimizer {
 					
 					lpips.back(lpipsLossDiff);
 					
-					TensorOP.add(this.lossDiff, lpips.lpips.diff, this.lossDiff);
+					network.tensorOP.add(this.lossDiff, lpips.lpips.diff, this.lossDiff);
 					
 					Tensor discFakePred = null;
 					
@@ -4190,13 +4189,13 @@ public class MBSGDOptimizer extends Optimizer {
 						
 						Tensor discFakeDiff = disc.lossDiff(discFakePred, ones);
 
-						TensorOP.mul(discFakeDiff, disc_weight, discFakeDiff);
+						network.tensorOP.mul(discFakeDiff, disc_weight, discFakeDiff);
 						
 						disc.back(discFakeDiff);
 						
 						loss += MatrixOperation.sum(discFakeLoss.syncHost()) / this.batchSize * disc_weight;
 						
-						TensorOP.add(this.lossDiff, disc.disc.diff, this.lossDiff);
+						network.tensorOP.add(this.lossDiff, disc.disc.diff, this.lossDiff);
 					}
 					
 					/**
@@ -4347,7 +4346,7 @@ public class MBSGDOptimizer extends Optimizer {
 					
 					JCudaDriver.cuCtxSynchronize();
 					
-					TensorOP.mul(label, 0.9f, input);
+					network.tensorOP.mul(label, 0.9f, input);
 					
 					/**
 					 * forward
@@ -4358,7 +4357,7 @@ public class MBSGDOptimizer extends Optimizer {
 					/**
 					 * current time error
 					 */
-					TensorOP.mean(output, 0, loss);
+					network.tensorOP.mean(output, 0, loss);
 					this.currentError = loss.syncHost()[0];
 					System.err.println(this.currentError);
 					/**
@@ -4603,7 +4602,7 @@ public class MBSGDOptimizer extends Optimizer {
 //					input.showShape();
 					latend = vae.encode(input);
 					latend.showShape();
-					TensorOP.mul(latend, scale_factor, latend);
+					network.tensorOP.mul(latend, scale_factor, latend);
 					
 					/**
 					 * get context embd
@@ -4615,15 +4614,15 @@ public class MBSGDOptimizer extends Optimizer {
 					/**
 					 * latend add noise
 					 */
-					trainingData.addNoise(a, b, latend, noise);
+					trainingData.addNoise(a, b, latend, noise, network.cudaManager);
 					
 					if(context == null) {
 						context = condInput.createLike();
 					}
 					
-					TensorOP.mul(condInput, condInput.norm(), context);
+					network.tensorOP.mul(condInput, condInput.norm(network.tensorOP), context);
 					
-					TensorOP.div(condInput, context, context);
+					network.tensorOP.div(condInput, context, context);
 					
 //					context.showDMByOffset(0, 100, "condInput");
 //					latend.showDMByOffset(0, 100, "after latend");
@@ -4816,7 +4815,7 @@ public class MBSGDOptimizer extends Optimizer {
 //					input.showShape();
 					latend = vae.encode(input);
 					latend.showShape();
-					TensorOP.mul(latend, scale_factor, latend);
+					network.tensorOP.mul(latend, scale_factor, latend);
 					
 					/**
 					 * get context embd
@@ -4828,7 +4827,7 @@ public class MBSGDOptimizer extends Optimizer {
 					/**
 					 * latend add noise
 					 */
-					trainingData.addNoise(a, b, latend, noise);
+					trainingData.addNoise(a, b, latend, noise, network.cudaManager);
 					
 //					if(context == null) {
 //						context = condInput.createLike();
@@ -5019,7 +5018,7 @@ public class MBSGDOptimizer extends Optimizer {
 //					input.showShape();
 					latend = vae.encode(input);
 					latend.showShape();
-					TensorOP.mul(latend, scale_factor, latend);
+					network.tensorOP.mul(latend, scale_factor, latend);
 					
 //					latend.showDMByOffset(0, 100, "before latend");
 					
@@ -5031,7 +5030,7 @@ public class MBSGDOptimizer extends Optimizer {
 					if(noiseLatend == null) {
 						noiseLatend = latend.createLike();
 					}
-					trainingData.addNoise(a, b, latend, noise, noiseLatend);
+					trainingData.addNoise(a, b, latend, noise, noiseLatend, network.cudaManager);
 
 					/**
 					 * forward
@@ -5059,19 +5058,19 @@ public class MBSGDOptimizer extends Optimizer {
 					/**
 					 * get noise latend
 					 */
-					trainingData.unNoise(a, b, noiseLatend, output);
+					trainingData.unNoise(a, b, noiseLatend, output, network.cudaManager);
 					network.loss(noiseLatend, latend, latendLoss);
 	
-					TensorOP.mul(latendLoss, 0.1f, latendLoss);
-					TensorOP.add(this.loss, latendLoss, this.loss);
+					network.tensorOP.mul(latendLoss, 0.1f, latendLoss);
+					network.tensorOP.add(this.loss, latendLoss, this.loss);
 					
 					/**
 					 * back
 					 */
 					network.lossDiff(noiseLatend, latend, latendDiff);
-					trainingData.unMulGrad(a, b, latendDiff, output, latendDiff);
-					TensorOP.mul(latendDiff, 0.1f, latendDiff);
-					TensorOP.add(this.lossDiff, latendDiff, this.lossDiff);
+					trainingData.unMulGrad(a, b, latendDiff, output, latendDiff, network.cudaManager);
+					network.tensorOP.mul(latendDiff, 0.1f, latendDiff);
+					network.tensorOP.add(this.lossDiff, latendDiff, this.lossDiff);
 					
 					/**
 					 * back
@@ -5231,7 +5230,7 @@ public class MBSGDOptimizer extends Optimizer {
 					latend = vae.encode(input);
 					JCudaDriver.cuCtxSynchronize();
 					latend.showShape();
-					TensorOP.mul(latend, scale_factor, latend);
+					network.tensorOP.mul(latend, scale_factor, latend);
 					
 					/**
 					 * get context embd
@@ -5243,7 +5242,7 @@ public class MBSGDOptimizer extends Optimizer {
 					/**
 					 * latend add noise
 					 */
-					trainingData.addNoise(a, b, latend, noise);
+					trainingData.addNoise(a, b, latend, noise, network.cudaManager);
 
 					/**
 					 * forward
@@ -5421,7 +5420,7 @@ public class MBSGDOptimizer extends Optimizer {
 //					input.showShape();
 					latend = vae.encode(input);
 					latend.showShape();
-					TensorOP.mul(latend, scale_factor, latend);
+					network.tensorOP.mul(latend, scale_factor, latend);
 
 //					latend.showDMByOffset(0, 100, "before latend");
 					
@@ -5430,7 +5429,7 @@ public class MBSGDOptimizer extends Optimizer {
 					/**
 					 * latend add noise
 					 */
-					trainingData.addNoise(a, b, latend, noise);
+					trainingData.addNoise(a, b, latend, noise, network.cudaManager);
 					
 					/**
 					 * forward
@@ -5625,10 +5624,10 @@ public class MBSGDOptimizer extends Optimizer {
 					if(noiseLatend == null) {
 						noiseLatend = latend.createLike();
 					}
-					trainingData.addNoise(a, b, latend, noise, noiseLatend);
+					trainingData.addNoise(a, b, latend, noise, noiseLatend, network.cudaManager);
 					
 					RandomUtils.gaussianRandom(noiseTest, 0, 1);
-					trainingData.addNoise(a, b, input, noiseTest);
+					trainingData.addNoise(a, b, input, noiseTest, network.cudaManager);
 					
 					JCudaDriver.cuCtxSynchronize();
 					/**
@@ -5890,7 +5889,7 @@ public class MBSGDOptimizer extends Optimizer {
 			
 			JCuda.cudaDeviceSynchronize();
 			
-			TensorOP.mul(xt, 1/scale_factor, xt);
+			network.tensorOP.mul(xt, 1/scale_factor, xt);
 			
 //			Tensor result = vae.decodeCode(xt);
 
@@ -5944,7 +5943,7 @@ public class MBSGDOptimizer extends Optimizer {
 			
 			JCuda.cudaDeviceSynchronize();
 			
-			TensorOP.mul(xt, 1/scale_factor, xt);
+			network.tensorOP.mul(xt, 1/scale_factor, xt);
 			
 //			Tensor result = vae.decodeCode(xt);
 //			xt.showDM("xt");
@@ -5998,7 +5997,7 @@ public class MBSGDOptimizer extends Optimizer {
 			
 			JCuda.cudaDeviceSynchronize();
 			
-			TensorOP.mul(xt, 1.0f/scale_factor, xt);
+			network.tensorOP.mul(xt, 1.0f/scale_factor, xt);
 			
 //			Tensor result = vae.decodeCode(xt);
 //			xt.showDM("xt");
@@ -6048,7 +6047,7 @@ public class MBSGDOptimizer extends Optimizer {
 				
 			}
 			
-			TensorOP.mul(xt, 1.0f/scale_factor, xt);
+			network.tensorOP.mul(xt, 1.0f/scale_factor, xt);
 				
 			Tensor result = vae.decode(xt);
 			
@@ -6117,7 +6116,7 @@ public class MBSGDOptimizer extends Optimizer {
 			
 			JCuda.cudaDeviceSynchronize();
 			
-			TensorOP.mul(noiseInput, 1.0f/scale_factor, noiseInput);
+			network.tensorOP.mul(noiseInput, 1.0f/scale_factor, noiseInput);
 			
 //			Tensor result = vae.decodeCode(xt);
 
@@ -6187,7 +6186,7 @@ public class MBSGDOptimizer extends Optimizer {
 			
 			JCuda.cudaDeviceSynchronize();
 			
-			TensorOP.mul(noiseInput, 1.0f/scale_factor, noiseInput);
+			network.tensorOP.mul(noiseInput, 1.0f/scale_factor, noiseInput);
 			
 //			Tensor result = vae.decodeCode(xt);
 

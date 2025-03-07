@@ -4,8 +4,6 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 
 import com.omega.common.data.Tensor;
-import com.omega.engine.ad.op.TensorOP;
-import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.normalization.RMSLayer;
@@ -44,8 +42,6 @@ public class LlamaTransformerBlock extends Layer{
 	 */
 	private LlamaMLPLayer mlp;
 	private RMSLayer norm2;
-	
-	private BaseKernel baseKernel;
 	
 	private Tensor tmp1;
 	
@@ -117,10 +113,6 @@ public class LlamaTransformerBlock extends Layer{
 		
 		this.setMlp(new LlamaMLPLayer(embedDim, embedDim, multiple_of, bias, network));
 		
-		if(baseKernel == null) {
-			baseKernel = new BaseKernel();
-		}
-
 	}
 	
 	@Override
@@ -163,13 +155,13 @@ public class LlamaTransformerBlock extends Layer{
 
 		getAttn().forward(cos, sin, getNorm1().getOutput());
 
-		TensorOP.add(getAttn().getOutput(), input, tmp1);
+		Tensor_OP().add(getAttn().getOutput(), input, tmp1);
 
 		getNorm2().forward(tmp1);
 		
 		getMlp().forward(getNorm2().getOutput());
 		
-		TensorOP.add(getMlp().getOutput(), tmp1, tmp2);
+		Tensor_OP().add(getMlp().getOutput(), tmp1, tmp2);
 		
 		this.output = tmp2;
 //		System.err.println("---------------------------------");
@@ -197,7 +189,7 @@ public class LlamaTransformerBlock extends Layer{
 
 		getNorm2().back(getMlp().diff);
 		
-		TensorOP.add(getNorm2().diff, delta, getNorm2().diff);
+		Tensor_OP().add(getNorm2().diff, delta, getNorm2().diff);
 		
 //		norm2.diff.showDM();
 //		long start26 = System.nanoTime();
@@ -206,7 +198,7 @@ public class LlamaTransformerBlock extends Layer{
 		
 		getNorm1().back(getAttn().diff);
 		
-		TensorOP.add(getNorm1().diff, getNorm2().diff, tmp2);
+		Tensor_OP().add(getNorm1().diff, getNorm2().diff, tmp2);
 		
 		this.diff = tmp2;
 //		System.err.println("diff:");
@@ -324,6 +316,20 @@ public class LlamaTransformerBlock extends Layer{
 		getAttn().loadModel(inputStream);
 		getNorm2().loadModel(inputStream);
 		getMlp().loadModel(inputStream);
+	}
+	
+	public void putParamters() {
+		getNorm1().putParamters();
+		getAttn().putParamters();
+		getNorm2().putParamters();
+		getMlp().putParamters();
+	}
+	
+	public void putParamterGrads() {
+		getNorm1().putParamterGrads();
+		getAttn().putParamterGrads();
+		getNorm2().putParamterGrads();
+		getMlp().putParamterGrads();
 	}
 
 	public LlamaAttentionLayer getAttn() {

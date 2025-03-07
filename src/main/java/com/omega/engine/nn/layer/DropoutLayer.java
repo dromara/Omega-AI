@@ -1,19 +1,12 @@
 package com.omega.engine.nn.layer;
 
 import com.omega.common.data.Tensor;
-import com.omega.common.utils.MathUtils;
-import com.omega.common.utils.MatrixOperation;
-import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
-import com.omega.engine.gpu.BaseKernel;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.GPUOP;
 import com.omega.engine.nn.layer.gpu.DropoutKernel;
-import com.omega.engine.nn.layer.normalization.BNType;
-import com.omega.engine.nn.layer.normalization.gpu.LNKernel;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
-
-import jcuda.runtime.JCuda;
 
 /**
  * Dropout Layer
@@ -29,8 +22,6 @@ public class DropoutLayer extends Layer {
 	public Layer preLayer;
 	
 	private float scale = 0.0f;
-	
-	private BaseKernel baseKernel;
 	
 	private DropoutKernel kernel;
 	
@@ -76,8 +67,7 @@ public class DropoutLayer extends Layer {
 		}
 		
 		if(kernel == null) {
-			kernel = new DropoutKernel(this.probability, this.scale);
-			baseKernel = new BaseKernel();
+			kernel = new DropoutKernel(this.probability, this.scale, cuda());
 		}
 		this.number = this.network.number;
 		initParam();
@@ -93,8 +83,7 @@ public class DropoutLayer extends Layer {
 		this.oWidth = this.width;
 		
 		if(kernel == null) {
-			kernel = new DropoutKernel(this.probability, this.scale);
-			baseKernel = new BaseKernel();
+			kernel = new DropoutKernel(this.probability, this.scale, cuda());
 		}
 		this.number = input.number;
 		initParam();
@@ -141,7 +130,7 @@ public class DropoutLayer extends Layer {
 			kernel.dropout(input, output, mask);
 //			output.showDMByNumber(0);
 		}else {
-			baseKernel.copy_gpu(input, this.output, input.getDataLength(), 1, 1);
+			baseKernel().copy_gpu(input, this.output, input.getDataLength(), 1, 1);
 		}
 		
 	}
@@ -283,8 +272,10 @@ public class DropoutLayer extends Layer {
 	    	Tensor delta = new Tensor(N, 1, 1, W, diff_data, true);
 	    	
 	    	Tensor diff = new Tensor(N, 1, 1, W, true);
-
-	    	DropoutKernel kernel = new DropoutKernel(0.2f, 1.0f / (1.0f - 0.2f));
+	    	
+	    	CUDAManager cudaManager = new CUDAManager(0);
+	    	
+	    	DropoutKernel kernel = new DropoutKernel(0.2f, 1.0f / (1.0f - 0.2f), cudaManager);
 
 	    	for(int i = 0;i<10;i++) {
 	    		

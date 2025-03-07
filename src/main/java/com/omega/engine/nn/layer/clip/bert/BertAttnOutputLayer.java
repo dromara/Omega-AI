@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 
 import com.omega.common.data.Tensor;
-import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -80,7 +79,7 @@ public class BertAttnOutputLayer extends Layer{
 	
 	public void output(Tensor x) {
 		linear.forward(input);
-		TensorOP.add(linear.getOutput(), x, linear.getOutput());
+		Tensor_OP().add(linear.getOutput(), x, linear.getOutput());
 		norm.forward(linear.getOutput());
 		this.output = norm.getOutput();
 	}

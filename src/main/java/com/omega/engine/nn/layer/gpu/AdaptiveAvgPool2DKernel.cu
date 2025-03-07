@@ -1,7 +1,5 @@
 #define BLOCK 1024 
 
-#include "include/cuda_fp16.h"
-
 __device__ inline uint start_index(uint a, uint b, uint c) {
   return floorf(__uint2float_rn(a * c) / __uint2float_rn(b));
 }

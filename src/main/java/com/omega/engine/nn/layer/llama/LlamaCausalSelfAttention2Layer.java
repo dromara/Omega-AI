@@ -9,9 +9,6 @@ import java.io.RandomAccessFile;
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
-import com.omega.engine.ad.op.TensorOP;
-import com.omega.engine.gpu.BaseKernel;
-import com.omega.engine.gpu.GPUOP;
 import com.omega.engine.nn.layer.DropoutLayer;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.LayerType;
@@ -50,8 +47,6 @@ public class LlamaCausalSelfAttention2Layer extends LlamaAttentionLayer{
 	private DropoutLayer dropoutLayer;
 	
 	private DropoutLayer dropoutLayer2;
-	
-	private BaseKernel baseKernel;
 	
 	private AttentionKernel attentionKernel;
 	
@@ -164,14 +159,14 @@ public class LlamaCausalSelfAttention2Layer extends LlamaAttentionLayer{
 //		this.getqLinerLayer().weight = new Tensor(1, 1, embedDim, embedDim, RandomUtils.uniform(this.embedDim * this.embedDim, 0.0f, 0.02f), true);
 //		this.qLinerLayer.weight = new Tensor(1, 1, embedDim, embedDim, RandomUtils.order(this.embedDim * this.embedDim, 0.001f, 0.001f), true);
 //		Tensor qw = new Tensor(1, 1, embedDim, embedDim, true);
-//		TensorOP.permute(this.qLinerLayer.weight, qw, new int[] {0, 1, 3, 2});
+//		Tensor_OP().permute(this.qLinerLayer.weight, qw, new int[] {0, 1, 3, 2});
 //		this.qLinerLayer.weight = qw;
 		
 		this.setkLinerLayer(new FullyLayer(embedDim, nKVHeads * dk, bias, this.network));
 //		this.getkLinerLayer().weight = new Tensor(1, 1, nKVHeads * dk, embedDim, RandomUtils.uniform(this.embedDim * nKVHeads * dk, 0.0f, 0.02f), true);
 //		this.kLinerLayer.weight = new Tensor(1, 1, nKVHeads * dk, embedDim, RandomUtils.order(this.embedDim * this.nKVHeads * dk, 0.001f, 0.001f), true);
 //		Tensor kw = new Tensor(1, 1, embedDim, embedDim, true);
-//		TensorOP.permute(this.kLinerLayer.weight, kw, new int[] {0, 1, 3, 2});
+//		Tensor_OP().permute(this.kLinerLayer.weight, kw, new int[] {0, 1, 3, 2});
 //		this.kLinerLayer.weight = kw;
 //		this.kLinerLayer.weight.showDM();
 		
@@ -179,7 +174,7 @@ public class LlamaCausalSelfAttention2Layer extends LlamaAttentionLayer{
 //		this.getvLinerLayer().weight = new Tensor(1, 1, nKVHeads * dk, embedDim, RandomUtils.uniform(this.embedDim * nKVHeads * dk, 0.0f, 0.02f), true);
 //		this.vLinerLayer.weight = new Tensor(1, 1, nKVHeads * dk, embedDim, RandomUtils.order(this.embedDim * nKVHeads * dk, 0.001f, 0.001f), true);
 //		Tensor vw = new Tensor(1, 1, embedDim, embedDim, true);
-//		TensorOP.permute(this.vLinerLayer.weight, vw, new int[] {0, 1, 3, 2});
+//		Tensor_OP().permute(this.vLinerLayer.weight, vw, new int[] {0, 1, 3, 2});
 //		this.vLinerLayer.weight = vw;
 //		this.vLinerLayer.weight = new Tensor(1, 1, embedDim, embedDim, RandomUtils.uniform(this.embedDim * this.embedDim, 0.0f, 0.02f), true);
 //		this.vLinerLayer.weight = new Tensor(1, 1, embedDim, embedDim, RandomUtils.order(this.embedDim * this.embedDim, 0.01f, 2 * this.embedDim * this.embedDim * 0.01f + 0.01f), true);
@@ -194,20 +189,16 @@ public class LlamaCausalSelfAttention2Layer extends LlamaAttentionLayer{
 			this.dropoutLayer2 = new DropoutLayer(0.1f, getoLinerLayer());
 		}
 		
-		if(baseKernel == null) {
-			baseKernel = new BaseKernel();
-		}
-		
 		if(attentionKernel == null) {
-			attentionKernel = new AttentionKernel();
+			attentionKernel = new AttentionKernel(cuda());
 		}
 		
 		if(ropeKernel == null) {
-			ropeKernel = new RoPEKernel();
+			ropeKernel = new RoPEKernel(cuda());
 		}
 		
 		if(repeatKVKernel == null) {
-			repeatKVKernel = new RepeatKVKernel();
+			repeatKVKernel = new RepeatKVKernel(cuda());
 		}
 		
 	}
@@ -301,16 +292,16 @@ public class LlamaCausalSelfAttention2Layer extends LlamaAttentionLayer{
 		ropeKernel.forward(cos, sin, query, rq);
 		ropeKernel.forward(cos, sin, key, rk);
 		
-		TensorOP.permute(rq, qt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(rq, qt, new int[] {0, 2, 1, 3});
 
 		if(headNum != nKVHeads) {
 			repeatKVKernel.forward(rk, rq, nRep);
-			TensorOP.permute(rq, kt, new int[] {0, 2, 1, 3});
+			Tensor_OP().permute(rq, kt, new int[] {0, 2, 1, 3});
 			repeatKVKernel.forward(value, rq, nRep);
-			TensorOP.permute(rq, vt, new int[] {0, 2, 1, 3});
+			Tensor_OP().permute(rq, vt, new int[] {0, 2, 1, 3});
 		}else {
-			TensorOP.permute(rk, kt, new int[] {0, 2, 1, 3});
-			TensorOP.permute(value, vt, new int[] {0, 2, 1, 3});
+			Tensor_OP().permute(rk, kt, new int[] {0, 2, 1, 3});
+			Tensor_OP().permute(value, vt, new int[] {0, 2, 1, 3});
 		}
 
 		scaledDotProductAttention(qt, kt, vt);
@@ -337,7 +328,7 @@ public class LlamaCausalSelfAttention2Layer extends LlamaAttentionLayer{
 		
 		Tensor preatt = temp;
 		
-		GPUOP.getInstance().bmmEX(CUBLAS_OP_T, CUBLAS_OP_N, time, time, dk, 1.0f, key.getGpuData(), dk, time * dk, query.getGpuData(), dk, time * dk, 0.0f, preatt.getGpuData(), time, time * time, batchSize * headNum);
+		GPU_OP().bmmEX(CUBLAS_OP_T, CUBLAS_OP_N, time, time, dk, 1.0f, key.getGpuData(), dk, time * dk, query.getGpuData(), dk, time * dk, 0.0f, preatt.getGpuData(), time, time * time, batchSize * headNum);
 		
 		if(network.RUN_MODEL == RunModel.TEST) {
 			attentionKernel.scale(preatt, d_k, batchSize, headNum, time);
@@ -354,7 +345,7 @@ public class LlamaCausalSelfAttention2Layer extends LlamaAttentionLayer{
 		}
 //		value.showDM();
 		Tensor vaccum = temp;
-		GPUOP.getInstance().bmmEX(CUBLAS_OP_N, CUBLAS_OP_N, dk, time, time, 1.0f, value.getGpuData(), dk, time * dk, tmp.getGpuData(), time, time * time, 0.0f, vaccum.getGpuData(), dk, time * dk, batchSize * headNum);
+		GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_N, dk, time, time, 1.0f, value.getGpuData(), dk, time * dk, tmp.getGpuData(), time, time * time, 0.0f, vaccum.getGpuData(), dk, time * dk, batchSize * headNum);
 	}
 
 	public void scaledDotProductAttentionBackward() {
@@ -366,10 +357,10 @@ public class LlamaCausalSelfAttention2Layer extends LlamaAttentionLayer{
 		}
 		Tensor dvaccum = temp;
 	    // backward into datt
-		GPUOP.getInstance().bmmEX(CUBLAS_OP_T, CUBLAS_OP_N, time, time, dk, 1.0f, vt.getGpuData(), dk, time * dk, dvaccum.getGpuData(), dk, time * dk, 0.0f, dattn.getGpuData(), time, time * time, batchSize * headNum);
+		GPU_OP().bmmEX(CUBLAS_OP_T, CUBLAS_OP_N, time, time, dk, 1.0f, vt.getGpuData(), dk, time * dk, dvaccum.getGpuData(), dk, time * dk, 0.0f, dattn.getGpuData(), time, time * time, batchSize * headNum);
 		
 		// backward into dv
-		GPUOP.getInstance().bmmEX(CUBLAS_OP_N, CUBLAS_OP_T, dk, time, time, 1.0f, dvaccum.getGpuData(), dk, time * dk, tmp.getGpuData(), time, time * time, 0.0f, dvt.getGpuData(), dk, time * dk, batchSize * headNum);
+		GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_T, dk, time, time, 1.0f, dvaccum.getGpuData(), dk, time * dk, tmp.getGpuData(), time, time * time, 0.0f, dvt.getGpuData(), dk, time * dk, batchSize * headNum);
 
 		if(dropout) {
 			dropoutLayer.back(dattn);
@@ -385,10 +376,10 @@ public class LlamaCausalSelfAttention2Layer extends LlamaAttentionLayer{
 //		System.err.println("error:"+MatrixUtils.check(dpreatt.syncHost(), dpreatt2.syncHost()));
 //		dpreatt.checkDMZero();
 		// backward into q
-		GPUOP.getInstance().bmmEX(CUBLAS_OP_N, CUBLAS_OP_N, dk, time, time, 1.0f, kt.getGpuData(), dk, time * dk, dpreatt.getGpuData(), time, time * time, 0.0f, dqt.getGpuData(), dk, time * dk, batchSize * headNum);
+		GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_N, dk, time, time, 1.0f, kt.getGpuData(), dk, time * dk, dpreatt.getGpuData(), time, time * time, 0.0f, dqt.getGpuData(), dk, time * dk, batchSize * headNum);
 		
 		// backward into k
-		GPUOP.getInstance().bmmEX(CUBLAS_OP_N, CUBLAS_OP_T, dk, time, time, 1.0f, qt.getGpuData(), dk, time * dk, dpreatt.getGpuData(), time, time * time, 0.0f, dkt.getGpuData(), dk, time * dk, batchSize * headNum);
+		GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_T, dk, time, time, 1.0f, qt.getGpuData(), dk, time * dk, dpreatt.getGpuData(), time, time * time, 0.0f, dkt.getGpuData(), dk, time * dk, batchSize * headNum);
 	}
 
 	@Override
@@ -429,11 +420,11 @@ public class LlamaCausalSelfAttention2Layer extends LlamaAttentionLayer{
 			/**
 			 * drq
 			 */
-			TensorOP.permute(dqt, qt, new int[] {0, 2, 1, 3});
+			Tensor_OP().permute(dqt, qt, new int[] {0, 2, 1, 3});
 			/**
 			 * drk
 			 */
-			TensorOP.permute(dkt, kt, new int[] {0, 2, 1, 3});
+			Tensor_OP().permute(dkt, kt, new int[] {0, 2, 1, 3});
 			repeatKVKernel.backward(kt, rk, nRep);
 			
 			/**
@@ -443,16 +434,16 @@ public class LlamaCausalSelfAttention2Layer extends LlamaAttentionLayer{
 			ropeKernel.backward(cos, sin, rk, rk);
 			
 			Tensor v = this.getvLinerLayer().getOutput();
-			TensorOP.permute(dvt, vt, new int[] {0, 2, 1, 3});
+			Tensor_OP().permute(dvt, vt, new int[] {0, 2, 1, 3});
 			repeatKVKernel.backward(vt, v, nRep);
 			
 			queryDelta = rq;
 			keyDelta = rk;
 			valueDelta = v;
 		}else {
-			TensorOP.permute(dqt, qt, new int[] {0, 2, 1, 3});
-			TensorOP.permute(dkt, kt, new int[] {0, 2, 1, 3});
-			TensorOP.permute(dvt, vt, new int[] {0, 2, 1, 3});
+			Tensor_OP().permute(dqt, qt, new int[] {0, 2, 1, 3});
+			Tensor_OP().permute(dkt, kt, new int[] {0, 2, 1, 3});
+			Tensor_OP().permute(dvt, vt, new int[] {0, 2, 1, 3});
 			/**
 			 * RoPE backward
 			 */
@@ -471,8 +462,8 @@ public class LlamaCausalSelfAttention2Layer extends LlamaAttentionLayer{
 		this.getkLinerLayer().back(keyDelta);
 		this.getvLinerLayer().back(valueDelta);
 		
-		TensorOP.add(this.getqLinerLayer().diff, this.getkLinerLayer().diff, this.getqLinerLayer().diff);
-		TensorOP.add(this.getqLinerLayer().diff, this.getvLinerLayer().diff, this.getqLinerLayer().diff);
+		Tensor_OP().add(this.getqLinerLayer().diff, this.getkLinerLayer().diff, this.getqLinerLayer().diff);
+		Tensor_OP().add(this.getqLinerLayer().diff, this.getvLinerLayer().diff, this.getqLinerLayer().diff);
 
 		this.diff = this.getqLinerLayer().diff;
 //		this.diff.showDMByNumber(0);
@@ -717,6 +708,22 @@ public class LlamaCausalSelfAttention2Layer extends LlamaAttentionLayer{
 		kLinerLayer.accGrad(scale);
 		vLinerLayer.accGrad(scale);
 		oLinerLayer.accGrad(scale);
+	}
+
+	@Override
+	public void putParamters() {
+		getqLinerLayer().putParamters();
+		getkLinerLayer().putParamters();
+		getvLinerLayer().putParamters();
+		getoLinerLayer().putParamters();
+	}
+	
+	@Override
+	public void putParamterGrads() {
+		getqLinerLayer().putParamterGrads();
+		getkLinerLayer().putParamterGrads();
+		getvLinerLayer().putParamterGrads();
+		getoLinerLayer().putParamterGrads();
 	}
 	
 }

@@ -6,7 +6,6 @@ import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
-import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.loss.LossType;
@@ -102,7 +101,7 @@ public class SDTest {
 		b.setData(exsa2);
 		
 		RandomUtils.gaussianRandom(noise, 0, 1);
-		dataLoader.addNoise(a, b, latent, noise);
+		dataLoader.addNoise(a, b, latent, noise, network.cudaManager);
 //		latent.showShape();
 		
 //		latent.showDM();
@@ -120,7 +119,7 @@ public class SDTest {
 		 */
 		MBSGDOptimizer.showImgs("H:\\vae_dataset\\pokemon-blip\\vqvae2\\test256\\", out, "test", mean, std);
 		
-		dataLoader.unNoise(a, b, latent, noise);
+		dataLoader.unNoise(a, b, latent, noise, network.cudaManager);
 		
 		out = network.decode(latent);
 		
@@ -451,7 +450,7 @@ public class SDTest {
 			
 			Tensor latent = network.encode(input);
 			
-			TensorOP.add(out, latent, out);
+			network.tensorOP.add(out, latent, out);
 			
 		}
 		
@@ -459,7 +458,7 @@ public class SDTest {
 		
 		Tensor sum = new Tensor(1, 1, 1, 1, true);
 		
-		TensorOP.sum(out, sum, 0);
+		network.tensorOP.sum(out, sum, 0);
 		
 		float meanV = sum.syncHost()[0] / out.dataLength / indexs.length;
 		System.err.println(meanV);
@@ -475,11 +474,11 @@ public class SDTest {
 			
 			Tensor latent = network.encode(input);
 			
-			TensorOP.sub(latent, meanV, latent);
+			network.tensorOP.sub(latent, meanV, latent);
 			
-			TensorOP.pow(latent, 2, latent);
+			network.tensorOP.pow(latent, 2, latent);
 			
-			TensorOP.sum(latent, onceSum, 0);
+			network.tensorOP.sum(latent, onceSum, 0);
 			
 			sum_cpu += onceSum.syncHost()[0];
 		}
@@ -1301,7 +1300,7 @@ public class SDTest {
 		
 		try {
 
-			CUDAModules.initContext();
+//			CUDAModules.initContext();
 			
 //			sd_train_pokem();
 			

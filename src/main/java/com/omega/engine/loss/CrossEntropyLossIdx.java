@@ -4,17 +4,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.JsonUtils;
-import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.MatrixUtils;
-import com.omega.common.utils.PrintUtils;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.loss.gpu.CrossEntropyKernel;
-import com.omega.example.transformer.utils.LagJsonReader;
+import com.omega.engine.nn.network.Network;
 
 /**
  * Cross Entropy loss function
@@ -43,15 +40,20 @@ public class CrossEntropyLossIdx extends LossFunction {
 	
 	private CrossEntropyKernel crossEntropyKernel;
 	
-	public CrossEntropyLossIdx() {
-		initKernel();
-	}
-	
-	public static CrossEntropyLossIdx operation() {
+	public static CrossEntropyLossIdx operation(CUDAManager cudaManager) {
 		if(instance == null) {
-			instance = new CrossEntropyLossIdx();
+			instance = new CrossEntropyLossIdx(cudaManager);
 		}
 		return instance;
+	}
+	
+	public CrossEntropyLossIdx(Network network) {
+		setNet(network);
+		crossEntropyKernel = new CrossEntropyKernel(network.cudaManager);
+	}
+	
+	public CrossEntropyLossIdx(CUDAManager cudaManager) {
+		crossEntropyKernel = new CrossEntropyKernel(cudaManager);
 	}
 	
 	public void init(Tensor input) {
@@ -65,7 +67,7 @@ public class CrossEntropyLossIdx extends LossFunction {
 	
 	public void initKernel() {
 //		softmaxKernel = new SoftmaxKernel();
-		crossEntropyKernel = new CrossEntropyKernel();
+		crossEntropyKernel = new CrossEntropyKernel(getNet().cudaManager);
 	}
 	
 	@Override
@@ -164,7 +166,7 @@ public class CrossEntropyLossIdx extends LossFunction {
 	}
 	
 	public static void main(String[] args) {
-		
+		CUDAManager cudaManager = new CUDAManager(0);
 //		List<List<List<Double>>> weightMap = readJsonFileSmallJson("H:\\transformer_dataset\\6400\\tensor.json");
 //		Tensor xp = new Tensor(1, 512, 1, 6400, true);
 //		loadData(xp, weightMap, "");
@@ -234,7 +236,7 @@ public class CrossEntropyLossIdx extends LossFunction {
 		
 //		xp.showDM();
 		
-		Tensor loss = CrossEntropyLossIdx.operation().loss(xp, labelt, -1);
+		Tensor loss = CrossEntropyLossIdx.operation(cudaManager).loss(xp, labelt, -1);
 		
 		loss.showDM();
 		

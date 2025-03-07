@@ -2,7 +2,6 @@ package com.omega.engine.nn.layer.unet;
 
 import com.omega.common.data.Tensor;
 import com.omega.engine.active.ActiveType;
-import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.ConvolutionTransposeLayer;
 import com.omega.engine.nn.layer.DoubleConvLayer;
 import com.omega.engine.nn.layer.Layer;
@@ -37,8 +36,6 @@ public class UNetUPLayer extends Layer{
 	private RouteLayer cat;
 	
 	private Layer x2;
-	
-	private BaseKernel baseKernel;
 	
 	public UNetUPLayer(int channel,int oChannel,int height,int width,boolean bilinear, Layer x2,ActiveType activeType, Network network) {
 		this.network = network;
@@ -75,9 +72,6 @@ public class UNetUPLayer extends Layer{
 
 		this.cat = new RouteLayer(layers);
 
-		if(baseKernel == null) {
-			baseKernel = new BaseKernel();
-		}
 //		System.out.println("activeLayer.preLayer:"+activeLayer.preLayer);
 	}
 

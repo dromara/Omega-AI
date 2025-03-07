@@ -10,6 +10,7 @@ import com.omega.common.utils.PrintUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.ad.op.OP;
 import com.omega.engine.ad.op.OPType;
+import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.ad.op.data.GetOP;
 import com.omega.engine.ad.op.data.SetOP;
 import com.omega.engine.ad.op.functions.ATanOP;
@@ -32,6 +33,7 @@ import com.omega.engine.ad.op.sign.MulOP;
 import com.omega.engine.ad.op.sign.ScalarDivOP;
 import com.omega.engine.ad.op.sign.ScalarSubOP;
 import com.omega.engine.ad.op.sign.SubOP;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.gpu.CUDAModules;
 
@@ -50,6 +52,12 @@ public class Graph{
 	public int tapeIndex = 0;
 	
 	private boolean lock = false;
+	
+	private TensorOP tensorOP;
+	
+	public Graph(TensorOP tensorOP) {
+		this.tensorOP = tensorOP;
+	}
 	
 	public void start() {
 		tapeIndex = 0;
@@ -96,7 +104,7 @@ public class Graph{
 		}else {
 			tape = tapes.get(tapeIndex);
 			if(tape.getOp().getOpType().equals(OPType.sum)) {
-				tape.getOutput().fill(0.0f);
+				tape.getOutput().fill(0.0f, tape.getTensorOP().op);
 			}
 			tapeIndex++;
 		}
@@ -325,7 +333,7 @@ public class Graph{
 			 */
 //			System.out.println(tape.getOp().getOpType().toString()+":"+tape.isSub());
 			if(!tape.isSub()) {
-				tape.getOutput().getGrad().fill(1.0f);
+				tape.getOutput().getGrad().fill(1.0f, tape.getTensorOP().op);
 			}
 			tape.backward();
 		}
@@ -410,7 +418,9 @@ public class Graph{
 		int width = 32;
 		int length = number * channel * height * width;
 		
-		Graph graph = new Graph();
+		TensorOP op = new TensorOP(new CUDAManager(0));
+		
+		Graph graph = new Graph(op);
 		
 		Tensor x = new Tensor(number, channel, height, width, MatrixUtils.order(length, 0, 1), true);
 		
@@ -460,7 +470,9 @@ public class Graph{
 		int width = 5;
 		int length = number * channel * height * width;
 		
-		Graph graph = new Graph();
+		TensorOP op = new TensorOP(new CUDAManager(0));
+		
+		Graph graph = new Graph(op);
 		
 		Tensor x = new Tensor(number, channel, height, width, MatrixUtils.order(length, 0, 1), true);
 		
@@ -518,11 +530,13 @@ public class Graph{
 		int width = 5;
 		int length = number * channel * height * width;
 		
-		int classNum = 1;
+//		int classNum = 1;
+//		
+//		int bboxNum = 3;
 		
-		int bboxNum = 3;
+		TensorOP op = new TensorOP(new CUDAManager(0));
 		
-		Graph graph = new Graph();
+		Graph graph = new Graph(op);
 		
 		Tensor x = new Tensor(number, channel, height, width, MatrixUtils.val(length, 0.6f), true);
 		
@@ -595,14 +609,16 @@ public class Graph{
 		int channel  = 1;
 		int height = 1;
 		int width = 4;
-		int length = number * channel * height * width;
+//		int length = number * channel * height * width;
 		int C = channel * height * width;
 
 		float[] xa = new float[] {0.2f,0.5f,0,0,0.1f,0.5f,0,0.8f};
 		
 		float[] ya = new float[] {1,1,0,0,0,1,0,1};
 		
-		Graph graph = new Graph();
+		TensorOP op = new TensorOP(new CUDAManager(0));
+		
+		Graph graph = new Graph(op);
 		
 		Tensor x = new Tensor(number, channel, height, width, xa, true);
 		
@@ -661,7 +677,9 @@ public class Graph{
 		
 		float[] ya = RandomUtils.gaussianRandom(length, 0.1f);
 		
-		Graph graph = new Graph();
+		TensorOP op = new TensorOP(new CUDAManager(0));
+		
+		Graph graph = new Graph(op);
 		
 		Tensor x = new Tensor(number, channel, height, width, xa, true, graph);
 		
@@ -718,13 +736,15 @@ public class Graph{
 		int height = 5;
 		int width = 5;
 		int length = number * channel * height * width;
-		int C = channel * height * width;
+//		int C = channel * height * width;
 		
 		float[] cpx = RandomUtils.gaussianRandom(length, 0.1f);
 		
 		float[] cpy = RandomUtils.gaussianRandom(length, 0.1f);
 		
-		Graph graph = new Graph();
+		TensorOP op = new TensorOP(new CUDAManager(0));
+		
+		Graph graph = new Graph(op);
 		
 		Tensor x = new Tensor(number, channel, height, width, cpx, true);
 		
@@ -743,7 +763,7 @@ public class Graph{
 			x.hostToDevice();
 			y.hostToDevice();
 			
-			Tensor loss1 = y.sub(x).pow(2.0f).div(2.0f);
+//			Tensor loss1 = y.sub(x).pow(2.0f).div(2.0f);
 
 			graph.clearGrad();
 			
@@ -773,7 +793,9 @@ public class Graph{
 		int width = 5;
 		int length = number * channel * height * width;
 
-		Graph graph = new Graph();
+		TensorOP op = new TensorOP(new CUDAManager(0));
+		
+		Graph graph = new Graph(op);
 		
 		Tensor x = new Tensor(number, channel, height, width, MatrixUtils.val(length, 0.6f), true, graph);
 		
@@ -803,7 +825,9 @@ public class Graph{
 		int height = 1;
 		int width = 5;
 
-		Graph graph = new Graph();
+		TensorOP op = new TensorOP(new CUDAManager(0));
+		
+		Graph graph = new Graph(op);
 		
 		float[] t1 = new float[] {0.1f,1,0.06f,-1,1.3f};
 		
@@ -837,7 +861,9 @@ public class Graph{
 		int height = 1;
 		int width = 5;
 
-		Graph graph = new Graph();
+		TensorOP op = new TensorOP(new CUDAManager(0));
+		
+		Graph graph = new Graph(op);
 		
 		float[] t1 = new float[] {0.1f,1,0.06f,-1,1.3f};
 		
@@ -873,7 +899,9 @@ public class Graph{
 		int width = 1;
 //		int length = number * channel * height * width;
 
-		Graph graph = new Graph();
+		TensorOP op = new TensorOP(new CUDAManager(0));
+		
+		Graph graph = new Graph(op);
 		
 		float[] b1a = new float[] {0.5f,0.02f,0.3f,0.6f};
 		
@@ -968,7 +996,9 @@ public class Graph{
 		int height = 1;
 		int width = 1;
 
-		Graph graph = new Graph();
+		TensorOP op = new TensorOP(new CUDAManager(0));
+		
+		Graph graph = new Graph(op);
 		
 		float[] b1a = new float[] {0.5f,0.02f,0.3f,0.6f};
 		
@@ -992,7 +1022,9 @@ public class Graph{
 		int height = 1;
 		int width = 4;
 
-		Graph graph = new Graph();
+		TensorOP op = new TensorOP(new CUDAManager(0));
+		
+		Graph graph = new Graph(op);
 		
 		float[] b1a = new float[] {0.5f,0.02f,0.3f,0.6f};
 		
@@ -1022,7 +1054,9 @@ public class Graph{
 	 */
 	public static void RNN() {
 		
-		Graph graph = new Graph();
+		TensorOP op = new TensorOP(new CUDAManager(0));
+		
+		Graph graph = new Graph(op);
 		
 		int steps = 3;
 		int batchSize = 2;
@@ -1099,13 +1133,15 @@ public class Graph{
 	
 	public static void selfAttention() {
 		
-		Graph graph = new Graph();
+		TensorOP op = new TensorOP(new CUDAManager(0));
+		
+		Graph graph = new Graph(op);
 		
 		int number = 2;
 		int inputSize = 5;
 		int hiddenSize = 5;
 		
-		float dk =  (float) Math.sqrt(inputSize * 2);
+//		float dk =  (float) Math.sqrt(inputSize * 2);
 		
 		float[] xd = MatrixUtils.order(number * inputSize, 0.0f, 0.1f);
 		Tensor x = new Tensor(number, 1, 1, inputSize, xd, true, graph);
@@ -1192,8 +1228,9 @@ public class Graph{
 	
 	public static void softmax_test() {
 		
-
-		Graph graph = new Graph();
+		TensorOP op = new TensorOP(new CUDAManager(0));
+		
+		Graph graph = new Graph(op);
 		
 		int number = 2;
 		int inputSize = 10;
@@ -1288,6 +1325,10 @@ public class Graph{
 			
 		}
 		
+	}
+
+	public TensorOP getTensorOP() {
+		return tensorOP;
 	}
 	
 	

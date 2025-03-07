@@ -8,6 +8,7 @@ import com.omega.common.data.Tensor;
 import com.omega.common.utils.MathUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.example.diffusion.utils.DiffusionImageLoader;
 import com.omega.example.transformer.utils.LagJsonReader;
 import com.omega.example.transformer.utils.bpe.BPETokenizerEN;
@@ -261,50 +262,50 @@ public class SDImageDataLoaderEN extends BaseDataLoader{
 
 	}
 	
-	public void addNoise(Tensor a,Tensor b,Tensor input, Tensor noise) {
+	public void addNoise(Tensor a,Tensor b,Tensor input, Tensor noise,CUDAManager cudaManager) {
 
 		if(kernel == null) {
-			kernel = new BaseKernel();
+			kernel = new BaseKernel(cudaManager);
 		}
 		
 		kernel.add_mul(a, b, input, noise, input);
 		
 	}
 	
-	public void addNoise(Tensor a,Tensor b,Tensor input, Tensor noise,Tensor output) {
+	public void addNoise(Tensor a,Tensor b,Tensor input, Tensor noise,Tensor output,CUDAManager cudaManager) {
 
 		if(kernel == null) {
-			kernel = new BaseKernel();
+			kernel = new BaseKernel(cudaManager);
 		}
 		
 		kernel.add_mul(a, b, input, noise, output);
 		
 	}
 	
-	public void unMulGrad(Tensor a,Tensor b,Tensor delta, Tensor noise,Tensor diff) {
+	public void unMulGrad(Tensor a,Tensor b,Tensor delta, Tensor noise,Tensor diff,CUDAManager cudaManager) {
 
 		if(kernel == null) {
-			kernel = new BaseKernel();
+			kernel = new BaseKernel(cudaManager);
 		}
 		
 		kernel.un_mul_grad(a, b, delta, noise, diff);
 		
 	}
 	
-	public void unNoise(Tensor a,Tensor b,Tensor input, Tensor noise) {
+	public void unNoise(Tensor a,Tensor b,Tensor input, Tensor noise,CUDAManager cudaManager) {
 
 		if(kernel == null) {
-			kernel = new BaseKernel();
+			kernel = new BaseKernel(cudaManager);
 		}
 		
 		kernel.un_mul(a, b, input, noise, input);
 		
 	}
 	
-	public void unNoise(Tensor a,Tensor b,Tensor input, Tensor noise,Tensor output) {
+	public void unNoise(Tensor a,Tensor b,Tensor input, Tensor noise,Tensor output,CUDAManager cudaManager) {
 
 		if(kernel == null) {
-			kernel = new BaseKernel();
+			kernel = new BaseKernel(cudaManager);
 		}
 		
 		kernel.un_mul(a, b, input, noise, output);

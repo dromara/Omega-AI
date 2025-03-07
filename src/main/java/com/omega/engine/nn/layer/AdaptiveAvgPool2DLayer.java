@@ -38,7 +38,7 @@ public class AdaptiveAvgPool2DLayer extends Layer {
 		}
 
 		if(kernel == null) {
-			kernel = new AdaptiveAvgPool2DKernel();
+			kernel = new AdaptiveAvgPool2DKernel(cuda());
 		}
 		
 	}

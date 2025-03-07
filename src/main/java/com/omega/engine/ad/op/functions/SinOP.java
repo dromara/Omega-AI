@@ -4,7 +4,6 @@ import com.omega.common.data.Tensor;
 import com.omega.engine.ad.Tape;
 import com.omega.engine.ad.op.FunctionOP;
 import com.omega.engine.ad.op.OPType;
-import com.omega.engine.ad.op.TensorOP;
 
 public class SinOP extends FunctionOP{
 
@@ -30,7 +29,7 @@ public class SinOP extends FunctionOP{
 		// TODO Auto-generated method stub
 		Tensor self = tape.getX();
 		Tensor y = tape.getOutput();
-		TensorOP.sin(self, y);
+		tape.getTensorOP().sin(self, y);
 		if(self.isRequiresGrad()) {
 			y.setRequiresGrad(true);
 		}
@@ -43,8 +42,8 @@ public class SinOP extends FunctionOP{
 		Tensor x = tape.getX();
 		if(x.isRequiresGrad()) {
 			Tensor dy = tape.getTmp();
-			TensorOP.cos(x, dy);
-			TensorOP.mulPlus(delta, dy, x.getGrad());
+			tape.getTensorOP().cos(x, dy);
+			tape.getTensorOP().mulPlus(delta, dy, x.getGrad());
 		}
 	}
 

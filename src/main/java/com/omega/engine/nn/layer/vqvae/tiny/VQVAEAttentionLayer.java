@@ -8,10 +8,7 @@ import java.io.RandomAccessFile;
 
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixUtils;
-import com.omega.engine.ad.op.TensorOP;
-import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAMemoryManager;
-import com.omega.engine.gpu.GPUOP;
 import com.omega.engine.gpu.cudnn.SoftmaxCudnnKernel;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
@@ -58,8 +55,6 @@ public class VQVAEAttentionLayer extends Layer{
 	private FullyLayer vLinerLayer;
 
 	private FullyLayer oLinerLayer;
-	
-	private BaseKernel baseKernel;
 	
 	private AttentionKernel attentionKernel;
 	
@@ -128,12 +123,8 @@ public class VQVAEAttentionLayer extends Layer{
 		this.setoLinerLayer(new FullyLayer(embedDim, embedDim, bias, this.network));
 //		oLinerLayer.weight = new Tensor(1, 1, embedDim, embedDim, MatrixUtils.order(oLinerLayer.weight.dataLength, 0.1f, 0.1f), true);
 
-		if(baseKernel == null) {
-			baseKernel = new BaseKernel();
-		}
-		
 		if(attentionKernel == null) {
-			attentionKernel = new AttentionKernel();
+			attentionKernel = new AttentionKernel(cuda());
 		}
 		
 	}
@@ -150,7 +141,7 @@ public class VQVAEAttentionLayer extends Layer{
 		this.batchSize = this.number;
 		
 		if(network.CUDNN && softmaxKernel == null) {
-			softmaxKernel = new SoftmaxCudnnKernel(time, 1, 1);
+			softmaxKernel = new SoftmaxCudnnKernel(time, 1, 1, cuda());
 		}
 		
 		if(this.qt != null) {
@@ -248,7 +239,7 @@ public class VQVAEAttentionLayer extends Layer{
 		
 		x = x.view(batchSize, channel, 1, height * width);
 		// B,C,HW ==> B,HW,C
-		TensorOP.permute(x, xt, new int[] {0, 3, 2, 1});
+		Tensor_OP().permute(x, xt, new int[] {0, 3, 2, 1});
 		xt = xt.view(batchSize * time, 1, 1, channel);
 		
 		this.getqLinerLayer().forward(xt);
@@ -259,9 +250,9 @@ public class VQVAEAttentionLayer extends Layer{
 		Tensor key = this.getkLinerLayer().getOutput().view(batchSize, time, headNum, dk);
 		Tensor value = this.getvLinerLayer().getOutput().view(batchSize, time, headNum, dk);
 		
-		TensorOP.permute(query, qt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(key, kt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(value, vt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(query, qt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(key, kt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(value, vt, new int[] {0, 2, 1, 3});
 		
 		scaledDotProductAttention(qt, kt, vt);
 
@@ -276,10 +267,10 @@ public class VQVAEAttentionLayer extends Layer{
 		
 		this.output.view(batchSize, channel, 1, time);
 
-		TensorOP.permute(out, this.output, new int[] {0, 3, 2, 1}); //B,HW,C ==> B,C,HW
+		Tensor_OP().permute(out, this.output, new int[] {0, 3, 2, 1}); //B,HW,C ==> B,C,HW
 
 		if(residualConnect) {
-			TensorOP.add(this.input, this.output, this.output);
+			Tensor_OP().add(this.input, this.output, this.output);
 		}
 		this.output.viewOrg();
 	}
@@ -296,7 +287,7 @@ public class VQVAEAttentionLayer extends Layer{
 		
 		x = x.view(batchSize, channel, 1, height * width);
 		// B,C,HW ==> B,HW,C
-		TensorOP.permute(x, xt, new int[] {0, 3, 2, 1});
+		Tensor_OP().permute(x, xt, new int[] {0, 3, 2, 1});
 		xt = xt.view(batchSize * time, 1, 1, channel);
 		
 		Tensor qfo = CUDAMemoryManager.getCache("VQVAEAttn_qfo_cache", batchSize * time, 1, 1, embedDim);
@@ -311,9 +302,9 @@ public class VQVAEAttentionLayer extends Layer{
 		Tensor key = this.getkLinerLayer().getOutput().view(batchSize, time, headNum, dk);
 		Tensor value = this.getvLinerLayer().getOutput().view(batchSize, time, headNum, dk);
 		
-		TensorOP.permute(query, qt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(key, kt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(value, vt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(query, qt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(key, kt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(value, vt, new int[] {0, 2, 1, 3});
 		
 		scaledDotProductAttention(qt, kt, vt);
 
@@ -330,10 +321,10 @@ public class VQVAEAttentionLayer extends Layer{
 		
 		this.output.view(batchSize, channel, 1, time);
 
-		TensorOP.permute(out, this.output, new int[] {0, 3, 2, 1}); //B,HW,C ==> B,C,HW
+		Tensor_OP().permute(out, this.output, new int[] {0, 3, 2, 1}); //B,HW,C ==> B,C,HW
 
 		if(residualConnect) {
-			TensorOP.add(this.input, this.output, this.output);
+			Tensor_OP().add(this.input, this.output, this.output);
 		}
 		this.output.viewOrg();
 	}
@@ -344,7 +335,7 @@ public class VQVAEAttentionLayer extends Layer{
 
 		Tensor preatt = temp;
 
-		GPUOP.getInstance().bmmEX(CUBLAS_OP_T, CUBLAS_OP_N, time, time, dk, 1.0f, key.getGpuData(), dk, time * dk, query.getGpuData(), dk, time * dk, 0.0f, preatt.getGpuData(), time, time * time, batchSize * headNum);
+		GPU_OP().bmmEX(CUBLAS_OP_T, CUBLAS_OP_N, time, time, dk, 1.0f, key.getGpuData(), dk, time * dk, query.getGpuData(), dk, time * dk, 0.0f, preatt.getGpuData(), time, time * time, batchSize * headNum);
 		
 		if(network.CUDNN) {
 			attentionKernel.scale(preatt, d_k, batchSize, headNum, time);
@@ -361,7 +352,7 @@ public class VQVAEAttentionLayer extends Layer{
 		Tensor tmp = attn;
 		
 		Tensor vaccum = temp;
-		GPUOP.getInstance().bmmEX(CUBLAS_OP_N, CUBLAS_OP_N, dk, time, time, 1.0f, value.getGpuData(), dk, time * dk, tmp.getGpuData(), time, time * time, 0.0f, vaccum.getGpuData(), dk, time * dk, batchSize * headNum);
+		GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_N, dk, time, time, 1.0f, value.getGpuData(), dk, time * dk, tmp.getGpuData(), time, time * time, 0.0f, vaccum.getGpuData(), dk, time * dk, batchSize * headNum);
 
 	}
 
@@ -371,10 +362,10 @@ public class VQVAEAttentionLayer extends Layer{
 		
 		Tensor dvaccum = temp;
 	    // backward into datt
-		GPUOP.getInstance().bmmEX(CUBLAS_OP_T, CUBLAS_OP_N, time, time, dk, 1.0f, vt.getGpuData(), dk, time * dk, dvaccum.getGpuData(), dk, time * dk, 0.0f, dattn.getGpuData(), time, time * time, batchSize * headNum);
+		GPU_OP().bmmEX(CUBLAS_OP_T, CUBLAS_OP_N, time, time, dk, 1.0f, vt.getGpuData(), dk, time * dk, dvaccum.getGpuData(), dk, time * dk, 0.0f, dattn.getGpuData(), time, time * time, batchSize * headNum);
 
 		// backward into dv
-		GPUOP.getInstance().bmmEX(CUBLAS_OP_N, CUBLAS_OP_T, dk, time, time, 1.0f, dvaccum.getGpuData(), dk, time * dk, tmp.getGpuData(), time, time * time, 0.0f, dvt.getGpuData(), dk, time * dk, batchSize * headNum);
+		GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_T, dk, time, time, 1.0f, dvaccum.getGpuData(), dk, time * dk, tmp.getGpuData(), time, time * time, 0.0f, dvt.getGpuData(), dk, time * dk, batchSize * headNum);
 		
 		Tensor dpreatt = temp;
 		
@@ -383,16 +374,16 @@ public class VQVAEAttentionLayer extends Layer{
 		// backward into preatt
 		if(network.CUDNN) {
 			softmaxKernel.softmax_backward(attn, dattn, dattn);
-			TensorOP.mul(dattn, d_k, dattn);
+			Tensor_OP().mul(dattn, d_k, dattn);
 			dpreatt = dattn;
 		}else {
 			attentionKernel.softmax_unmask_backward(dpreatt, dattn, attn, batchSize, time, headNum, d_k);
 		}
 		
-		GPUOP.getInstance().bmmEX(CUBLAS_OP_N, CUBLAS_OP_N, dk, time, time, 1.0f, kt.getGpuData(), dk, time * dk, dpreatt.getGpuData(), time, time * time, 0.0f, dqt.getGpuData(), dk, time * dk, batchSize * headNum);
+		GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_N, dk, time, time, 1.0f, kt.getGpuData(), dk, time * dk, dpreatt.getGpuData(), time, time * time, 0.0f, dqt.getGpuData(), dk, time * dk, batchSize * headNum);
 		
 		// backward into k
-		GPUOP.getInstance().bmmEX(CUBLAS_OP_N, CUBLAS_OP_T, dk, time, time, 1.0f, qt.getGpuData(), dk, time * dk, dpreatt.getGpuData(), time, time * time, 0.0f, dkt.getGpuData(), dk, time * dk, batchSize * headNum);
+		GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_T, dk, time, time, 1.0f, qt.getGpuData(), dk, time * dk, dpreatt.getGpuData(), time, time * time, 0.0f, dkt.getGpuData(), dk, time * dk, batchSize * headNum);
 	}
 
 	@Override
@@ -407,7 +398,7 @@ public class VQVAEAttentionLayer extends Layer{
 		
 		// B,C,H,W ==> B,HW,C
 		this.output.view(batchSize, height, width, channel);
-		TensorOP.permute(delta, this.output, new int[] {0, 2, 3, 1});
+		Tensor_OP().permute(delta, this.output, new int[] {0, 2, 3, 1});
 		this.output.view(batchSize, time, 1, channel);
 
 		this.getoLinerLayer().back(this.output, oi);
@@ -420,9 +411,9 @@ public class VQVAEAttentionLayer extends Layer{
 		kt.view(batchSize, time, headNum, dk);
 		vt.view(batchSize, time, headNum, dk);
 		
-		TensorOP.permute(dqt, qt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(dkt, kt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(dvt, vt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(dqt, qt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(dkt, kt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(dvt, vt, new int[] {0, 2, 1, 3});
 		
 //		qt.showDMByOffset(0, 10, "qt");
 		
@@ -438,8 +429,8 @@ public class VQVAEAttentionLayer extends Layer{
 		this.getkLinerLayer().back(keyDelta, kDiff);
 		this.getvLinerLayer().back(valueDelta, vDiff);
 		
-		TensorOP.add(qDiff, kDiff, qDiff);
-		TensorOP.add(qDiff, vDiff, qDiff);
+		Tensor_OP().add(qDiff, kDiff, qDiff);
+		Tensor_OP().add(qDiff, vDiff, qDiff);
 		
 		// dxt
 		Tensor dxt = qDiff;
@@ -448,7 +439,7 @@ public class VQVAEAttentionLayer extends Layer{
 
 		// B,HW,C ==> B,C,H,W
 		xt = xt.view(batchSize , channel, 1, time);
-		TensorOP.permute(dxt, xt, new int[] {0, 3, 2, 1});
+		Tensor_OP().permute(dxt, xt, new int[] {0, 3, 2, 1});
 		xt = xt.view(batchSize , channel, height, width);
 		if(gn != null) {
 			gn.back(xt);
@@ -458,7 +449,7 @@ public class VQVAEAttentionLayer extends Layer{
 		}
 		
 		if(residualConnect) {
-			TensorOP.add(this.diff, this.delta, this.diff);
+			Tensor_OP().add(this.diff, this.delta, this.diff);
 		}
 		
 		dxt.viewOrg();

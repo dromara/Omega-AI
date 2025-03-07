@@ -5,8 +5,8 @@ import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.gpu.BaseKernel;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
-import com.omega.engine.gpu.CUDAModules;
 
 import jcuda.Pointer;
 import jcuda.Sizeof;
@@ -26,8 +26,8 @@ public class SiLUKernel extends BaseKernel{
 	
 	private Pointer backwardKernelParameters;
 	
-	public SiLUKernel() {
-		
+	public SiLUKernel(CUDAManager cudaManager) {
+		super(cudaManager);
 		init();
 	}
 	
@@ -45,19 +45,19 @@ public class SiLUKernel extends BaseKernel{
 
 			if(function == null) {
 
-				function = CUDAModules.getLocalFunctionByModule("activeFunction.cu", "silu_forward");
+				function = getCudaManager().getLocalFunctionByModule("activeFunction.cu", "silu_forward");
 				
 			}
 			
 			if(function_back == null) {
 
-				function_back = CUDAModules.getLocalFunctionByModule("activeFunction.cu", "silu_backward");
+				function_back = getCudaManager().getLocalFunctionByModule("activeFunction.cu", "silu_backward");
 				
 			}
 			
 			if(function_back_temp == null) {
 
-				function_back_temp = CUDAModules.getLocalFunctionByModule("activeFunction.cu", "silu_backward_temp");
+				function_back_temp = getCudaManager().getLocalFunctionByModule("activeFunction.cu", "silu_backward_temp");
 				
 			}
 			
@@ -317,7 +317,9 @@ public class SiLUKernel extends BaseKernel{
 	    	
 	    	Tensor diff = new Tensor(N, C, H, W, true);
 	    	
-	    	SiLUKernel k = new SiLUKernel();
+	    	CUDAManager cudaManager = new CUDAManager(0);
+	    	
+	    	SiLUKernel k = new SiLUKernel(cudaManager);
 
 	    	k.forward(input, output);
 	    	

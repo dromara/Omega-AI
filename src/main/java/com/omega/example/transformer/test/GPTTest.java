@@ -839,7 +839,7 @@ public class GPTTest {
 			
 			network.RUN_MODEL = RunModel.TEST;
 			
-			kernel = new SoftmaxKernel();
+			kernel = new SoftmaxKernel(network.cudaManager);
 			
 			Tensor input = null;
 			

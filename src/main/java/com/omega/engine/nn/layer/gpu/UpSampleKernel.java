@@ -3,12 +3,11 @@ package com.omega.engine.nn.layer.gpu;
 import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 
 import com.omega.common.data.Tensor;
-import com.omega.common.lib.LibPaths;
 import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
-import com.omega.engine.gpu.CUDAModules;
+import com.omega.engine.gpu.CUDAManager;
 
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
@@ -27,7 +26,8 @@ public class UpSampleKernel extends BaseKernel{
 	private Pointer forwardKernelParameters;
 	private Pointer backwardKernelParameters;
 	
-	public UpSampleKernel(int stride,float scale) {
+	public UpSampleKernel(int stride,float scale, CUDAManager cudaManager) {
+		super(cudaManager);
 		this.stride = stride;
 		this.scale = scale;
 		if(this.stride < 0) {
@@ -43,7 +43,7 @@ public class UpSampleKernel extends BaseKernel{
 
 			if(forward_function == null) {
 				
-				forward_function = CUDAModules.getLocalFunctionByModule("UpSampleKernel.cu", "upsample_kernel");
+				forward_function = getCudaManager().getLocalFunctionByModule("UpSampleKernel.cu", "upsample_kernel");
 				
 			}
 			
@@ -176,8 +176,6 @@ public class UpSampleKernel extends BaseKernel{
 	
     public static void main(String args[]){	
     	
-    	CUDAModules.initContext();
-    	
     	int N = 2;
     	int C = 3;
     	int H = 4;
@@ -209,8 +207,10 @@ public class UpSampleKernel extends BaseKernel{
     	Tensor diff = new Tensor(N, C, H, W, true);
     	
     	float[] diff_cpu = new float[diff.dataLength];
-
-    	UpSampleKernel pooling = new UpSampleKernel(stride, scale);
+    	
+    	CUDAManager cudaManager = new CUDAManager(0);
+    	
+    	UpSampleKernel pooling = new UpSampleKernel(stride, scale, cudaManager);
     	
     	long start = System.nanoTime();
 

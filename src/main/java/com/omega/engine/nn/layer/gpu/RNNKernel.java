@@ -3,8 +3,8 @@ package com.omega.engine.nn.layer.gpu;
 import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 
 import com.omega.common.data.Tensor;
-import com.omega.common.lib.LibPaths;
 import com.omega.engine.gpu.BaseKernel;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAModules;
 
 import jcuda.Pointer;
@@ -36,7 +36,8 @@ public class RNNKernel extends BaseKernel{
 	
 	private Pointer kernelBackParameters;
 	
-	public RNNKernel() {
+	public RNNKernel(CUDAManager cudaManager) {
+		super(cudaManager);
 		init();
 	}
 	
@@ -54,25 +55,25 @@ public class RNNKernel extends BaseKernel{
 
 			if(bias_function == null) {
 
-				bias_function = CUDAModules.getLocalFunctionByModule("RNNKernel.cu", "add_bias");
+				bias_function = getCudaManager().getLocalFunctionByModule("RNNKernel.cu", "add_bias");
 				
 			}
 			
 			if(output_function == null) {
 
-				output_function = CUDAModules.getLocalFunctionByModule("RNNKernel.cu", "add_output");
+				output_function = getCudaManager().getLocalFunctionByModule("RNNKernel.cu", "add_output");
 				
 			}
 			
 			if(output_bias_function == null) {
 
-				output_bias_function = CUDAModules.getLocalFunctionByModule("RNNKernel.cu", "add_output_bias");
+				output_bias_function = getCudaManager().getLocalFunctionByModule("RNNKernel.cu", "add_output_bias");
 				
 			}
 			
 			if(back_function == null) {
 
-				back_function = CUDAModules.getLocalFunctionByModule("RNNKernel.cu", "backward_bias_conn_kernel");
+				back_function = getCudaManager().getLocalFunctionByModule("RNNKernel.cu", "backward_bias_conn_kernel");
 				
 			}
 			

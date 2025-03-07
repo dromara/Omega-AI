@@ -29,7 +29,7 @@ public class BCEWithLogitsLoss extends LossFunction {
 	}
 	
 	public BCEWithLogitsLoss() {
-		kernel = new BCEWithLogitsLossKernel();
+		kernel = new BCEWithLogitsLossKernel(getNet().cudaManager);
 	}
 	
 	public void init(Tensor input) {

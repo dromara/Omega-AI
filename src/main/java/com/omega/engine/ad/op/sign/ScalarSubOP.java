@@ -4,7 +4,6 @@ import com.omega.common.data.Tensor;
 import com.omega.engine.ad.Tape;
 import com.omega.engine.ad.op.OPType;
 import com.omega.engine.ad.op.SignOP;
-import com.omega.engine.ad.op.TensorOP;
 
 public class ScalarSubOP extends SignOP{
 
@@ -30,7 +29,7 @@ public class ScalarSubOP extends SignOP{
 		// TODO Auto-generated method stub
 		Tensor self = tape.getX();
 		Tensor y = tape.getOutput();
-		TensorOP.sub(tape.getScalar(), self, y);
+		tape.getTensorOP().sub(tape.getScalar(), self, y);
 		if(self.isRequiresGrad()) {
 			y.setRequiresGrad(true);
 		}
@@ -42,7 +41,7 @@ public class ScalarSubOP extends SignOP{
 		// TODO Auto-generated method stub
 		Tensor x = tape.getX();
 		if(x !=null && x.isRequiresGrad()) {
-			TensorOP.mulPlus(delta, -1.0f, x.getGrad());
+			tape.getTensorOP().mulPlus(delta, -1.0f, x.getGrad());
 		}
 	}
 

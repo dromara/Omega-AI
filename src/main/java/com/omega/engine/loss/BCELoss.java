@@ -3,7 +3,9 @@ package com.omega.engine.loss;
 import com.omega.common.data.Tensor;
 import com.omega.common.data.Tensors;
 import com.omega.engine.ad.Graph;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.loss.gpu.BCELossKernel;
+import com.omega.engine.nn.network.Network;
 
 /**
  * 二分类loss
@@ -24,16 +26,22 @@ public class BCELoss extends LossFunction {
 	
 	private Graph g;
 	
-	public static BCELoss operation() {
+	public static BCELoss operation(CUDAManager cudaManager) {
 		if(instance == null) {
-			instance = new BCELoss();
+			instance = new BCELoss(cudaManager);
 		}
 		return instance;
 	}
+
+	public BCELoss(CUDAManager cudaManager) {
+		kernel = new BCELossKernel(cudaManager);
+		g = new Graph(getNet().tensorOP);
+	}
 	
-	public BCELoss() {
-		kernel = new BCELossKernel();
-		g = new Graph();
+	public BCELoss(Network network) {
+		setNet(network);
+		kernel = new BCELossKernel(network.cudaManager);
+		g = new Graph(getNet().tensorOP);
 	}
 	
 	public void init(Tensor input) {
@@ -106,15 +114,16 @@ public class BCELoss extends LossFunction {
 	}
 	
 	public static void main(String[] args) {
+		CUDAManager cudaManager = new CUDAManager(0);
 		float[] x = new float[] {0.99952507f,0.9999833f,1.0f,1.0f,1.0f,1.27869424E-20f,1.0f,3.8254528E-26f};
 		Tensor xt = Tensors.tensor(8, 1, 1, 1, x, true);
 		float[] label = new float[] {1,1,1,1,1,1,1,1,1};
 		Tensor labelt = Tensors.tensor(8, 1, 1, 1, label, true);
 //		Tensor a = sigmoid(xt);
 //		a.showDM();
-		Tensor loss = BCELoss.operation().loss(xt, labelt);
+		Tensor loss = BCELoss.operation(cudaManager).loss(xt, labelt);
 		loss.showDM();
-		Tensor diff = BCELoss.operation().diff(xt, labelt);
+		Tensor diff = BCELoss.operation(cudaManager).diff(xt, labelt);
 		diff.showDM();
 //		Graph.clearGrad();
 //		Graph.backward();

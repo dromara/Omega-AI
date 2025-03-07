@@ -177,7 +177,7 @@ public class RandomUtils {
 		 * std = gain / math.sqrt(fan)
 		 */
 		float std = (float) (gain / Math.sqrt(fan));
-		float mean = 0;
+//		float mean = 0;
 		for(int i = 0;i<x;i++) {
 //			temp[i] = (float) (Math.sqrt(std) * getInstance().nextGaussian() + mean);
 			temp[i] = (float) (getInstance().nextGaussian() * std);

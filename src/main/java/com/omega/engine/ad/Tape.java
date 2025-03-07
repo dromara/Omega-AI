@@ -5,6 +5,7 @@ import java.io.Serializable;
 import com.omega.common.data.Tensor;
 import com.omega.engine.ad.op.OP;
 import com.omega.engine.ad.op.OPType;
+import com.omega.engine.ad.op.TensorOP;
 
 /**
  * 计算图节点
@@ -36,7 +37,10 @@ public class Tape implements Serializable{
 	
 	private boolean sub = false;
 	
+	private TensorOP tensorOP;
+	
 	public Tape(OP op,Tensor self,Tensor other,float scalar,float constant,int[] position,Graph g) {
+		this.tensorOP = g.getTensorOP();
 		this.setX(self);
 		this.setY(other);
 		if(position!=null && !op.getOpType().equals(OPType.set)) {
@@ -89,13 +93,13 @@ public class Tape implements Serializable{
 	
 	public void zeroGrad() {
 		if(getX().isRequiresGrad()) {
-			getX().zeroGrad();
+			getX().zeroGrad(tensorOP.op);
 		}
 		if(getY() != null && getY().isRequiresGrad()) {
-			getY().zeroGrad();
+			getY().zeroGrad(tensorOP.op);
 		}
 		if(getOutput().isRequiresGrad()) {
-			getOutput().zeroGrad();
+			getOutput().zeroGrad(tensorOP.op);
 		}
 	}
 	
@@ -182,6 +186,10 @@ public class Tape implements Serializable{
 
 	public void setConstant(float constant) {
 		this.constant = constant;
+	}
+
+	public TensorOP getTensorOP() {
+		return tensorOP;
 	}
 	
 }

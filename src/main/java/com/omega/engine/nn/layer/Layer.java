@@ -1,7 +1,10 @@
 package com.omega.engine.nn.layer;
 
 import com.omega.common.data.Tensor;
-import com.omega.engine.gpu.BaseGPUOP;
+import com.omega.engine.ad.op.TensorOP;
+import com.omega.engine.gpu.BaseKernel;
+import com.omega.engine.gpu.CUDAManager;
+import com.omega.engine.gpu.GPUOP;
 import com.omega.engine.gpu.data.CacheDataSet;
 import com.omega.engine.nn.model.LayerInit;
 import com.omega.engine.nn.network.Network;
@@ -191,7 +194,7 @@ public abstract class Layer {
 				this.delta = this.cache_delta;
 			}else if(this.cache_delta != this.delta){
 //				System.out.println("in===>add:"+this.getLayerType()+"["+index+"]");
-				BaseGPUOP.getKernel().axpy_gpu(this.cache_delta, this.delta, this.delta.getDataLength(), 1, 1, 1);
+				network.baseKernel.axpy_gpu(this.cache_delta, this.delta, this.delta.getDataLength(), 1, 1, 1);
 				this.cache_delta.clearGPU();
 			}
 //			this.cache_delta.clearGPU();
@@ -216,7 +219,7 @@ public abstract class Layer {
 				this.delta = this.cache_delta;
 			}else if(this.cache_delta != this.delta){
 //				System.out.println("in===>add:"+this.getLayerType()+"["+index+"]");
-				BaseGPUOP.getKernel().axpy_gpu(this.cache_delta, this.delta, this.delta.getDataLength(), 1, 1, 1);
+				network.baseKernel.axpy_gpu(this.cache_delta, this.delta, this.delta.getDataLength(), 1, 1, 1);
 				this.cache_delta.clearGPU();
 			}
 //			this.cache_delta.clearGPU();
@@ -269,6 +272,22 @@ public abstract class Layer {
 	
 	public void freeze() {
 		this.freeze = true;
+	}
+	
+	public GPUOP GPU_OP() {
+		return this.network.cudaManager.getOp();
+	}
+	
+	public TensorOP Tensor_OP() {
+		return this.network.tensorOP;
+	}
+	
+	public CUDAManager cuda() {
+		return network.cudaManager;
+	}
+	
+	public BaseKernel baseKernel() {
+		return network.baseKernel;
 	}
 	
 }

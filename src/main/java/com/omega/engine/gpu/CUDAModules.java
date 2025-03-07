@@ -3,13 +3,10 @@ package com.omega.engine.gpu;
 import static jcuda.driver.JCudaDriver.cuModuleGetFunction;
 import static jcuda.driver.JCudaDriver.cuModuleLoad;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.JarURLConnection;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
@@ -274,7 +271,7 @@ public class CUDAModules {
     }
 
 	public static CUcontext getContext() {
-		
+		System.err.println("static init CUDAModules.");
 		if(context == null) {
 			
 			JCudaDriver.setExceptionsEnabled(true);
@@ -300,8 +297,39 @@ public class CUDAModules {
 		return context;
 	}
 	
+	public static CUcontext getContext(int deviceId) {
+		
+		if(context == null) {
+			
+			JCudaDriver.setExceptionsEnabled(true);
+        	
+			// Initialize the driver and create a context for the first device.
+
+        	instance = CUDAUtils.getInstance();
+        	
+        	instance.initCUDA();
+        	
+        	device = instance.getDevice(deviceId);
+        	
+        	context = instance.getContext(device);
+        	
+        	props = new cudaDeviceProp();
+        	
+        	JCuda.cudaGetDeviceProperties(props, deviceId);
+			
+        	System.out.println("CUDA:"+deviceId+" context init finish.");
+        	
+		}
+		
+		return context;
+	}
+	
 	public static void initContext() {
 		getContext();
+	}
+	
+	public static void initContext(int deviceId) {
+		getContext(deviceId);
 	}
 
 	public static void setContext(CUcontext context) {

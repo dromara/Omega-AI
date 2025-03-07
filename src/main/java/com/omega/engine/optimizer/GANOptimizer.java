@@ -6,7 +6,6 @@ import com.omega.common.utils.MathUtils;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.ad.Graph;
-import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.loss.BCELoss;
 import com.omega.engine.nn.data.BaseData;
@@ -70,9 +69,9 @@ public class GANOptimizer extends Optimizer {
 				this.network.learnRate = (float) (this.lr * Math.pow(batchIndex * 1.0f/burnIn * 1.0f, power));
 			}
 			
-			Graph gd1 = new Graph();
-			Graph gd2 = new Graph();
-			Graph gg = new Graph();
+			Graph gd1 = new Graph(this.netD.tensorOP);
+			Graph gd2 = new Graph(this.netD.tensorOP);
+			Graph gg = new Graph(this.netD.tensorOP);
 			
 			float dlr = this.netD.learnRate;
 			float glr = this.netG.learnRate;
@@ -185,8 +184,8 @@ public class GANOptimizer extends Optimizer {
 			fake_label.hostToDevice();
 			
 
-			BCELoss lossD = new BCELoss();
-			BCELoss lossG = new BCELoss();
+			BCELoss lossD = new BCELoss(network);
+			BCELoss lossG = new BCELoss(network);
 
 			float d_loss = 99f;
 			
@@ -264,9 +263,9 @@ public class GANOptimizer extends Optimizer {
 				this.network.learnRate = (float) (this.lr * Math.pow(batchIndex * 1.0f/burnIn * 1.0f, power));
 			}
 
-			Graph gd1 = new Graph();
-			Graph gd2 = new Graph();
-			Graph gg = new Graph();
+			Graph gd1 = new Graph(this.netD.tensorOP);
+			Graph gd2 = new Graph(this.netD.tensorOP);
+			Graph gg = new Graph(this.netD.tensorOP);
 			
 			Tensor inputD = new Tensor(batchSize, this.netD.getChannel(), this.netD.getHeight(), this.netD.getWidth(), true);
 
@@ -807,8 +806,8 @@ public class GANOptimizer extends Optimizer {
 //		lossDiff2.showDM();
 //		d_real_diff.showDM();
 //		d_fake_diff.showDM();
-		TensorOP.add(d_real_diff, d_fake_diff, diff);
-		TensorOP.div(diff, 2.0f, diff);
+		netD.tensorOP.add(d_real_diff, d_fake_diff, diff);
+		netD.tensorOP.div(diff, 2.0f, diff);
 //		diff.showDM();
 //		System.out.println("d_fake_diff:"+d_fake_diff.isZero());
 //		diff.showDM();

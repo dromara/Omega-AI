@@ -1,7 +1,6 @@
 package com.omega.engine.nn.layer.tae;
 
 import com.omega.common.data.Tensor;
-import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -39,8 +38,6 @@ public class TAEBlock extends Layer {
 	
 	private boolean shortcut = false;
 	
-	private BaseKernel baseKernel;
-	
 	private Tensor cache_delta;
 	
 	private Tensor tmp;
@@ -56,10 +53,8 @@ public class TAEBlock extends Layer {
 			shortcut = true;
 		}
 		
-		kernel = new BasicBlockKernel();
+		kernel = new BasicBlockKernel(cuda());
 		
-		baseKernel = new BaseKernel();
-
 		initLayers();
 		
 		this.oHeight = conv3.oHeight;
@@ -157,7 +152,7 @@ public class TAEBlock extends Layer {
 		/**
 		 * deltax = deltao * (f'(x) + 1)
 		 */
-		baseKernel.copy_gpu(delta, this.cache_delta, delta.getDataLength(), 1, 1);
+		baseKernel().copy_gpu(delta, this.cache_delta, delta.getDataLength(), 1, 1);
 
 		fuse.back(delta);
 		

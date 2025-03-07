@@ -45,7 +45,7 @@ public class Llava extends Network {
 	private FullyLayer fullyLayer;
 	
 	public Llava(LossType lossType,UpdaterType updater,int headNum,int nKVHeadNum,int decoderNum,int vocabSize,int time,int imageTime,int embedDim,int visionOutDim,boolean bias,boolean dropout) {
-		this.lossFunction = LossFactory.create(lossType);
+		this.lossFunction = LossFactory.create(lossType, this);
 		this.bias = bias;
 		this.dropout = dropout;
 		this.decoderNum = decoderNum;
@@ -66,7 +66,7 @@ public class Llava extends Network {
 	
 	public Llava(LossType lossType,UpdaterType updater,int headNum,int nKVHeadNum,int decoderNum,int vocabSize,int time,int imageTime,int embedDim,int visionOutDim,boolean bias,boolean dropout,boolean flashAttention) {
 		this.flashAttention = flashAttention;
-		this.lossFunction = LossFactory.create(lossType);
+		this.lossFunction = LossFactory.create(lossType, this);
 		this.bias = bias;
 		this.dropout = dropout;
 		this.decoderNum = decoderNum;
@@ -283,6 +283,18 @@ public class Llava extends Network {
 
 	public void setFullyLayer(FullyLayer fullyLayer) {
 		this.fullyLayer = fullyLayer;
+	}
+
+	@Override
+	public void putParamters() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void putParamterGrads() {
+		// TODO Auto-generated method stub
+		
 	}
 	
 }

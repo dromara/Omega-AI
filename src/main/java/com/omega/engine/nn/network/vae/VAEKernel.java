@@ -3,20 +3,12 @@ package com.omega.engine.nn.network.vae;
 import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 
 import com.omega.common.data.Tensor;
-import com.omega.common.utils.MatrixUtils;
-import com.omega.common.utils.RandomUtils;
-import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.gpu.BaseKernel;
-import com.omega.engine.gpu.CUDAMemoryManager;
-import com.omega.engine.gpu.CUDAModules;
-import com.omega.engine.gpu.GPUOP;
-import com.omega.engine.nn.layer.EmbeddingIDLayer;
-import com.omega.engine.nn.network.Transformer;
+import com.omega.engine.gpu.CUDAManager;
 
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUfunction;
-import jcuda.jcublas.cublasOperation;
 
 public class VAEKernel extends BaseKernel{
 	
@@ -64,7 +56,8 @@ public class VAEKernel extends BaseKernel{
 	
 	private Pointer backwardKernelParameters;
 	
-	public VAEKernel() {
+	public VAEKernel(CUDAManager cudaManager) {
+		super(cudaManager);
 		init();
 	}
 	
@@ -81,115 +74,115 @@ public class VAEKernel extends BaseKernel{
 
 			if(function == null) {
 
-				function = CUDAModules.getLocalFunctionByModule("VAE.cu", "reparameterize_forward");
+				function = getCudaManager().getLocalFunctionByModule("VAE.cu", "reparameterize_forward");
 				
 			}
 			
 			if(function_back == null) {
 
-				function_back = CUDAModules.getLocalFunctionByModule("VAE.cu", "reparameterize_backward");
+				function_back = getCudaManager().getLocalFunctionByModule("VAE.cu", "reparameterize_backward");
 				
 			}
 			
 			if(kl_loss_function == null) {
 
-				kl_loss_function = CUDAModules.getLocalFunctionByModule("VAE.cu", "kl_loss");
+				kl_loss_function = getCudaManager().getLocalFunctionByModule("VAE.cu", "kl_loss");
 				
 			}
 			
 			if(kl_loss_function_back == null) {
 
-				kl_loss_function_back = CUDAModules.getLocalFunctionByModule("VAE.cu", "kl_loss_back");
+				kl_loss_function_back = getCudaManager().getLocalFunctionByModule("VAE.cu", "kl_loss_back");
 				
 			}
 			
 			if(cdist_function == null) {
 
-				cdist_function = CUDAModules.getLocalFunctionByModule("VAE.cu", "CdistP");
+				cdist_function = getCudaManager().getLocalFunctionByModule("VAE.cu", "CdistP");
 				
 			}
 			
 			if(cdist2_function == null) {
 
-				cdist2_function = CUDAModules.getLocalFunctionByModule("VAE.cu", "calcDistKernel");
+				cdist2_function = getCudaManager().getLocalFunctionByModule("VAE.cu", "calcDistKernel");
 				
 			}
 			
 			if(argmin_function == null) {
 				
-				argmin_function = CUDAModules.getLocalFunctionByModule("VAE.cu", "argmin");
+				argmin_function = getCudaManager().getLocalFunctionByModule("VAE.cu", "argmin");
 				
 			}
 			
 			if(mean_function == null) {
 				
-				mean_function = CUDAModules.getLocalFunctionByModule("VAE.cu", "mean_kernel");
+				mean_function = getCudaManager().getLocalFunctionByModule("VAE.cu", "mean_kernel");
 				
 			}
 
 			if(mse_loss_function == null) {
 				
-				mse_loss_function = CUDAModules.getLocalFunctionByModule("VAE.cu", "mse_loss_kernel");
+				mse_loss_function = getCudaManager().getLocalFunctionByModule("VAE.cu", "mse_loss_kernel");
 				
 			}
 			
 			if(mse_loss_only_c_function == null) {
 				
-				mse_loss_only_c_function = CUDAModules.getLocalFunctionByModule("VAE.cu", "mse_loss_kernel_only_c");
+				mse_loss_only_c_function = getCudaManager().getLocalFunctionByModule("VAE.cu", "mse_loss_kernel_only_c");
 				
 			}
 
 			if(mse_loss_back_function == null) {
 				
-				mse_loss_back_function = CUDAModules.getLocalFunctionByModule("VAE.cu", "mse_loss_back");
+				mse_loss_back_function = getCudaManager().getLocalFunctionByModule("VAE.cu", "mse_loss_back");
 				
 			}
 			
 			if(mse_sum_loss_function == null) {
 				
-				mse_sum_loss_function = CUDAModules.getLocalFunctionByModule("VAE.cu", "mse_sum_loss_kernel");
+				mse_sum_loss_function = getCudaManager().getLocalFunctionByModule("VAE.cu", "mse_sum_loss_kernel");
 				
 			}
 
 			if(mse_sum_loss_back_function == null) {
 				
-				mse_sum_loss_back_function = CUDAModules.getLocalFunctionByModule("VAE.cu", "mse_sum_loss_back");
+				mse_sum_loss_back_function = getCudaManager().getLocalFunctionByModule("VAE.cu", "mse_sum_loss_back");
 				
 			}
 			
 			if(mse_sum_c_loss_function == null) {
 				
-				mse_sum_c_loss_function = CUDAModules.getLocalFunctionByModule("VAE.cu", "mse_sum_only_c_loss_kernel");
+				mse_sum_c_loss_function = getCudaManager().getLocalFunctionByModule("VAE.cu", "mse_sum_only_c_loss_kernel");
 				
 			}
 
 			if(mse_sum_c_loss_back_function == null) {
 				
-				mse_sum_c_loss_back_function = CUDAModules.getLocalFunctionByModule("VAE.cu", "mse_sum_only_c_loss_back");
+				mse_sum_c_loss_back_function = getCudaManager().getLocalFunctionByModule("VAE.cu", "mse_sum_only_c_loss_back");
 				
 			}
 			
 			if(ema_count_function == null) {
 				
-				ema_count_function = CUDAModules.getLocalFunctionByModule("VAE.cu", "ema_count");
+				ema_count_function = getCudaManager().getLocalFunctionByModule("VAE.cu", "ema_count");
 				
 			}
 			
 			if(move_ema_count_function == null) {
 				
-				move_ema_count_function = CUDAModules.getLocalFunctionByModule("VAE.cu", "move_ema_count");
+				move_ema_count_function = getCudaManager().getLocalFunctionByModule("VAE.cu", "move_ema_count");
 				
 			}
 			
 			if(move_ema_count2_function == null) {
 				
-				move_ema_count2_function = CUDAModules.getLocalFunctionByModule("VAE.cu", "move_ema_count2");
+				move_ema_count2_function = getCudaManager().getLocalFunctionByModule("VAE.cu", "move_ema_count2");
 				
 			}
 			
 			if(update_emb_weight_function == null) {
 				
-				update_emb_weight_function = CUDAModules.getLocalFunctionByModule("VAE.cu", "update_emb_weight");
+				update_emb_weight_function = getCudaManager().getLocalFunctionByModule("VAE.cu", "update_emb_weight");
 				
 			}
 
@@ -791,98 +784,98 @@ public class VAEKernel extends BaseKernel{
 		
 	}
 	
-	public static void main(String args[]){	
-	    	int N = 2;
-	    	int C = 4;
-	    	int H = 3;
-	    	int W = 3;
-	    	
-	    	int K = 6;
-	    	
-	    	float[] x1 = RandomUtils.order(N * C * H * W, 1f, 1f);
-	    	
-	    	float[] y1 = RandomUtils.order(K * C, 1f, 1f);
-	    	
-	    	Tensor x = new Tensor(N, C, H, W, x1, true);
-
-	    	Tensor y = new Tensor(1, 1, K, C, y1, true);
-	    	
-	    	Tensor z = new Tensor(N, H, W, C, true);
-	    	
-	    	Tensor idx = new Tensor(N * H * W, 1, 1, 1, true);
-	    	
-	    	TensorOP.permute(x, z, new int[] {0, 2, 3, 1});
-	    	
-	    	z.showDM();
-	    	
-	    	z = z.view(N * H * W, 1, 1, C);
-	    	
-//	    	Tensor output = new Tensor(N * H * W, 1, 1, K, true);
-	    	
-	    	VAEKernel k = new VAEKernel();
-
-//	    	k.cdistP(z, y, output, 2);
-	    	
-//	    	output.showDM();
-	    	
-//	    	output.showShape();
-	    	
-	    	Tensor zc = new Tensor(z.number, 1, 1, 1, true);
-	    	Tensor ec = new Tensor(K, 1, 1, 1, true);
-	    	Tensor ie = new Tensor(z.number, 1, 1, K, true);
-	    	
-	    	TensorOP.sum_pow(z, zc, 2, 1);
-    		TensorOP.sum_pow(y.view(K, 1, 1, C), ec, 2, 1);
-
-    		TensorOP.broadcast(zc, ie, 1);
-
-    		ie.showDM();
-    		
-    		TensorOP.broadcast_row(ec, ie);
-    		
-    		ie.showDM();
-
-    		GPUOP.getInstance().multiplyFloat(z.number, y.number, y.width, z.getGpuData(), y.getGpuData(), ie.getGpuData(),
-    				cublasOperation.CUBLAS_OP_N, cublasOperation.CUBLAS_OP_T, -2.0f, 1.0f);
-    		
-    		ie.showDM();
-    		
-	    	k.argmin(ie, idx);
-	    	
-	    	idx.showDM();
-	    	
-    		
-	    	Transformer network = new Transformer();
-	    	
-	    	EmbeddingIDLayer emd = new EmbeddingIDLayer(K, C, network);
-	    	emd.weight = new Tensor(1, 1, K, C, MatrixUtils.order(K * C, 1, 1), true);
-	    	emd.forward(idx);
-	    	
-	    	emd.getOutput().showDM();
-	    	
-	    	Tensor loss = new Tensor(1, 1, 1, 1, true);
-	    	
-	    	k.MSE(emd.getOutput(), z, loss, 0.2f);
-	    	
-	    	loss.showDM();
-	    	
-	    	Tensor diffX = new Tensor(emd.getOutput().number, emd.getOutput().channel, emd.getOutput().height, emd.getOutput().width, true);
-	    	
-	    	Tensor diffY = new Tensor(emd.getOutput().number, emd.getOutput().channel, emd.getOutput().height, emd.getOutput().width, true);
-	    	
-	    	k.MSE_BACK(emd.getOutput(), z, diffX, diffY, 0.2f);
-	    	
-	    	diffX.showDM();
-	    	
-	    	diffY.showDM();
-	    	
-	    	emd.back(diffX);
-	    	
-	    	emd.diffW.showDM();
-	    	
-			CUDAMemoryManager.free();
-			
-	    }
+//	public static void main(String args[]){	
+//	    	int N = 2;
+//	    	int C = 4;
+//	    	int H = 3;
+//	    	int W = 3;
+//	    	
+//	    	int K = 6;
+//	    	
+//	    	float[] x1 = RandomUtils.order(N * C * H * W, 1f, 1f);
+//	    	
+//	    	float[] y1 = RandomUtils.order(K * C, 1f, 1f);
+//	    	
+//	    	Tensor x = new Tensor(N, C, H, W, x1, true);
+//
+//	    	Tensor y = new Tensor(1, 1, K, C, y1, true);
+//	    	
+//	    	Tensor z = new Tensor(N, H, W, C, true);
+//	    	
+//	    	Tensor idx = new Tensor(N * H * W, 1, 1, 1, true);
+//	    	
+//	    	TensorOP.permute(x, z, new int[] {0, 2, 3, 1});
+//	    	
+//	    	z.showDM();
+//	    	
+//	    	z = z.view(N * H * W, 1, 1, C);
+//	    	
+////	    	Tensor output = new Tensor(N * H * W, 1, 1, K, true);
+//	    	
+//	    	VAEKernel k = new VAEKernel();
+//
+////	    	k.cdistP(z, y, output, 2);
+//	    	
+////	    	output.showDM();
+//	    	
+////	    	output.showShape();
+//	    	
+//	    	Tensor zc = new Tensor(z.number, 1, 1, 1, true);
+//	    	Tensor ec = new Tensor(K, 1, 1, 1, true);
+//	    	Tensor ie = new Tensor(z.number, 1, 1, K, true);
+//	    	
+//	    	TensorOP.sum_pow(z, zc, 2, 1);
+//    		TensorOP.sum_pow(y.view(K, 1, 1, C), ec, 2, 1);
+//
+//    		TensorOP.broadcast(zc, ie, 1);
+//
+//    		ie.showDM();
+//    		
+//    		TensorOP.broadcast_row(ec, ie);
+//    		
+//    		ie.showDM();
+//
+//    		GPUOP.getInstance().multiplyFloat(z.number, y.number, y.width, z.getGpuData(), y.getGpuData(), ie.getGpuData(),
+//    				cublasOperation.CUBLAS_OP_N, cublasOperation.CUBLAS_OP_T, -2.0f, 1.0f);
+//    		
+//    		ie.showDM();
+//    		
+//	    	k.argmin(ie, idx);
+//	    	
+//	    	idx.showDM();
+//	    	
+//    		
+//	    	Transformer network = new Transformer();
+//	    	
+//	    	EmbeddingIDLayer emd = new EmbeddingIDLayer(K, C, network);
+//	    	emd.weight = new Tensor(1, 1, K, C, MatrixUtils.order(K * C, 1, 1), true);
+//	    	emd.forward(idx);
+//	    	
+//	    	emd.getOutput().showDM();
+//	    	
+//	    	Tensor loss = new Tensor(1, 1, 1, 1, true);
+//	    	
+//	    	k.MSE(emd.getOutput(), z, loss, 0.2f);
+//	    	
+//	    	loss.showDM();
+//	    	
+//	    	Tensor diffX = new Tensor(emd.getOutput().number, emd.getOutput().channel, emd.getOutput().height, emd.getOutput().width, true);
+//	    	
+//	    	Tensor diffY = new Tensor(emd.getOutput().number, emd.getOutput().channel, emd.getOutput().height, emd.getOutput().width, true);
+//	    	
+//	    	k.MSE_BACK(emd.getOutput(), z, diffX, diffY, 0.2f);
+//	    	
+//	    	diffX.showDM();
+//	    	
+//	    	diffY.showDM();
+//	    	
+//	    	emd.back(diffX);
+//	    	
+//	    	emd.diffW.showDM();
+//	    	
+//			CUDAMemoryManager.free();
+//			
+//	    }
 	
 	
 }

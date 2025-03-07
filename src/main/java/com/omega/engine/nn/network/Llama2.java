@@ -43,7 +43,7 @@ public class Llama2 extends Network {
 	private FullyLayer fullyLayer;
 	
 	public Llama2(LossType lossType,UpdaterType updater,int headNum,int decoderNum,int vocabSize,int time,int embedDim,boolean bias,boolean dropout) {
-		this.lossFunction = LossFactory.create(lossType);
+		this.lossFunction = LossFactory.create(lossType, this);
 		this.bias = bias;
 		this.dropout = dropout;
 		this.decoderNum = decoderNum;
@@ -62,7 +62,7 @@ public class Llama2 extends Network {
 	
 	public Llama2(LossType lossType,UpdaterType updater,int headNum,int decoderNum,int vocabSize,int time,int embedDim,boolean bias,boolean dropout,boolean flashAttention) {
 		this.flashAttention = flashAttention;
-		this.lossFunction = LossFactory.create(lossType);
+		this.lossFunction = LossFactory.create(lossType, this);
 		this.bias = bias;
 		this.dropout = dropout;
 		this.decoderNum = decoderNum;
@@ -110,7 +110,7 @@ public class Llama2 extends Network {
 	@Override
 	public NetworkType getNetworkType() {
 		// TODO Auto-generated method stub
-		return NetworkType.LLAMA;
+		return NetworkType.LLAMA2;
 	}
 
 	@Override
@@ -255,6 +255,18 @@ public class Llama2 extends Network {
 
 	public FullyLayer getFullyLayer() {
 		return fullyLayer;
+	}
+
+	@Override
+	public void putParamters() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void putParamterGrads() {
+		// TODO Auto-generated method stub
+		
 	}
 	
 }

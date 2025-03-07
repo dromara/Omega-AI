@@ -6,9 +6,6 @@ import static jcuda.jcublas.cublasOperation.CUBLAS_OP_T;
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
-import com.omega.engine.ad.op.TensorOP;
-import com.omega.engine.gpu.BaseKernel;
-import com.omega.engine.gpu.GPUOP;
 import com.omega.engine.gpu.SoftmaxKernel;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
@@ -45,8 +42,6 @@ public class MultiHeadAttentionLayer extends Layer{
 	private FullyLayer oLinerLayer;
 	
 	private LNLayer lnLayer;
-	
-	private BaseKernel baseKernel;
 	
 	private Tensor qt;
 	private Tensor kt;
@@ -135,12 +130,8 @@ public class MultiHeadAttentionLayer extends Layer{
 			this.lnLayer = new LNLayer(this.oLinerLayer);
 		}
 		
-		if(baseKernel == null) {
-			baseKernel = new BaseKernel();
-		}
-		
 		if(softmax == null) {
-			softmax = new SoftmaxKernel();
+			softmax = new SoftmaxKernel(cuda());
 		}
 		
 //		System.out.println(JsonUtils.toJson(this.inputLayer.weight.syncHost()));
@@ -219,13 +210,13 @@ public class MultiHeadAttentionLayer extends Layer{
 		Tensor key = this.kLinerLayer.getOutput().view(batchSize, time, headNum, dk);
 		Tensor value = this.vLinerLayer.getOutput().view(batchSize, time, headNum, dk);
 		
-		TensorOP.permute(query, qt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(key, kt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(value, vt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(query, qt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(key, kt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(value, vt, new int[] {0, 2, 1, 3});
 
 		scaledDotProductAttention(qt, kt, vt, null);
 
-		TensorOP.permute(attn_outputs, ot, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(attn_outputs, ot, new int[] {0, 2, 1, 3});
 
 		ot.view(batchSize * time, 1, 1, headNum * dk);
 
@@ -233,7 +224,7 @@ public class MultiHeadAttentionLayer extends Layer{
 		
 //		this.oLinerLayer.getOutput().showDM();
 		
-		TensorOP.add(this.oLinerLayer.getOutput(), this.input, this.ro);
+		Tensor_OP().add(this.oLinerLayer.getOutput(), this.input, this.ro);
 		
 		if(this.layer_norm) {
 			this.lnLayer.forward(this.ro);
@@ -255,19 +246,19 @@ public class MultiHeadAttentionLayer extends Layer{
 		Tensor key = this.kLinerLayer.getOutput().view(batchSize, time, headNum, dk);
 		Tensor value = this.vLinerLayer.getOutput().view(batchSize, time, headNum, dk);
 		
-		TensorOP.permute(query, qt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(key, kt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(value, vt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(query, qt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(key, kt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(value, vt, new int[] {0, 2, 1, 3});
 
 		scaledDotProductAttention(qt, kt, vt, mask);
 
-		TensorOP.permute(attn_outputs, ot, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(attn_outputs, ot, new int[] {0, 2, 1, 3});
 
 		ot.view(batchSize * time, 1, 1, headNum * dk);
 
 		this.oLinerLayer.forward(ot);
 		
-		TensorOP.add(this.oLinerLayer.getOutput(), this.input, this.ro);
+		Tensor_OP().add(this.oLinerLayer.getOutput(), this.input, this.ro);
 		
 		if(this.layer_norm) {
 			this.lnLayer.forward(ro);
@@ -282,7 +273,7 @@ public class MultiHeadAttentionLayer extends Layer{
 
 		float d_k = (float) (1.0f / Math.sqrt(dk));
 
-		GPUOP.getInstance().bmm(query.getGpuData(), key.getGpuData(), scores.getGpuData(), query.number * query.channel, query.height, key.height, query.width,
+		GPU_OP().bmm(query.getGpuData(), key.getGpuData(), scores.getGpuData(), query.number * query.channel, query.height, key.height, query.width,
 				CUBLAS_OP_N, CUBLAS_OP_T, d_k, 0.0f);
 		
 //		scores.showShape();
@@ -297,7 +288,7 @@ public class MultiHeadAttentionLayer extends Layer{
 //		System.out.println("weights.showDM():");
 //		weights.showDM();
 		
-		GPUOP.getInstance().bmm(weights.getGpuData(), value.getGpuData(), attn_outputs.getGpuData(), weights.number * weights.channel, weights.height, value.width, weights.width,
+		GPU_OP().bmm(weights.getGpuData(), value.getGpuData(), attn_outputs.getGpuData(), weights.number * weights.channel, weights.height, value.width, weights.width,
 				CUBLAS_OP_N, CUBLAS_OP_N, 1.0f, 0.0f);
 	}
 	
@@ -305,11 +296,11 @@ public class MultiHeadAttentionLayer extends Layer{
 		
 		// vt_diff = weightsT * delta
 		diffV.view(value.shape());
-		GPUOP.getInstance().bmm(weights.getGpuData(), delta.getGpuData(), diffV.getGpuData(), weights.number * weights.channel, weights.width, delta.width, weights.height,
+		GPU_OP().bmm(weights.getGpuData(), delta.getGpuData(), diffV.getGpuData(), weights.number * weights.channel, weights.width, delta.width, weights.height,
 				CUBLAS_OP_T, CUBLAS_OP_N, 1.0f, 0.0f);
 
 		// weights_diff = delta * vt
-		GPUOP.getInstance().bmm(delta.getGpuData(), value.getGpuData(), scores.getGpuData(), delta.number * delta.channel, delta.height, value.height, value.width,
+		GPU_OP().bmm(delta.getGpuData(), value.getGpuData(), scores.getGpuData(), delta.number * delta.channel, delta.height, value.height, value.width,
 				CUBLAS_OP_N, CUBLAS_OP_T, 1.0f, 0.0f);
 		
 		// scores_diff = softmax_backward
@@ -323,12 +314,12 @@ public class MultiHeadAttentionLayer extends Layer{
 
 		// kt_diff = deltaT / sqrt(dk) * qt
 		diffK.view(key.shape());
-		GPUOP.getInstance().bmm(scores.getGpuData(), query.getGpuData(), diffK.getGpuData(), scores.number * scores.channel, scores.width, query.width, scores.height,
+		GPU_OP().bmm(scores.getGpuData(), query.getGpuData(), diffK.getGpuData(), scores.number * scores.channel, scores.width, query.width, scores.height,
 				CUBLAS_OP_T, CUBLAS_OP_N, d_k, 0.0f);
 		
 		// qt_diff = delta / sqrt(dk) * kt
 		diffQ.view(query.shape());
-		GPUOP.getInstance().bmm(scores.getGpuData(), key.getGpuData(), diffQ.getGpuData(), scores.number * scores.channel, scores.height, key.width, scores.width,
+		GPU_OP().bmm(scores.getGpuData(), key.getGpuData(), diffQ.getGpuData(), scores.number * scores.channel, scores.height, key.width, scores.width,
 				CUBLAS_OP_N, CUBLAS_OP_N, d_k, 0.0f);
 //		
 //		System.out.println("");
@@ -340,11 +331,11 @@ public class MultiHeadAttentionLayer extends Layer{
 	public void scaledDotProductAttentionBackward(Tensor query,Tensor key,Tensor value,Tensor delta) {
 		
 		// vt_diff = weightsT * delta
-		GPUOP.getInstance().bmm(weights.getGpuData(), delta.getGpuData(), value.getGrad().getGpuData(), weights.number * weights.channel, weights.width, delta.width, weights.height,
+		GPU_OP().bmm(weights.getGpuData(), delta.getGpuData(), value.getGrad().getGpuData(), weights.number * weights.channel, weights.width, delta.width, weights.height,
 				CUBLAS_OP_T, CUBLAS_OP_N, 1.0f, 0.0f);
 
 		// weights_diff = delta * vt
-		GPUOP.getInstance().bmm(delta.getGpuData(), value.getGpuData(), scores.getGpuData(), delta.number * delta.channel, delta.height, weights.width, delta.width,
+		GPU_OP().bmm(delta.getGpuData(), value.getGpuData(), scores.getGpuData(), delta.number * delta.channel, delta.height, weights.width, delta.width,
 				CUBLAS_OP_N, CUBLAS_OP_T, 1.0f, 0.0f);
 		
 		// scores_diff = softmax_backward
@@ -355,11 +346,11 @@ public class MultiHeadAttentionLayer extends Layer{
 //		TensorOP.mul(scores, d_k, scores);
 
 		// kt_diff = deltaT / sqrt(dk) * qt
-		GPUOP.getInstance().bmm(scores.getGpuData(), query.getGpuData(), key.getGrad().getGpuData(), scores.number * scores.channel, scores.width, query.width, scores.height,
+		GPU_OP().bmm(scores.getGpuData(), query.getGpuData(), key.getGrad().getGpuData(), scores.number * scores.channel, scores.width, query.width, scores.height,
 				CUBLAS_OP_T, CUBLAS_OP_N, d_k, 0.0f);
 		
 		// qt_diff = delta / sqrt(dk) * kt
-		GPUOP.getInstance().bmm(scores.getGpuData(), key.getGpuData(), query.getGrad().getGpuData(), scores.number * scores.channel, scores.height, key.width, scores.width,
+		GPU_OP().bmm(scores.getGpuData(), key.getGpuData(), query.getGrad().getGpuData(), scores.number * scores.channel, scores.height, key.width, scores.width,
 				CUBLAS_OP_N, CUBLAS_OP_T, d_k, 0.0f);
 		
 	}
@@ -382,7 +373,7 @@ public class MultiHeadAttentionLayer extends Layer{
 		}
 		ot.view(batchSize, time, headNum, dk);
 		
-		TensorOP.permute(ot, attn_outputs, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(ot, attn_outputs, new int[] {0, 2, 1, 3});
 
 		int[] qo_shape = this.qLinerLayer.getOutput().shape();
 		int[] ko_shape = this.kLinerLayer.getOutput().shape();
@@ -391,9 +382,9 @@ public class MultiHeadAttentionLayer extends Layer{
 		qt.view(qo_shape);
 		kt.view(ko_shape);
 		vt.view(vo_shape);
-		TensorOP.permute(this.qLinerLayer.getOutput(), qt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(this.kLinerLayer.getOutput(), kt, new int[] {0, 2, 1, 3});
-		TensorOP.permute(this.vLinerLayer.getOutput(), vt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(this.qLinerLayer.getOutput(), qt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(this.kLinerLayer.getOutput(), kt, new int[] {0, 2, 1, 3});
+		Tensor_OP().permute(this.vLinerLayer.getOutput(), vt, new int[] {0, 2, 1, 3});
 		
 		Tensor queryDelta = qt.view(batchSize * time, 1, 1, headNum * dk);
 		Tensor keyDelta = kt.view(batchSize * time, 1, 1, headNum * dk);
@@ -403,10 +394,10 @@ public class MultiHeadAttentionLayer extends Layer{
 		this.kLinerLayer.back(keyDelta);
 		this.vLinerLayer.back(valueDelta);
 		
-		TensorOP.add(this.qLinerLayer.diff, this.kLinerLayer.diff, this.qLinerLayer.diff);
-		TensorOP.add(this.qLinerLayer.diff, this.vLinerLayer.diff, this.qLinerLayer.diff);
+		Tensor_OP().add(this.qLinerLayer.diff, this.kLinerLayer.diff, this.qLinerLayer.diff);
+		Tensor_OP().add(this.qLinerLayer.diff, this.vLinerLayer.diff, this.qLinerLayer.diff);
 
-		TensorOP.add(this.qLinerLayer.diff, this.lnLayer.diff, this.qLinerLayer.diff);
+		Tensor_OP().add(this.qLinerLayer.diff, this.lnLayer.diff, this.qLinerLayer.diff);
 
 		this.diff = this.qLinerLayer.diff;
 		

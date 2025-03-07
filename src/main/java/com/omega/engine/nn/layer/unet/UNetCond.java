@@ -7,7 +7,6 @@ import java.util.Stack;
 
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixUtils;
-import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -96,8 +95,6 @@ public class UNetCond extends Layer{
 	private SiLULayer act;
 	private ConvolutionLayer conv_out;
 	
-	private BaseKernel baseKernel;
-	
 	private Tensor tDiff;
 	
 	public UNetCond(int channel,int oChannel,int height,int width,
@@ -185,10 +182,6 @@ public class UNetCond extends Layer{
 		conv_out = new ConvolutionLayer(convOutChannels, channel, width, height, 3, 3, 1, 1, true, this.network);
 		conv_out.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
 		conv_out.paramsInit = ParamsInit.silu;
-		
-		if(baseKernel == null) {
-			baseKernel = new BaseKernel();
-		}
 		
 		this.oHeight = ih;
 		this.oWidth = iw;

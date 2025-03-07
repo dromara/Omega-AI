@@ -27,7 +27,7 @@ public class BPNetwork extends Network{
 	}
 	
 	public BPNetwork(LossType lossType,UpdaterType updater) {
-		this.lossFunction = LossFactory.create(lossType);
+		this.lossFunction = LossFactory.create(lossType, this);
 		this.updater = updater;
 	}
 	
@@ -195,6 +195,18 @@ public class BPNetwork extends Network{
 	public Tensor lossDiff(Tensor output, Tensor label, Tensor diff) {
 		// TODO Auto-generated method stub
 		return this.lossFunction.diff(output, label, diff);
+	}
+
+	@Override
+	public void putParamters() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void putParamterGrads() {
+		// TODO Auto-generated method stub
+		
 	}
 
 }

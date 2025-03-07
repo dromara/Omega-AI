@@ -2,7 +2,6 @@ package com.omega.engine.nn.layer;
 
 import com.omega.common.data.Tensor;
 import com.omega.engine.active.ActiveType;
-import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.active.ActiveFunctionLayer;
 import com.omega.engine.nn.layer.active.LeakyReluLayer;
 import com.omega.engine.nn.layer.active.ReluLayer;
@@ -43,8 +42,6 @@ public class DoubleConvLayer extends Layer{
 	private ActiveFunctionLayer activeLayer2;
 	
 	private ActiveType activeType;
-	
-	private BaseKernel baseKernel;
 	
 	public DoubleConvLayer(int channel,int oChannel,int height,int width, ActiveType activeType, Network network) {
 		this.network = network;
@@ -137,9 +134,6 @@ public class DoubleConvLayer extends Layer{
 			throw new RuntimeException("The doubleConv layer is not support the ["+activeType+"] active function.");
 		}
 		
-		if(baseKernel == null) {
-			baseKernel = new BaseKernel();
-		}
 //		System.out.println("activeLayer.preLayer:"+activeLayer.preLayer);
 	}
 

@@ -40,14 +40,14 @@ public class TanhLayer extends ActiveFunctionLayer {
 	public void init() {
 		super.init();
 		if(kernel == null) {
-			kernel = new TanhKernel();
+			kernel = new TanhKernel(network.cudaManager);
 		}
 	}
 	
 	public void init(Tensor input) {
 		super.init(input);
 		if(kernel == null) {
-			kernel = new TanhKernel();
+			kernel = new TanhKernel(network.cudaManager);
 		}
 	}
 	

@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.omega.common.data.Tensor;
+import com.omega.engine.parallel.ddp.distributed.SerializablePointer;
 
 import jcuda.Pointer;
 import jcuda.Sizeof;
@@ -32,7 +33,9 @@ public class CUDAMemoryManager {
 	
 	public static Map<String,Tensor> caches = new HashMap<String, Tensor>();
 	
-	public static Tensor getCache(String key,int N, int C, int H, int W) {
+	private List<Pointer> porints = new ArrayList<Pointer>();
+	
+	public synchronized static Tensor getCache(String key,int N, int C, int H, int W) {
 		Tensor c = null;
 		if(caches.containsKey(key)) {
 			c = caches.get(key);
@@ -51,7 +54,7 @@ public class CUDAMemoryManager {
 		return c;
 	}
 	
-	public static Tensor getGlobalCache(int N, int C, int H, int W) {
+	public synchronized static Tensor getGlobalCache(int N, int C, int H, int W) {
 //		if(globalCache != null) {
 //			System.out.println(globalCache.dataLength+":"+N * C * H * W);
 //		}
@@ -63,7 +66,7 @@ public class CUDAMemoryManager {
 		return globalCache;
 	}
 	
-	public static CUdeviceptr getDevice(int size) {
+	public synchronized static CUdeviceptr getDevice(int size) {
 
 		CUdeviceptr device = new CUdeviceptr();
 		
@@ -74,7 +77,7 @@ public class CUDAMemoryManager {
 		return device;
 	}
 	
-	public static CUdeviceptr getDevice(String key,int size) {
+	public synchronized static CUdeviceptr getDevice(String key,int size) {
 		
 		if(deviceMap.containsKey(key)) {
 			return deviceMap.get(key);
@@ -89,7 +92,7 @@ public class CUDAMemoryManager {
 		return device;
 	}
 	
-	public static Pointer getWorkspace(int size) {
+	public synchronized static Pointer getWorkspace(int size) {
 		
 		if(workspace.getSize() < size * Sizeof.FLOAT) {
 			GPUOP.getInstance().free(workspace.getPointer());
@@ -100,21 +103,35 @@ public class CUDAMemoryManager {
 		return workspace.getPointer();
 	}
 	
-	public static Pointer getPointer(int size) {
+	public synchronized static Pointer getPointer(int size) {
 		Pointer p = new Pointer();
 		checkCUDA(cudaMalloc(p, size * (long)Sizeof.FLOAT), p.toString(), size * (long)Sizeof.FLOAT);
 		cu_porints.add(p);
 		return p;
 	}
 	
-	public static Pointer getPointer(int size,long type) {
+	public synchronized static SerializablePointer getSharePointer(int size) {
+		SerializablePointer p = new SerializablePointer();
+		checkCUDA(cudaMalloc(p, size * (long)Sizeof.FLOAT), p.toString(), size * (long)Sizeof.FLOAT);
+		cu_porints.add(p);
+		return p;
+	}
+	
+	public synchronized static Pointer getPointer(int size,long type) {
 		Pointer p = new Pointer();
 		checkCUDA(cudaMalloc(p, size * type));
 		cu_porints.add(p);
 		return p;
 	}
 	
-	public static Pointer getPointer(String key,int size) {
+	public Pointer getCUPointer(int size,long type) {
+		Pointer p = new Pointer();
+		checkCUDA(cudaMalloc(p, size * type));
+		porints.add(p);
+		return p;
+	}
+	
+	public synchronized static Pointer getPointer(String key,int size) {
 		
 		if(pointerMap.containsKey(key)) {
 			return pointerMap.get(key);
@@ -129,7 +146,7 @@ public class CUDAMemoryManager {
 		return p;
 	}
 	
-	public static void free() {
+	public synchronized static void free() {
 		
 		for(String key:deviceMap.keySet()) {
 			 JCuda.cudaFree(deviceMap.get(key));
@@ -145,7 +162,7 @@ public class CUDAMemoryManager {
 		
 	}
 	
-	public static void free(Pointer pointer) {
+	public synchronized static void free(Pointer pointer) {
 		
 		checkCUDA(JCuda.cudaFree(pointer),"free"+pointer.toString());
 		checkCUDA(JCuda.cudaDeviceSynchronize());
@@ -153,7 +170,7 @@ public class CUDAMemoryManager {
 		
 	}
 	
-	public static void freeAll() throws Exception{
+	public synchronized static void freeAll() throws Exception{
 		
 		for(CUdeviceptr dec:cu_deviceptrs) {
 			 JCuda.cudaFree(dec);
@@ -165,7 +182,7 @@ public class CUDAMemoryManager {
 
 	}
 	
-	public static void checkCUDA(int code,String op,long size) {
+	public  static void checkCUDA(int code,String op,long size) {
 		if(code != cudaError.cudaSuccess) {
 			String error = "[["+op+"]("+size+")]Error code "+code+":"+cudaError.stringFor(code);
 			throw new RuntimeException(error);

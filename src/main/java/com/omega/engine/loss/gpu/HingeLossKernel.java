@@ -5,7 +5,7 @@ import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
-import com.omega.engine.gpu.CUDAModules;
+import com.omega.engine.gpu.CUDAManager;
 
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
@@ -30,7 +30,8 @@ public class HingeLossKernel extends BaseKernel{
 	private Pointer forwardKernelParameters;
 
 	
-	public HingeLossKernel() {
+	public HingeLossKernel(CUDAManager cudaManager) {
+		super(cudaManager);
 		init();
 	}
 	
@@ -40,37 +41,37 @@ public class HingeLossKernel extends BaseKernel{
 			
 			if(hinge_d_loss_function == null) {
 				
-				hinge_d_loss_function = CUDAModules.getLocalFunctionByModule("HingeLossKernel.cu", "hinge_d_loss_kernel");
+				hinge_d_loss_function = getCudaManager().getLocalFunctionByModule("HingeLossKernel.cu", "hinge_d_loss_kernel");
 				
 			}
 			
 			if(hinge_d_loss_back_function == null) {
 				
-				hinge_d_loss_back_function = CUDAModules.getLocalFunctionByModule("HingeLossKernel.cu", "hinge_d_loss_back_kernel");
+				hinge_d_loss_back_function = getCudaManager().getLocalFunctionByModule("HingeLossKernel.cu", "hinge_d_loss_back_kernel");
 				
 			}
 			
 			if(hinge_d_real_loss_function == null) {
 				
-				hinge_d_real_loss_function = CUDAModules.getLocalFunctionByModule("HingeLossKernel.cu", "hinge_d_real_loss_kernel");
+				hinge_d_real_loss_function = getCudaManager().getLocalFunctionByModule("HingeLossKernel.cu", "hinge_d_real_loss_kernel");
 				
 			}
 
 			if(hinge_d_fake_loss_function == null) {
 				
-				hinge_d_fake_loss_function = CUDAModules.getLocalFunctionByModule("HingeLossKernel.cu", "hinge_d_fake_loss_kernel");
+				hinge_d_fake_loss_function = getCudaManager().getLocalFunctionByModule("HingeLossKernel.cu", "hinge_d_fake_loss_kernel");
 				
 			}
 			
 			if(hinge_d_loss_real_back_function == null) {
 				
-				hinge_d_loss_real_back_function = CUDAModules.getLocalFunctionByModule("HingeLossKernel.cu", "hinge_d_loss_real_back_kernel");
+				hinge_d_loss_real_back_function = getCudaManager().getLocalFunctionByModule("HingeLossKernel.cu", "hinge_d_loss_real_back_kernel");
 				
 			}
 
 			if(hinge_d_loss_fake_back_function == null) {
 				
-				hinge_d_loss_fake_back_function = CUDAModules.getLocalFunctionByModule("HingeLossKernel.cu", "hinge_d_loss_fake_back_kernel");
+				hinge_d_loss_fake_back_function = getCudaManager().getLocalFunctionByModule("HingeLossKernel.cu", "hinge_d_loss_fake_back_kernel");
 				
 			}
 			
@@ -292,7 +293,9 @@ public class HingeLossKernel extends BaseKernel{
 		
     	Tensor scale = new Tensor(1, 1, 1, 3, new float[] {0.458f, 0.448f, 0.45f}, true);
     	
-    	HingeLossKernel kernel = new HingeLossKernel();
+    	CUDAManager cudaManager = new CUDAManager(0);
+    	
+    	HingeLossKernel kernel = new HingeLossKernel(cudaManager);
     	
     	
     }

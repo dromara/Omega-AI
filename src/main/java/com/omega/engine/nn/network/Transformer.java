@@ -140,5 +140,17 @@ public class Transformer extends Network {
 		// TODO Auto-generated method stub
 		return this.lossFunction.diff(output, label, diff);
 	}
+
+	@Override
+	public void putParamters() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void putParamterGrads() {
+		// TODO Auto-generated method stub
+		
+	}
 	
 }

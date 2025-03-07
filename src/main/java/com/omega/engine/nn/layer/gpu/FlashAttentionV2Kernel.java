@@ -7,12 +7,11 @@ import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
-import com.omega.engine.gpu.CUDAModules;
+import com.omega.engine.gpu.CUDAManager;
 
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUfunction;
-import jcuda.driver.CUgraph;
 import jcuda.runtime.cudaError;
 
 public class FlashAttentionV2Kernel extends BaseKernel{
@@ -33,7 +32,8 @@ public class FlashAttentionV2Kernel extends BaseKernel{
 	
 	private int headDim;
 	
-	public FlashAttentionV2Kernel(int headNum,int time,int headDim) {
+	public FlashAttentionV2Kernel(int headNum,int time,int headDim,CUDAManager cudaManager) {
+		super(cudaManager);
 		this.headNum = headNum;
 		this.time = time;
 		this.headDim = headDim;
@@ -68,13 +68,13 @@ public class FlashAttentionV2Kernel extends BaseKernel{
 
 			if(forward_function == null) {
 
-				forward_function = CUDAModules.getLocalFunctionByModule("FlashAttentionKernel2.cu", "flash_attention_2_forward_kernel");
+				forward_function = getCudaManager().getLocalFunctionByModule("FlashAttentionKernel2.cu", "flash_attention_2_forward_kernel");
 				
 			}
 
 			if(backward_function == null) {
 
-				backward_function = CUDAModules.getLocalFunctionByModule("FlashAttentionKernel2.cu", "flash_attention_2_backward_kernel");
+				backward_function = getCudaManager().getLocalFunctionByModule("FlashAttentionKernel2.cu", "flash_attention_2_backward_kernel");
 				
 			}
 			
@@ -144,10 +144,6 @@ public class FlashAttentionV2Kernel extends BaseKernel{
 
 			int[] grid_dim = new int[] {B, nh, 1};
 			int[] block_dim = new int[] {Br, 1, 1};
-			
-			CUgraph graph = new CUgraph();
-			
-			
 			
 		    checkCUDA(cuLaunchKernel(forward_function,
 		    		grid_dim[0],  grid_dim[1], grid_dim[2],      // Grid dimension
@@ -258,8 +254,6 @@ public class FlashAttentionV2Kernel extends BaseKernel{
 	
 	public static void main(String[] args) {
 		
-		CUDAModules.initContext();
-		
 		int batchSize = 16;
 		int headNum = 8;
 		int time = 512;
@@ -278,7 +272,9 @@ public class FlashAttentionV2Kernel extends BaseKernel{
 
 		Tensor delta = new Tensor(batchSize, headNum, time, headDim, MatrixUtils.order(len, 0.1f, 0.1f), true);
 		
-		FlashAttentionV2Kernel kernel = new FlashAttentionV2Kernel(headNum, time, headDim);
+		CUDAManager cudaManager = new CUDAManager(0);
+		
+		FlashAttentionV2Kernel kernel = new FlashAttentionV2Kernel(headNum, time, headDim, cudaManager);
 		
 		for(int i = 0;i<100;i++) {
 			long startTime = System.nanoTime();

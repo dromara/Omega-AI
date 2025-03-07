@@ -4,9 +4,7 @@ import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 import static jcuda.jcublas.JCublas2.cublasGetVector;
 import static jcuda.jcublas.JCublas2.cublasSetVector;
 
-import com.omega.common.lib.LibPaths;
 import com.omega.common.utils.JsonUtils;
-import com.omega.common.utils.RandomUtils;
 
 import jcuda.Pointer;
 import jcuda.Sizeof;
@@ -16,7 +14,7 @@ import jcuda.jcublas.cublasOperation;
 import jcuda.runtime.JCuda;
 import jcuda.runtime.cudaMemcpyKind;
 
-public class DWeightKernel {
+public class DWeightKernel extends CUDAKernel{
 	
 	private String id;
 	private float[] x;
@@ -46,7 +44,8 @@ public class DWeightKernel {
 	
 	private Pointer kernelParameters;
 
-	public DWeightKernel(String id,float[] out,int C,int H,int W,int ko,int kh,int kw,int s,int p) {
+	public DWeightKernel(String id,float[] out,int C,int H,int W,int ko,int kh,int kw,int s,int p, CUDAManager cudaManager) {
+		super(cudaManager);
 		this.id = id;
 		this.C = C;
 		this.H = H;
@@ -71,7 +70,7 @@ public class DWeightKernel {
 
 			if(function == null) {
 
-				function = CUDAModules.getLocalFunctionByModule("Im2colKernel.cu", "im2col_gpu_kernelV2");
+				function = getCudaManager().getLocalFunctionByModule("Im2colKernel.cu", "im2col_gpu_kernelV2");
 				
 			}
 			
@@ -158,7 +157,7 @@ public class DWeightKernel {
 		/**
 		 * m k n
 		 */
-		GPUOP.getInstance().multiplyFloat(ko, ih, iw, dA, dy, dC, cublasOperation.CUBLAS_OP_N, cublasOperation.CUBLAS_OP_T, 1.0f, 1.0f);
+		getCudaManager().getOp().multiplyFloat(ko, ih, iw, dA, dy, dC, cublasOperation.CUBLAS_OP_N, cublasOperation.CUBLAS_OP_T, 1.0f, 1.0f);
 		
 	}
 	
@@ -219,50 +218,50 @@ public class DWeightKernel {
 		
 	}
 
-    public static void main(String args[]){	
-    	int N = 2;
-    	int C = 3;
-    	int H = 8;
-    	int W = 8;
-    	int ko = 2;
-    	int kh = 3;
-    	int kw = 3;
-    	int s = 1;
-    	int p = 0;
-    	int oHeight = ((H + 2 * p - kh) / s) + 1;
-		int oWidth = ((W + 2 * p - kw) / s) + 1;
-		int oh = ko;
-		int ow = C * kh * kw;
-		
-		float[] x1 = RandomUtils.order(N * C * H * W, 0.1f, 0.1f);
-    	
-		float[] diff = RandomUtils.order(N * ko * oHeight * oWidth, 0.1f, 0.1f);
-    	
-    	float[] out = new float[oh * ow];
-
-    	float[] once = new float[C * H * W];
-    	
-    	float[] d = new float[ko * oHeight * oHeight];
-    	
-    	DWeightKernel ck = new DWeightKernel("conv1", out, C, H, W, ko, kh, kw, s, p);
-
-//    	long start = System.nanoTime();
-    	
-    	for(int n = 0;n<N;n++) {
-//    		long start2 = System.nanoTime();
-    		System.arraycopy(x1, n * C * H * W, once, 0, C * H * W);
-    		System.arraycopy(diff, n * ko * oHeight * oHeight, d, 0, ko * oHeight * oHeight);
-    		ck.setX(once);
-    		ck.setKernel(d);
-        	ck.conv();
-        	System.out.println(JsonUtils.toJson(ck.getOut_D2H()));
-//        	System.arraycopy(ck.getOut(), 0, out2, i * oh * ow, oh * ow);
-//        	MatrixUtils.col2im4d(ck.getOut(), out2, n, ko, oHeight, oWidth);
-//        	System.out.println((System.nanoTime() - start2) / 1e6 + "ms.:"+i);
-    	}
-
-		CUDAMemoryManager.free();
-		
-    }
+//    public static void main(String args[]){	
+//    	int N = 2;
+//    	int C = 3;
+//    	int H = 8;
+//    	int W = 8;
+//    	int ko = 2;
+//    	int kh = 3;
+//    	int kw = 3;
+//    	int s = 1;
+//    	int p = 0;
+//    	int oHeight = ((H + 2 * p - kh) / s) + 1;
+//		int oWidth = ((W + 2 * p - kw) / s) + 1;
+//		int oh = ko;
+//		int ow = C * kh * kw;
+//		
+//		float[] x1 = RandomUtils.order(N * C * H * W, 0.1f, 0.1f);
+//    	
+//		float[] diff = RandomUtils.order(N * ko * oHeight * oWidth, 0.1f, 0.1f);
+//    	
+//    	float[] out = new float[oh * ow];
+//
+//    	float[] once = new float[C * H * W];
+//    	
+//    	float[] d = new float[ko * oHeight * oHeight];
+//    	
+//    	DWeightKernel ck = new DWeightKernel("conv1", out, C, H, W, ko, kh, kw, s, p);
+//
+////    	long start = System.nanoTime();
+//    	
+//    	for(int n = 0;n<N;n++) {
+////    		long start2 = System.nanoTime();
+//    		System.arraycopy(x1, n * C * H * W, once, 0, C * H * W);
+//    		System.arraycopy(diff, n * ko * oHeight * oHeight, d, 0, ko * oHeight * oHeight);
+//    		ck.setX(once);
+//    		ck.setKernel(d);
+//        	ck.conv();
+//        	System.out.println(JsonUtils.toJson(ck.getOut_D2H()));
+////        	System.arraycopy(ck.getOut(), 0, out2, i * oh * ow, oh * ow);
+////        	MatrixUtils.col2im4d(ck.getOut(), out2, n, ko, oHeight, oWidth);
+////        	System.out.println((System.nanoTime() - start2) / 1e6 + "ms.:"+i);
+//    	}
+//
+//		CUDAMemoryManager.free();
+//		
+//    }
 	
 }

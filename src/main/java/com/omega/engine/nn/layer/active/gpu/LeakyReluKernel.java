@@ -6,6 +6,7 @@ import com.omega.common.data.Tensor;
 import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.gpu.CUDAModules;
 
@@ -29,7 +30,8 @@ public class LeakyReluKernel extends BaseKernel{
 	
 	private float scale = 0.2f;
 	
-	public LeakyReluKernel() {
+	public LeakyReluKernel(CUDAManager cudaManager) {
+		super(cudaManager);
 		init();
 	}
 	
@@ -256,7 +258,9 @@ public class LeakyReluKernel extends BaseKernel{
 	    	
 	    	Tensor diff = new Tensor(N, C, H, W, true);
 	    	
-	    	LeakyReluKernel k = new LeakyReluKernel();
+	    	CUDAManager cudaManager = new CUDAManager(0);
+	    	
+	    	LeakyReluKernel k = new LeakyReluKernel(cudaManager);
 
 //	    	output.showDM(new float[N * C * H * W]);
 

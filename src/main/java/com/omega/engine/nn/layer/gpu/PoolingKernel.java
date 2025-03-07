@@ -3,11 +3,10 @@ package com.omega.engine.nn.layer.gpu;
 import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 
 import com.omega.common.data.Tensor;
-import com.omega.common.lib.LibPaths;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
-import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.pooling.PoolingType;
 
 import jcuda.Pointer;
@@ -40,7 +39,8 @@ public class PoolingKernel extends PoolingBaseKernel{
 	private Pointer forwardKernelParameters;
 	private Pointer backwardKernelParameters;
 	
-	public PoolingKernel(PoolingType type,int C,int H,int W,int ph,int pw,int s) {
+	public PoolingKernel(PoolingType type,int C,int H,int W,int ph,int pw,int s,CUDAManager cudaManager) {
+		super(cudaManager);
 		this.type = type;
 		this.C = C;
 		this.H = H;
@@ -54,7 +54,8 @@ public class PoolingKernel extends PoolingBaseKernel{
 		init();
 	}
 	
-	public PoolingKernel(PoolingType type,int C,int H,int W,int ph,int pw,int s,int p) {
+	public PoolingKernel(PoolingType type,int C,int H,int W,int ph,int pw,int s,int p,CUDAManager cudaManager) {
+		super(cudaManager);
 		this.type = type;
 		this.C = C;
 		this.H = H;
@@ -77,13 +78,13 @@ public class PoolingKernel extends PoolingBaseKernel{
 				
 				switch (type) {
 				case MAX_POOLING:
-					forward_function = CUDAModules.getLocalFunctionByModule("PoolingV2Kernel.cu", "maxpool_forward");
+					forward_function = getCudaManager().getLocalFunctionByModule("PoolingV2Kernel.cu", "maxpool_forward");
 					break;
 				case MEAN_POOLING:
-					forward_function = CUDAModules.getLocalFunctionByModule("PoolingV2Kernel.cu", "meanpool_forward");
+					forward_function = getCudaManager().getLocalFunctionByModule("PoolingV2Kernel.cu", "meanpool_forward");
 					break;
 				case AVG_POOLING:
-					forward_function = CUDAModules.getLocalFunctionByModule("PoolingV2Kernel.cu", "avgpool_forward");
+					forward_function = getCudaManager().getLocalFunctionByModule("PoolingV2Kernel.cu", "avgpool_forward");
 					break;
 				}
 				
@@ -93,13 +94,13 @@ public class PoolingKernel extends PoolingBaseKernel{
 				
 				switch (type) {
 				case MAX_POOLING:
-					backward_function = CUDAModules.getLocalFunctionByModule("PoolingV2Kernel.cu", "maxpool_backward");
+					backward_function = getCudaManager().getLocalFunctionByModule("PoolingV2Kernel.cu", "maxpool_backward");
 					break;
 				case MEAN_POOLING:
-					backward_function = CUDAModules.getLocalFunctionByModule("PoolingV2Kernel.cu", "meanpool_backward");
+					backward_function = getCudaManager().getLocalFunctionByModule("PoolingV2Kernel.cu", "meanpool_backward");
 					break;
 				case AVG_POOLING:
-					backward_function = CUDAModules.getLocalFunctionByModule("PoolingV2Kernel.cu", "avgpool_backward");
+					backward_function = getCudaManager().getLocalFunctionByModule("PoolingV2Kernel.cu", "avgpool_backward");
 					break;
 				}
 
@@ -454,8 +455,6 @@ public class PoolingKernel extends PoolingBaseKernel{
 	
     public static void main(String args[]){	
 
-    	CUDAModules.initContext();
-    	
     	int N = 2;
     	int C = 3;
     	int H = 4;
@@ -477,8 +476,10 @@ public class PoolingKernel extends PoolingBaseKernel{
     	Tensor delta = new Tensor(N, C, oHeight, oWidth, d, true);
     	
     	Tensor diff = new Tensor(N, C, H, W, true);
-
-    	PoolingKernel pooling = new PoolingKernel(PoolingType.MEAN_POOLING, C, H, W, ph, pw, s);
+    	
+    	CUDAManager cudaManager = new CUDAManager(0);
+    	
+    	PoolingKernel pooling = new PoolingKernel(PoolingType.MEAN_POOLING, C, H, W, ph, pw, s, cudaManager);
     	
     	long start = System.nanoTime();
 

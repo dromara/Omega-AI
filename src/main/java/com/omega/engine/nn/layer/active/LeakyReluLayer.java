@@ -40,14 +40,14 @@ public class LeakyReluLayer extends ActiveFunctionLayer {
 	public void init() {
 		super.init();
 		if(kernel == null) {
-			kernel = new LeakyReluKernel();
+			kernel = new LeakyReluKernel(network.cudaManager);
 		}
 	}
 	
 	public void init(Tensor input) {
 		super.init(input);
 		if(kernel == null) {
-			kernel = new LeakyReluKernel();
+			kernel = new LeakyReluKernel(network.cudaManager);
 		}
 	}
 	

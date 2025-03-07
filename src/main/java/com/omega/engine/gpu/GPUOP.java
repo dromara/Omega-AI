@@ -54,6 +54,14 @@ public class GPUOP {
 		cublasCreate(handle);
 	}
 	
+	public GPUOP(int deviceId) {
+		// TODO Auto-generated constructor stub
+		CUDAManager.checkCUDA(JCuda.cudaSetDevice(deviceId));
+		this.handle = new cublasHandle();
+		init();
+		this.generator = getGenerator();
+	}
+	
 	public void init() {
 		cublasCreate(handle);
 	}

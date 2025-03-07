@@ -4,8 +4,6 @@ import com.omega.common.data.Tensor;
 import com.omega.engine.ad.Tape;
 import com.omega.engine.ad.op.OPType;
 import com.omega.engine.ad.op.SignOP;
-import com.omega.engine.ad.op.TensorOP;
-import com.omega.engine.ad.op.gpu.OPKernel;
 
 /**
  * f(a,b) = a / b;
@@ -39,9 +37,9 @@ public class DivOP extends SignOP{
 		Tensor other = tape.getY();
 		Tensor y = tape.getOutput();
 		if(other != null) {
-			TensorOP.div(self, other, y);
+			tape.getTensorOP().div(self, other, y);
 		}else {
-			TensorOP.div(self, tape.getScalar(), y);
+			tape.getTensorOP().div(self, tape.getScalar(), y);
 		}
 		if(self.isRequiresGrad() || (other != null && other.isRequiresGrad())) {
 			y.setRequiresGrad(true);
@@ -57,14 +55,14 @@ public class DivOP extends SignOP{
 		
 		if(x.isRequiresGrad()) {
 			if(y!=null) {
-				TensorOP.divPlus(delta, y, x.getGrad());
+				tape.getTensorOP().divPlus(delta, y, x.getGrad());
 			}else {
-				TensorOP.divPlus(delta, tape.getScalar(), x.getGrad());
+				tape.getTensorOP().divPlus(delta, tape.getScalar(), x.getGrad());
 			}
 		}
 		if(y != null && y.isRequiresGrad()) {
 			if(y.getGrad().isHasGPU()) {
-				OPKernel.getInstance().div_bGrad_gpu(delta, x, y, y.getGrad());
+				tape.getTensorOP().op.div_bGrad_gpu(delta, x, y, y.getGrad());
 			}else {
 				bGrad(delta.data, x.data, y.data, y.getGrad().data);
 			}

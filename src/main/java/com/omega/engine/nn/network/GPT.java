@@ -34,7 +34,7 @@ public class GPT extends Network {
 	private FullyLayer fullyLayer;
 	
 	public GPT(LossType lossType,UpdaterType updater,int vocab_size,int time,int embedDim,int nChannel) {
-		this.lossFunction = LossFactory.create(lossType);
+		this.lossFunction = LossFactory.create(lossType, this);
 		this.updater = updater;
 		this.time = time;
 		this.vocab_size = vocab_size;
@@ -183,6 +183,18 @@ public class GPT extends Network {
 	public Tensor lossDiff(Tensor output, Tensor label,int igonre) {
 		// TODO Auto-generated method stub
 		return this.lossFunction.diff(output, label, igonre);
+	}
+
+	@Override
+	public void putParamters() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void putParamterGrads() {
+		// TODO Auto-generated method stub
+		
 	}
 	
 }

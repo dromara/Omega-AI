@@ -4,14 +4,6 @@ import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 import static jcuda.jcublas.JCublas2.cublasGetVector;
 import static jcuda.jcublas.JCublas2.cublasSetVector;
 
-import com.omega.common.lib.LibPaths;
-import com.omega.common.utils.CheckArrayUtils;
-import com.omega.common.utils.Im2colToVector;
-import com.omega.common.utils.Im2colUtils;
-import com.omega.common.utils.JsonUtils;
-import com.omega.common.utils.MatrixUtils;
-import com.omega.common.utils.RandomUtils;
-
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUdeviceptr;
@@ -21,7 +13,7 @@ import jcuda.jcublas.cublasOperation;
 import jcuda.runtime.JCuda;
 import jcuda.runtime.cudaError;
 
-public class ConvKernel {
+public class ConvKernel extends CUDAKernel{
 	
 	private String id;
 	private float[] x;
@@ -51,7 +43,8 @@ public class ConvKernel {
 	
 	private Pointer kernelParameters;
 
-	public ConvKernel(String id,float[] out,int C,int H,int W,int ko,int kh,int kw,int s,int p) {
+	public ConvKernel(String id,float[] out,int C,int H,int W,int ko,int kh,int kw,int s,int p, CUDAManager cudaManager) {
+		super(cudaManager);
 		this.id = id;
 		this.C = C;
 		this.H = H;
@@ -80,7 +73,7 @@ public class ConvKernel {
 
 			if(function == null) {
 				
-				function = CUDAModules.getLocalFunctionByModule("Im2colKernel.cu", "im2col_gpu_kernelV2");
+				function = getCudaManager().getLocalFunctionByModule("Im2colKernel.cu", "im2col_gpu_kernelV2");
         
 			}
 			
@@ -178,7 +171,7 @@ public class ConvKernel {
 		/**
 		 * m k n
 		 */
-		GPUOP.getInstance().multiplyFloat(ko, iw, ih, dA, dy, dC, cublasOperation.CUBLAS_OP_N, cublasOperation.CUBLAS_OP_N, 1.0f, 0.0f);
+		getCudaManager().getOp().multiplyFloat(ko, iw, ih, dA, dy, dC, cublasOperation.CUBLAS_OP_N, cublasOperation.CUBLAS_OP_N, 1.0f, 0.0f);
 
 	}
 	
@@ -223,108 +216,108 @@ public class ConvKernel {
 	}
 	
 	
-    public static void main(String args[]){	
-    	int N = 2;
-    	int C = 3;
-    	int H = 8;
-    	int W = 8;
-    	int ko = 2;
-    	int kh = 3;
-    	int kw = 3;
-    	int s = 1;
-    	int p = 0;
-    	int oHeight = ((H + 2 * p - kh) / s) + 1;
-		int oWidth = ((W + 2 * p - kw) / s) + 1;
-		int ow = oHeight * oWidth;
-		int oh = ko;
-    	
-//    	float[] x1 = RandomUtils.gaussianRandom(N * C * H * W, 0.01f);
+//    public static void main(String args[]){	
+//    	int N = 2;
+//    	int C = 3;
+//    	int H = 8;
+//    	int W = 8;
+//    	int ko = 2;
+//    	int kh = 3;
+//    	int kw = 3;
+//    	int s = 1;
+//    	int p = 0;
+//    	int oHeight = ((H + 2 * p - kh) / s) + 1;
+//		int oWidth = ((W + 2 * p - kw) / s) + 1;
+//		int ow = oHeight * oWidth;
+//		int oh = ko;
 //    	
-//    	float[] k1 = RandomUtils.gaussianRandom(ko * C * kh * kw, 0.01f);
-    	
-		float[] x1 = RandomUtils.order(N * C * H * W, 0.1f, 0.1f);
-    	
-    	float[] k1 = RandomUtils.order(ko * C * kh * kw, 0.1f, 0.1f);
-		
-    	float[] out = new float[oh * ow];
-
-    	float[][][][] out2 = new float[N][ko][oHeight][oWidth];
-    	
-    	float[][][][] out3 = new float[N][ko][oHeight][oWidth];
-
-    	float[] once = new float[C * H * W];
-    	
-    	float[] allOut = new float[N * ko * oHeight * oWidth];
-    	
-		ConvKernel ck = new ConvKernel("conv1", out, C, H, W, ko, kh, kw, s, p);
-
-		ck.setKernel(k1);
-
-    	long start = System.nanoTime();
-    	
-		for(int c = 0;c<20;c++){
-
-	    	long start3 = System.nanoTime();
-	    	for(int n = 0;n<N;n++) {
-//	    		long start2 = System.nanoTime();
-	    		System.arraycopy(x1, n * C * H * W, once, 0, C * H * W);
-	    		ck.setX(once);
-	        	ck.conv();
-	        	System.arraycopy(ck.getOut(), 0, allOut, n * oh * ow, oh * ow);
-	        	MatrixUtils.col2im4d(ck.getOut(), out2, n, ko, oHeight, oWidth);
-//	        	System.out.println((System.nanoTime() - start2) / 1e6 + "ms.:"+i);
-	    	}
-
-	    	System.out.println((System.nanoTime() - start3) / 1e6 + "ms================>c.:"+c);
-	    	
-		}
-		
-		System.out.println((System.nanoTime() - start) / 1e6 + "ms.");
-		
-		System.out.println(JsonUtils.toJson(allOut));
-
-    	int ow2 = C * kh * kw;
-		int oh2 = N * oHeight * oWidth;
-    	
-    	float[] im2col = new float[oh2 * ow2];
-    	
-    	float[][][][] x2 = MatrixUtils.transform(x1, N, C, H, W);
-    	
-    	float[][][][] k2 = MatrixUtils.transform(k1, ko, C, kh, kw);
-
-    	float[] ka = Im2colUtils.kernalToVector(k2, false);
-    	
-    	float[] kt = Im2colUtils.kernalToVector2(k2, false);
-    	
-    	System.out.println("k:"+CheckArrayUtils.check(k1, kt));
-		
-    	float[] out1 = new float[N * oh * ow];
-
-    	long start2 = System.nanoTime();
-    	
-    	for(int i = 0;i<20;i++) {
-    		long start1 = System.nanoTime();
-
-        	Im2colToVector.im2col(x2, im2col, kh, kw, s);
-
-        	float[] r = new float[N * oh * ow];
-        	
-        	int xm = N * oHeight * oWidth;
-    		int xn = kh * kw * C;
-        	
-    		GPUOP.getInstance().multiplyFloat(xm, xn, ko, im2col, ka, r);
-
-	    	System.out.println((System.nanoTime() - start1) / 1e6 + "ms.cpu:"+i);
-	    	out1 = r;
-    	}
-    	
-    	System.out.println((System.nanoTime() - start2) / 1e6 + "ms.cpu-count");
-    	
-    	MatrixUtils.col2imgV2(out1, out3, N, ko, oHeight, oWidth);
-    	
-    	System.out.println(CheckArrayUtils.check(out2, out3));
-
-		CUDAMemoryManager.free();
-    }
+////    	float[] x1 = RandomUtils.gaussianRandom(N * C * H * W, 0.01f);
+////    	
+////    	float[] k1 = RandomUtils.gaussianRandom(ko * C * kh * kw, 0.01f);
+//    	
+//		float[] x1 = RandomUtils.order(N * C * H * W, 0.1f, 0.1f);
+//    	
+//    	float[] k1 = RandomUtils.order(ko * C * kh * kw, 0.1f, 0.1f);
+//		
+//    	float[] out = new float[oh * ow];
+//
+//    	float[][][][] out2 = new float[N][ko][oHeight][oWidth];
+//    	
+//    	float[][][][] out3 = new float[N][ko][oHeight][oWidth];
+//
+//    	float[] once = new float[C * H * W];
+//    	
+//    	float[] allOut = new float[N * ko * oHeight * oWidth];
+//    	
+//		ConvKernel ck = new ConvKernel("conv1", out, C, H, W, ko, kh, kw, s, p);
+//
+//		ck.setKernel(k1);
+//
+//    	long start = System.nanoTime();
+//    	
+//		for(int c = 0;c<20;c++){
+//
+//	    	long start3 = System.nanoTime();
+//	    	for(int n = 0;n<N;n++) {
+////	    		long start2 = System.nanoTime();
+//	    		System.arraycopy(x1, n * C * H * W, once, 0, C * H * W);
+//	    		ck.setX(once);
+//	        	ck.conv();
+//	        	System.arraycopy(ck.getOut(), 0, allOut, n * oh * ow, oh * ow);
+//	        	MatrixUtils.col2im4d(ck.getOut(), out2, n, ko, oHeight, oWidth);
+////	        	System.out.println((System.nanoTime() - start2) / 1e6 + "ms.:"+i);
+//	    	}
+//
+//	    	System.out.println((System.nanoTime() - start3) / 1e6 + "ms================>c.:"+c);
+//	    	
+//		}
+//		
+//		System.out.println((System.nanoTime() - start) / 1e6 + "ms.");
+//		
+//		System.out.println(JsonUtils.toJson(allOut));
+//
+//    	int ow2 = C * kh * kw;
+//		int oh2 = N * oHeight * oWidth;
+//    	
+//    	float[] im2col = new float[oh2 * ow2];
+//    	
+//    	float[][][][] x2 = MatrixUtils.transform(x1, N, C, H, W);
+//    	
+//    	float[][][][] k2 = MatrixUtils.transform(k1, ko, C, kh, kw);
+//
+//    	float[] ka = Im2colUtils.kernalToVector(k2, false);
+//    	
+//    	float[] kt = Im2colUtils.kernalToVector2(k2, false);
+//    	
+//    	System.out.println("k:"+CheckArrayUtils.check(k1, kt));
+//		
+//    	float[] out1 = new float[N * oh * ow];
+//
+//    	long start2 = System.nanoTime();
+//    	
+//    	for(int i = 0;i<20;i++) {
+//    		long start1 = System.nanoTime();
+//
+//        	Im2colToVector.im2col(x2, im2col, kh, kw, s);
+//
+//        	float[] r = new float[N * oh * ow];
+//        	
+//        	int xm = N * oHeight * oWidth;
+//    		int xn = kh * kw * C;
+//        	
+//    		GPUOP.getInstance().multiplyFloat(xm, xn, ko, im2col, ka, r);
+//
+//	    	System.out.println((System.nanoTime() - start1) / 1e6 + "ms.cpu:"+i);
+//	    	out1 = r;
+//    	}
+//    	
+//    	System.out.println((System.nanoTime() - start2) / 1e6 + "ms.cpu-count");
+//    	
+//    	MatrixUtils.col2imgV2(out1, out3, N, ko, oHeight, oWidth);
+//    	
+//    	System.out.println(CheckArrayUtils.check(out2, out3));
+//
+//		CUDAMemoryManager.free();
+//    }
 	
 }

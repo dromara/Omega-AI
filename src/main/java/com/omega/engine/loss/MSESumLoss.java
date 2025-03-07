@@ -3,7 +3,9 @@ package com.omega.engine.loss;
 import com.omega.common.data.Tensor;
 import com.omega.common.data.Tensors;
 import com.omega.common.utils.MatrixUtils;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.loss.gpu.MSESumLossKernel;
+import com.omega.engine.nn.network.Network;
 
 /**
  * Square loss
@@ -23,15 +25,20 @@ public class MSESumLoss extends LossFunction {
 	
 	private Tensor diff;
 	
-	public static MSESumLoss operation() {
+	public static MSESumLoss operation(CUDAManager cudaManager) {
 		if(instance == null) {
-			instance = new MSESumLoss();
+			instance = new MSESumLoss(cudaManager);
 		}
 		return instance;
 	}
 	
-	public MSESumLoss() {
-		kernel = new MSESumLossKernel();
+	public MSESumLoss(Network network) {
+		setNet(network);
+		kernel = new MSESumLossKernel(network.cudaManager);
+	}
+	
+	public MSESumLoss(CUDAManager cudaManager) {
+		kernel = new MSESumLossKernel(cudaManager);
 	}
 	
 	public void init(Tensor input) {
@@ -95,16 +102,17 @@ public class MSESumLoss extends LossFunction {
 
 	
 	public static void main(String[] args) {
+		CUDAManager cudaManager = new CUDAManager(0);
 		int N = 3;
 		int W = 4;
 		float[] x = MatrixUtils.order(N * W, 1, 1);
 		Tensor xt = Tensors.tensor(N, 1, 1, W, x, true);
 		float[] label = MatrixUtils.order(N * W, 0.1f, 0.1f);
 		Tensor labelt = Tensors.tensor(N, 1, 1, W, label, true);
-		Tensor loss = MSESumLoss.operation().loss(xt, labelt);
+		Tensor loss = MSESumLoss.operation(cudaManager).loss(xt, labelt);
 		
 		loss.showDM();
-		Tensor diff = MSESumLoss.operation().diff(xt, labelt);
+		Tensor diff = MSESumLoss.operation(cudaManager).diff(xt, labelt);
 		diff.showDM();
 
 	}

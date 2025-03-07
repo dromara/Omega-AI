@@ -113,7 +113,7 @@ public class RMSLayer extends NormalizationLayer {
 		}
 
 		if(kernel == null) {
-			kernel = new RMSKernel(width, bnType);
+			kernel = new RMSKernel(width, bnType, cuda());
 		}
 		
 		if(this.gamma == null) {
@@ -148,7 +148,7 @@ public class RMSLayer extends NormalizationLayer {
 		}
 
 		if(kernel == null) {
-			kernel = new RMSKernel(width, bnType);
+			kernel = new RMSKernel(width, bnType, cuda());
 		}
 
 		if(this.gamma == null) {
@@ -392,6 +392,15 @@ public class RMSLayer extends NormalizationLayer {
 		init();
 		ModelUtils.loadParams(inputStream, gamma);
 		
+	}
+	
+	public void putParamters() {
+		init();
+		this.network.addPamamter(gamma);
+	}
+	
+	public void putParamterGrads() {
+		this.network.addDeltaParamters(diffGamma);
 	}
 	
 	@Override

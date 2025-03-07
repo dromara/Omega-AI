@@ -32,7 +32,7 @@ public class CudnnHandleManager {
 	}
 	
 	/**
-	 * Instantiates a new Cu dnn.
+	 * Instantiates a new Cudnn.
 	 *
 	 * @param deviceNumber the device number
 	 */
