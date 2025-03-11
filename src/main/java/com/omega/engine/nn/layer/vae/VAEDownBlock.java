@@ -65,7 +65,7 @@ public class VAEDownBlock extends Layer {
 		
 		if(addDownsampler) {
 			downsampler = new ConvolutionLayer(ic, oChannel, iw, ih, 3, 3, 1, 2, false, this.network); 
-			downsampler.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+			downsampler.setUpdater(UpdaterFactory.create(this.network));
 			downsampler.paramsInit = ParamsInit.silu;
 			this.oHeight = downsampler.oHeight;
 			this.oWidth = downsampler.oWidth;

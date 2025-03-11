@@ -38,7 +38,7 @@ public class CLIPTextEmbeddingLayer extends Layer{
 		this.embedDim = embedDim;
 		
 		if(this.updater == null) {
-			this.setUpdater(UpdaterFactory.create(network.updater, network.updaterParams));
+			this.setUpdater(UpdaterFactory.create(network));
 		}
 		
 		initLayers();

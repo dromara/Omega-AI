@@ -109,7 +109,7 @@ public class LlamaCausalSelfAttention2Layer extends LlamaAttentionLayer{
 		this.bias = bias;
 		this.network = network;
 		if(this.updater == null) {
-			this.setUpdater(UpdaterFactory.create(network.updater, network.updaterParams));
+			this.setUpdater(UpdaterFactory.create(network));
 		}
 		this.time = time;
 		this.embedDim = embedDim;
@@ -131,7 +131,7 @@ public class LlamaCausalSelfAttention2Layer extends LlamaAttentionLayer{
 		this.bias = bias;
 		this.network = network;
 		if(this.updater == null) {
-			this.setUpdater(UpdaterFactory.create(network.updater, network.updaterParams));
+			this.setUpdater(UpdaterFactory.create(network));
 		}
 		this.time = time;
 		this.embedDim = embedDim;

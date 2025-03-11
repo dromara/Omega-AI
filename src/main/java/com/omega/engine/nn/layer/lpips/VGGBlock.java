@@ -42,7 +42,7 @@ public class VGGBlock extends Layer {
 	public void initLayers() {
 
 		conv = new ConvolutionLayer(channel, oChannel, width, height, 3, 3, 1, 1, true, freeze, this.network); 
-		conv.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		conv.setUpdater(UpdaterFactory.create(this.network));
 		conv.paramsInit = ParamsInit.relu;
 		
 		if(bn) {

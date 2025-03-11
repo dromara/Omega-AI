@@ -20,7 +20,6 @@ import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.gpu.CUDAMemoryManager;
-import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.loss.LossType;
 import com.omega.engine.model.DarknetLoader;
 import com.omega.engine.model.ModelLoader;
@@ -849,7 +848,7 @@ public class YoloV3Test {
 		
 		try {
 
-			CUDAModules.initContext();
+//			CUDAModules.initContext();
 
 			YoloV3Test y = new YoloV3Test();
 //			y.yolov3_tiny_voc();

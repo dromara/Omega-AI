@@ -1359,7 +1359,7 @@ public class Llama2Test {
 		
 		try {
 
-			CUDAModules.initContext();
+//			CUDAModules.initContext();
 			
 //			llama2_yl_qa();
 			

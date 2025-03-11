@@ -46,7 +46,7 @@ public class MLPLayer extends Layer{
 	public MLPLayer(int embedDim,int nChannel,boolean bias,Network network) {
 		this.network = network;
 		if(this.updater == null) {
-			this.setUpdater(UpdaterFactory.create(network.updater, network.updaterParams));
+			this.setUpdater(UpdaterFactory.create(network));
 		}
 		this.embedDim = embedDim;
 		this.nChannel = nChannel;

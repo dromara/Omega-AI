@@ -27,16 +27,19 @@ public class SoftmaxWithCrossEntropyLayer extends Layer {
 		this.oHeight = height;
 		this.oWidth = inputNum;
 		this.initParam();
-		this.initKernel();
+		
 	}
 	
 	public void initKernel() {
-		kernel = new SoftmaxKernel(cuda());
+		if(kernel == null) {
+			kernel = new SoftmaxKernel(cuda());
+		}
 	}
 	
 	@Override
 	public void init() {
 		// TODO Auto-generated method stub
+		this.initKernel();
 		this.number = this.network.number;
 		if(output == null || output.number != number) {
 			this.output = new Tensor(number, oChannel, oHeight, oWidth, true);

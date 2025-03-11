@@ -105,13 +105,13 @@ public class VQVAE extends Network {
 		this.encoder = new VQVAEEncoder(3, latendDim, imageSize, imageSize, numLayers, 32, headNum, downChannels, downSample, midChannels, this);
 		
 		pre_quant_conv = new ConvolutionLayer(latendDim, latendDim, encoder.oWidth, encoder.oHeight, 1, 1, 0, 1, true, this);
-		pre_quant_conv.setUpdater(UpdaterFactory.create(this.updater, this.updaterParams));
+		pre_quant_conv.setUpdater(UpdaterFactory.create(this));
 		pre_quant_conv.paramsInit = ParamsInit.silu;
 		
 		embedding = new EmbeddingIDLayer(num_vq_embeddings, latendDim, this);
 		
 		post_quant_conv = new ConvolutionLayer(latendDim, latendDim, encoder.oWidth, encoder.oHeight, 1, 1, 0, 1, true, this);
-		post_quant_conv.setUpdater(UpdaterFactory.create(this.updater, this.updaterParams));
+		post_quant_conv.setUpdater(UpdaterFactory.create(this));
 		post_quant_conv.paramsInit = ParamsInit.silu;
 
 		this.decoder = new VQVAEDecoder(latendDim, 3, encoder.oHeight, encoder.oWidth, numLayers, 32, headNum, downChannels, downSample, midChannels, this);

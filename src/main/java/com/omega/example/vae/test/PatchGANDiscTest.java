@@ -3,13 +3,11 @@ package com.omega.example.vae.test;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.loss.LossType;
-import com.omega.engine.nn.network.vqgan.LPIPS;
 import com.omega.engine.nn.network.vqgan.PatchGANDiscriminator;
 import com.omega.engine.optimizer.MBSGDOptimizer;
 import com.omega.engine.optimizer.lr.LearnRateUpdate;
 import com.omega.engine.updater.UpdaterType;
 import com.omega.example.diffusion.utils.DiffusionImageDataLoader;
-import com.omega.example.transformer.utils.LagJsonReader;
 
 public class PatchGANDiscTest {
 	

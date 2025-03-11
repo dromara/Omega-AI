@@ -64,7 +64,7 @@ public class TinyVQVAEDecoder extends Layer {
 		up = new ArrayList<Layer>();
 		
 		convIn = new ConvolutionLayer(channel, channels[channels.length - 1], width, height, 3, 3, 1, 1, true, this.network);
-		convIn.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		convIn.setUpdater(UpdaterFactory.create(this.network));
 		convIn.paramsInit = ParamsInit.silu;
 		
 		int ih = convIn.oHeight;
@@ -123,7 +123,7 @@ public class TinyVQVAEDecoder extends Layer {
 		convAct = new SiLULayer(convNormOut);
 
 		convOut = new ConvolutionLayer(channels[0], oChannel, iw, ih, 3, 3, 1, 1, true, this.network);
-		convOut.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		convOut.setUpdater(UpdaterFactory.create(this.network));
 		convOut.paramsInit = ParamsInit.silu;
 		
 		this.oHeight = convOut.oHeight;

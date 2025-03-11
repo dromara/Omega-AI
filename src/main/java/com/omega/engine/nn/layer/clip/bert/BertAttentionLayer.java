@@ -41,7 +41,7 @@ public class BertAttentionLayer extends Layer{
 	public BertAttentionLayer(int headNum,int time,int hiddenSize,Network network) {
 		this.network = network;
 		if(this.updater == null) {
-			this.setUpdater(UpdaterFactory.create(network.updater, network.updaterParams));
+			this.setUpdater(UpdaterFactory.create(network));
 		}
 		this.headNum = headNum;
 		this.time = time;

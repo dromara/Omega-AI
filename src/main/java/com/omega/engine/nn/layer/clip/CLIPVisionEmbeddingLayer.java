@@ -46,7 +46,7 @@ public class CLIPVisionEmbeddingLayer extends Layer{
 	public CLIPVisionEmbeddingLayer(int channel,int height,int width,int embedDim,int imageSize,int patchSize,boolean bias,Network network) {
 		this.network = network;
 		if(this.updater == null) {
-			this.setUpdater(UpdaterFactory.create(network.updater, network.updaterParams));
+			this.setUpdater(UpdaterFactory.create(network));
 		}
 		this.channel = channel;
 		this.embedDim = embedDim;

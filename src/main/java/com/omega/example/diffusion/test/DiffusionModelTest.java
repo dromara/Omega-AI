@@ -6,7 +6,6 @@ import java.util.Map;
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.gpu.CUDAMemoryManager;
-import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.Layer;
@@ -293,7 +292,7 @@ public class DiffusionModelTest {
 		
 		try {
 
-			CUDAModules.initContext();
+//			CUDAModules.initContext();
 			
 			duffsion_anime();
 			

@@ -42,7 +42,7 @@ public class TinyVAEDecoder extends Layer {
 	
 	public void initLayers() {
 		decoderInput = new ConvolutionTransposeLayer(channel, 256, width, height, 1, 1, 0, 1, 1, 0, true, network);
-		decoderInput.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		decoderInput.setUpdater(UpdaterFactory.create(this.network));
 		decoderInput.paramsInit = ParamsInit.leaky_relu;
 		block1 = new TinyVAEConvTransposeBlock(256, 128, decoderInput.oHeight, decoderInput.oWidth, network);
 		block2 = new TinyVAEConvTransposeBlock(128, 64, block1.oHeight, block1.oWidth, network);

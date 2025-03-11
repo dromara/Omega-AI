@@ -94,7 +94,7 @@ public class UNetUpBlockLayer extends Layer{
 		
 		if(upSample) {
 			upSampleConv = new ConvolutionTransposeLayer(channel/2, channel/2, width, height, 4, 4, 1, 2, 1, 0, false, network);
-			upSampleConv.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+			upSampleConv.setUpdater(UpdaterFactory.create(this.network));
 			upSampleConv.paramsInit = ParamsInit.silu;
 
 			ih = upSampleConv.oHeight;
@@ -163,7 +163,7 @@ public class UNetUpBlockLayer extends Layer{
 				ic = channel;
 			}
 			ConvolutionLayer c = new ConvolutionLayer(ic, oChannel, iw, ih, 1, 1, 0, 1, false, network);
-			c.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+			c.setUpdater(UpdaterFactory.create(this.network));
 			c.paramsInit = ParamsInit.silu;
 			residualInputs.add(c);
 		}

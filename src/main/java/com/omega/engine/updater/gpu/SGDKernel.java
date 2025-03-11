@@ -3,14 +3,15 @@ package com.omega.engine.updater.gpu;
 import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 
 import com.omega.common.data.Tensor;
-import com.omega.common.lib.LibPaths;
+import com.omega.engine.gpu.BaseKernel;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.nn.network.Network;
 
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
 
-public class SGDKernel {
+public class SGDKernel extends BaseKernel{
 	
 	public Tensor vw;
 	
@@ -32,12 +33,14 @@ public class SGDKernel {
 	
 //	private Pointer kernelBiasParameters;
 	
-	public SGDKernel(int weightLength) {
+	public SGDKernel(int weightLength, CUDAManager cudaManager) {
+		super(cudaManager);
 		this.vw = new Tensor(1, 1, 1, weightLength, true);
 		init();
 	}
 	
-	public SGDKernel(int weightLength,int biasLength) {
+	public SGDKernel(int weightLength,int biasLength, CUDAManager cudaManager) {
+		super(cudaManager);
 		this.vw = new Tensor(1, 1, 1, weightLength, true);
 		this.vb = new Tensor(1, 1, 1, biasLength, true);
 		init();
@@ -57,13 +60,13 @@ public class SGDKernel {
 
 			if(function == null) {
 
-				function = CUDAModules.getLocalFunctionByModule("updater.cu", "sgd");
+				function = getCudaManager().getLocalFunctionByModule("updater.cu", "sgd");
 				
 			}
 			
 			if(bn_function == null) {
 				
-				bn_function = CUDAModules.getLocalFunctionByModule("updater.cu", "sgd_bn");
+				bn_function = getCudaManager().getLocalFunctionByModule("updater.cu", "sgd_bn");
 				
 			}
 			

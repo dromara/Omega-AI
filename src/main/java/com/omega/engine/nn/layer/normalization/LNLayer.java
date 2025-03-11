@@ -52,14 +52,14 @@ public class LNLayer extends NormalizationLayer {
 	public LNLayer(Layer preLayer) {
 		this.setPreLayer(preLayer);
 		this.hasParams = true;
-		this.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		this.setUpdater(UpdaterFactory.create(this.network));
 	}
 	
 	public LNLayer(Layer preLayer,BNType bnType) {
 		this.setPreLayer(preLayer);
 		this.bnType = bnType;
 		this.hasParams = true;
-		this.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		this.setUpdater(UpdaterFactory.create(this.network));
 	}
 	
 	public LNLayer(Layer preLayer,BNType bnType,int channel,int height,int width) {
@@ -77,27 +77,27 @@ public class LNLayer extends NormalizationLayer {
 		}else {
 			this.meanNum = this.channel * this.height * this.width;
 		}
-		this.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		this.setUpdater(UpdaterFactory.create(this.network));
 	}
 	
 	public LNLayer(Layer preLayer,boolean hasBias) {
 		this.setPreLayer(preLayer);
 		this.hasBias = true;
 		this.hasParams = true;
-		this.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		this.setUpdater(UpdaterFactory.create(this.network));
 	}
 	
 	public LNLayer(Network network) {
 		this.network = network;
 		network.paramLayers.add(this);
-		this.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		this.setUpdater(UpdaterFactory.create(this.network));
 	}
 	
 	public LNLayer(Network network,boolean hasBias) {
 		this.network = network;
 		network.paramLayers.add(this);
 		this.hasBias = true;
-		this.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		this.setUpdater(UpdaterFactory.create(this.network));
 	}
 	
 	@Override

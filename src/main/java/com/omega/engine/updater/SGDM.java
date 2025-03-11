@@ -2,11 +2,16 @@ package com.omega.engine.updater;
 
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.normalization.NormalizationLayer;
+import com.omega.engine.nn.network.Network;
 import com.omega.engine.updater.gpu.SGDKernel;
 
 public class SGDM extends Updater {
 
 	private SGDKernel kernel;
+	
+	public SGDM(Network network) {
+		this.net = network;
+	}
 	
 	@Override
 	public void update(Layer layer) {
@@ -18,11 +23,11 @@ public class SGDM extends Updater {
 			
 			if(layer.hasBias) {
 
-				kernel = new SGDKernel(layer.weight.dataLength, layer.bias.dataLength);
+				kernel = new SGDKernel(layer.weight.dataLength, layer.bias.dataLength, net.cudaManager);
 				
 			}else {
 
-				kernel = new SGDKernel(layer.weight.dataLength);
+				kernel = new SGDKernel(layer.weight.dataLength, net.cudaManager);
 				
 			}
 			
@@ -51,7 +56,7 @@ public class SGDM extends Updater {
 		 * init
 		 */
 		if(kernel == null) {
-			kernel = new SGDKernel(layer.gamma.dataLength, layer.beta.dataLength);
+			kernel = new SGDKernel(layer.gamma.dataLength, layer.beta.dataLength, net.cudaManager);
 			//kernel.weight_decay = 0.0f;
 		}
 
@@ -77,11 +82,11 @@ public class SGDM extends Updater {
 			
 			if(layer.hasBias) {
 
-				kernel = new SGDKernel(layer.weight.dataLength, layer.bias.dataLength);
+				kernel = new SGDKernel(layer.weight.dataLength, layer.bias.dataLength, net.cudaManager);
 				
 			}else {
 
-				kernel = new SGDKernel(layer.weight.dataLength);
+				kernel = new SGDKernel(layer.weight.dataLength, net.cudaManager);
 				
 			}
 			

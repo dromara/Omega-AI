@@ -64,7 +64,7 @@ public class TinyVQVAEEncoder extends Layer {
 		down = new ArrayList<Layer>();
 		
 		convIn = new ConvolutionLayer(channel, channels[0], width, height, 3, 3, 1, 1, true, this.network);
-		convIn.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		convIn.setUpdater(UpdaterFactory.create(this.network));
 		convIn.paramsInit = ParamsInit.silu;
 		
 		int ih = convIn.oHeight;
@@ -87,7 +87,7 @@ public class TinyVQVAEEncoder extends Layer {
 		    }
 		    
 		    ConvolutionLayer downConv = new ConvolutionLayer(c_out, c_out, iw, ih, 3, 3, 1, 2, true, this.network);
-		    downConv.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		    downConv.setUpdater(UpdaterFactory.create(this.network));
 		    downConv.paramsInit = ParamsInit.silu;
 		    down.add(downConv);
 		    ih = downConv.oHeight;
@@ -116,7 +116,7 @@ public class TinyVQVAEEncoder extends Layer {
 		convAct = new SiLULayer(convNormOut);
 
 		convOut = new ConvolutionLayer(channels[channels.length - 1], oChannel, iw, ih, 3, 3, 1, 1, true, this.network);
-		convOut.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		convOut.setUpdater(UpdaterFactory.create(this.network));
 		convOut.paramsInit = ParamsInit.silu;
 		
 		this.oHeight = convOut.oHeight;

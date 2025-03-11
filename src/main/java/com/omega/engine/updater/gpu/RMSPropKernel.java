@@ -3,8 +3,9 @@ package com.omega.engine.updater.gpu;
 import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 
 import com.omega.common.data.Tensor;
-import com.omega.common.lib.LibPaths;
 import com.omega.common.utils.RandomUtils;
+import com.omega.engine.gpu.BaseKernel;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.loss.SoftmaxWithCrossEntropyLoss;
@@ -14,7 +15,7 @@ import com.omega.engine.nn.network.Network;
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
 
-public class RMSPropKernel {
+public class RMSPropKernel extends BaseKernel{
 	
 	public Tensor rw;
 	
@@ -38,18 +39,21 @@ public class RMSPropKernel {
 	
 	private float weight_decay = 0.0005f;
 	
-	public RMSPropKernel(int weightLength) {
+	public RMSPropKernel(int weightLength, CUDAManager cudaManager) {
+		super(cudaManager);
 		this.rw = new Tensor(1, 1, 1, weightLength, true);
 		init();
 	}
 	
-	public RMSPropKernel(int weightLength,int biasLength) {
+	public RMSPropKernel(int weightLength,int biasLength, CUDAManager cudaManager) {
+		super(cudaManager);
 		this.rw = new Tensor(1, 1, 1, weightLength, true);
 		this.rb = new Tensor(1, 1, 1, biasLength, true);
 		init();
 	}
 	
-	public RMSPropKernel(int weightLength,int clamp,float min,float max) {
+	public RMSPropKernel(int weightLength,int clamp,float min,float max, CUDAManager cudaManager) {
+		super(cudaManager);
 		this.rw = new Tensor(1, 1, 1, weightLength, true);
 		this.clamp = clamp;
 		this.min = min;
@@ -57,7 +61,8 @@ public class RMSPropKernel {
 		init();
 	}
 	
-	public RMSPropKernel(int weightLength,int biasLength,int clamp,float min,float max) {
+	public RMSPropKernel(int weightLength,int biasLength,int clamp,float min,float max, CUDAManager cudaManager) {
+		super(cudaManager);
 		this.rw = new Tensor(1, 1, 1, weightLength, true);
 		this.rb = new Tensor(1, 1, 1, biasLength, true);
 		this.clamp = clamp;
@@ -79,7 +84,7 @@ public class RMSPropKernel {
 		try {
 
 			if(function == null) {
-				function = CUDAModules.getLocalFunctionByModule("updater.cu", "RMSProp");
+				function = getCudaManager().getLocalFunctionByModule("updater.cu", "RMSProp");
 			}
 			
 		} catch (Exception e) {
@@ -242,7 +247,7 @@ public class RMSPropKernel {
 	}
 	
 	public static void main(String args[]){	
-		
+			CUDAManager cudaManager = new CUDAManager(0);
 	    	int N = 2;
 	    	int C = 1;
 	    	int H = 1;
@@ -261,7 +266,7 @@ public class RMSPropKernel {
 	    	BPNetwork net = new BPNetwork(new SoftmaxWithCrossEntropyLoss());
 	    	net.train_time = 1;
 	    	net.number = N;
-	    	RMSPropKernel k = new RMSPropKernel(bias1.length);
+	    	RMSPropKernel k = new RMSPropKernel(bias1.length, cudaManager);
 	    	
 	    	delta.showDM();
 	    	for(int i = 0;i<500;i++) {

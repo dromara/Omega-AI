@@ -10,7 +10,6 @@ import java.util.Map;
 
 import com.omega.common.utils.JsonUtils;
 import com.omega.engine.gpu.CUDAMemoryManager;
-import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.layer.AVGPoolingLayer;
 import com.omega.engine.nn.layer.BasicBlockLayer;
@@ -194,7 +193,7 @@ public class Resnet18 {
 		
 		try {
 			
-			CUDAModules.initContext();
+//			CUDAModules.initContext();
 			
 			CNN resnet = Resnet18.instance(3, 224, 224, 1000);
 			

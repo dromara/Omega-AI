@@ -126,7 +126,7 @@ public class UNetCond extends Layer{
 	public void initLayers() {
 		
 		conv_in = new ConvolutionLayer(channel, downChannels[0], width, height, 3, 3, 1, 1, true, network);
-		conv_in.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		conv_in.setUpdater(UpdaterFactory.create(this.network));
 		conv_in.paramsInit = ParamsInit.silu;
 		
 		t_embd = new TimeEmbeddingLayer(timeSteps, tEmbDim, tEmbDim, true, network);
@@ -180,7 +180,7 @@ public class UNetCond extends Layer{
 		act = new SiLULayer(norm);
 		
 		conv_out = new ConvolutionLayer(convOutChannels, channel, width, height, 3, 3, 1, 1, true, this.network);
-		conv_out.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		conv_out.setUpdater(UpdaterFactory.create(this.network));
 		conv_out.paramsInit = ParamsInit.silu;
 		
 		this.oHeight = ih;

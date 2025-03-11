@@ -3,7 +3,6 @@ package com.omega.example.gan.test;
 import java.util.HashMap;
 
 import com.omega.engine.gpu.CUDAMemoryManager;
-import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.ConvolutionTransposeLayer;
@@ -162,7 +161,7 @@ public class DCGAN {
 		
 		try {
 			
-			CUDAModules.initContext();
+//			CUDAModules.initContext();
 
 			gan_anime();
 			

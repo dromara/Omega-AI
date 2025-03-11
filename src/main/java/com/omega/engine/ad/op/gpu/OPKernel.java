@@ -12,9 +12,11 @@ import com.omega.engine.gpu.CUDAMemoryManager;
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUfunction;
+import jcuda.driver.CUstream;
 import jcuda.runtime.JCuda;
 import jcuda.runtime.cudaError;
 import jcuda.runtime.cudaMemcpyKind;
+import jcuda.runtime.cudaStream_t;
 
 public class OPKernel extends BaseKernel implements Serializable{
 	
@@ -484,6 +486,34 @@ public class OPKernel extends BaseKernel implements Serializable{
 	        		CAFFE_GET_BLOCKS(y.getDataLength()),  1, 1,      // Grid dimension
 		            CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
 		            0, null,               // Shared memory size and stream
+		            kernelParameter, null // Kernel- and extra parameters
+		        ));
+			
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+		
+	}
+	
+	public void add_gpu(Tensor a,Tensor b,Tensor y,CUstream stream) {
+		
+		try {
+
+			/**
+			 * int N, float *X, float *Y, float *R
+			 */
+			Pointer kernelParameter = Pointer.to(
+	        		Pointer.to(new int[]{y.getDataLength()}),
+	                Pointer.to(a.getGpuData()),
+	        		Pointer.to(b.getGpuData()),
+	        		Pointer.to(y.getGpuData())
+	            );
+			
+			checkCUDA(cuLaunchKernel(add_gpu_function,
+	        		CAFFE_GET_BLOCKS(y.getDataLength()),  1, 1,      // Grid dimension
+		            CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+		            0, stream,               // Shared memory size and stream
 		            kernelParameter, null // Kernel- and extra parameters
 		        ));
 			
@@ -1162,6 +1192,34 @@ public class OPKernel extends BaseKernel implements Serializable{
 		
 	}
 	
+	public void div_gpu(Tensor a,Tensor b,Tensor y,CUstream stream) {
+	
+		try {
+
+			/**
+			 * int N, float *X, float *Y, float *R
+			 */
+			Pointer kernelParameter = Pointer.to(
+	        		Pointer.to(new int[]{y.getDataLength()}),
+	                Pointer.to(a.getGpuData()),
+	        		Pointer.to(b.getGpuData()),
+	        		Pointer.to(y.getGpuData())
+	            );
+			
+			checkCUDA(cuLaunchKernel(div_gpu_function,
+	        		CAFFE_GET_BLOCKS(y.getDataLength()),  1, 1,      // Grid dimension
+		            CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+		            0, stream,               // Shared memory size and stream
+		            kernelParameter, null // Kernel- and extra parameters
+		        ));
+			
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+		
+	}
+	
 	public void div_gpu(Tensor a,Tensor b,Tensor y,int axis) {
 		
 		try {
@@ -1220,6 +1278,34 @@ public class OPKernel extends BaseKernel implements Serializable{
 	        		CAFFE_GET_BLOCKS(y.getDataLength()),  1, 1,      // Grid dimension
 		            CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
 		            0, null,               // Shared memory size and stream
+		            kernelParameter, null // Kernel- and extra parameters
+		        ));
+			
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+		
+	}
+	
+	public void div_scalar_gpu(Tensor a,float b,Tensor y,CUstream stream) {
+		
+		try {
+
+			/**
+			 * int N, float *X, float ALPHA, float *R
+			 */
+			Pointer kernelParameter = Pointer.to(
+	        		Pointer.to(new int[]{y.getDataLength()}),
+	                Pointer.to(a.getGpuData()),
+	        		Pointer.to(new float[] {b}),
+	        		Pointer.to(y.getGpuData())
+	            );
+			
+			checkCUDA(cuLaunchKernel(div_scalar_gpu_function,
+	        		CAFFE_GET_BLOCKS(y.getDataLength()),  1, 1,      // Grid dimension
+		            CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+		            0, stream,               // Shared memory size and stream
 		            kernelParameter, null // Kernel- and extra parameters
 		        ));
 			

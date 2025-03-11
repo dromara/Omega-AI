@@ -35,7 +35,7 @@ public class EmbeddingLayer extends Layer{
 		this.network = network;
 		network.paramLayers.add(this);
 		if(this.updater == null) {
-			this.setUpdater(UpdaterFactory.create(network.updater, network.updaterParams));
+			this.setUpdater(UpdaterFactory.create(network));
 		}
 		this.channel = 1;
 		this.height = 1;

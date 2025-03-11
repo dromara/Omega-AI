@@ -49,7 +49,7 @@ public class TAEDecoder extends Layer {
 		layers = new ArrayList<Layer>();
 		
 		ConvolutionLayer head = new ConvolutionLayer(channel, blockOutChannels[0], width, height, 3, 3, 1, 1, true, this.network);
-		head.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		head.setUpdater(UpdaterFactory.create(this.network));
 		head.paramsInit = ParamsInit.relu;
 		ReluLayer headAct = new ReluLayer(head);
 		layers.add(head);
@@ -78,7 +78,7 @@ public class TAEDecoder extends Layer {
 			}
 			
 			ConvolutionLayer bconv = new ConvolutionLayer(numChannels, convOutChannel, width, height, 3, 3, 1, 1, hasBias, this.network);
-			bconv.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+			bconv.setUpdater(UpdaterFactory.create(this.network));
 			bconv.paramsInit = ParamsInit.relu;
 			layers.add(bconv);
 		}

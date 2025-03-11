@@ -18,20 +18,20 @@ import com.omega.common.task.ForkJobEngine;
 public class MaxPairEx extends RecursiveAction {
 
 	/**
-	 *
+	 * 
 	 */
 	private static final long serialVersionUID = 6302699701667951010L;
 
 	private int start = 0;
-
+	
 	private int end = 0;
-
+	
 	private List<Integer> ids;
-
+	
 	private Map<String,Integer> pairCountMap;
-
+	
 	private static MaxPairEx job;
-
+	
 	public static MaxPairEx getInstance(List<Integer> ids,Map<String,Integer> pairCountMap,int start,int end) {
 		if(job == null) {
 			job = new MaxPairEx(ids, pairCountMap, start, end);
@@ -48,21 +48,21 @@ public class MaxPairEx extends RecursiveAction {
 		}
 		return job;
 	}
-
+	
 	public MaxPairEx(List<Integer> ids,Map<String,Integer> pairCountMap,int start,int end) {
 		this.setStart(start);
 		this.setEnd(end);
 		this.ids = ids;
 		this.pairCountMap = pairCountMap;
 	}
-
+	
 	@Override
 	protected void compute() {
 		// TODO Auto-generated method stub
 		int length = getEnd() - getStart() + 1;
-
+		
 		if (length < 8 || length <= ids.size() / 8) {
-
+			
 			load();
 
 		} else {
@@ -76,30 +76,30 @@ public class MaxPairEx extends RecursiveAction {
 
 			leftTask.join();
 			rightTask.join();
-
+			
 		}
 	}
-
+	
 	private void load() {
-
+		
 		for (int i = getStart(); i <= getEnd(); i++) {
 			String pairKey = ids.get(i) + ":" + ids.get(i + 1);
 			pairCountMap.put(pairKey, pairCountMap.getOrDefault(pairKey, 0) + 1);
 		}
-
+		
 	}
-
+	
 	public static void load(List<Integer> ids,Map<String,Integer> pairCountMap) {
 		MaxPairEx job = getInstance(ids, pairCountMap, 0, ids.size() - 2);
 		ForkJobEngine.run(job);
 	}
-
+	
 	public static String getMaxKey(List<Integer> ids,Map<String,Integer> pairCountMap) {
 
 		pairCountMap.clear();
 		load(ids, pairCountMap);
-
-		return pairCountMap.entrySet().stream().max(Entry.comparingByValue()).get().getKey();
+		
+		return pairCountMap.entrySet().stream().max(Map.Entry.comparingByValue()).get().getKey();
 
 	}
 
@@ -134,5 +134,5 @@ public class MaxPairEx extends RecursiveAction {
 	public void setIds(List<Integer> ids) {
 		this.ids = ids;
 	}
-
+	
 }

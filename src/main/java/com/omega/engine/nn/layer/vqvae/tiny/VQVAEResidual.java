@@ -73,19 +73,19 @@ public class VQVAEResidual extends Layer {
 		a1 = new SiLULayer(norm1);
 		
 		conv1 = new ConvolutionLayer(channel, oChannel, width, height, 3, 3, 1, 1, true, this.network);
-		conv1.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		conv1.setUpdater(UpdaterFactory.create(this.network));
 		conv1.paramsInit = ParamsInit.silu;
 		
 		norm2 = new GNLayer(group, conv1, BNType.conv_bn);
 		a2 = new SiLULayer(norm2);
 		
 		conv2 = new ConvolutionLayer(conv1.oChannel, oChannel, conv1.oWidth, conv1.oHeight, 3, 3, 1, 1, false, this.network);
-		conv2.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		conv2.setUpdater(UpdaterFactory.create(this.network));
 		conv2.paramsInit = ParamsInit.silu;
 
 		if(shortcut) {
 			conv_shortcut = new ConvolutionLayer(channel, oChannel, width, height, 1, 1, 0, 1, false, this.network); 
-			conv_shortcut.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+			conv_shortcut.setUpdater(UpdaterFactory.create(this.network));
 			conv_shortcut.paramsInit = ParamsInit.silu;
 		}
 

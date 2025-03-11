@@ -62,7 +62,7 @@ public class FullyLayer extends Layer{
 		this.hasParams = true;
 		this.initParam();
 		network.paramLayers.add(this);
-		this.setUpdater(UpdaterFactory.create(network.updater, network.updaterParams));
+		this.setUpdater(UpdaterFactory.create(network));
 	}
 	
 	public FullyLayer(int inputNum,int outputNum,int time,boolean hasBias,Network network) {
@@ -77,7 +77,7 @@ public class FullyLayer extends Layer{
 		this.hasParams = true;
 		network.paramLayers.add(this);
 		this.initParamRNNCell();
-		this.setUpdater(UpdaterFactory.create(network.updater, network.updaterParams));
+		this.setUpdater(UpdaterFactory.create(network));
 	}
 	
 	public static FullyLayer createRNNCell(int inputNum,int outputNum,int time,boolean hasBias,Network network) {

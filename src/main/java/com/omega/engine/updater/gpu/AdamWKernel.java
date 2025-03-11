@@ -6,6 +6,8 @@ import java.util.Map;
 
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.RandomUtils;
+import com.omega.engine.gpu.BaseKernel;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.loss.SoftmaxWithCrossEntropyLoss;
@@ -15,7 +17,7 @@ import com.omega.engine.nn.network.Network;
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
 
-public class AdamWKernel {
+public class AdamWKernel extends BaseKernel{
 	
 	public Tensor mw;
 	
@@ -45,14 +47,16 @@ public class AdamWKernel {
 	
 	private float weight_decay = 0.0f;
 	
-	public AdamWKernel(int weightLength,float weight_decay) {
+	public AdamWKernel(int weightLength,float weight_decay,CUDAManager cudaManager) {
+		super(cudaManager);
 		this.mw = new Tensor(1, 1, 1, weightLength, true);
 		this.vw = new Tensor(1, 1, 1, weightLength, true);
 		this.weight_decay = weight_decay;
 		init();
 	}
 	
-	public AdamWKernel(int weightLength,int biasLength,float weight_decay) {
+	public AdamWKernel(int weightLength,int biasLength,float weight_decay,CUDAManager cudaManager) {
+		super(cudaManager);
 		this.mw = new Tensor(1, 1, 1, weightLength, true);
 		this.vw = new Tensor(1, 1, 1, weightLength, true);
 		this.mb = new Tensor(1, 1, 1, biasLength, true);
@@ -61,7 +65,8 @@ public class AdamWKernel {
 		init();
 	}
 	
-	public AdamWKernel(int weightLength,int biasLength,float beta1,float beta2,float weight_decay) {
+	public AdamWKernel(int weightLength,int biasLength,float beta1,float beta2,float weight_decay,CUDAManager cudaManager) {
+		super(cudaManager);
 		this.mw = new Tensor(1, 1, 1, weightLength, true);
 		this.vw = new Tensor(1, 1, 1, weightLength, true);
 		this.mb = new Tensor(1, 1, 1, biasLength, true);
@@ -100,22 +105,22 @@ public class AdamWKernel {
 
 			if(function == null) {
 
-				function = CUDAModules.getLocalFunctionByModule("updater.cu", "adamw");
+				function = getCudaManager().getLocalFunctionByModule("updater.cu", "adamw");
 				
 			}
 			
 			if(r_function == null) {
-				r_function = CUDAModules.getLocalFunctionByModule("updater.cu", "adamwr");
+				r_function = getCudaManager().getLocalFunctionByModule("updater.cu", "adamwr");
 			}
 			
 			if(bn_function == null) {
 				
-				bn_function = CUDAModules.getLocalFunctionByModule("updater.cu", "adamw_bn");
+				bn_function = getCudaManager().getLocalFunctionByModule("updater.cu", "adamw_bn");
 				
 			}
 			
 			if(adamw_function == null) {
-				adamw_function = CUDAModules.getLocalFunctionByModule("updater.cu", "adamw_kernel");
+				adamw_function = getCudaManager().getLocalFunctionByModule("updater.cu", "adamw_kernel");
 			}
 			
 		} catch (Exception e) {
@@ -517,6 +522,7 @@ public class AdamWKernel {
 	
 
 	public static void main(String args[]){	
+			CUDAManager cudaManager = new CUDAManager(0);
 	    	int N = 2;
 	    	int C = 1;
 	    	int H = 1;
@@ -535,7 +541,7 @@ public class AdamWKernel {
 	    	BPNetwork net = new BPNetwork(new SoftmaxWithCrossEntropyLoss());
 	    	net.train_time = 1;
 	    	net.number = N;
-	    	AdamWKernel k = new AdamWKernel(bias1.length, 0.001f);
+	    	AdamWKernel k = new AdamWKernel(bias1.length, 0.001f, cudaManager);
 
 	    	k.updateGamma(delta, w, net, 0.0001f);
 	    	delta.showDM();

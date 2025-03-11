@@ -11,7 +11,6 @@ import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.gpu.CUDAMemoryManager;
-import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.loss.LossType;
 import com.omega.engine.model.ModelLoader;
 import com.omega.engine.nn.data.DataSet;
@@ -722,7 +721,7 @@ public class YoloV1Test {
 		
 		try {
 
-			CUDAModules.initContext();
+//			CUDAModules.initContext();
 			
 			YoloV1Test t = new YoloV1Test();
 

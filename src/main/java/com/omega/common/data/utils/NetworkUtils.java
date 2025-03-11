@@ -1,4 +1,4 @@
-package com.omega.common.data.utils;//package com.omega.common.data.utils;
+//package com.omega.common.data.utils;
 //
 //import java.io.File;
 //import java.io.FileInputStream;
@@ -31,22 +31,22 @@ package com.omega.common.data.utils;//package com.omega.common.data.utils;
 //import com.omega.engine.pooling.PoolingType;
 //
 //public class NetworkUtils {
-//
-//
+//	
+//	
 //	public static void save(Network nn,String path,String name) {
-//
+//		
 //		if(nn == null) {
 //			throw new RuntimeException("the network must be not null.");
 //		}
-//
+//		
 //		if(path == null || path.equals("")) {
 //			throw new RuntimeException("the path must be not null.");
 //		}
-//
+//		
 //		NetworkConfig nc = new NetworkConfig();
 //		nc.setName(name);
 //		nc.setNetworkType(nn.getNetworkType().getKey());
-//
+//		
 //		for(Layer layer:nn.layerList) {
 //			LayerConfig lc = new LayerConfig();
 //			lc.setIndex(layer.index);
@@ -60,10 +60,10 @@ package com.omega.common.data.utils;//package com.omega.common.data.utils;
 //			lc.setoHeight(layer.oHeight);
 //			lc.setoWidth(layer.oWidth);
 //			lc.setHasBias(layer.hasBias);
-//
+//			
 //			switch (layer.getLayerType()) {
 //			case input:
-//
+//				
 //				break;
 //			case full:
 //				lc.setWeight(layer.weight);
@@ -96,15 +96,15 @@ package com.omega.common.data.utils;//package com.omega.common.data.utils;
 //			default:
 //				break;
 //			}
-//
+//			
 //			nc.getLayers().add(lc);
-//
+//			
 //		}
-//
+//		
 //		NetworkUtils.writeJsonFile(nc, path);
-//
+//		
 //	}
-//
+//	
 //	public static void writeJsonFile(Object obj,String path){
 //	    String content = JSON.toJSONString(obj, SerializerFeature.PrettyFormat, SerializerFeature.WriteMapNullValue,
 //	            SerializerFeature.WriteDateUseDateFormat);
@@ -123,7 +123,7 @@ package com.omega.common.data.utils;//package com.omega.common.data.utils;
 //	        e.printStackTrace();
 //	    }
 //	}
-//
+//	
 //	public static String readJsonFile(String path) {
 //	    String jsonStr = "";
 //	    FileInputStream in = null;
@@ -154,21 +154,21 @@ package com.omega.common.data.utils;//package com.omega.common.data.utils;
 //	    	}
 //	    }
 //	}
-//
+//	
 //	public static Network loadNetworkConfig(String path) {
-//
+//		
 //		if(path == null || path.equals("")) {
 //			throw new RuntimeException("the path must be not null.");
 //		}
-//
+//		
 //		String json = NetworkUtils.readJsonFile(path);
-//
+//		
 //		NetworkConfig nc = new NetworkConfig();
-//
+//		
 //		nc = JsonUtils.gson.fromJson(json, nc.getClass());
-//
+//		
 //		Network nn = null;
-//
+//		
 //		switch (nc.getNetworkType()) {
 //		case "BP":
 //			nn = new BPNetwork(null);
@@ -177,24 +177,24 @@ package com.omega.common.data.utils;//package com.omega.common.data.utils;
 //			nn = new CNN(null);
 //			break;
 //		case "RNN":
-//
+//			
 //			break;
 //		case "ANN":
-//
+//			
 //			break;
 //		default:
 //			break;
 //		}
-//
+//		
 //		if(nn == null) {
 //			throw new RuntimeException("not support this network type.");
 //		}
-//
+//		
 //		LayerConfig preLayer = null;
-//
+//		
 //		for(int i = 0;i<nc.getLayers().size();i++) {
 //			LayerConfig lc = nc.getLayers().get(i);
-//
+//			
 //			Layer l = null;
 //			switch (lc.getLayerType()) {
 //			case "input":
@@ -209,10 +209,10 @@ package com.omega.common.data.utils;//package com.omega.common.data.utils;
 //				l = new ConvolutionLayer(lc.getChannel(), lc.getkNumber(), preLayer.getoWidth(), preLayer.getoHeight(), lc.getWeight().width, lc.getWeight().height, lc.getPadding(), lc.getStride(), lc.isHasBias());
 //				l.weight = lc.getWeight();
 //				l.bias = lc.getBias();
-//
+//				
 //				break;
 //			case "pooling":
-//
+//				
 //				switch (lc.getPoolingType()) {
 //				case "MAX_POOLING":
 //					l = new PoolingLayer(lc.getChannel(),preLayer.getoWidth(), preLayer.getoHeight(), lc.getpWidth(), lc.getpHeight(), lc.getStride(), PoolingType.MAX_POOLING);
@@ -221,7 +221,7 @@ package com.omega.common.data.utils;//package com.omega.common.data.utils;
 //					l = new PoolingLayer(lc.getChannel(),preLayer.getoWidth(), preLayer.getoHeight(), lc.getpWidth(), lc.getpHeight(), lc.getStride(), PoolingType.MEAN_POOLING);
 //					break;
 //				}
-//
+//				
 //				break;
 //			case "bn":
 //				l = new BNLayer();
@@ -247,14 +247,14 @@ package com.omega.common.data.utils;//package com.omega.common.data.utils;
 //			default:
 //				break;
 //			}
-//
+//			
 //			nn.addLayer(l);
-//
+//			
 //			preLayer = lc;
-//
+//			
 //		}
-//
+//		
 //		return nn;
 //	}
-//
+//	
 //}

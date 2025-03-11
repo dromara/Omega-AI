@@ -1,9 +1,8 @@
 package com.omega.engine.updater;
 
-import java.util.Map;
-
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.normalization.NormalizationLayer;
+import com.omega.engine.nn.network.Network;
 import com.omega.engine.updater.gpu.AdamWKernel;
 
 /**
@@ -17,8 +16,9 @@ public class AdamW extends Updater {
 	
 	private float weight_decay = 1e-4f;
 	
-	public AdamW(Map<String,Float> params) {
-		this.params = params;
+	public AdamW(Network network) {
+		this.net = network;
+		this.params = network.updaterParams;
 	}
 	
 	@Override
@@ -32,11 +32,11 @@ public class AdamW extends Updater {
 			
 			if(layer.hasBias) {
 
-				kernel = new AdamWKernel(layer.weight.dataLength, layer.bias.dataLength, weight_decay);
+				kernel = new AdamWKernel(layer.weight.dataLength, layer.bias.dataLength, weight_decay, net.cudaManager);
 				
 			}else {
 
-				kernel = new AdamWKernel(layer.weight.dataLength, weight_decay);
+				kernel = new AdamWKernel(layer.weight.dataLength, weight_decay, net.cudaManager);
 				
 			}
 			
@@ -75,9 +75,9 @@ public class AdamW extends Updater {
 		 */
 		if(kernel == null) {
 			if(layer.beta != null) {
-				kernel = new AdamWKernel(layer.gamma.dataLength, layer.beta.dataLength, weight_decay);
+				kernel = new AdamWKernel(layer.gamma.dataLength, layer.beta.dataLength, weight_decay, net.cudaManager);
 			}else {
-				kernel = new AdamWKernel(layer.gamma.dataLength, 0, weight_decay);
+				kernel = new AdamWKernel(layer.gamma.dataLength, 0, weight_decay, net.cudaManager);
 			}
 			
 		}
@@ -111,11 +111,11 @@ public class AdamW extends Updater {
 			
 			if(layer.hasBias) {
 
-				kernel = new AdamWKernel(layer.weight.dataLength, layer.bias.dataLength, weight_decay);
+				kernel = new AdamWKernel(layer.weight.dataLength, layer.bias.dataLength, weight_decay, net.cudaManager);
 				
 			}else {
 
-				kernel = new AdamWKernel(layer.weight.dataLength, weight_decay);
+				kernel = new AdamWKernel(layer.weight.dataLength, weight_decay, net.cudaManager);
 				
 			}
 			

@@ -2,7 +2,6 @@ package com.omega.example.vggnet.test;
 
 import com.omega.common.utils.DataLoader;
 import com.omega.engine.gpu.CUDAMemoryManager;
-import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.data.DataSet;
 import com.omega.engine.nn.layer.ConvolutionLayer;
@@ -251,7 +250,7 @@ public class vggnetTest {
 
 		try {
 
-	    	CUDAModules.initContext();
+//	    	CUDAModules.initContext();
 	    	
 	    	vggnetTest vggnet = new vggnetTest();
 

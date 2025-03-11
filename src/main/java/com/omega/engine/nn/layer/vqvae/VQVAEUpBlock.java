@@ -53,7 +53,7 @@ public class VQVAEUpBlock extends Layer {
 		
 		if(upSample) {
 			upSampleConv = new ConvolutionTransposeLayer(channel, channel, iw, ih, 4, 4, 1, 2, 1, 0, true, network);
-			upSampleConv.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+			upSampleConv.setUpdater(UpdaterFactory.create(this.network));
 			upSampleConv.paramsInit = ParamsInit.silu;
 			ih = upSampleConv.oHeight;
 			iw = upSampleConv.oWidth;

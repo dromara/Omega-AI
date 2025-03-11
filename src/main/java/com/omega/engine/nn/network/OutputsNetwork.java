@@ -33,7 +33,7 @@ public abstract class OutputsNetwork extends Network{
 	public void addLayer(Layer layer) {
 		layer.setNetwork(this);
 		layer.setIndex(this.layerList.size());
-		layer.setUpdater(UpdaterFactory.create(this.updater, this.updaterParams));
+		layer.setUpdater(UpdaterFactory.create(this));
 		if(layer.index <= 1) {
 			layer.PROPAGATE_DOWN = false;
 		}

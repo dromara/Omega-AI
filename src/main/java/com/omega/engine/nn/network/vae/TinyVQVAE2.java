@@ -122,7 +122,7 @@ public class TinyVQVAE2 extends Network {
 		this.encoder = new TinyVQVAEEncoder(3, z_dims, imageSize, imageSize, num_res_blocks, groups, headNum, channels, attn_resolutions, this);
 		
 		pre_quant_conv = new ConvolutionLayer(z_dims, latendDim, encoder.oWidth, encoder.oHeight, 1, 1, 0, 1, true, this);
-		pre_quant_conv.setUpdater(UpdaterFactory.create(this.updater, this.updaterParams));
+		pre_quant_conv.setUpdater(UpdaterFactory.create(this));
 		pre_quant_conv.paramsInit = ParamsInit.silu;
 		
 		embedding = new EmbeddingIDLayer(num_vq_embeddings, latendDim, true, this);
@@ -130,7 +130,7 @@ public class TinyVQVAE2 extends Network {
 		embedding.weight = new Tensor(1, 1, num_vq_embeddings, latendDim, RandomUtils.uniform(num_vq_embeddings * latendDim, -initrange, initrange), true);
 		
 		post_quant_conv = new ConvolutionLayer(latendDim, z_dims, encoder.oWidth, encoder.oHeight, 1, 1, 0, 1, true, this);
-		post_quant_conv.setUpdater(UpdaterFactory.create(this.updater, this.updaterParams));
+		post_quant_conv.setUpdater(UpdaterFactory.create(this));
 		post_quant_conv.paramsInit = ParamsInit.silu;
 		
 		this.decoder = new TinyVQVAEDecoder(z_dims, 3, encoder.oHeight, encoder.oWidth, num_res_blocks, groups, headNum, channels, attn_resolutions, this);

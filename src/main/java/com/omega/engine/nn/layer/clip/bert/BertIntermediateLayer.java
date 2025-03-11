@@ -36,7 +36,7 @@ public class BertIntermediateLayer extends Layer{
 	public BertIntermediateLayer(int hiddenSize,int intermediateSize,Network network) {
 		this.network = network;
 		if(this.updater == null) {
-			this.setUpdater(UpdaterFactory.create(network.updater, network.updaterParams));
+			this.setUpdater(UpdaterFactory.create(network));
 		}
 		this.channel = 1;
 		this.height = 1;

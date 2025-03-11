@@ -7,16 +7,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import com.omega.common.utils.JsonUtils;
-import com.omega.engine.gpu.CUDAModules;
-import com.omega.engine.loss.LossType;
+import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.NetworkType;
-import com.omega.engine.parallel.params.Llama3Parameters;
 import com.omega.engine.parallel.params.Parameters;
-import com.omega.engine.updater.UpdaterType;
-import com.omega.example.transformer.dataset.SFTBinDataset;
 import com.omega.example.transformer.dataset.parallel.ParallelDataLoader;
-import com.omega.example.transformer.utils.bpe.BPETokenizer3;
-import com.omega.example.transformer.utils.bpe.BinDataType;
 
 import jcuda.runtime.JCuda;
 
@@ -57,6 +51,22 @@ public class DP {
 		this.trainTime = trainTime;
 	}
 	
+	public NetworkRunnable getRight(int rankId) {
+		if(rankId < deviceIds.length-1) {
+			return threads.get(rankId + 1);
+		}else {
+			return threads.get(0);
+		}
+	}
+	
+	public NetworkRunnable getLeft(int rankId) {
+		if(rankId > 0) {
+			return threads.get(rankId - 1);
+		}else {
+			return threads.get(deviceIds[deviceIds.length - 1]);
+		}
+	}
+	
 	public void train() {
 		
 		int[] count = new int[1];
@@ -78,11 +88,15 @@ public class DP {
 			}
 			NetworkRunnable thread = new NetworkRunnable(rankId, barrier, networkType, parameters, master, this);
 			getThreads().put(rankId, thread);
+		}
+		
+		for(int rankId:deviceIds) {
+			NetworkRunnable thread = getThreads().get(rankId);
 			executorService.execute(thread);
 		}
 		
 		executorService.shutdown();
-		
+
 	}
 	
 	public NetworkType getNetworkType() {
@@ -123,6 +137,10 @@ public class DP {
 
 	public int getTrainTime() {
 		return trainTime;
+	}
+	
+	public Network getMaster() {
+		return threads.get(masterRank).getNetwork();
 	}
 	
 }

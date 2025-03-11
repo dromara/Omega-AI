@@ -52,27 +52,27 @@ public class RMSLayer extends NormalizationLayer {
 	public RMSLayer(Layer preLayer) {
 		this.setPreLayer(preLayer);
 		this.hasParams = false;
-		this.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		this.setUpdater(UpdaterFactory.create(this.network));
 	}
 	
 	public RMSLayer(Layer preLayer,boolean hasBias) {
 		this.setPreLayer(preLayer);
 		this.hasBias = false;
 		this.hasParams = false;
-		this.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		this.setUpdater(UpdaterFactory.create(this.network));
 	}
 	
 	public RMSLayer(Network network) {
 		this.network = network;
 		network.paramLayers.add(this);
-		this.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		this.setUpdater(UpdaterFactory.create(this.network));
 	}
 	
 	public RMSLayer(Network network,boolean hasBias) {
 		this.network = network;
 		this.hasBias = false;
 		network.paramLayers.add(this);
-		this.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		this.setUpdater(UpdaterFactory.create(this.network));
 	}
 	
 	@Override

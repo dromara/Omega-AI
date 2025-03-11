@@ -46,7 +46,7 @@ public class TinyVAEConvTransposeBlock extends Layer {
 	public void initLayers() {
 		
 		conv = new ConvolutionTransposeLayer(channel, oChannel, width, height, 3, 3, 1, 2, 1, 1, true, network);
-		conv.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		conv.setUpdater(UpdaterFactory.create(this.network));
 		conv.paramsInit = ParamsInit.leaky_relu;
 		
 		norm = new BNLayer(conv);

@@ -65,7 +65,7 @@ public class VQVAEEncoder extends Layer {
 	public void initLayers() {
 		
 		convIn = new ConvolutionLayer(channel, downChannels[0], width, height, 3, 3, 1, 1, true, this.network);
-		convIn.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		convIn.setUpdater(UpdaterFactory.create(this.network));
 		convIn.paramsInit = ParamsInit.silu;
 		
 		downBlock = new ArrayList<VQVAEDownBlock>(downChannels.length - 1);
@@ -97,7 +97,7 @@ public class VQVAEEncoder extends Layer {
 		convAct = new SiLULayer(convNormOut);
 
 		convOut = new ConvolutionLayer(outc, oChannel, iw, ih, 3, 3, 1, 1, true, this.network);
-		convOut.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		convOut.setUpdater(UpdaterFactory.create(this.network));
 		convOut.paramsInit = ParamsInit.silu;
 		
 		this.oHeight = convOut.oHeight;

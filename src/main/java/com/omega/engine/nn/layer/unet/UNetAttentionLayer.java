@@ -123,7 +123,7 @@ public class UNetAttentionLayer extends Layer{
 		this.residualConnect = residualConnect;
 		this.network = network;
 		if(this.updater == null) {
-			this.setUpdater(UpdaterFactory.create(network.updater, network.updaterParams));
+			this.setUpdater(UpdaterFactory.create(network));
 		}
 		this.time = height * width;
 		this.kvTime = kvTime;
@@ -155,7 +155,7 @@ public class UNetAttentionLayer extends Layer{
 		this.residualConnect = residualConnect;
 		this.network = network;
 		if(this.updater == null) {
-			this.setUpdater(UpdaterFactory.create(network.updater, network.updaterParams));
+			this.setUpdater(UpdaterFactory.create(network));
 		}
 		this.time = height * width;
 		this.kvTime = time;
@@ -188,7 +188,7 @@ public class UNetAttentionLayer extends Layer{
 		this.residualConnect = residualConnect;
 		this.network = network;
 		if(this.updater == null) {
-			this.setUpdater(UpdaterFactory.create(network.updater, network.updaterParams));
+			this.setUpdater(UpdaterFactory.create(network));
 		}
 		this.time = height * width;
 		this.kvTime = kvTime;

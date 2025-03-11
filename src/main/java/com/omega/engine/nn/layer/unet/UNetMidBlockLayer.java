@@ -126,7 +126,7 @@ public class UNetMidBlockLayer extends Layer{
 				ic = channel;
 			}
 			ConvolutionLayer c = new ConvolutionLayer(ic, oChannel, width, height, 1, 1, 0, 1, false, network);
-			c.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+			c.setUpdater(UpdaterFactory.create(this.network));
 			c.paramsInit = ParamsInit.silu;
 			residualInputs.add(c);
 		}

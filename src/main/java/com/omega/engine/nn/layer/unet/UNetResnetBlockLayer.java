@@ -46,7 +46,7 @@ public class UNetResnetBlockLayer extends Layer{
 		act = new SiLULayer(norm);
 		
 		conv = new ConvolutionLayer(channel, oc, width, height, 3, 3, 1, 1, true, this.network);
-		conv.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		conv.setUpdater(UpdaterFactory.create(this.network));
 		conv.paramsInit = ParamsInit.silu;
 		
 		this.oChannel = oc;

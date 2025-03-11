@@ -55,7 +55,7 @@ public class TransformerDecoder extends Layer{
 	public TransformerDecoder(int vocab_size,int time,int embedDim,int nChannel,boolean bias,boolean layer_norm,Network network) {
 		this.network = network;
 		if(this.updater == null) {
-			this.setUpdater(UpdaterFactory.create(network.updater, network.updaterParams));
+			this.setUpdater(UpdaterFactory.create(network));
 		}
 		this.vocab_size = vocab_size;
 		this.time = time;

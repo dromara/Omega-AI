@@ -1,10 +1,14 @@
 package com.omega.engine.parallel.dp;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixOperation;
@@ -19,8 +23,10 @@ import com.omega.example.transformer.dataset.parallel.params.SFTBinParamters;
 import com.omega.example.transformer.utils.tokenizers.Tokenizer;
 
 import jcuda.Sizeof;
+import jcuda.driver.CUstream;
 import jcuda.runtime.JCuda;
 import jcuda.runtime.cudaMemcpyKind;
+import jcuda.runtime.cudaStream_t;
 
 public class NetworkRunnable implements Runnable {
 	
@@ -52,6 +58,10 @@ public class NetworkRunnable implements Runnable {
 	
 	private float lr;
 	
+	private List<cudaStream_t> cudaStreams = new ArrayList<cudaStream_t>();
+	
+	private List<Tensor> cacheBoxs = new ArrayList<Tensor>();
+	
 	public NetworkRunnable(int rankId,CyclicBarrier barriar,NetworkType networkType,Parameters parameters,boolean master,DP dp) {
 		this.dp = dp;
 		this.barriar = barriar;
@@ -66,14 +76,14 @@ public class NetworkRunnable implements Runnable {
 		case LLAMA3:
 			Llama3Parameters params = (Llama3Parameters) parameters;
 			network = new Llama3(params.lossType, params.updater, params.getHeadNum(), params.getnKVHeadNum(), params.getDecoderNum(), params.getVocabSize(), params.getTime(), params.getEmbedDim(), params.isBias(), params.isDropout(), params.isFlashAttention(), rankId);
-			network.learnRate = params.learnRate;
-			this.lr = network.learnRate;
+			getNetwork().learnRate = params.learnRate;
+			this.lr = getNetwork().learnRate;
 			break;
 		default:
 			break;
 		}
 		System.out.println("CUDA["+rankId+"] "+networkType.toString()+" model instance create success.");
-		return network;
+		return getNetwork();
 	}
 	
 
@@ -93,6 +103,26 @@ public class NetworkRunnable implements Runnable {
 		return c;
 	}
 	
+	public void initStream() {
+		
+		for(int i = 0;i<getNetwork().paramters.size();i++) {
+			cudaStream_t stream = new cudaStream_t();
+			CUDAModules.checkCUDA(JCuda.cudaStreamCreate(stream));
+			getCudaStreams().add(stream);
+			Tensor src = getNetwork().paramters.get(i);
+			Tensor rec_box = getCache("["+rankId+"]reduce_cache_"+i, src.number, src.channel, src.height, src.width);
+			getCacheBoxs().add(rec_box);
+		}
+		
+	}
+	
+	public cudaStream_t getStream(int paramterIndex) {
+		return getCudaStreams().get(paramterIndex);
+	}
+	
+	public Tensor getCacheBox(int idx) {
+		return getCacheBoxs().get(idx);
+	}
 	
 	@Override
 	public void run() {
@@ -105,25 +135,26 @@ public class NetworkRunnable implements Runnable {
 			 */
 			this.createModel();
 			
-			this.network.init();
+			this.getNetwork().init();
 			
 			/**
 			 * init paramters
 			 */
-			network.putParamters();
+			getNetwork().putParamters();
+			initStream();
 			System.out.println("CUDA["+rankId+"] init paramters finish.");
 			/**
 			 * init dataloader
 			 */
-			dlp = dp.getPd().getDataloaders().get(rankId).createParamters(network);
+			dlp = dp.getPd().getDataloaders().get(rankId).createParamters(getNetwork());
 			dp.getPd().getDataloaders().get(rankId).loadData(dlp);
 			System.out.println("CUDA["+rankId+"] init dataloader finish.");
 
 			/**
 			 * init loss
 			 */
-			this.loss = new Tensor(dp.getPd().getDataloaders().get(rankId).getBatchSize(), this.network.oChannel, this.network.oHeight, this.network.oWidth);
-			this.lossDiff = new Tensor(dp.getPd().getDataloaders().get(rankId).getBatchSize(), this.network.oChannel, this.network.oHeight, this.network.oWidth);
+			this.loss = new Tensor(dp.getPd().getDataloaders().get(rankId).getBatchSize(), this.getNetwork().oChannel, this.getNetwork().oHeight, this.getNetwork().oWidth);
+			this.lossDiff = new Tensor(dp.getPd().getDataloaders().get(rankId).getBatchSize(), this.getNetwork().oChannel, this.getNetwork().oHeight, this.getNetwork().oWidth);
 			
 			/**
 			 * check device connect
@@ -185,7 +216,7 @@ public class NetworkRunnable implements Runnable {
 		
 		switch (networkType) {
 		case LLAMA3:
-			llama3_step((Llama3)network,(SFTBinParamters)dlp);
+			llama3_step((Llama3)getNetwork(),(SFTBinParamters)dlp);
 			break;
 		default:
 			break;
@@ -274,19 +305,34 @@ public class NetworkRunnable implements Runnable {
 				 * collect diff
 				 */
 				allReduce_sum();
-
+//				JCuda.cudaDeviceSynchronize();
 				/**
 				 * master update paramters
 				 */
-				this.network.update();
+				this.getNetwork().update();
 				JCuda.cudaDeviceSynchronize();
-
+				
 				/**
 				 * broadcast master pararmters
 				 */
 				allReduce_broadcast();
+//				JCuda.cudaDeviceSynchronize();
 				System.out.println("update params cost:"+(System.nanoTime() - start1)/1e6+"ms");
 			}
+			
+//			/**
+//			 * ring all-reduce update pararmters
+//			 */
+//			long start1 = System.nanoTime();
+//			
+//			ringAllReduce();
+////			await();
+//			/**
+//			 * update paramters
+//			 */
+//			this.network.update();
+//			
+//			System.out.println("update params cost:"+(System.nanoTime() - start1)/1e6+"ms");
 
 			/**
 			 * collect and compute loss
@@ -327,11 +373,11 @@ public class NetworkRunnable implements Runnable {
 	    double min_lr = this.lr / 10.0d;
 		
 	    if (it < warmup_iters){
-	    	network.learnRate = this.lr * it / warmup_iters;
+	    	getNetwork().learnRate = this.lr * it / warmup_iters;
 	        return;
 	    }
 	    if(it > lr_decay_iters) {
-	    	network.learnRate = (float) min_lr;
+	    	getNetwork().learnRate = (float) min_lr;
 	    	return;
 	    }
 	    BigDecimal decay_ratio = new BigDecimal(0);
@@ -346,7 +392,7 @@ public class NetworkRunnable implements Runnable {
 	    BigDecimal tlr = new BigDecimal(min_lr).add(coeff.multiply(new BigDecimal((this.lr - min_lr))));
 	    tlr = tlr.setScale(24, BigDecimal.ROUND_HALF_DOWN);
 
-	    network.learnRate = (float)tlr.doubleValue();
+	    getNetwork().learnRate = (float)tlr.doubleValue();
 	}
 	
 	public void allReduce_sum_loss(long start,int it) {
@@ -358,41 +404,132 @@ public class NetworkRunnable implements Runnable {
 		}
 		
 		finalLoss/=dp.getThreads().size();
-		String msg = "training["+trainIndex+"]{"+it+"/"+dp.getPd().getCount_it()+"} (lr:"+this.network.learnRate+") train_loss:" + finalLoss + " [costTime:"+(System.nanoTime() - start)/1e6+"ms.]";
+		String msg = "training["+trainIndex+"]{"+it+"/"+dp.getPd().getCount_it()+"} (lr:"+this.getNetwork().learnRate+") train_loss:" + finalLoss + " [costTime:"+(System.nanoTime() - start)/1e6+"ms.]";
 		System.out.println(msg);
 	}
 	
 	public void allReduce_sum() {
 		JCuda.cudaDeviceSynchronize();
-		for(int i = 0;i<network.deltaParamters.size();i++) {
-			Tensor src = network.deltaParamters.get(i);
+		for(int i = 0;i<getNetwork().deltaParamters.size();i++) {
+			Tensor src = getNetwork().deltaParamters.get(i);
 //			System.out.println(i+":"+src);
 			Tensor cache = getCache("reduce_cache", src.number, src.channel, src.height, src.width);
 			for(int key:dp.getThreads().keySet()) {
 				if(key != rankId) {
 					NetworkRunnable rank = dp.getThreads().get(key);
-					Tensor tag = rank.network.deltaParamters.get(i);
+					Tensor tag = rank.getNetwork().deltaParamters.get(i);
 //					CUDAModules.checkCUDA(JCuda.cudaMemcpy(cache.getGpuData(), tag.getGpuData(), tag.dataLength * (long)Sizeof.FLOAT, cudaMemcpyKind.cudaMemcpyDeviceToDevice));
 					CUDAModules.checkCUDA(JCuda.cudaMemcpyPeer(cache.getGpuData(), rankId, tag.getGpuData(), key, tag.dataLength * (long)Sizeof.FLOAT));
 					JCuda.cudaDeviceSynchronize();
-					network.tensorOP.add(src, cache, src);
+					getNetwork().tensorOP.add(src, cache, src);
 					JCuda.cudaDeviceSynchronize();
 				}
 			}
-			network.tensorOP.div(src, dp.getThreads().size(), src);
+			getNetwork().tensorOP.div(src, dp.getThreads().size(), src);
 //			src.showDMByOffsetRed(9, 1, i+"");
 		}
 		JCuda.cudaDeviceSynchronize();
 	}
 	
+	public void allReduce_sum_asyn() {
+
+		ExecutorService executorService = Executors.newFixedThreadPool(getNetwork().deltaParamters.size());
+		
+		for(int i = 0;i<getNetwork().deltaParamters.size();i++) {
+			List<cudaStream_t> cudaStreams = this.cudaStreams;
+			int idx = i;
+			executorService.execute(new Runnable() {
+				@Override
+				public void run() {
+					// TODO Auto-generated method stub
+					cudaStream_t stream = cudaStreams.get(idx);
+					Tensor src = getNetwork().deltaParamters.get(idx);
+					Tensor cache = cacheBoxs.get(idx);
+					for(int key:dp.getThreads().keySet()) {
+						if(key != rankId) {
+							NetworkRunnable rank = dp.getThreads().get(key);
+							Tensor tag = rank.getNetwork().deltaParamters.get(idx);
+							JCuda.cudaMemcpyPeerAsync(cache.getGpuData(), rankId, tag.getGpuData(), key, tag.dataLength * (long)Sizeof.FLOAT, stream);
+							getNetwork().tensorOP.add(src, cache, src, new CUstream(stream));
+						}
+					}
+					getNetwork().tensorOP.div(src, dp.getThreads().size(), src, new CUstream(stream));
+					JCuda.cudaStreamSynchronize(stream);
+				}
+			});
+		}
+	
+		executorService.shutdown();
+	}
+	
+	public void ringAllReduce() {
+		
+		ExecutorService executorService = Executors.newFixedThreadPool(getNetwork().deltaParamters.size());
+		
+		for(int i = 0;i<getNetwork().deltaParamters.size();i++) {
+			List<Tensor> cacheBoxs = this.cacheBoxs;
+			List<cudaStream_t> cudaStreams = this.cudaStreams;
+			int idx = i;
+			executorService.execute(new Runnable() {
+				
+				@Override
+				public void run() {
+					// TODO Auto-generated method stub
+					cudaStream_t stream = cudaStreams.get(idx);
+					for(int r = 0;r<dp.getThreads().size() - 1;r++) {
+						
+						NetworkRunnable nextRand = dp.getRight(rankId);
+						Tensor next = null;
+						Tensor src = null;
+						if(idx % 2 == 0) {
+							next = nextRand.getCacheBox(idx);
+							src = getNetwork().deltaParamters.get(idx);
+						}else {
+							next = nextRand.getNetwork().deltaParamters.get(idx);
+							src = cacheBoxs.get(idx);
+						}
+						cudaStream_t nextStream = nextRand.getStream(idx);
+						/**
+						 * unblocking send src
+						 */
+						JCuda.cudaMemcpyPeerAsync(next.getGpuData(), nextRand.rankId, src.getGpuData(), rankId, src.dataLength * (long)Sizeof.FLOAT, stream);
+						
+						/**
+						 * blocking receive rec_box
+						 */
+						JCuda.cudaStreamSynchronize(nextStream);
+						if(idx % 2 == 0) {
+							getNetwork().tensorOP.add(cacheBoxs.get(idx), src, cacheBoxs.get(idx), new CUstream(stream));
+						}else {
+							Tensor selfSrc = getNetwork().deltaParamters.get(idx);
+							getNetwork().tensorOP.add(selfSrc, cacheBoxs.get(idx), selfSrc, new CUstream(stream));
+						}
+						
+					}
+//					JCuda.cudaStreamSynchronize(stream);
+					if(dp.getThreads().size() % 2 == 0) {
+						JCuda.cudaMemcpyAsync(getNetwork().deltaParamters.get(idx).getGpuData(), cacheBoxs.get(idx).getGpuData(), cacheBoxs.get(idx).dataLength * (long)Sizeof.FLOAT, cudaMemcpyKind.cudaMemcpyDeviceToDevice, stream);
+//						network.tensorOP.copyGPU(cacheBoxs.get(idx), network.deltaParamters.get(idx));
+					}
+					JCuda.cudaStreamSynchronize(stream);
+				}
+				
+			});
+			
+		}
+		
+		executorService.shutdown();
+		
+	}
+	
 	public void allReduce_broadcast() {
 		JCuda.cudaDeviceSynchronize();
-		for(int i = 0;i<network.paramters.size();i++) {
-			Tensor src = network.paramters.get(i);
+		for(int i = 0;i<getNetwork().paramters.size();i++) {
+			Tensor src = getNetwork().paramters.get(i);
 			for(int key:dp.getThreads().keySet()) {
 				if(key != rankId) {
 					NetworkRunnable rank = dp.getThreads().get(key);
-					Tensor tag = rank.network.paramters.get(i);
+					Tensor tag = rank.getNetwork().paramters.get(i);
 //					CUDAModules.checkCUDA(JCuda.cudaMemcpy(tag.getGpuData(), src.getGpuData(), src.dataLength * (long)Sizeof.FLOAT, cudaMemcpyKind.cudaMemcpyDeviceToDevice));
 					CUDAModules.checkCUDA(JCuda.cudaMemcpyPeer(tag.getGpuData(), key, src.getGpuData(), this.rankId, src.dataLength * (long)Sizeof.FLOAT));
 				}
@@ -403,14 +540,39 @@ public class NetworkRunnable implements Runnable {
 		
 	}
 	
+	public void allReduce_broadcast_asyn() {
+		ExecutorService executorService = Executors.newFixedThreadPool(getNetwork().deltaParamters.size());
+		for(int i = 0;i<getNetwork().paramters.size();i++) {
+			List<cudaStream_t> cudaStreams = this.cudaStreams;
+			int idx = i;
+			Tensor src = getNetwork().paramters.get(i);
+			cudaStream_t stream = cudaStreams.get(idx);
+			executorService.execute(new Runnable() {
+				@Override
+				public void run() {
+					// TODO Auto-generated method stub
+					for(int key:dp.getThreads().keySet()) {
+						if(key != rankId) {
+							NetworkRunnable rank = dp.getThreads().get(key);
+							Tensor tag = rank.getNetwork().paramters.get(idx);
+							CUDAModules.checkCUDA(JCuda.cudaMemcpyPeerAsync(tag.getGpuData(), key, src.getGpuData(), rankId, src.dataLength * (long)Sizeof.FLOAT, stream));
+						}
+					}
+					JCuda.cudaStreamSynchronize(stream);
+				}
+			});
+		}
+		executorService.shutdown();
+	}
+	
 	public void allReduce_broadcast_diff() {
 		JCuda.cudaDeviceSynchronize();
-		for(int i = 0;i<network.deltaParamters.size();i++) {
-			Tensor src = network.deltaParamters.get(i);
+		for(int i = 0;i<getNetwork().deltaParamters.size();i++) {
+			Tensor src = getNetwork().deltaParamters.get(i);
 			for(int key:dp.getThreads().keySet()) {
 				if(key != rankId) {
 					NetworkRunnable rank = dp.getThreads().get(key);
-					Tensor tag = rank.network.deltaParamters.get(i);
+					Tensor tag = rank.getNetwork().deltaParamters.get(i);
 //					CUDAModules.checkCUDA(JCuda.cudaMemcpy(tag.getGpuData(), src.getGpuData(), src.dataLength * (long)Sizeof.FLOAT, cudaMemcpyKind.cudaMemcpyDeviceToDevice));
 					CUDAModules.checkCUDA(JCuda.cudaMemcpyPeer(tag.getGpuData(), key, src.getGpuData(), this.rankId, src.dataLength * (long)Sizeof.FLOAT));
 				}
@@ -478,6 +640,26 @@ public class NetworkRunnable implements Runnable {
 	
 	public float getCurrentError() {
 		return currentError;
+	}
+
+	public List<cudaStream_t> getCudaStreams() {
+		return cudaStreams;
+	}
+
+	public void setCudaStreams(List<cudaStream_t> cudaStreams) {
+		this.cudaStreams = cudaStreams;
+	}
+
+	public List<Tensor> getCacheBoxs() {
+		return cacheBoxs;
+	}
+
+	public void setCacheBoxs(List<Tensor> cacheBoxs) {
+		this.cacheBoxs = cacheBoxs;
+	}
+
+	public Network getNetwork() {
+		return network;
 	}
 
 }

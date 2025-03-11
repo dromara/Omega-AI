@@ -57,7 +57,7 @@ public class Bert extends Layer{
 		this.typeVocabSize = typeVocabSize;
 		this.network = network;
 		if(this.updater == null) {
-			this.setUpdater(UpdaterFactory.create(network.updater, network.updaterParams));
+			this.setUpdater(UpdaterFactory.create(network));
 		}
 		this.intermediateSize = intermediateSize;
 		this.numHiddenLayers = numHiddenLayers;

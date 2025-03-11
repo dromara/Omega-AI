@@ -54,7 +54,7 @@ public class UNetUpBlockLayer2 extends Layer{
 	public void initLayers() {
 		
 		upSampleConv = new ConvolutionTransposeLayer(channel, oChannel, width, height, 4, 4, 1, 2, 1, 0, true, network);
-		upSampleConv.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		upSampleConv.setUpdater(UpdaterFactory.create(this.network));
 		upSampleConv.paramsInit = ParamsInit.silu;
 		
 		this.oHeight = upSampleConv.oHeight;

@@ -11,7 +11,6 @@ import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
-import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.gpu.SoftmaxKernel;
 import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.layer.gpu.RoPEKernel;
@@ -1054,7 +1053,7 @@ public class Llama3Test {
 		
 		try {
 
-			CUDAModules.initContext();
+//			CUDAModules.initContext();
 			
 //			llama3_dp();
 			

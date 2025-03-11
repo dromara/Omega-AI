@@ -57,7 +57,7 @@ public class TransformerDecoderLayer extends Layer{
 	public TransformerDecoderLayer(int time,int embedDim,int nChannel,boolean bias,boolean layer_norm,Network network) {
 		this.network = network;
 		if(this.updater == null) {
-			this.setUpdater(UpdaterFactory.create(network.updater, network.updaterParams));
+			this.setUpdater(UpdaterFactory.create(network));
 		}
 		this.time = time;
 		this.embedDim = embedDim;

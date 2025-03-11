@@ -249,7 +249,7 @@ public abstract class Network {
 		layer.setNetwork(this);
 		layer.setIndex(this.layerList.size());
 		if(layer.updater == null) {
-			layer.setUpdater(UpdaterFactory.create(this.updater, updaterParams));
+			layer.setUpdater(UpdaterFactory.create(this));
 		}
 		if(layer.index <= 1) {
 			layer.PROPAGATE_DOWN = false;

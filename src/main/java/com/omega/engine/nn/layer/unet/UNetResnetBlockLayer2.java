@@ -59,7 +59,7 @@ public class UNetResnetBlockLayer2 extends Layer{
 		
 		if(channel != oChannel) {
 			residual = new ConvolutionLayer(channel, oChannel, width, height, 1, 1, 0, 1, true, this.network);
-			residual.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+			residual.setUpdater(UpdaterFactory.create(this.network));
 			residual.paramsInit = ParamsInit.silu;
 		}
 
@@ -68,7 +68,7 @@ public class UNetResnetBlockLayer2 extends Layer{
 		act1 = new SiLULayer(norm1);
 		
 		conv1 = new ConvolutionLayer(channel, oChannel, width, height, 3, 3, 1, 1, true, this.network);
-		conv1.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		conv1.setUpdater(UpdaterFactory.create(this.network));
 		conv1.paramsInit = ParamsInit.silu;
 		
 		temb = new UNetTEmbLayer(timeDim, oChannel, network);
@@ -78,7 +78,7 @@ public class UNetResnetBlockLayer2 extends Layer{
 		act2 = new SiLULayer(norm2);
 		
 		conv2 = new ConvolutionLayer(oChannel, oChannel, width, height, 3, 3, 1, 1, true, this.network);
-		conv2.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		conv2.setUpdater(UpdaterFactory.create(this.network));
 		conv2.paramsInit = ParamsInit.silu;
 	}
 

@@ -6,6 +6,7 @@ import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.normalization.NormalizationLayer;
+import com.omega.engine.nn.network.Network;
 
 /**
  * Momentum
@@ -19,6 +20,10 @@ import com.omega.engine.nn.layer.normalization.NormalizationLayer;
  *
  */
 public class Momentum extends Updater {
+	
+	public Momentum(Network network) {
+		this.net = network;
+	}
 	
 	@Override
 	public void update(Layer layer) {

@@ -136,14 +136,14 @@ public class UNetDownBlockLayer extends Layer{
 				ic = channel;
 			}
 			ConvolutionLayer c = new ConvolutionLayer(ic, oChannel, width, height, 1, 1, 0, 1, false, network);
-			c.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+			c.setUpdater(UpdaterFactory.create(this.network));
 			c.paramsInit = ParamsInit.silu;
 			residualInputs.add(c);
 		}
 		
 		if(downSample) {
 			downSampleConv = new ConvolutionLayer(oChannel, oChannel, width, height, 4, 4, 1, 2, false, network);
-			downSampleConv.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+			downSampleConv.setUpdater(UpdaterFactory.create(this.network));
 			downSampleConv.paramsInit = ParamsInit.silu;
 			this.oHeight = downSampleConv.oHeight;
 			this.oWidth = downSampleConv.oWidth;

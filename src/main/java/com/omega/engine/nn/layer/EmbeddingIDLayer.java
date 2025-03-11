@@ -41,7 +41,7 @@ public class EmbeddingIDLayer extends Layer{
 	public EmbeddingIDLayer(int num_embeddings,int embedding_dim,Network network) {
 		this.network = network;
 		if(this.updater == null) {
-			this.setUpdater(UpdaterFactory.create(network.updater, network.updaterParams));
+			this.setUpdater(UpdaterFactory.create(network));
 		}
 		this.channel = 1;
 		this.height = 1;
@@ -59,7 +59,7 @@ public class EmbeddingIDLayer extends Layer{
 		this.network = network;
 		this.freeze = freeze;
 		if(this.updater == null) {
-			this.setUpdater(UpdaterFactory.create(network.updater, network.updaterParams));
+			this.setUpdater(UpdaterFactory.create(network));
 		}
 		this.channel = 1;
 		this.height = 1;

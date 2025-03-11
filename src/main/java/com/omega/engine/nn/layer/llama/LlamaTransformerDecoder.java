@@ -74,7 +74,7 @@ public class LlamaTransformerDecoder extends Layer{
 		this.n_layers = n_layers;
 		this.network = network;
 		if(this.updater == null) {
-			this.setUpdater(UpdaterFactory.create(network.updater, network.updaterParams));
+			this.setUpdater(UpdaterFactory.create(network));
 		}
 		this.vocab_size = vocab_size;
 		this.time = time;
@@ -98,7 +98,7 @@ public class LlamaTransformerDecoder extends Layer{
 		this.n_layers = n_layers;
 		this.network = network;
 		if(this.updater == null) {
-			this.setUpdater(UpdaterFactory.create(network.updater, network.updaterParams));
+			this.setUpdater(UpdaterFactory.create(network));
 		}
 		this.vocab_size = vocab_size;
 		this.time = time;

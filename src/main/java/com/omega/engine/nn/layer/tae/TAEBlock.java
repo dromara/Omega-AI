@@ -66,24 +66,24 @@ public class TAEBlock extends Layer {
 		a0 = new ReluLayer(this);
 		
 		conv1 = new ConvolutionLayer(channel, oChannel, width, height, 3, 3, 1, 1, true, this.network);
-		conv1.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		conv1.setUpdater(UpdaterFactory.create(this.network));
 		conv1.paramsInit = ParamsInit.relu;
 
 		a1 = new ReluLayer(conv1);
 		
 		conv2 = new ConvolutionLayer(oChannel, oChannel, conv1.oWidth, conv1.oHeight, 3, 3, 1, 1, true, this.network);
-		conv2.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		conv2.setUpdater(UpdaterFactory.create(this.network));
 		conv2.paramsInit = ParamsInit.relu;
 		
 		a2 = new ReluLayer(conv2);
 		
 		conv3 = new ConvolutionLayer(oChannel, oChannel, conv2.oWidth, conv2.oHeight, 3, 3, 1, 1, true, this.network);
-		conv3.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		conv3.setUpdater(UpdaterFactory.create(this.network));
 		conv3.paramsInit = ParamsInit.relu;
 		
 		if(shortcut) {
 			conv_shortcut = new ConvolutionLayer(channel, oChannel, width, height, 1, 1, 0, 1, false, this.network); 
-			conv_shortcut.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+			conv_shortcut.setUpdater(UpdaterFactory.create(this.network));
 			conv_shortcut.paramsInit = ParamsInit.silu;
 		}
 		

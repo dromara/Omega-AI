@@ -3,7 +3,6 @@ package com.omega.example.bp.test;
 import com.omega.common.utils.DataLoader;
 import com.omega.common.utils.JsonUtils;
 import com.omega.engine.gpu.CUDAMemoryManager;
-import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.loss.SoftmaxWithCrossEntropyLoss;
 import com.omega.engine.nn.data.DataSet;
 import com.omega.engine.nn.layer.DropoutLayer;
@@ -193,7 +192,7 @@ public class BPTest {
 
 		try {
 
-	    	CUDAModules.initContext();
+//	    	CUDAModules.initContext();
 
 //	    	bpNetwork_iris();
 	    	bpNetwork_mnist();

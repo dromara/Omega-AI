@@ -2,6 +2,8 @@ package com.omega.engine.updater;
 
 import java.util.Map;
 
+import com.omega.engine.nn.network.Network;
+
 /**
  * Updater Factory
  * @author Administrator
@@ -19,24 +21,23 @@ public class UpdaterFactory {
 	 * momentum
 	 * adam
 	 */
-	public static Updater create(UpdaterType type,Map<String,Float> params) {
+	public static Updater create(Network network) {
 		
-		switch (type) {
+		switch (network.updater) {
 		case momentum:
-			return new Momentum();
+			return new Momentum(network);
 		case sgd:
-			return new SGDM();
+			return new SGDM(network);
 		case adam:
-			return new Adam();
+			return new Adam(network);
 		case adamw:
-			return new AdamW(params);
+			return new AdamW(network);
 		case RMSProp:
-			return new RMSProp();
+			return new RMSProp(network);
 		default:
 			return null;
 		}
 		
 	}
-	
 	
 }

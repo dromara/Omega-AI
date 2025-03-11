@@ -52,7 +52,7 @@ public class BertEmbeddingsLayer extends Layer{
 	public BertEmbeddingsLayer(int vocabSize,int hiddenSize,int maxPositionEmbeddingsSize,int typeVocabSize,Network network) {
 		this.network = network;
 		if(this.updater == null) {
-			this.setUpdater(UpdaterFactory.create(network.updater, network.updaterParams));
+			this.setUpdater(UpdaterFactory.create(network));
 		}
 		this.vocabSize = vocabSize;
 		this.typeVocabSize = typeVocabSize;

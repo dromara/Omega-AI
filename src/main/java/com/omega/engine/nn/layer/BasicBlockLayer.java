@@ -73,7 +73,7 @@ public class BasicBlockLayer extends Layer {
 	public void initLayers() {
 		
 		conv1 = new ConvolutionLayer(channel, oChannel, width, height, 3, 3, 1, fisrtLayerStride, false, this.network);
-		conv1.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		conv1.setUpdater(UpdaterFactory.create(this.network));
 		conv1.paramsInit = ParamsInit.relu;
 		
 		bn1 = new BNLayer(conv1);
@@ -81,14 +81,14 @@ public class BasicBlockLayer extends Layer {
 		a1 = new ReluLayer(bn1);
 		
 		conv2 = new ConvolutionLayer(conv1.oChannel, oChannel, conv1.oWidth, conv1.oHeight, 3, 3, 1, 1, false, this.network);
-		conv2.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		conv2.setUpdater(UpdaterFactory.create(this.network));
 		conv2.paramsInit = ParamsInit.relu;
 		
 		bn2 = new BNLayer(conv2);
 		
 		if(downsample) {
 			identityConv = new ConvolutionLayer(channel, oChannel, width, height, 1, 1, 0, fisrtLayerStride, false, this.network); 
-			identityConv.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+			identityConv.setUpdater(UpdaterFactory.create(this.network));
 			identityConv.paramsInit = ParamsInit.relu;
 			identityBN = new BNLayer(identityConv);
 		}

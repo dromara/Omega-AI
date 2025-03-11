@@ -8,7 +8,9 @@ import com.omega.engine.ad.op.gpu.OPKernel;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.GPUOP;
 
+import jcuda.driver.CUstream;
 import jcuda.jcublas.cublasOperation;
+import jcuda.runtime.cudaStream_t;
 
 public class TensorOP {
 	
@@ -28,6 +30,12 @@ public class TensorOP {
 		}else {
 			c.data = MatrixOperation.add(a.data, b.data);
 		}
+		
+	}
+	
+	public void add(Tensor a,Tensor b,Tensor c,CUstream stream) {
+		
+		op.add_gpu(a, b, c, stream);
 		
 	}
 	
@@ -254,6 +262,12 @@ public class TensorOP {
 		}
 	}
 	
+	public void div(Tensor a,Tensor b,Tensor c,CUstream stream) {
+		
+		op.div_gpu(a, b, c, stream);
+		
+	}
+	
 	public void div(Tensor a,Tensor b,Tensor c,int axis) {
 		
 		if(c.isHasGPU()) {
@@ -274,6 +288,10 @@ public class TensorOP {
 		
 	}
 	
+	public void div(Tensor a,float b,Tensor c,CUstream stream) {
+		op.div_scalar_gpu(a, b, c, stream);
+	}
+		
 	public void div(float a,Tensor b,Tensor c) {
 		
 		if(c.isHasGPU()) {

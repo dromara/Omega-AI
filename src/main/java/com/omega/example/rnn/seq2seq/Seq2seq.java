@@ -3,7 +3,6 @@ package com.omega.example.rnn.seq2seq;
 import java.util.Scanner;
 
 import com.omega.engine.gpu.CUDAMemoryManager;
-import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.model.RNNCellType;
 import com.omega.engine.nn.network.Seq2Seq;
@@ -115,7 +114,7 @@ public class Seq2seq {
 		
 		try {
 
-			CUDAModules.initContext();
+//			CUDAModules.initContext();
 			
 			Seq2seq t = new Seq2seq();
 

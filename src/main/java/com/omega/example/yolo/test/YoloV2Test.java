@@ -7,7 +7,6 @@ import com.omega.common.data.Tensor;
 import com.omega.common.utils.ImageUtils;
 import com.omega.common.utils.JsonUtils;
 import com.omega.engine.gpu.CUDAMemoryManager;
-import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.loss.LossType;
 import com.omega.engine.model.ModelLoader;
 import com.omega.engine.nn.data.DataSet;
@@ -206,7 +205,7 @@ public class YoloV2Test {
 		
 		try {
 			
-			CUDAModules.initContext();
+//			CUDAModules.initContext();
 			
 			YoloV2Test y = new YoloV2Test();
 //			y.yolov2_tiny_voc();

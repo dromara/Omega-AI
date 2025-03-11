@@ -120,7 +120,7 @@ public class DeepSeekTest {
 			int batchSize = 24;
 			float lr = 5e-4f;
 
-			String trainPath = "/omega/dataset/sft_512_6400.bin";
+			String trainPath = "/omega/dataset/pretrain_hq_6400.bin";
 			String vocabPath = "/omega/models/vocab.json";
 			String mergesPath = "/omega/models/merges.txt";
 			
@@ -135,6 +135,9 @@ public class DeepSeekTest {
 			DP dp = new DP(deviceIds, 0, networkType, parameters, pdl, 2);
 			
 			dp.train();
+			
+			String save_model_path = "/omega/models/llama3-26-base-zh.model";
+			ModelUtils.saveModel((Llama3)dp.getMaster(), save_model_path);
 			
 		} catch (Exception e) {
 			// TODO: handle exception

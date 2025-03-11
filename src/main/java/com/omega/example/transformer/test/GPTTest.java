@@ -5,16 +5,12 @@ import java.util.Map;
 import java.util.Scanner;
 
 import com.omega.common.data.Tensor;
-import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.CUDAMemoryManager;
-import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.gpu.SoftmaxKernel;
 import com.omega.engine.loss.LossType;
-import com.omega.engine.nn.layer.gpu.RoPEKernel;
 import com.omega.engine.nn.network.GPT;
 import com.omega.engine.nn.network.GPT2;
-import com.omega.engine.nn.network.Llama2;
 import com.omega.engine.nn.network.NanoGPT;
 import com.omega.engine.nn.network.RNN;
 import com.omega.engine.nn.network.RunModel;
@@ -1002,7 +998,7 @@ public class GPTTest {
 		
 		try {
 
-			CUDAModules.initContext();
+//			CUDAModules.initContext();
 			
 //			gpt();
 

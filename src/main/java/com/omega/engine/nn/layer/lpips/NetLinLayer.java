@@ -43,7 +43,7 @@ public class NetLinLayer extends Layer {
 		}
 
 		conv = new ConvolutionLayer(channel, oChannel, width, height, 1, 1, 0, 1, false, true, this.network); 
-		conv.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		conv.setUpdater(UpdaterFactory.create(this.network));
 		conv.paramsInit = ParamsInit.relu;
 		
 	}

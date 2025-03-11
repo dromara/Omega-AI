@@ -20,9 +20,7 @@ import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.gpu.CUDAMemoryManager;
-import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.loss.LossType;
-import com.omega.engine.model.DarknetLoader;
 import com.omega.engine.model.ModelLoader;
 import com.omega.engine.nn.network.Yolo;
 import com.omega.engine.optimizer.MBSGDOptimizer;
@@ -30,7 +28,6 @@ import com.omega.engine.optimizer.lr.LearnRateUpdate;
 import com.omega.engine.updater.UpdaterType;
 import com.omega.example.yolo.data.DataType;
 import com.omega.example.yolo.data.DetectionDataLoader;
-import com.omega.example.yolo.data.YoloDataTransform2;
 import com.omega.example.yolo.model.YoloBox;
 import com.omega.example.yolo.model.YoloDetection;
 import com.omega.example.yolo.utils.AnchorBoxUtils;
@@ -521,7 +518,7 @@ public class YoloV4Test {
 		
 		try {
 
-			CUDAModules.initContext();
+//			CUDAModules.initContext();
 
 			YoloV4Test y = new YoloV4Test();
 

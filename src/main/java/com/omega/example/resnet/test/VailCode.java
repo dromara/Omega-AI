@@ -7,7 +7,6 @@ import java.util.Map;
 
 import com.omega.engine.check.VailCodeCheck;
 import com.omega.engine.gpu.CUDAMemoryManager;
-import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.loss.LossType;
 import com.omega.engine.model.ModelLoader;
 import com.omega.engine.nn.network.CNN;
@@ -149,7 +148,7 @@ public class VailCode {
 		
 		try {
 			
-			CUDAModules.initContext();
+//			CUDAModules.initContext();
 			
 //			resize();
 			

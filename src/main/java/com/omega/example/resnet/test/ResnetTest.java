@@ -9,7 +9,6 @@ import com.omega.common.utils.ImageUtils;
 import com.omega.common.utils.LabelUtils;
 import com.omega.common.utils.MathUtils;
 import com.omega.engine.gpu.CUDAMemoryManager;
-import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.loss.LossType;
 import com.omega.engine.loss.SoftmaxWithCrossEntropyLoss;
 import com.omega.engine.nn.data.DataSet;
@@ -488,7 +487,7 @@ public class ResnetTest {
 
 		try {
 
-	    	CUDAModules.initContext();
+//	    	CUDAModules.initContext();
 	    	
 	    	ResnetTest resnet = new ResnetTest();
 	    	

@@ -51,7 +51,7 @@ public class VQVAEAttentionLayer2 extends Layer{
 		this.groups = groups;
 		this.network = network;
 		if(this.updater == null) {
-			this.setUpdater(UpdaterFactory.create(network.updater, network.updaterParams));
+			this.setUpdater(UpdaterFactory.create(network));
 		}
 		this.time = height * width;
 		this.embedDim = embedDim;

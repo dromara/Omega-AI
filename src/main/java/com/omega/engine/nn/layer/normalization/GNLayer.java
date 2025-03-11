@@ -51,7 +51,7 @@ public class GNLayer extends NormalizationLayer {
 		this.setPreLayer(preLayer);
 		this.groupNum = groupNum;
 		this.hasParams = false;
-		this.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		this.setUpdater(UpdaterFactory.create(this.network));
 	}
 	
 	public GNLayer(int groupNum,Layer preLayer,BNType bnType) {
@@ -59,7 +59,7 @@ public class GNLayer extends NormalizationLayer {
 		this.bnType = bnType;
 		this.groupNum = groupNum;
 		this.hasParams = false;
-		this.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		this.setUpdater(UpdaterFactory.create(this.network));
 	}
 	
 	public GNLayer(int groupNum,int channel,int height,int width,BNType bnType,Layer preLayer) {
@@ -79,7 +79,7 @@ public class GNLayer extends NormalizationLayer {
 		}else {
 			this.numChannel = this.height * this.width;
 		}
-		this.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		this.setUpdater(UpdaterFactory.create(this.network));
 	}
 	
 	public GNLayer(int groupNum,Layer preLayer,boolean hasBias) {
@@ -87,14 +87,14 @@ public class GNLayer extends NormalizationLayer {
 		this.groupNum = groupNum;
 		this.hasBias = false;
 		this.hasParams = false;
-		this.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		this.setUpdater(UpdaterFactory.create(this.network));
 	}
 	
 	public GNLayer(int groupNum,Network network) {
 		this.network = network;
 		this.groupNum = groupNum;
 		network.paramLayers.add(this);
-		this.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		this.setUpdater(UpdaterFactory.create(this.network));
 	}
 	
 	public GNLayer(int groupNum,Network network,BNType bnType) {
@@ -102,7 +102,7 @@ public class GNLayer extends NormalizationLayer {
 		this.bnType = bnType;
 		this.groupNum = groupNum;
 		network.paramLayers.add(this);
-		this.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		this.setUpdater(UpdaterFactory.create(this.network));
 	}
 	
 	public GNLayer(int groupNum,Network network,boolean hasBias) {
@@ -110,7 +110,7 @@ public class GNLayer extends NormalizationLayer {
 		this.hasBias = false;
 		this.groupNum = groupNum;
 		network.paramLayers.add(this);
-		this.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		this.setUpdater(UpdaterFactory.create(this.network));
 	}
 	
 	@Override

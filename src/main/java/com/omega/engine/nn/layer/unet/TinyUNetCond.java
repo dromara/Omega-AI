@@ -104,13 +104,13 @@ public class TinyUNetCond extends Layer{
 	public void initLayers() {
 		
 		conv_in1 = new ConvolutionLayer(channel, downChannels[0], width, height, 3, 3, 1, 1, true, network);
-		conv_in1.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		conv_in1.setUpdater(UpdaterFactory.create(this.network));
 		conv_in1.paramsInit = ParamsInit.silu;
 		
 		in_act = new SiLULayer(conv_in1);
 		
 		conv_in2 = new ConvolutionLayer(downChannels[0], downChannels[0], width, height, 3, 3, 1, 1, true, network);
-		conv_in2.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		conv_in2.setUpdater(UpdaterFactory.create(this.network));
 		conv_in2.paramsInit = ParamsInit.silu;
 		
 		t_embd = new TinyTimeEmbeddingLayer(timeSteps, tEmbDim, true, network);
@@ -168,13 +168,13 @@ public class TinyUNetCond extends Layer{
 		resnet = new UNetResnetBlockLayer2(downChannels[0] * 2, downChannels[0], ih, iw, tEmbDim, groups, network);
 		
 		conv_out1 = new ConvolutionLayer(downChannels[0], downChannels[0], iw, ih, 3, 3, 1, 1, true, this.network);
-		conv_out1.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		conv_out1.setUpdater(UpdaterFactory.create(this.network));
 		conv_out1.paramsInit = ParamsInit.silu;
 		
 		act = new SiLULayer(conv_out1);
 		
 		conv_out2 = new ConvolutionLayer(downChannels[0], channel, width, height, 3, 3, 1, 1, true, this.network);
-		conv_out2.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		conv_out2.setUpdater(UpdaterFactory.create(this.network));
 		conv_out2.paramsInit = ParamsInit.silu;
 		
 		this.oHeight = ih;

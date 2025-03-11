@@ -7,7 +7,6 @@ import com.omega.common.data.Tensor;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.active.ActiveType;
 import com.omega.engine.gpu.CUDAMemoryManager;
-import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.layer.EmbeddingLayer;
 import com.omega.engine.nn.layer.FullyLayer;
@@ -16,7 +15,6 @@ import com.omega.engine.nn.layer.LSTMLayer;
 import com.omega.engine.nn.layer.RNNBlockLayer;
 import com.omega.engine.nn.layer.RNNLayer;
 import com.omega.engine.nn.layer.active.LeakyReluLayer;
-import com.omega.engine.nn.layer.active.TanhLayer;
 import com.omega.engine.nn.layer.normalization.BNLayer;
 import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.network.RNN;
@@ -584,7 +582,7 @@ public class CharRNN {
 		
 		try {
 
-			CUDAModules.initContext();
+//			CUDAModules.initContext();
 			
 			CharRNN t = new CharRNN();
 			

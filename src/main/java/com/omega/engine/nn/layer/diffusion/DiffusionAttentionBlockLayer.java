@@ -92,7 +92,7 @@ public class DiffusionAttentionBlockLayer extends Layer{
 		this.bias = bias;
 		this.network = network;
 		if(this.updater == null) {
-			this.setUpdater(UpdaterFactory.create(network.updater, network.updaterParams));
+			this.setUpdater(UpdaterFactory.create(network));
 		}
 		this.inChannel = inChannel;
 		this.height = height;

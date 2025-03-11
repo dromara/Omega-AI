@@ -61,7 +61,7 @@ public class UNetDownBlockLayer2 extends Layer{
 		st2 = new UNetSpatialTransformerLayer(oChannel, height, width, numHeads, maxContextLen, contextDim, false, true, network);
 		
 		downSampleConv = new ConvolutionLayer(oChannel, oChannel, width, height, 3, 3, 1, 2, true, this.network);
-		downSampleConv.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		downSampleConv.setUpdater(UpdaterFactory.create(this.network));
 		downSampleConv.paramsInit = ParamsInit.silu;
 		
 		this.oHeight = downSampleConv.oHeight;

@@ -45,7 +45,7 @@ public class BertLayer extends Layer{
 	public BertLayer(int headNum,int time,int hiddenSize,int intermediateSize,Network network) {
 		this.network = network;
 		if(this.updater == null) {
-			this.setUpdater(UpdaterFactory.create(network.updater, network.updaterParams));
+			this.setUpdater(UpdaterFactory.create(network));
 		}
 		this.headNum = headNum;
 		this.time = time;

@@ -118,7 +118,7 @@ public class MBSGDOptimizer extends Optimizer {
 
 		try {
 			
-			CUDAModules.initCUDAFunctions();
+//			CUDAModules.initCUDAFunctions();
 
 			this.dataSize = trainingData.number;
 
@@ -214,7 +214,7 @@ public class MBSGDOptimizer extends Optimizer {
 					 * update
 					 */
 					this.network.update();
-					
+
 					output.syncHost();
 
 //					System.out.println("back:"+(System.nanoTime() - back_start) / 1e6 + "ms.");
@@ -412,7 +412,7 @@ public class MBSGDOptimizer extends Optimizer {
 
 		try {
 			
-			CUDAModules.initCUDAFunctions();
+//			CUDAModules.initCUDAFunctions();
 
 			this.dataSize = trainingData.number;
 			

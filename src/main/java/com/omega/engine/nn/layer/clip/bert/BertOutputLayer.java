@@ -38,7 +38,7 @@ public class BertOutputLayer extends Layer{
 	public BertOutputLayer(int intermediateSize,int hiddenSize,Network network) {
 		this.network = network;
 		if(this.updater == null) {
-			this.setUpdater(UpdaterFactory.create(network.updater, network.updaterParams));
+			this.setUpdater(UpdaterFactory.create(network));
 		}
 		this.channel = 1;
 		this.height = 1;

@@ -63,7 +63,7 @@ public class VQVAEDownBlock extends Layer {
 		
 		if(downSample) {
 			downSampleConv = new ConvolutionLayer(oChannel, oChannel, iw, ih, 4, 4, 1, 2, true, this.network); 
-			downSampleConv.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+			downSampleConv.setUpdater(UpdaterFactory.create(this.network));
 			downSampleConv.paramsInit = ParamsInit.silu;
 			this.oHeight = downSampleConv.oHeight;
 			this.oWidth = downSampleConv.oWidth;

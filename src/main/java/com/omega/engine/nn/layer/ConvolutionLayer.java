@@ -119,7 +119,7 @@ public class ConvolutionLayer extends Layer {
 		this.hasBias = hasBias;
 		this.network = network;
 //		network.paramLayers.add(this);
-		this.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		this.setUpdater(UpdaterFactory.create(this.network));
 		this.hasParams = true;
 		this.initParam();
 	}
@@ -150,7 +150,7 @@ public class ConvolutionLayer extends Layer {
 		this.network = network;
 		this.freeze = freeze;
 //		network.paramLayers.add(this);
-		this.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		this.setUpdater(UpdaterFactory.create(this.network));
 		this.hasParams = true;
 		this.initParam();
 	}

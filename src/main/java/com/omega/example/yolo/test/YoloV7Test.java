@@ -20,7 +20,6 @@ import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.gpu.CUDAMemoryManager;
-import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.loss.LossType;
 import com.omega.engine.model.DarknetLoader;
 import com.omega.engine.model.ModelLoader;
@@ -35,7 +34,6 @@ import com.omega.example.yolo.model.YoloBox;
 import com.omega.example.yolo.model.YoloDetection;
 import com.omega.example.yolo.utils.AnchorBoxUtils;
 import com.omega.example.yolo.utils.LabelFileType;
-import com.omega.example.yolo.utils.LabelUtils;
 
 public class YoloV7Test {
 	
@@ -850,7 +848,7 @@ public class YoloV7Test {
 		
 		try {
 
-			CUDAModules.initContext();
+//			CUDAModules.initContext();
 
 			YoloV7Test y = new YoloV7Test();
 //			y.yolov3_tiny_voc();

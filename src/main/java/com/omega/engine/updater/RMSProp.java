@@ -2,6 +2,7 @@ package com.omega.engine.updater;
 
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.normalization.NormalizationLayer;
+import com.omega.engine.nn.network.Network;
 import com.omega.engine.updater.gpu.RMSPropKernel;
 
 /**
@@ -19,6 +20,10 @@ public class RMSProp extends Updater {
 	
 	private float max = 0.01f;
 	
+	public RMSProp(Network network) {
+		this.net = network;
+	}
+	
 	@Override
 	public void update(Layer layer) {
 		// TODO Auto-generated method stub
@@ -29,11 +34,11 @@ public class RMSProp extends Updater {
 			
 			if(layer.hasBias) {
 
-				kernel = new RMSPropKernel(layer.weight.dataLength, layer.bias.dataLength);
+				kernel = new RMSPropKernel(layer.weight.dataLength, layer.bias.dataLength, net.cudaManager);
 				
 			}else {
 
-				kernel = new RMSPropKernel(layer.weight.dataLength);
+				kernel = new RMSPropKernel(layer.weight.dataLength, net.cudaManager);
 				
 			}
 			
@@ -65,7 +70,7 @@ public class RMSProp extends Updater {
 		 * init
 		 */
 		if(kernel == null) {
-			kernel = new RMSPropKernel(layer.gamma.dataLength, layer.beta.dataLength);
+			kernel = new RMSPropKernel(layer.gamma.dataLength, layer.beta.dataLength, net.cudaManager);
 		}
 
 		kernel.updateW(layer.diffGamma, layer.gamma, layer.network, layer.learnRate);
@@ -90,11 +95,11 @@ public class RMSProp extends Updater {
 			
 			if(layer.hasBias) {
 
-				kernel = new RMSPropKernel(layer.weight.dataLength, layer.bias.dataLength);
+				kernel = new RMSPropKernel(layer.weight.dataLength, layer.bias.dataLength, net.cudaManager);
 				
 			}else {
 
-				kernel = new RMSPropKernel(layer.weight.dataLength);
+				kernel = new RMSPropKernel(layer.weight.dataLength, net.cudaManager);
 				
 			}
 			

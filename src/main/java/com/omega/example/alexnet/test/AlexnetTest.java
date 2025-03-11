@@ -4,7 +4,6 @@ import java.io.File;
 
 import com.omega.common.utils.DataLoader;
 import com.omega.engine.gpu.CUDAMemoryManager;
-import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.data.DataSet;
 import com.omega.engine.nn.layer.ConvolutionLayer;
@@ -206,7 +205,7 @@ public class AlexnetTest {
 			
 			netWork.CUDNN = true;
 			
-			netWork.learnRate = 0.1f;
+			netWork.learnRate = 0.001f;
 			
 			InputLayer inputLayer = new InputLayer(channel, height, width);
 			
@@ -329,13 +328,13 @@ public class AlexnetTest {
 
 		try {
 
-	    	CUDAModules.initContext();
+//	    	CUDAModules.initContext();
 	    	
 	    	AlexnetTest alexnet = new AlexnetTest();
 	    	
-	    	alexnet.alexNet_mnist();
+//	    	alexnet.alexNet_mnist();
 	    	
-//	    	alexnet.alexNet_cifar10();
+	    	alexnet.alexNet_cifar10();
 			
 		} finally {
 			// TODO: handle finally clause

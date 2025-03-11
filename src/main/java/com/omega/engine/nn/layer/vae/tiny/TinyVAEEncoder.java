@@ -46,7 +46,7 @@ public class TinyVAEEncoder extends Layer {
 		block3 = new TinyVAEConvBlock(128, 256, block2.oHeight, block2.oWidth, network);
 		
 		convOut = new ConvolutionLayer(256, z_dims, block3.oWidth, block3.oHeight, 1, 1, 0, 1, true, this.network);
-		convOut.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		convOut.setUpdater(UpdaterFactory.create(this.network));
 		convOut.paramsInit = ParamsInit.leaky_relu;
 		
 	}

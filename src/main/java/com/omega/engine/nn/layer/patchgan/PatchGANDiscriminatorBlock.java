@@ -55,7 +55,7 @@ public class PatchGANDiscriminatorBlock extends Layer {
 				hasBias = true;
 			}
 			ConvolutionLayer conv = new ConvolutionLayer(convChannels[i], convChannels[i + 1], iw, ih, kernels[i], kernels[i], paddings[i], strides[i], hasBias, network);
-			conv.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+			conv.setUpdater(UpdaterFactory.create(this.network));
 			conv.paramsInit = ParamsInit.leaky_relu;
 
 			layers.add(conv);

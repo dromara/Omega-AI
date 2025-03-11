@@ -2,6 +2,7 @@ package com.omega.engine.updater;
 
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.normalization.NormalizationLayer;
+import com.omega.engine.nn.network.Network;
 import com.omega.engine.updater.gpu.AdamKernel;
 
 /**
@@ -13,6 +14,10 @@ public class Adam extends Updater {
 
 	private AdamKernel kernel;
 	
+	public Adam(Network network) {
+		this.net = network;
+	}
+	
 	@Override
 	public void update(Layer layer) {
 		// TODO Auto-generated method stub
@@ -23,11 +28,11 @@ public class Adam extends Updater {
 			
 			if(layer.hasBias) {
 
-				kernel = new AdamKernel(layer.weight.dataLength, layer.bias.dataLength);
+				kernel = new AdamKernel(layer.weight.dataLength, layer.bias.dataLength, net.cudaManager);
 				
 			}else {
 
-				kernel = new AdamKernel(layer.weight.dataLength);
+				kernel = new AdamKernel(layer.weight.dataLength, net.cudaManager);
 				
 			}
 			
@@ -62,9 +67,9 @@ public class Adam extends Updater {
 		 */
 		if(kernel == null) {
 			if(layer.beta != null){
-				kernel = new AdamKernel(layer.gamma.dataLength, layer.beta.dataLength);
+				kernel = new AdamKernel(layer.gamma.dataLength, layer.beta.dataLength, net.cudaManager);
 			}else {
-				kernel = new AdamKernel(layer.gamma.dataLength);
+				kernel = new AdamKernel(layer.gamma.dataLength, net.cudaManager);
 			}
 		}
 
@@ -99,11 +104,11 @@ public class Adam extends Updater {
 			
 			if(layer.hasBias) {
 
-				kernel = new AdamKernel(layer.weight.dataLength, layer.bias.dataLength);
+				kernel = new AdamKernel(layer.weight.dataLength, layer.bias.dataLength, net.cudaManager);
 				
 			}else {
 
-				kernel = new AdamKernel(layer.weight.dataLength);
+				kernel = new AdamKernel(layer.weight.dataLength, net.cudaManager);
 				
 			}
 			

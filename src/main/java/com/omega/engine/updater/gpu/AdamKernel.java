@@ -3,10 +3,10 @@ package com.omega.engine.updater.gpu;
 import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 
 import com.omega.common.data.Tensor;
-import com.omega.common.lib.LibPaths;
 import com.omega.common.utils.RandomUtils;
+import com.omega.engine.gpu.BaseKernel;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
-import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.loss.SoftmaxWithCrossEntropyLoss;
 import com.omega.engine.nn.network.BPNetwork;
 import com.omega.engine.nn.network.Network;
@@ -14,7 +14,7 @@ import com.omega.engine.nn.network.Network;
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
 
-public class AdamKernel {
+public class AdamKernel extends BaseKernel{
 	
 	public Tensor mw;
 	
@@ -38,13 +38,15 @@ public class AdamKernel {
 	
 	private Pointer kernelBiasParameters;
 	
-	public AdamKernel(int weightLength) {
+	public AdamKernel(int weightLength, CUDAManager cudaManager) {
+		super(cudaManager);
 		this.mw = new Tensor(1, 1, 1, weightLength, true);
 		this.vw = new Tensor(1, 1, 1, weightLength, true);
 		init();
 	}
 	
-	public AdamKernel(int weightLength,int biasLength) {
+	public AdamKernel(int weightLength,int biasLength, CUDAManager cudaManager) {
+		super(cudaManager);
 		this.mw = new Tensor(1, 1, 1, weightLength, true);
 		this.vw = new Tensor(1, 1, 1, weightLength, true);
 		this.mb = new Tensor(1, 1, 1, biasLength, true);
@@ -66,13 +68,13 @@ public class AdamKernel {
 
 			if(function == null) {
 
-				function = CUDAModules.getLocalFunctionByModule("updater.cu", "adam");
+				function = getCudaManager().getLocalFunctionByModule("updater.cu", "adam");
 				
 			}
 			
 			if(bn_function == null) {
 				
-				bn_function = CUDAModules.getLocalFunctionByModule("updater.cu", "adam_bn");
+				bn_function = getCudaManager().getLocalFunctionByModule("updater.cu", "adam_bn");
 				
 			}
 			
@@ -320,6 +322,7 @@ public class AdamKernel {
 	
 
 	public static void main(String args[]){	
+			CUDAManager cudaManager = new CUDAManager(0);
 	    	int N = 2;
 	    	int C = 1;
 	    	int H = 1;
@@ -338,7 +341,7 @@ public class AdamKernel {
 	    	BPNetwork net = new BPNetwork(new SoftmaxWithCrossEntropyLoss());
 	    	net.train_time = 1;
 	    	net.number = N;
-	    	AdamKernel k = new AdamKernel(bias1.length);
+	    	AdamKernel k = new AdamKernel(bias1.length, cudaManager);
 
 	    	k.updateGama(delta, w, net, 0.0001f);
 	    	delta.showDM();

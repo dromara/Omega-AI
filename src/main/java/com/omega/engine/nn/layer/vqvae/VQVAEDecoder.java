@@ -68,7 +68,7 @@ public class VQVAEDecoder extends Layer {
 	public void initLayers() {
 
 		convIn = new ConvolutionLayer(channel, midChannels[midChannels.length - 1], width, height, 3, 3, 1, 1, true, this.network);
-		convIn.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		convIn.setUpdater(UpdaterFactory.create(this.network));
 		convIn.paramsInit = ParamsInit.silu;
 
 		// mid
@@ -99,7 +99,7 @@ public class VQVAEDecoder extends Layer {
 		convAct = new SiLULayer(convNormOut);
 
 		convOut = new ConvolutionLayer(outc, oChannel, iw, ih, 3, 3, 1, 1, true, this.network);
-		convOut.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		convOut.setUpdater(UpdaterFactory.create(this.network));
 		convOut.paramsInit = ParamsInit.silu;
 		
 		outAct = new TanhLayer(convOut);

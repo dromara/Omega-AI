@@ -48,7 +48,7 @@ public class BertEncoderLayer extends Layer{
 	public BertEncoderLayer(int headNum,int time,int hiddenSize,int intermediateSize,int numHiddenLayers,Network network) {
 		this.network = network;
 		if(this.updater == null) {
-			this.setUpdater(UpdaterFactory.create(network.updater, network.updaterParams));
+			this.setUpdater(UpdaterFactory.create(network));
 		}
 		this.numHiddenLayers = numHiddenLayers;
 		this.intermediateSize = intermediateSize;

@@ -54,7 +54,7 @@ public class TAEEncoder extends Layer {
 			}else {
 				headConv = new ConvolutionLayer(numChannels, numChannels, iw, ih, 3, 3, 1, 2, false, this.network);
 			}
-			headConv.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+			headConv.setUpdater(UpdaterFactory.create(this.network));
 			headConv.paramsInit = ParamsInit.relu;
 			
 			layers.add(headConv);
@@ -69,7 +69,7 @@ public class TAEEncoder extends Layer {
 		}
 		
 		ConvolutionLayer fail = new ConvolutionLayer(numChannels, oChannel, iw, ih, 3, 3, 1, 1, true, this.network);
-		fail.setUpdater(UpdaterFactory.create(this.network.updater, this.network.updaterParams));
+		fail.setUpdater(UpdaterFactory.create(this.network));
 		fail.paramsInit = ParamsInit.relu;
 		layers.add(fail);
 		
