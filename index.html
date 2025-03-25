@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="zh">
+	<head>
+		<meta charset="UTF-8">
+		<title>Omega-AI</title>
+		<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+		<meta name="description"
+			content="Omega-AI是基于Java打造的深度学习框架，框架目前支持BP神经网络、卷积神经网络、循环神经网络、Vgg16、Resnet、Yolo、Lstm、transformer、Tpt、Llama、diffusion、stable diffusion等模型的构建，目前引擎最新版本支持CUDA和CUDNN两种GPU加速方式，关于GPU加速的环境配置与jcuda版本jar包的对应依赖，引擎中所实现的模型和算法除了使用cuda和cudnn相关依赖包之外均不使用任何API和第三方依赖包">
+		<meta name="keywords" content="omega-ai,omega-ai文档,文档,教程,ai,人工智能,神经网络,深度学习,深度学习框架,java">
+		<meta name="viewport"
+			content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+		<link rel="shortcut icon" type="image/x-icon" href="logo.png">
+		<link rel="stylesheet" href="static/index.css">
+		<link rel="stylesheet" href="static/swiper/swiper-bundle.min.css">
+		<link rel="stylesheet" href="static/swiper/index-swiper.css">
+	</head>
+	<body>
+		<!-- 总盒子 -->
+		<div class="z-div" style="">
+
+			<!-- ------------ 头部 ------------- -->
+			<header class="doc-header">
+				<div class="nav-left">
+					<a href="./">
+						<div class="logo-box">
+							<img src="./logo.png" title="logo" />
+							<span class="logo-text">Omega-AI</span>
+						</div>
+					</a>
+				</div>
+				<nav class="nav-right">
+					<a class="wzi" href="index.html">首页</a>
+					<a class="wzi" href="doc.html">文档</a>
+					<a class="p-none wzi" href="doc.html#/doc/more/link">案例</a>
+					<div class="zk-box">
+						<a class="wzi" href="javascript:;">
+							<span>视频 </span>
+							<span class="zk-icon"></span>
+						</a>
+						<div class="zk-context">
+							<div>
+								<a href="#" target="_blank">什么是神经网络（5集）</a>
+								<a href="#" target="_blank">得分函数（6集）</a>
+								<a href="#" target="_blank">损失函数（8集）</a>
+								<div class="zk-fengexian"></div>
+								<a href="javascript: layer.alert('如您有 Omega-AI 相关课程录制，请联系官网文档右侧 < omega-ai 小助手 > 进行提交');">
+									[ + 课程提交 ]
+								</a>
+							</div>
+						</div>
+					</div>
+					<a class="p-none wzi" href="doc.html#/doc/more/demand-commit">需求提交</a>
+					<!-- <a class="p-none wzi" href="doc.html#/doc/more/blog">博客</a> -->
+					<a class="p-none wzi" href="doc.html#/doc/more/join-group">加入讨论群</a>
+					<a class="p-none wzi" href="doc.html#/doc/more/donate">赞助</a>
+					<div class="zk-box">
+						<a class="wzi" href="javascript:;">
+							<span>相关资源 </span>
+							<span class="zk-icon"></span>
+						</a>
+						<div class="zk-context">
+							<div>
+								<a href="doc.html#/doc/more/update-log">更新日志</a>
+								<a href="doc.html#/doc/more/common-questions">常见报错</a>
+								<a href="doc.html#/doc/more/blog">相关博客</a>
+								<div class="zk-fengexian"></div>
+								<a href="doc.html#/doc/fun/omega-ai-test">在线考试</a>
+								<a href="doc.html#/doc/fun/issue-template">在线提问</a>
+								<a href="doc.html#/doc/more/wenjuan">问卷调查</a>
+							</div>
+						</div>
+					</div>
+					<!-- github小章鱼图标 -->
+					<a href="https://github.com/dromara/omega-ai" target="_blank" class="github-corner"
+						aria-label="View source on Github" style="position: fixed; right: -16px; padding-left: 0px;">
+						<svg viewBox="0 0 250 250" aria-hidden="true">
+							<path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path>
+							<path
+								d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2"
+								fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path>
+							<path
+								d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z"
+								fill="currentColor" class="octo-body"></path>
+						</svg>
+					</a>
+				</nav>
+			</header>
+
+			<!-- ------------ 海报部分 ------------- -->
+			<div class="main-box">
+				<div class="content-box">
+					<!-- <div class="fenge"></div> -->
+					<h1>Omega-AI<small>v1.30.0</small></h1>
+					<div class="sub-title">
+						<span class="sub-title-nr">基于 Java 打造的 Omega-AI 深度学习框架，支持多种神经网络及模型构建除 cuda 和 cudnn 相关依赖，无其他 API 及第三方依赖包！</span>
+						<div class="gb-cursor">&nbsp;</div>
+					</div>
+					<div class="btn-box">
+						<a class="abtn" href="doc.html#/doc/more/demand-commit" target="_self">需求提交</a>
+						<a class="abtn" href="doc.html#/doc/more/join-group" target="_self">加入讨论群</a>
+						<a class="abtn doc-btn" href="doc.html" target="_self">在线文档 →</a>
+					</div>
+					<h4 align="center" class="badge-box">
+						<a href="https://gitee.com/dromara/Omega-AI/stargazers"><img class="lazy"
+								data-original="https://gitee.com/dromara/Omega-AI/badge/star.svg?theme=gvp"></a>
+						<a href="https://gitee.com/dromara/Omega-AI/members"><img class="lazy"
+								data-original="https://gitee.com/dromara/Omega-AI/badge/fork.svg?theme=gvp"></a>
+						<a href="https://gitcode.com/dromara/Omega-AI/stargazers"><img class="lazy"
+								data-original="https://gitcode.com/dromara/Omega-AI/star/badge.svg"></a>
+						<a href="https://github.com/dromara/Omega-AI/stargazers"><img class="lazy"
+								data-original="https://img.shields.io/github/stars/dromara/Omega-AI?style=flat-square&logo=GitHub"></a>
+						<a href="https://github.com/dromara/Omega-AI/network/members"><img class="lazy"
+								data-original="https://img.shields.io/github/forks/dromara/Omega-AI?style=flat-square&logo=GitHub"></a>
+						<a href="https://github.com/dromara/Omega-AI/watchers"><img class="lazy"
+								data-original="https://img.shields.io/github/watchers/dromara/Omega-AI?style=flat-square&logo=GitHub"></a>
+						<a href="https://github.com/dromara/Omega-AI/blob/master/LICENSE"><img class="lazy"
+								data-original="https://img.shields.io/github/license/dromara/Omega-AI.svg?style=flat-square"></a>
+					</h4>
+					<div class="qt-pt-box">
+						<a href="https://gitee.com/dromara/Omega-AI" target="_blank">
+							<img src="static/img/gitee.png" alt="">
+						</a>
+						<a href="https://gitcode.com/dromara/Omega-AI" target="_blank">
+							<img src="static/img/gitcode.png" alt="">
+						</a>
+						<a href="https://github.com/dromara/Omega-AI" target="_blank">
+							<img src="static/img/github.png" alt="">
+						</a>
+<!--						<span class="dmt-link">-->
+<!--							<img class="dmt-img" src="https://oss.dev33.cn/omega-ai/img/zong-4.png" alt="">-->
+<!--							<span class="dmt-tips">B站、抖音、视频号 ...</span>-->
+<!--							<div class="dmt-detail">-->
+<!--								<h4>关注我们 → 分享“Java深度学习框架设计及应用开发”干货视频</h4>-->
+<!--								<div class="dmt-item-box">-->
+<!--									<div class="dmt-item dmt-item-bilibili">-->
+<!--										<a href="https://space.bilibili.com/3546758575557094" target="_blank">-->
+<!--											<img class="dmt-qr-img" src="https://oss.dev33.cn/omega-ai/img/bilibili-qr-fang.png" alt="">-->
+<!--											<img class="dmt-logo-img" src="https://oss.dev33.cn/omega-ai/img/bilibili-light.png" alt="">-->
+<!--										</a>-->
+<!--									</div>-->
+<!--									<div class="dmt-item dmt-item-douyin">-->
+<!--										<a href="https://www.douyin.com/user/MS4wLjABAAAArVqj2lGRurfj-9eO0T12q6_vrbIK-Om9bi3eo4OwB2g" target="_blank">-->
+<!--											<img class="dmt-qr-img" src="https://oss.dev33.cn/omega-ai/img/douyin-qr-fang.png" alt="">-->
+<!--											<img class="dmt-logo-img" src="https://oss.dev33.cn/omega-ai/img/douyin-light.png" alt="">-->
+<!--										</a>-->
+<!--									</div>-->
+<!--									<div class="dmt-item dmt-item-wxsph">-->
+<!--										<a href="javascript: layer.msg('微信视频号暂未提供PC网站，请在手机微信扫码订阅');">-->
+<!--											<img class="dmt-qr-img" src="https://oss.dev33.cn/omega-ai/img/wxsph-qr-fang.png" alt="">-->
+<!--											<img class="dmt-logo-img" src="https://oss.dev33.cn/omega-ai/img/wxsph-light.png" alt="">-->
+<!--										</a>-->
+<!--									</div>-->
+<!--								</div>-->
+<!--							</div>-->
+<!--						</a>-->
+					</div>
+				</div>
+			</div>
+
+			<!-- ------------ 支持特性 ------------- -->
+			<div>
+				<div class="feature-z s-width">
+					<h2 class="s-title s-title-tx">Omega-AI 核心功能</h2>
+					<div class="feature-box">
+						<div class="feature">
+							<h2>⚡️ 神经网络</h2>
+							<p>BPNetwork bp神经网络、CNN卷积神经网络、RNN 循环神经网络、LSTM 长短期记忆网络…… 多种神经网络全Java实现</p>
+						</div>
+						<div class="feature">
+							<h2>🔑️️ 激活函数</h2>
+							<p>ReluLayer、LeakyReluLayer、TanhLayer、SigmodLayer、SiLULayer……多种激活函数纯手撸</p>
+						</div>
+						<div class="feature">
+							<h2>🔑️️ 损失函数</h2>
+							<p>MSELoss、CrossEntropyLoss、CrossEntropyLossWithSoftmax、MultiLabelSoftMargin……多种灵活损失函数实现</p>
+						</div>
+						<div class="feature">
+							<h2>⛏️ 网络层</h2>
+							<p>Fullylayer全连接层、ConvolutionLayer卷积层、RouteLayer 路由层等…… 提供完善的网络层类型从零到一方案</p>
+						</div>
+						<div class="feature">
+							<h2>🔎 归一化</h2>
+							<p>提供BNLayer批归一化、LNLayer 层归一化、InstanceNormaliztionLayer 实例归一化、RMSLayer 均方根归一化</p>
+						</div>
+						<div class="feature">
+							<h2>🚀️️ 优化器</h2>
+							<p>内置多种优化器，适配Momentum、Sgd、Adam等场景</p>
+						</div>
+						<div class="feature">
+							<h2>️🍃 训练器</h2>
+							<p>实现MBSGDOptimizer训练器，提供给小白直接使用</p>
+						</div>
+						<div class="feature">
+							<h2>🍂 学习率更新器</h2>
+							<p>实现CONSTANT、LR_DECAY、GD_GECAY、POLY等学习率覆盖CV到LLM模型</p>
+						</div>
+						<div class="feature">
+							<h2>🗳️ 开箱即用</h2>
+							<p>提供SpringBoot从零到一实现的多种深度学习模型案例与模型及权重，真正的开箱即用……</p>
+						</div>
+					</div>
+					<div class="re-text">
+						<span>Omega-AI 带领您手把手使用Java熟练掌握深度学习！</span>
+						<a href="#" target="_blank">点击查看学习思维图(敬请期待)</a>
+					</div>
+				</div>
+			</div>
+
+			<!-- ------------ 曾获荣誉 ------------- -->
+			<div>
+				<div class="feature-z ry-kuai">
+					<div class="s-fenge"></div>
+					<h2 class="s-title">曾获荣誉</h2>
+					<div class="ry-box">
+						<div class="swiper mySwiper">
+							<div class="swiper-wrapper">
+								<div class="swiper-slide">
+									<img src="static/img/gitee_ry.jpg" /> <br>
+									<p>GVP - Gitee 最有价值开源项目</p>
+								</div>
+								<div class="swiper-slide">
+									<img src="static/img/gitcode_ry.jpg" /> <br>
+									<p>GitCode G-Star 优质开源项目</p>
+								</div>
+								<div class="swiper-slide">
+									<img src="static/img/dromara-2024-tzds.jpg" /> <br>
+									<p>所在开源社区 “Dromara” 荣获《2024中国互联网发展创新与投资大赛（开源）》二等奖。</p>
+								</div>
+								<div class="swiper-slide" style="width: 750px;">
+									<img src="static/img/gitee_top.png" /> <br>
+									<p>Gitee Java深度学习项目推荐榜 Top 1</p>
+								</div>
+							</div>
+							<div class="swiper-button-next"></div>
+							<div class="swiper-button-prev"></div>
+							<div class="swiper-pagination"></div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+
+			<!-- ------------ 赞助者名单 ------------- -->
+<!--			<div style="margin-top: -30px;">-->
+<!--				<div class="feature-z">-->
+<!--					<h2 class="s-title">赞助者名单（感谢！感谢！感谢！）</h2>-->
+<!--					<div class="">-->
+<!--						<div class="zanzhu-box s-width">-->
+<!--							<div class="zanzhu-sort-box">-->
+<!--								<span class="zanzhu-sort-btn zz-sort-native" sort-value="1">日期排序</span>-->
+<!--								<span> | </span>-->
+<!--								<span class="zanzhu-sort-btn" sort-value="2">赞助额排序</span>-->
+<!--							</div>-->
+<!--							<table class="zanzhu-table" cellspacing="0" border="1" bordercolor="e9e9e9">-->
+<!--								<thead>-->
+<!--									<tr>-->
+<!--										<th>赞助人</th>-->
+<!--										<th>赞助金额</th>-->
+<!--										<th>留言</th>-->
+<!--										<th style="width: 100px;">时间</th>-->
+<!--									</tr>-->
+<!--								</thead>-->
+<!--								<tbody>-->
+<!--									&lt;!&ndash; <tr>-->
+<!--										<td>时间很快</td>-->
+<!--										<td>赞助金额</td>-->
+<!--										<td>感谢您的开源项目！</td>-->
+<!--										<td>2023-10-27</td>-->
+<!--									</tr> &ndash;&gt;-->
+<!--								</tbody>-->
+<!--							</table>-->
+<!--							&lt;!&ndash; 一些按钮 &ndash;&gt;-->
+<!--							<div class="zz-btn-box">-->
+<!--								<button onclick="prevPageRDT()"> < </button>-->
+<!--								<span class="zz-pageInfo">第 1/1 页</span>-->
+<!--								<button onclick="nextPageRDT()"> > </button>-->
+<!--							</div>-->
+<!--							<div style="height: 30px;"></div>-->
+<!--							<p>-->
+<!--								（如果您也有赞助 omega-ai 的想法，可以参考：-->
+<!--								<a href="doc.html#/doc/more/omega-ai-donate" style="color: #999;">赞助名单</a>-->
+<!--								）-->
+<!--							</p>-->
+<!--						</div>-->
+<!--					</div>-->
+<!--				</div>-->
+<!--			</div>-->
+
+
+
+			<!-- ------------ 开源案例 ------------- -->
+<!--			<div>-->
+<!--				<div class="feature-z s-width">-->
+<!--					<div class="s-fenge"></div>-->
+<!--					<h2 class="s-title" style="margin-top: 80px;">优秀开源集成案例</h2>-->
+<!--					<div class="feature-box s-case-box">-->
+<!--						<div class="s-case">-->
+<!--							<a href="#" target="_blank" class="s-case-link">-->
+<!--								<img class="lazy" data-original="这是图片链接">-->
+<!--							</a>-->
+<!--							<h3 class="s-case-title">项目名称</h3>-->
+<!--							<span class="s-author"> 作者名称 </span>-->
+<!--							<p class="s-case-intro">项目描述</p>-->
+<!--						</div>-->
+<!--					</div>-->
+<!--					<div class="re-text">-->
+<!--						<span>-->
+<!--							如果您的开源项目也使用了 Omega-AI，您可以-->
+<!--							<a href="https://gitee.com/Omega-AI" target="_blank"-->
+<!--								style="text-decoration: none;">在此</a>-->
+<!--							提交-->
+<!--						</span>-->
+<!--					</div>-->
+<!--					-->
+<!--					<div style=" margin: 40px 14px 0; padding: 20px 0 10px; background-color: #f4f5f7;">-->
+<!--						<h3 style="padding: 5px 0 20px; color: #333;">Omega-AI 官方公众号（正在构建中），及时接收框架更新通知、技术文章</h3>-->
+<!--						<img class="lazy gzh-qr" data-original="https://oss.dev33.cn/omega-ai/lykj-gzh.jpg" style="width: 150px; cursor: pointer;">-->
+<!--					</div>-->
+<!--				</div>-->
+<!--			</div>-->
+
+
+
+			<!-- ------------ 使用公司 ------------- -->
+<!--			<div>-->
+<!--				<div class="com-box-f s-width">-->
+<!--					<div class="s-fenge"></div>-->
+<!--					<br>-->
+<!--					<h2 class="s-title">正在使用 Omega-AI 的企业 / 机构</h2>-->
+<!--					<div class="com-box">-->
+<!--						<a href="企业官网" target="_blank" title="公司名称">-->
+<!--							<img class="lazy" data-original="企业logo">-->
+<!--						</a>-->
+<!--					</div>-->
+<!--					<div style="height: 10px; clear: both;"></div>-->
+<!--					<p>-->
+<!--						（如果您的企业也使用了 Omega-AI，您可以-->
+<!--						<a href="https://gitee.com/dromara/omega-ai/issues/IBW7CV" target="_blank"-->
+<!--							style="text-decoration: none;">在此</a>-->
+<!--						提交）-->
+<!--					</p>-->
+<!--				</div>-->
+<!--				<div style="height: 60px;"></div>-->
+<!--			</div>-->
+
+
+			<!-- ------------ Dromara 成员项目 ------------- -->
+			<div>
+				<div class="com-box-f s-width">
+					<div class="s-fenge"></div>
+					<br>
+					<h2 class="s-title">
+						Dromara 成员项目
+					</h2>
+					<div class="com-box com-box-you table-show-pj">
+						<a href="https://gitee.com/dromara/TLog" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/tlog.png"
+								msg="一个轻量级的分布式日志标记追踪神器，10分钟即可接入，自动对日志打标签完成微服务的链路追踪">
+						</a>
+						<a href="https://gitee.com/dromara/liteFlow" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/liteflow.png"
+								msg="轻量，快速，稳定，可编排的组件式流程引擎">
+						</a>
+						<a href="https://hutool.cn/" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/hutool.jpg"
+								msg="小而全的Java工具类库，使Java拥有函数式语言般的优雅，让Java语言也可以“甜甜的”。">
+						</a>
+						<a href="https://sa-token.cc/" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/sa-token.png"
+								msg="一个轻量级 java 权限认证框架，让鉴权变得简单、优雅！">
+						</a>
+						<a href="https://gitee.com/dromara/hmily" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/hmily.png"
+								msg="高性能一站式分布式事务解决方案。">
+						</a>
+						<a href="https://gitee.com/dromara/Raincat" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/raincat.png"
+								msg="强一致性分布式事务解决方案。">
+						</a>
+						<a href="https://gitee.com/dromara/myth" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/myth.png"
+								msg="可靠消息分布式事务解决方案。">
+						</a>
+						<a href="https://cubic.jiagoujishu.com/" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/cubic.png"
+								msg="一站式问题定位平台，以agent的方式无侵入接入应用，完整集成arthas功能模块，致力于应用级监控，帮助开发人员快速定位问题">
+						</a>
+						<a href="https://maxkey.top/" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/maxkey.png"
+								msg="业界领先的身份管理和认证产品">
+						</a>
+						<a href="http://forest.dtflyx.com/" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/forest-logo.png"
+								msg="Forest能够帮助您使用更简单的方式编写Java的HTTP客户端" nf>
+						</a>
+						<a href="https://jpom.top/" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/jpom.png"
+								msg="一款简而轻的低侵入式在线构建、自动部署、日常运维、项目监控软件">
+						</a>
+						<a href="https://su.usthe.com/" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/sureness.png"
+								msg="面向 REST API 的高性能认证鉴权框架">
+						</a>
+						<a href="https://easy-es.cn/" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/easy-es2.png"
+								msg="傻瓜级ElasticSearch搜索引擎ORM框架">
+						</a>
+						<a href="https://gitee.com/dromara/northstar" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/northstar_logo.png"
+								msg="Northstar盈富量化交易平台">
+						</a>
+						<a href="https://dromara.gitee.io/fast-request/" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/fast-request.gif"
+								msg="Idea 版 Postman，为简化调试API而生">
+						</a>
+						<a href="https://www.jeesuite.com/" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/mendmix.png"
+								msg="开源分布式云原生架构一站式解决方案">
+						</a>
+						<a href="https://gitee.com/dromara/koalas-rpc" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/koalas-rpc2.png"
+								msg="企业生产级百亿日PV高可用可拓展的RPC框架。">
+						</a>
+						<a href="https://async.sizegang.cn/" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/gobrs-async.png"
+								msg="配置极简功能强大的异步任务动态编排框架">
+						</a>
+						<a href="https://dynamictp.cn/" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/dynamic-tp.png"
+								msg="基于配置中心的轻量级动态可监控线程池">
+						</a>
+						<a href="https://www.x-easypdf.cn" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/x-easypdf.png"
+								msg="一个用搭积木的方式构建pdf的框架（基于pdfbox）">
+						</a>
+						<a href="http://dromara.gitee.io/image-combiner" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/image-combiner.png"
+								msg="一个专门用于图片合成的工具，没有很复杂的功能，简单实用，却不失强大">
+						</a>
+						<a href="https://www.herodotus.cn/" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/dante-cloud2.png"
+								msg="Dante-Cloud 是一款企业级微服务架构和服务能力开发平台。">
+						</a>
+						<a href="http://www.mtruning.club" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/go-view.png"
+								msg="低代码数据可视化开发平台">
+						</a>
+						<a href="https://tangyh.top/" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/lamp-cloud.png"
+								msg="微服务中后台快速开发平台，支持租户(SaaS)模式、非租户模式">
+						</a>
+						<a href="https://www.redisfront.com/" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/redis-front.png"
+								msg="RedisFront 是一款开源免费的跨平台 Redis 桌面客户端工具, 支持单机模式, 集群模式, 哨兵模式以及 SSH 隧道连接, 可轻松管理Redis缓存数据.">
+						</a>
+						<a href="https://www.yuque.com/u34495/mivcfg" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/electron-egg.png"
+								msg="一个入门简单、跨平台、企业级桌面软件开发框架">
+						</a>
+						<a href="https://gitee.com/dromara/open-capacity-platform" target="_blank">
+							<img class="lazy"
+								data-original="https://oss.dev33.cn/sa-token/link/open-capacity-platform.jpg"
+								msg="简称ocp是基于Spring Cloud的企业级微服务框架(用户权限管理，配置中心管理，应用管理，....)">
+						</a>
+						<a href="http://easy-trans.fhs-opensource.top/" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/easy_trans.png"
+								msg="Easy-Trans 一个注解搞定数据翻译,减少30%SQL代码量">
+						</a>
+						<a href="https://gitee.com/dromara/neutrino-proxy" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/neutrino-proxy.svg"
+								msg="一款基于 Netty 的、开源的内网穿透神器。">
+						</a>
+						<a href="https://gitee.com/dromara/zyplayer-doc" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/zyplayer-doc.png"
+								msg="zyplayer-doc是一款适合团队和个人使用的WIKI文档管理工具，同时还包含数据库文档、Api接口文档。">
+						</a>
+						<a href="https://gitee.com/dromara/payment-spring-boot" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/payment-spring-boot.png"
+								msg="最全最好用的微信支付V3 Spring Boot 组件。">
+						</a>
+						<a href="https://www.j2eefast.com/" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/j2eefast.png"
+								msg="J2eeFAST 是一个致力于中小企业 Java EE 企业级快速开发平台,我们永久开源!">
+						</a>
+						<a href="https://gitee.com/dromara/data-compare" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/dataCompare.png"
+								msg="数据库比对工具：hive 表数据比对，mysql、Doris 数据比对，实现自动化配置进行数据比对，避免频繁写sql 进行处理，低代码(Low-Code) 平台">
+						</a>
+						<a href="https://gitee.com/dromara/open-giteye-api" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/open-giteye-api.svg"
+								msg="giteye.net 是专为开源作者设计的数据图表服务工具类站点，提供了包括 Star 趋势图、贡献者列表、Gitee指数等数据图表服务。">
+						</a>
+						<a href="https://gitee.com/dromara/RuoYi-Vue-Plus" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/RuoYi-Vue-Plus.png"
+								msg="后台管理系统 重写 RuoYi-Vue 所有功能 集成 Sa-Token + Mybatis-Plus + Jackson + Xxl-Job + SpringDoc + Hutool + OSS 定期同步">
+						</a>
+						<a href="https://gitee.com/dromara/RuoYi-Cloud-Plus" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/RuoYi-Cloud-Plus.png"
+								msg="微服务管理系统 重写RuoYi-Cloud所有功能 整合 SpringCloudAlibaba Dubbo3.0 Sa-Token Mybatis-Plus MQ OSS ES Xxl-Job Docker 全方位升级 定期同步">
+						</a>
+						<a href="https://gitee.com/dromara/stream-query" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/stream-query.png"
+								msg="允许完全摆脱 Mapper 的 mybatis-plus 体验！封装 stream 和 lambda 操作进行数据返回处理。">
+						</a>
+						<a href="https://wind.kim/" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/sms4j.png"
+								msg="短信聚合工具，让发送短信变的更简单。">
+						</a>
+						<a href="https://cloudeon.top/" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/cloudeon.png"
+								msg="简化kubernetes上大数据集群的运维管理">
+						</a>
+						<a href="https://github.com/dromara/hodor" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/hodor.png"
+								msg="Hodor是一个专注于任务编排和高可用性的分布式任务调度系统。">
+						</a>
+						<a href="http://nsrule.com/" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/test-hub.png"
+								msg="流程编排，插件驱动，测试无限可能">
+						</a>
+						<a href="https://gitee.com/dromara/disjob" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/disjob-2.png"
+								msg="Disjob是一个分布式的任务调度框架">
+						</a>
+						<a href="https://gitee.com/dromara/binlog4j" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/Binlog4j.png"
+								msg="轻量级 Mysql Binlog 客户端, 提供宕机续读, 高可用集群等特性">
+						</a>
+						<a href="https://gitee.com/dromara/yft-design" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/yft-design.png"
+								msg="基于 Canvas 的开源版 创客贴 支持导出json，svg, image文件。">
+						</a>
+						<a href="https://gitee.com/dromara/x-file-storage" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/x-file-storage.svg"
+								msg="在 SpringBoot 中通过简单的方式将文件存储到 本地、阿里云 OSS、腾讯云 COS、七牛云 Kodo等">
+						</a>
+						<a href="https://wemq.nicholasld.cn/" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/wemq.png"
+								msg="开源、高性能、安全、功能强大的物联网调试和管理解决方案。">
+						</a>
+						<a href="https://gitee.com/dromara/mayfly-go" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/mayfly-go.png"
+								msg="web 版 linux(终端[终端回放] 文件 脚本 进程 计划任务)、数据库（mysql postgres）、redis(单机 哨兵 集群)、mongo 统一管理操作平台">
+						</a>
+						<a href="https://akali.yomahub.com/" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/akali.png"
+								msg="Akali(阿卡丽)，轻量级本地化热点检测/降级框架，10秒钟即可接入使用！大流量下的神器">
+						</a>
+						<a href="https://gitee.com/dromara/dbswitch" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/dbswitch.png"
+								msg="异构数据库迁移同步(搬家)工具。">
+						</a>
+						<a href="https://gitee.com/dromara/easyAi" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/easyAI.png"
+								msg="Java 傻瓜式 AI 框架。">
+						</a>
+						<a href="https://gitee.com/dromara/tianai-captcha" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/tianai-captcha.png"
+								msg="可能是java界最好的开源行为验证码 captcha、captcha、captcha、captcha、tianai-captcha [滑块验证码、点选验证码、行为验证码、旋转验证码， 滑动验证码]。">
+						</a>
+						<a href="https://gitee.com/dromara/mybatis-plus-ext" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/mybatis-plus-ext.png"
+								msg="mybatis-plus 框架的增强拓展包。">
+						</a>
+						<a href="https://gitee.com/dromara/dax-pay" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/dax-pay.png"
+								msg="免费开源的支付网关。">
+						</a>
+						<a href="https://gitee.com/dromara/sayOrder" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/sayorder.png"
+								msg="基于easyAi引擎的JAVA高性能，低成本，轻量级智能客服。">
+						</a>
+						<a href="https://gitee.com/dromara/mybatis-jpa-extra" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/mybatis-jpa-extra.png"
+								msg="扩展MyBatis JPA支持，简化CUID操作，增强SELECT分页查询">
+						</a>
+						<a href="https://newcar.js.org/zh/" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/newcar.png"
+								msg="现代化的动画引擎">
+						</a>
+						<a href="http://warm-flow.cn" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/warm-flow.png"
+								msg="国产自研工作流，其特点简洁(只有6张表)但又不简单，五脏俱全，组件独立，可扩展，可满足中小项目的组件。">
+						</a>
+						<a href="https://gitee.com/dromara/dy-java" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/dy-java.png"
+								msg="DyJava是一款功能强大的抖音Java开发工具包">
+						</a>
+						<a href="https://gitee.com/dromara/MilvusPlus" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/MilvusPlus-logo.png"
+								msg="MilvusPlus（简称 MP）是一个 Milvus 的操作工具，旨在简化与 Milvus 向量数据库的交互，为开发者提供类似 MyBatis-Plus 注解和方法调用风格的直观 API,提高效率而生。">
+						</a>
+						<a href="http://www.easy-query.com/easy-query-doc/" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/easy-query.png"
+								msg="java下唯一一款同时支持强类型对象关系查询和强类型SQL语法查询的ORM,拥有对象模型筛选、隐式子查询、隐式join、显式子查询、显式join,支持Java/Kotlin">
+						</a>
+						<a href="https://gitee.com/dromara/orion-visor" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/horizontal.png"
+								msg="一款高颜值、现代化的智能运维&轻量堡垒机平台。">
+						</a>
+						<a href="https://www.ujcms.com/" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/ujcms.png"
+								msg="Java开源网站内容管理系统(java cms)。使用SpringBoot、MyBatis、Vue3、ElementPlus、Vite、TypeScript等技术开发。">
+						</a>
+						<a href="https://gitee.com/dromara/skyeye" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/skyeye-logo.png"
+								msg="智能制造一体化，采用Springboot + winUI的低代码平台开发模式。包含30多个应用模块、50多种电子流程">
+						</a>
+						<a href="https://domain-admin.cn/" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/domain-admin.png"
+								msg="SSL证书监测平台，申请证书，自动续签，到期提醒。">
+						</a>
+						<a href="https://gitee.com/dromara/carbon" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/carbon.png"
+								msg="轻量级、语义化、对开发者友好的 golang 时间处理库">
+						</a>
+						<a href="https://gitee.com/dromara/mica-mqtt" target="_blank">
+							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/mica-mqtt.png"
+								msg="java mqtt 基于 java aio 实现，开源、简单、易用、低延迟、高性能百万级 java mqtt client 组件和 java mqtt broker 服务。">
+						</a>
+<!--						<a href="https://dromara.org/zh/projects/" target="_blank">-->
+<!--							<img class="lazy" data-original="https://oss.dev33.cn/sa-token/link/dromara.png"-->
+<!--								msg="让每一位开源爱好者，体会到开源的快乐。">-->
+<!--						</a>-->
+					</div>
+					<div style="height: 10px; clear: both;"></div>
+					<p>
+						为往圣继绝学，一个人或许能走的更快，但一群人会走的更远。
+					</p>
+					<!-- <div style=" margin: 40px 14px 0; padding: 20px 0 10px; background-color: #f4f5f7;">
+						<h3 style="padding: 0px 0 10px; ">Dromara 知识星球</h3>
+						<img class="lazy" data-original="https://oss.dev33.cn/sa-token/dromara-xingqiu--sa-token.jpg"
+							style="width: 300px;">
+					</div> -->
+				</div>
+				<div style="height: 30px;"></div>
+			</div>
+
+			<!-- ------------ 友情链接 ------------- -->
+<!--			<div>-->
+<!--				<div class="com-box-f s-width">-->
+<!--					<div class="s-fenge"></div>-->
+<!--					<br>-->
+<!--					<h2 class="s-title">友情链接</h2>-->
+<!--					<div class="com-box com-box-you">-->
+<!--						<a href="链接地址" target="_blank">-->
+<!--							<img class="lazy" data-original="logo地址"-->
+<!--								msg="链接描述">-->
+<!--						</a>-->
+<!--					</div>-->
+<!--					<div style="height: 10px; clear: both;"></div>-->
+<!--				</div>-->
+<!--				<div style="height: 60px;"></div>-->
+<!--			</div>-->
+
+
+			<!-- ------------ 底部 连接 ------------- -->
+			<div id="footer">
+				<div id="s-footer" class="mao-link"></div>
+				<div class="footer-r-b s-width">
+					<div class="ss-box">
+						<h3>特别鸣谢</h3>
+						<ul class="list-unstyle">
+							<li><a href="https://dromara.org/zh/projects/" target="_blank">Dromara社区</a></li>
+						</ul>
+					</div>
+					<div class="ss-box">
+						<h3>友情链接</h3>
+						<ul class="list-unstyle">
+							<li><a href="https://www.hiascend.com/" target="_blank">昇腾开发者社区</a></li>
+							<li><a href="https://www.paddlepaddle.org.cn/developercommunity" target="_blank">飞桨开发者社区</a></li>
+						</ul>
+					</div>
+					<div class="ss-box">
+						<h3>联系我们</h3>
+						<ul class="list-unstyle">
+							<li>QQ群 ：<a href="doc.html#/doc/more/join-group">119593195</a></li>
+<!--							<li>邮箱：<a href="javascript: alert('暂无');">暂无</a></li>-->
+<!--							<li>联系：<a href="javascript: alert('暂无');">暂无</a></li>-->
+						</ul>
+					</div>
+					<div class="ss-box">
+						<h3 class="last" style="text-align: left; float: none; padding-left: 0px;">Omega-AI 微信群</h3>
+						<div class="media-img padding-small-top" style="text-align: left;">
+							<img class="dro-qr" src="static/img/qr.png" width="100"
+								height="100" />
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- -------------- 底部 版权 -------------- -->
+			<div>
+				<meta charset="UTF-8">
+				<style type="text/css">
+
+				</style>
+				<div class="foot-box" id="foot">
+					<div class="s-width" style="text-align: center;">
+						Copyright ©2025 Omega-AI一个基于Java的深度学习框架 | omega-ai.dromara.org | <a href="https://beian.miit.gov.cn/"
+							target="_blank">备案号xxx</a>
+					</div>
+				</div>
+			</div>
+
+		</div>
+
+		<!-- UI逐渐显现 -->
+		<style type="text/css">
+			body {
+				opacity: 0.01;
+				transition: opacity 0.5s;
+			}
+		</style>
+		<script type="text/javascript">
+			setTimeout(function() {
+				document.body.style.opacity = 1;
+			}, 1);
+		</script>
+
+		<!-- 搜索引擎自动提交 -->
+		<script>
+			(function() {
+				var bp = document.createElement('script');
+				var curProtocol = window.location.protocol.split(':')[0];
+				if (curProtocol === 'https') {
+					bp.src = 'https://zz.bdstatic.com/linksubmit/push.js';
+				} else {
+					bp.src = 'http://push.zhanzhang.baidu.com/push.js';
+				}
+				var s = document.getElementsByTagName("script")[0];
+				s.parentNode.insertBefore(bp, s);
+			})();
+		</script>
+		<!-- 百度统计 -->
+		<script>
+
+		</script>
+
+		<!-- 悬浮效果 -->
+		<script src="static/jquery.min.js"></script>
+		<script src="static/layer-v3.1.1/layer.js"></script>
+		<script src="static/donate/donate-list.js"></script>
+		<script src="static/donate/donate-fun.js"></script>
+		<script type="text/javascript">
+			
+			// 渲染赞助者清单 
+			renderDonateTable();
+			
+			// 鼠标悬浮在友情链接时，提示信息 
+			$(".com-box-you a img").hover(function() {
+				var msg = $(this).attr("msg");
+				if (msg) {
+					window.msgLayer = layer.tips(msg, $(this), {
+						tips: 1,
+						time: 0
+					});
+				}
+			}, function() {
+				var index = window.msgLayer;
+				setTimeout(function() {
+					layer.close(index);
+				}, 1000);
+			});
+			// 点击二维码放大
+			$('.wx-qr,.dro-qr,.gzh-qr').click(function() {
+				var w = '300px';
+				var h = 'auto';
+				var content = '<div style="height: 100%; overflow: hidden !important;">' +
+					'<img src="' + this.src + ' " style="width: 100%; height: 100%;" />' +
+					'</div>';
+				layer.open({
+					type: 1,
+					title: false,
+					shadeClose: true,
+					closeBtn: 0,
+					area: [w, h], //宽高
+					content: content
+				});
+			})
+		</script>
+
+		<!-- 初始化轮播图 -->
+		<script src="static/swiper/swiper-bundle.min.js"></script>
+		<script src="static/swiper/index-swiper.js"></script>
+
+		<!-- 修改背景颜色 -->
+		<script>
+			// // 绑定修改背景色的按钮事件
+			// $('.theme-box span').click(function() {
+			// 	let bgColor = this.style.backgroundColor;
+			// 	setBg(bgColor);
+			// 	localStorage.setItem('bg-color-value', bgColor)
+			// })
+			// // 读取上次记录
+			// let bgColor = localStorage.getItem('bg-color-value');
+			// if (bgColor) {
+			// 	setBg(bgColor);
+			// }
+
+			// // 设置背景颜色 
+			// function setBg(bgColor) {
+			// 	console.log('---- 背景颜色设定为：', bgColor);
+
+			// 	// -------- 设置 body 背景
+			// 	document.body.style.backgroundColor = bgColor;
+
+			// 	// -------- 设置 header 头背景
+			// 	// 如果是 16 进制，转 rgba
+			// 	if (bgColor.indexOf('#') == 0) {
+			// 		bgColor = hexToRgba(bgColor, 0.97);
+			// 	}
+			// 	// 如果是 rgb，转 rgba
+			// 	else if (bgColor.match(/\,/g).length == 2) {
+			// 		bgColor = bgColor.replace(')', ' ,0.97)');
+			// 	}
+
+			// 	document.querySelector('.doc-header').style.backgroundColor = bgColor;
+			// }
+
+			// // 16进制 转 rgba
+			// function hexToRgba(str, a) {
+			// 	a = a || 1;
+
+			// 	var reg = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/
+			// 	if (!reg.test(str)) {
+			// 		return;
+			// 	}
+			// 	let newStr = (str.toLowerCase()).replace(/\#/g, '')
+			// 	let len = newStr.length;
+			// 	if (len == 3) {
+			// 		let t = ''
+			// 		for (var i = 0; i < len; i++) {
+			// 			t += newStr.slice(i, i + 1).concat(newStr.slice(i, i + 1))
+			// 		}
+			// 		newStr = t
+			// 	}
+			// 	let arr = []; //将字符串分隔，两个两个的分隔
+			// 	for (var i = 0; i < 6; i = i + 2) {
+			// 		let s = newStr.slice(i, i + 2)
+			// 		arr.push(parseInt("0x" + s))
+			// 	}
+			// 	return 'rgb(' + arr.join(",") + ', ' + a + ')';
+			// }
+		</script>
+
+		<!-- 图片懒加载 -->
+		<script src="static/jquery.lazyload-1.9.3.js"></script>
+		<script>
+			$(function() {
+				$("img.lazy").lazyload({
+					effect: "fadeIn", // 动画，show=显示，fadeIn=淡入，slideDown=下拉
+					effectspeed: 1200, // 动画持续时间
+					skip_invisible: true, // 不加载隐藏的图像
+					// threshold: -180,  // 提前加载：距离屏幕多少px时就显示出来
+					// event: 'click',  // 事件触发时才加载，scroll=滑动，click=点击，mouseover=鼠标划过，sporty=运动的
+					// 未加载时的占位图，此为3x3透明小图片
+					placeholder: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAMAAAADCAYAAABWKLW/AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAhdEVYdENyZWF0aW9uIFRpbWUAMjAyMTowMToyMiAyMjoxNDoxM63SwyUAAAANSURBVBhXYyAGMDAAAAAnAAF2ypRxAAAAAElFTkSuQmCC",
+					load: function() {
+						console.log('lazy img: ' + this.src);
+					}
+				});
+			})
+		</script>
+		
+		<!-- 预览版提示 -->
+		<script type="text/javascript">
+			if (location.host === 'rc.sa-token.cc') {
+				const newTips =
+					'<b>当前文档为RC预览版文档，仅做学习测试使用，正式项目请使用正式版：<a href="https://omega-ai.dromara.org" target="_blank">https://omega-ai.dromara.org</a></b>';
+				layer.alert(newTips);
+			}
+		</script>
+		
+		<script>
+			// 逐字打印效果
+			var tcStr = '基于 Java 打造的 Omega-AI 深度学习框架，支持多种神经网络及模型构建除 cuda 和 cudnn 相关依赖，无其他 API 及第三方依赖包！';
+			var con = $('.sub-title .sub-title-nr');
+			var index = 1;
+			var length = tcStr.length;
+			var tId = null;
+			 
+			function start(){
+				con.text(tcStr.charAt(0));
+
+				tId = setInterval(function(){
+					con.append(tcStr.charAt(index));
+					if(index++ === length){
+						clearInterval(tId);
+						index = 1;
+						setTimeout(function(){
+							start()
+						}, 3000)
+					}
+				}, 90);
+			}
+			start();
+
+		</script>
+		
+	</body>
+</html>

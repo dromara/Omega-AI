@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="zh">
+	<head>
+		<meta charset="UTF-8">
+		<title>Omega-AI</title>
+		<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+		<meta name="description"
+			  content="Omega-AI是基于Java打造的深度学习框架，框架目前支持BP神经网络、卷积神经网络、循环神经网络、Vgg16、Resnet、Yolo、Lstm、transformer、Tpt、Llama、diffusion、stable diffusion等模型的构建，目前引擎最新版本支持CUDA和CUDNN两种GPU加速方式，关于GPU加速的环境配置与jcuda版本jar包的对应依赖，引擎中所实现的模型和算法除了使用cuda和cudnn相关依赖包之外均不使用任何API和第三方依赖包">
+		<meta name="keywords" content="omega-ai,omega-ai文档,文档,教程,ai,人工智能,神经网络,深度学习,深度学习框架,java">
+		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+		<link rel="shortcut icon" type="image/x-icon" href="logo.png">
+		<link rel="stylesheet" href="./static/doc.css">
+		<link rel="stylesheet" href="./static/vue.css">
+	</head>
+	<body>
+		<div class="doc-header">
+			<div class="nav-left">
+				<a href="doc.html">
+					<div class="logo-box">
+						<img src="logo.png" title="logo" />
+						<h1 class="logo-text">Omega-AI</h1>
+						<sub>v1.30.0</sub>
+					</div>
+				</a>
+			</div>
+			<nav class="nav-right">
+				<div class="sear-box p-none" tabindex="-1" >
+					<!-- 加载中…… -->
+				</div>
+				<select class="select-version p-none" onchange="location.href=this.value">
+					<option value="doc.html">最新版</option>
+					<option value="/">首页</option>
+				</select>
+				<div class="zk-box p-none">
+					<a class="wzi" href="javascript:;">
+						<!-- <span>背景 </span> -->
+						<img class="theme-btn" src="static/icon/theme.svg">
+						<!-- <span class="zk-icon"></span> -->
+					</a>
+					<div class="zk-context theme-box">
+						<div>
+							<div style="height: 5px;"></div>
+							<span style="background-color: #FFFFFF;"></span>
+							<span style="background-color: #f5f5f5;"></span>
+							<span style="background-color: #F1FAFA;"></span>
+							<span style="background-color: #f5f5d5;"></span>
+							<span style="background-color: #d5f5f5;"></span>
+							
+							<span style="background-color: #f5e5f5;"></span>
+							<span style="background-color: #E8E8FF;"></span>
+							<span style="background-color: #f0f9eb;"></span>
+							<span style="background-color: #ebe5dd;"></span>
+							<span style="background-color: #e8f4ff;"></span>
+							
+							<!-- <span style="background-color: #F0DAD2;"></span> -->
+							<!-- <span style="background-color: #f5d5d5;"></span> -->
+							<!-- <span style="background-color: #FFFFE0;"></span> -->
+							<!-- <span style="background-color: #eeeeee;"></span> -->
+							<!-- <span style="background-color: #f5fafe;"></span> -->
+						</div>
+					</div>
+				</div>
+				<a class="wzi" href="index.html">首页</a>
+				<a class="wzi" href="doc.html">文档</a>
+				<a class="p-none wzi" href="#/doc/more/link">案例</a>
+				<div class="zk-box">
+					<a class="wzi" href="javascript:;">
+						<span>视频 </span>
+						<span class="zk-icon"></span>
+					</a>
+					<div class="zk-context">
+						<div>
+							<a href="#" target="_blank">什么是神经网络（5集）</a>
+							<a href="#" target="_blank">得分函数（6集）</a>
+							<a href="#" target="_blank">损失函数（8集）</a>
+							<div class="zk-fengexian"></div>
+							<a href="javascript: layer.alert('如您有 Omega-AI 相关课程录制，请联系官网文档右侧 < omega-ai 小助手 > 进行提交');">
+								[ + 课程提交 ]
+							</a>
+						</div>
+					</div>
+				</div>
+				<a class="p-none wzi" href="#/doc/more/demand-commit">需求提交</a>
+				<!-- <a class="p-none wzi" href="#/doc/more/blog">博客</a> -->
+				<a class="p-none wzi" href="#/doc/more/join-group">加入讨论群</a>
+				<a class="p-none wzi" href="#/doc/more/donate">赞助</a>
+				<div class="zk-box">
+					<a class="wzi" href="javascript:;">
+						<span>相关资源 </span>
+						<span class="zk-icon"></span>
+					</a>
+					<div class="zk-context">
+						<div>
+							<a href="#/doc/more/update-log">更新日志</a>
+							<a href="#/doc/more/common-questions">常见报错</a>
+							<a href="#/doc/more/blog">相关博客</a>
+							<div class="zk-fengexian"></div>
+							<a href="#/doc/fun/omega-ai-test">在线考试</a>
+							<a href="#/doc/fun/issue-template">在线提问</a>
+							<a href="#/doc/more/wenjuan">问卷调查</a>
+						</div>
+					</div>
+				</div>
+			</nav>
+		</div>
+		
+		<div class="main-box">
+			<!-- 内容区 -->
+			<div id="app">加载中...</div>
+			
+			<!-- 右边盒子 -->
+			<div class="doc-right-bj-box">
+				<div class="doc-right-bj-box-title">目录</div>
+				<div class="doc-right-more-item">
+					
+					<!-- ad盒子 -->
+					<div class="ad-box">
+						
+						<div class="ad-title">
+							<span class="ad-tips">推广信息：</span>
+							<span class="ad-tips ad-close">关闭</span>
+						</div>
+						
+						<!-- ssp -->
+						<div class="top-ad-box" style="margin-bottom: 12px;">
+							<a href="https://gitee.com/dromara/Omega-AI" target="_blank">
+								<img src="/static/img/pro-s3.png" />
+							</a>
+						</div>
+						
+						<!-- 万维广告div -->
+						<div class="wwads-cn wwads-horizontal" data-id="88" style="min-height: 0px; border: 1px #eee solid; margin-bottom: 12px;"></div>
+						
+					</div>
+					
+					<!-- help 按钮 -->
+					<div class="help-btn">❤️ 技术求助</div>
+					<!-- ew-wa -->
+					<div class="ew-wa">
+						<p>如果 Omega-AI 帮助到了你，希望你可以向同事、朋友推荐了解本框架，这对我们非常重要，感谢支持！ <!-- 🤗 --> </p>
+						<p>加油，一同成为优秀的AI工程师！</p>
+					</div>
+					
+				</div>
+			</div>
+		</div>
+		
+		<!-- 万维广告div -->
+		<!-- <div style="position: fixed; right: 0; bottom: 0; z-index: 10000; border: 0px #aaa solid;">
+			<div class="wwads-cn wwads-vertical" data-id="88" style="max-width:150px"></div>
+		</div> -->
+		
+		<!-- 小助手div -->
+		<!-- <div class="p-none help-btn-box" style="position: fixed; right: 40px; bottom: 330px; z-index: 10000; border: 0px #aaa solid;">
+			<div class="help-tips" style="position: relative; left: -30px; top: -10px;"></div>
+			<div class="help-btn" style="width: 60px; height: 60px; text-align: center; border-radius: 50%; background-color: #42b983; cursor: pointer;">
+				<span style="font-size: 18px; color: #FFF; line-height: 60px;">Help</span>
+			</div>
+		</div> -->
+		
+		
+		<!-- UI逐渐显现 -->
+		<style type="text/css">
+			body{opacity: 0.01; transition: opacity 0.5s; background-color: #FFF;}
+		</style>
+		<script type="text/javascript">
+			setTimeout(function() {
+				document.body.style.opacity = 1;
+			}, 1);
+		</script>
+		
+		<!-- jqeury -->
+		<script src="static/jquery.min.js"></script>
+		<script src="static/layer-v3.1.1/layer.js"></script>
+		
+		<!--  -->
+		<script src="./static/docsify-plugin.js?v=7"></script>
+		<script src="./static/is-star-plugin.js?v=7"></script>
+		<script src="./static/is-fill-in-wj-plugin.js?v=7"></script>
+		<script>
+			var omegaAITopVersion = '1.30.0';
+			var name = '<img style="width: 60px; height: 60px; vertical-align: middle;" src="logo.png" alt="logo" /> ';
+			name += '<b style="font-size: 28px; vertical-align: middle;">Omega-AI</b> <sub>v' + omegaAITopVersion + '</sub>';
+			window.$docsify = {
+				// name: name, // 名字 
+				repo: 'https://gitee.com/dromara/Omega-AI', // github地址
+				// themeColor: '#06A3D7', // 主题颜色  
+				basePath: location.pathname.substr(0, location.pathname.lastIndexOf('/') + 1), // 自动计算项目名字 
+				// basePath: '/omega-ai-doc/',		// 设置文件加载的父路径, 这在一些带项目名部署的文件中非常有效
+				auto2top: true, // 是否在切换页面后回到顶部 
+				// coverpage: true, // 开启封面 
+				subMaxLevel: 4, // 标题解析层级, 写几就在目录树中解析到几级标题 ,一般写2吧也就 
+				loadSidebar: true, // 加载自定义侧边栏 , 目录定制在: _sidebar.md 文件 (需要创建 .nojekyll 的空文件，阻止 GitHub Pages 忽略命名是下划线开头的文件)
+				copyCode: { // 复制插件 
+					buttonText: '复制到剪贴板',
+					errorText: '错误',
+					successText: '复制成功'
+				},
+				topMargin: 90, // 锚点距离顶部的距离 
+				// sidebarDisplayLevel : 1 ,  // 设置侧边栏显示级别
+				// search: 'auto', // 搜索功能 
+				alias: {
+					// '/sso/_sidebar.md': '/sso/_sidebar.md',
+					'/.*/_sidebar.md': '/_sidebar.md'
+				},
+				// tab选项卡
+				tabs: {
+					persist    : true,      // 是否在刷新页面时重置选项卡
+					sync       : false,      // 页面上的多个tab是否同步切换
+					theme      : 'classic', // 主题：'classic', 'material', false
+					tabComments: true,      // 用注释来标注选项卡标题，例如：<!-- tab:SpringBoot  -->
+					tabHeadings: true       // 用标题+粗体来定制选项卡
+				},
+				// 阅读进度
+				progress: {
+					position: "top",
+					color: "var(--theme-color,#42b983)",
+					height: "3px",
+				},
+				// 信息提示框
+				'flexible-alerts': {
+					style: 'flat',  // 默认风格 callout=浅色，flat=深色 
+					note: {
+						label: {}
+					},
+					tip: {
+						label: {},
+					},
+					warning: {
+						label: {}
+					},
+					attention: {
+						label: {}
+					},
+				},
+				// 自定义插件 
+				plugins: [myDocsifyPlugin, window.isStarPlugin, window.isFillInWjPlugin],
+			}
+		</script>
+		<script src="static/docsify.min.js"></script>
+		<script src="static/docsify-copy-code.min.js"></script>
+		
+		<!-- 语言合集：https://cdn.jsdelivr.net/npm/prismjs@1/components/ -->
+		<script src="static/prism/prism-java.min.js"></script>
+		<script src="static/prism/prism-gradle.min.js"></script>
+		<script src="static/prism/prism-yaml.min.js"></script>
+		<script src="static/prism/prism-properties.min.js"></script>
+		
+		<!-- 文档阅读进度条 -->
+		<!-- <script src="static/docsify-plugins/progress.update.js"></script> -->
+		
+		<!-- 右上角次级导航栏 -->
+		<script src="static/docsify-plugins/sub-nav-draw.js"></script>
+		
+		<!-- 搜索框 -->
+		<script src="static/search.min.js"></script>
+		<!-- 多 tab 切换 -->
+		<script src="static/docsify-tabs.min.js"></script>
+		<!-- img点击放大 -->
+		<script src="static/zoom-image.min.js"></script>
+		<!-- 好看的提示框 -->
+		<script src="static/docsify-plugins/docsify-plugin-flexible-alerts.min-1.1.1.js"></script>
+
+		<!-- sidebar折叠 -->
+		<!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsify-sidebar-collapse/dist/sidebar.min.css" />
+		<script src="https://cdn.jsdelivr.net/npm/docsify-sidebar-collapse/dist/docsify-sidebar-collapse.min.js"></script> -->
+
+		
+		<!-- 渲染赞助数据 -->
+		<script src="static/donate/donate-list.js"></script>
+		<script src="static/donate/donate-fun.js"></script>
+		
+		<!-- 广告盒子 -->
+		<script>
+			(function(){
+				// 功能6：标题下面的广告
+				if($(window).width() >= 800) {
+					// 如果一天内用户点击过关闭广告，则不再展现
+					let allowJg = 1000 * 60 * 60 * 24 * 1;
+					// allowJg = 1000 * 10;
+					try{
+						const closeAdTime = localStorage.closeAdTime;
+						if(closeAdTime) {
+							// 点击广告关闭的时间，和当前时间的差距
+							const closeAdJg = new Date().getTime() - parseInt(closeAdTime);
+							
+							// 差距小于1天，不再展示 
+							if(closeAdJg < allowJg) {
+								console.log('not show ad ...');
+								$('.ad-box').remove();
+								return;
+							}
+						}
+					}catch(e){
+						console.error(e);
+					}
+					
+					// 添加关闭事件
+					$('.ad-close').click(function(){
+						console.log('关闭广告');
+						// $('.top-ad-box').slideUp(); // 折叠收起
+						layer.confirm('关闭后，一天内不再展现此信息', function(){
+							$(".ad-box").fadeOut(1000); // 淡出效果
+							layer.msg('关闭成功');
+							localStorage.closeAdTime = new Date().getTime();
+						})
+					})
+				}
+			})();
+		</script>
+		
+		<!-- 搜索引擎自动提交 -->
+		<script>
+			(function() {
+				var bp = document.createElement('script');
+				var curProtocol = window.location.protocol.split(':')[0];
+				if (curProtocol === 'https') {
+					bp.src = 'https://zz.bdstatic.com/linksubmit/push.js';
+				} else {
+					bp.src = 'http://push.zhanzhang.baidu.com/push.js';
+				}
+				var s = document.getElementsByTagName("script")[0];
+				s.parentNode.insertBefore(bp, s);
+			})();
+		</script>
+		
+		<!-- 万维广告 -->
+		<script data-mode="hash" type="text/javascript" src="https://cdn.wwads.cn/js/makemoney.js" async></script>
+		
+		<!-- 百度统计 -->
+		<script>
+
+		</script>
+		
+		<script type="text/javascript">
+			// 预览版提示 
+			if(location.host === 'rc.omega-ai.dromara.org') {
+				const newTips = '<b>当前文档为RC预览版文档，仅做学习测试使用，正式项目请使用正式版：<a href="https://omega-ai.dromara.org/" target="_blank">https://omega-ai.dromara.org/</a></b>';
+				layer.alert(newTips);
+			}
+		</script>
+		
+		<!-- 小助手提示 -->
+		<script>
+			$('.help-btn').click(function(){
+				var str = `
+					<div class="xiaozhushou-intro">
+						<h2>报错了？搞不懂？别急、莫慌</h2>
+						<div style="margin-top: 20px; color: green;">
+							<p>👉 你的问题可能很多人都碰到过了！这有一份高频报错速查文档：<a href="doc.html#/doc/more/common-questions" onclick="layer.closeAll()">常见问题排查</a></p>
+							<p>👉 几乎每个功能点都有对应的最简示例 Demo，或许可以给你一份参考：<a href="#" target="_blank" >紧张制作中</a></p>
+						</div>
+						<div style="margin-top: 20px; color: red;">上述方案没有解决你的问题？那你可以来“麻烦”一下我们的小助手了：</div>
+						<p>1、你在使用 Omega-AI 时遇到任何技术难题，可以向 < omega-ai 小助手 > 求助咨询。</p>
+						<p>2、该小助手不属于商业运营，求助咨询完全免费。</p>
+						<p>3、目前该小助手属于试运营阶段，每天只能提供大约 1 小时的求助时间。</p>
+						<p>4、根据运营效果反馈，我们日后可能会提高求助时间，但也可能关闭此功能。</p>
+						<p>5、该小助手由企业微信提供平台支持，感谢企业微信。</p>
+						<p>6、不是 AI 是真人，不是 AI 是真人，不是 AI 是真人，重说三！</p>
+						<p style="margin-top: 30px;">打开方式：</p>
+						<p>1、如果你是使用 PC 端微信，请点此链接：<a href="#" target="_blank">紧密开发微信客服助手中</a></p>
+<!--						<p>2、如果你是使用手机端微信，请扫码：</p>-->
+<!--						<p><img src="https://oss.dev33.cn/omega-ai/omega-ai-xiaozhushou.jpg" width="200px"></p>-->
+						<p>如果您的问题已解决，我们希望您能够花费一点时间将解决方案发布在：<a href="https://gitee.com/dromara/omega-ai/issues/IBW8B4" target="_blank">踩坑记录征集</a>，帮助以后遇到同样问题的开发者快速排查，感激不尽！🌹🌹🌹</p>
+					</div>
+				`;
+				layer.alert(str, {
+					title: '技术求助', 
+					area: '680px', 
+					offset: '7%',
+				})
+			})
+			// setTimeout(function(){
+			// 	try{
+			// 		// 给个小提示
+			// 		const index = layer.tips('框架技术支持，点此求助', '.help-btn', {
+			// 			tips: [1, '#000'] ,//还可配置颜色
+			// 			// time: 5000,
+			// 		});
+			// 		// 改为 fixed 定位，否则它会随着滚动条移动，样式就跑偏了
+			// 		$('#layui-layer' + index).css('position', 'fixed');
+			// 	}catch(e){
+			// 		console.error(e);
+			// 	}
+			// }, 500)
+
+		</script>
+		
+		<!-- 修改背景颜色 -->
+		<script>
+			
+			// 绑定修改背景色的按钮事件
+			$('.theme-box span').click(function() {
+				let bgColor = this.style.backgroundColor;
+				setBg(bgColor);
+				localStorage.setItem('bg-color-value', bgColor)
+			})
+			// 读取上次记录
+			let bgColor = localStorage.getItem('bg-color-value');
+			if(bgColor) {
+				setBg(bgColor);
+			}
+			
+			// 设置背景颜色 
+			function setBg(bgColor) {
+				console.log('---- 背景颜色设定为：', bgColor);
+				
+				// -------- 设置 body 背景
+				document.body.style.backgroundColor = bgColor;
+				
+				// -------- 设置 header 头背景
+				// 如果是 16 进制，转 rgba
+				if(bgColor.indexOf('#') == 0) {
+					bgColor = hexToRgba(bgColor, 0.97);
+				}
+				// 如果是 rgb，转 rgba
+				else if(bgColor.match(/\,/g).length == 2) {
+					bgColor = bgColor.replace(')', ' ,0.97)');
+				}
+				
+				document.querySelector('.doc-header').style.backgroundColor = bgColor;
+			}
+			
+			// 16进制 转 rgba
+			function hexToRgba(str, a){
+				a = a || 1;
+
+				var reg = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/
+				if(!reg.test(str)){return;}
+				let newStr = (str.toLowerCase()).replace(/\#/g,'')
+				let len = newStr.length;
+				if(len == 3){
+					let t = ''
+					for(var i=0;i<len;i++){
+						t += newStr.slice(i,i+1).concat(newStr.slice(i,i+1))
+					}
+					newStr = t
+				}
+				let arr = []; //将字符串分隔，两个两个的分隔
+				for(var i =0;i<6;i=i+2){
+					let s = newStr.slice(i,i+2)
+					arr.push(parseInt("0x" + s))
+				}
+				return 'rgb(' + arr.join(",")  + ', ' + a + ')';
+			}
+			
+		</script>
+		
+		<!-- 赞助页的展开和收缩 -->
+		<script>
+			// 展开
+			function expandZanZhu(){
+				$('.zk-btn--1').hide();
+				$('.zk-btn--2').show();
+				$('.zanzhu-box').height($('.zanzhu-box table').height());
+			}
+			// 折叠
+			function foldZanZhu(){
+				$('.zanzhu-box').height(500);
+				$('.zk-btn--2').hide();
+				$('.zk-btn--1').show();
+			}
+		</script>
+		
+		<!-- 赞助效果图展示 -->
+		<script>
+			function showSyzz(){
+				layer.photos({
+					photos: {
+						title: '',
+						id: new Date().getTime(),
+						start: 0,
+						data: [
+							{
+								pid: 1,
+								alt: 'gitee 开源项目推广，日增 star 74',
+								src: '增长链接',
+							}
+						]
+					}
+					,anim: 5 //0-6的选择，指定弹出图片动画类型，默认随机（请注意，3.0之前的版本用shift参数）
+				});	
+			}
+		</script>
+		
+	</body>
+</html>
