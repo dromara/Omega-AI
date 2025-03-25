@@ -3,7 +3,7 @@ node_modules/
 .project
 unpackage/
 .DS_Store
-.idea
+#.idea
 
 bin-debug/
 bin-release/
