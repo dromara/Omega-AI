@@ -42,7 +42,7 @@
     </tr>
     <tr>
         <td><img src="https://foruda.gitee.com/avatar/1676991132209448525/1829778_lshsir_1582872532.png!avatar200" /></td>
-        <td>龙恒宇</td>
+        <td>虚位以待</td>
 		<td><a href="https://gitee.com/LongHengYu" target="_blank">https://gitee.com/LongHengYu</a></td>
     </tr>
 </table>
