@@ -28,9 +28,9 @@ var isStarPlugin = function(hook, vm) {
 // 应用参数 
 const client_id = '0cc618beb08db99bff50e500e38c2144d95ada9abb51c00c44592726ecd583f4';
 const client_secret = 'xxx';
-const redirect_uri = 'https://sa-token.cc/doc.html';
-const docDomain = 'sa-token.cc';
-// const redirect_uri = 'http://127.0.0.1:8848/sa-token-doc/doc.html';
+const redirect_uri = 'https://omega-ai.dromara.org/doc.html';
+const docDomain = 'omega-ai.dromara.org';
+// const redirect_uri = 'http://127.0.0.1:8848/omega-ai.dromara.org/doc.html';
 // const docDomain = '127.0.0.1:8848';
 		
 // 检查成功后，多少天不再检查 
@@ -70,8 +70,8 @@ function isStarRepo(vm) {
 	}
 	
 	// 白名单路由不判断
-	const whiteList = ['/a', '/more/link', '/more/demand-commit', '/more/join-group', '/more/sa-token-donate', 
-			'/sso/sso-pro', '/more/update-log', '/more/common-questions', '/fun/sa-token-test', '/fun/issue-template'];
+	const whiteList = ['/a', '/more/link', '/more/demand-commit', '/more/join-group', '/more/omega-ai-donate', 
+			'/sso/sso-pro', '/more/update-log', '/more/common-questions', '/fun/omega-ai-test', '/fun/issue-template'];
 	if(whiteList.indexOf(vm.route.path) >= 0 && getParam('code') === null) {
 		console.log('white route ...');
 		return;
@@ -102,10 +102,10 @@ function confirmStar() {
 	// 弹窗提示文字 
 	const tipStr = `
 		<div>
-			<p><b>嗨，同学，来支持一下 Sa-Token 吧，为项目点个 star ！</b></p>
+			<p><b>嗨，同学，来支持一下 Omega-Ai吧，为项目点个 star ！</b></p>
 			<div>仅需两步即可完成：<br>
-				<div>1、打开 Sa-Token <a href="https://gitee.com/dromara/sa-token" target="_blank">开源仓库主页</a>，在右上角点个 star 。</div>
-				<div>2、点击下方 [ 同意授权检测 ] 按钮，同意 Sa-Token 获取 API 权限进行检测。<a href="javascript:authDetails();" style="text-decoration: none;">？</a></div>
+				<div>1、打开 Omega-Ai<a href="https://gitee.com/dromara/omega-ai" target="_blank">开源仓库主页</a>，在右上角点个 star 。</div>
+				<div>2、点击下方 [ 同意授权检测 ] 按钮，同意 Omega-Ai获取 API 权限进行检测。<a href="javascript:authDetails();" style="text-decoration: none;">？</a></div>
 			</div>
 			<p><b>本章节文档将在 star 后正常开放展示。</b></p>
 			<p style="color: green;">开源不易，希望您不吝支持，激励开源项目走的更加长远 😇😇😇</p>
@@ -157,7 +157,7 @@ function goAuth() {
 function getAccessToken(code) {
 	// 根据 code 获取 access_token
 	$.ajax({
-		url: 'https://sa-token.cc/server/oauth/token',
+		url: 'https://omega-ai.dromara.org/server/oauth/token',
 		method: 'post',
 		data: {
 			grant_type: 'authorization_code',
@@ -180,7 +180,7 @@ function getAccessToken(code) {
 			
 			// 根据 access_token 判断是否 star 了仓库
 			$.ajax({
-				url: 'https://gitee.com/api/v5/user/starred/dromara/sa-token',
+				url: 'https://gitee.com/api/v5/user/starred/dromara/omega-ai',
 				method: 'get',
 				data: {
 					access_token: access_token
@@ -191,7 +191,7 @@ function getAccessToken(code) {
 					// 记录本次检查时间 
 					localStorage.isStarRepo = new Date().getTime();
 					// 
-					layer.alert('感谢你的支持  ❤️ ❤️ ❤️ ，Sa-Token 将努力变得更加完善！', function(index) {
+					layer.alert('感谢你的支持  ❤️ ❤️ ❤️ ，Omega-Ai将努力变得更加完善！', function(index) {
 						layer.close(index);
 						// 刷新url，去掉 code 参数 
 						location.href = location.href.replace("?code=" + code, '');
@@ -242,7 +242,7 @@ function getAccessToken(code) {
 
 // 疑问
 function authDetails() {
-	const str = "用于检测的凭证信息将仅保存你的浏览器本地，Sa-Token 文档已完整开源，源码可查";
+	const str = "用于检测的凭证信息将仅保存你的浏览器本地，Omega-Ai文档已完整开源，源码可查";
 	alert(str);
 }
 

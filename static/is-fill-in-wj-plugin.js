@@ -40,8 +40,8 @@ function isFillIn(vm) {
 	}
 	
 	// 白名单路由不判断
-	const whiteList = ['/', '/more/link', '/more/demand-commit', '/more/join-group', '/more/sa-token-donate', '/more/wenjuan', 
-			'/sso/sso-pro', '/more/update-log', '/more/common-questions', '/fun/sa-token-test', '/fun/issue-template'];
+	const whiteList = ['/', '/more/link', '/more/demand-commit', '/more/join-group', '/more/omega-ai-donate', '/more/wenjuan', 
+			'/sso/sso-pro', '/more/update-log', '/more/common-questions', '/fun/omega-ai-test', '/fun/issue-template'];
 	if(whiteList.indexOf(vm.route.path) >= 0) {
 		console.log('white route ... wj');
 		return;
@@ -97,7 +97,7 @@ function isFillIn(vm) {
 			layer.close(index);
 			localStorage.isFillIn = new Date().getTime();
 			
-			layer.msg('感谢你的支持，Sa-Token 将努力变得更加完善！  ❤️ ❤️ ❤️ ')
+			layer.msg('感谢你的支持，omega-ai 将努力变得更加完善！  ❤️ ❤️ ❤️ ')
 		},
 		// 点击取消
 		function(){
