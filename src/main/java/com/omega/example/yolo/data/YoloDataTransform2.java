@@ -1,6 +1,6 @@
 package com.omega.example.yolo.data;
 
-import com.omega.common.data.Tensor;
+import com.omega.common.config.Tensor;
 import com.omega.common.utils.ImageUtils;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.example.yolo.utils.YoloDecode;

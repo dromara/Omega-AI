@@ -5,7 +5,7 @@ import cn.hutool.core.text.csv.CsvData;
 import cn.hutool.core.text.csv.CsvReader;
 import cn.hutool.core.text.csv.CsvRow;
 import cn.hutool.core.text.csv.CsvUtil;
-import com.omega.common.data.Tensor;
+import com.omega.common.config.Tensor;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.example.transformer.utils.tokenizers.Tokenizer;
 import jcuda.runtime.JCuda;

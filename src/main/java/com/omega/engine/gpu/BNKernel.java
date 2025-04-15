@@ -1,6 +1,6 @@
 package com.omega.engine.gpu;
 
-import com.omega.common.data.Tensor;
+import com.omega.common.config.Tensor;
 import com.omega.common.task.Task;
 import com.omega.common.task.TaskEngine;
 import com.omega.common.utils.CheckArrayUtils;

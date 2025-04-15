@@ -1,6 +1,6 @@
 package com.omega.engine.nn.network.vae;
 
-import com.omega.common.data.Tensor;
+import com.omega.common.config.Tensor;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.GPUOP;

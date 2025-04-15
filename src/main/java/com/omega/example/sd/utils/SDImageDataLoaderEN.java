@@ -1,6 +1,6 @@
 package com.omega.example.sd.utils;
 
-import com.omega.common.data.Tensor;
+import com.omega.common.config.Tensor;
 import com.omega.common.utils.MathUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;

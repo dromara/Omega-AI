@@ -1,6 +1,6 @@
 package com.omega.example.transformer.dataset;
 
-import com.omega.common.data.Tensor;
+import com.omega.common.config.Tensor;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.PrintUtils;
 import com.omega.engine.nn.network.utils.ModelUtils;

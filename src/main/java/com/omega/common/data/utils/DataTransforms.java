@@ -1,6 +1,6 @@
-package com.omega.common.data.utils;
+package com.omega.common.config.utils;
 
-import com.omega.common.data.Tensor;
+import com.omega.common.config.Tensor;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.PrintUtils;
 import com.omega.common.utils.RandomUtils;

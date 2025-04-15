@@ -1,6 +1,6 @@
 package com.omega.engine.nn.layer.transformer;
 
-import com.omega.common.data.Tensor;
+import com.omega.common.config.Tensor;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.SoftmaxKernel;

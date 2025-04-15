@@ -1,6 +1,6 @@
 package com.omega.example.transformer.utils;
 
-import com.omega.common.data.Tensor;
+import com.omega.common.config.Tensor;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.network.*;
 import com.omega.engine.nn.network.vae.TinyVQVAE;

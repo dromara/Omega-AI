@@ -1,6 +1,6 @@
 package com.omega.engine.model;
 
-import com.omega.common.data.Tensor;
+import com.omega.common.config.Tensor;
 import com.omega.engine.nn.layer.CBLLayer;
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.Layer;

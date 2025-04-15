@@ -1,6 +1,6 @@
 package com.omega.engine.nn.grad;
 
-import com.omega.common.data.Tensor;
+import com.omega.common.config.Tensor;
 import com.omega.common.utils.MatrixOperation;
 
 /**

@@ -1,6 +1,6 @@
 package com.omega.example.vae.dataset;
 
-import com.omega.common.data.Tensor;
+import com.omega.common.config.Tensor;
 import com.omega.example.yolo.data.ImageLoader;
 import jcuda.runtime.JCuda;
 

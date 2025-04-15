@@ -1,6 +1,6 @@
 package com.omega.example.transformer.dataset.parallel;
 
-import com.omega.common.data.Tensor;
+import com.omega.common.config.Tensor;
 import com.omega.engine.nn.layer.gpu.RoPEKernel;
 import com.omega.engine.nn.network.Llama3;
 import com.omega.engine.nn.network.Network;

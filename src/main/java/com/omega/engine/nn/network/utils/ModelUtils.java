@@ -1,6 +1,6 @@
 package com.omega.engine.nn.network.utils;
 
-import com.omega.common.data.Tensor;
+import com.omega.common.config.Tensor;
 import jcuda.Sizeof;
 
 import java.io.IOException;

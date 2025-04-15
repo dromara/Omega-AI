@@ -1,6 +1,6 @@
 package com.omega.engine.database;
 
-import com.omega.common.data.Tensor;
+import com.omega.common.config.Tensor;
 import com.omega.common.utils.MathUtils;
 import com.omega.engine.nn.data.DataSet;
 

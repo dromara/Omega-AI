@@ -1,4 +1,4 @@
-package com.omega.common.data.utils;
+package com.omega.common.config.utils;
 
 import com.omega.common.utils.MathUtils;
 import com.omega.engine.nn.data.DataSet;

@@ -1,6 +1,6 @@
 package com.omega.engine.loss;
 
-import com.omega.common.data.Tensor;
+import com.omega.common.config.Tensor;
 import com.omega.engine.ad.Graph;
 import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.gpu.CUDAManager;

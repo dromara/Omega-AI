@@ -1,6 +1,6 @@
 package com.omega.example.yolo.model;
 
-import com.omega.common.data.Tensors;
+import com.omega.common.config.Tensors;
 import com.omega.engine.nn.data.BaseData;
 
 /**

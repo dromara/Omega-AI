@@ -1,6 +1,6 @@
 package com.omega.example.clip.utils;
 
-import com.omega.common.data.Tensor;
+import com.omega.common.config.Tensor;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.nn.layer.clip.bert.BertLayer;
 import com.omega.engine.nn.network.ClipText;

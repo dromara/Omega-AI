@@ -1,7 +1,7 @@
 package com.omega.engine.nn.data;
 
-import com.omega.common.data.Tensor;
-import com.omega.common.data.Tensors;
+import com.omega.common.config.Tensor;
+import com.omega.common.config.Tensors;
 
 public abstract class BaseData {
     public int number = 0;

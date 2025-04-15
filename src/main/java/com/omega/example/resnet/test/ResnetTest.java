@@ -1,7 +1,7 @@
 package com.omega.example.resnet.test;
 
-import com.omega.common.data.Tensor;
-import com.omega.common.data.utils.DataTransforms;
+import com.omega.common.config.Tensor;
+import com.omega.common.config.utils.DataTransforms;
 import com.omega.common.utils.DataLoader;
 import com.omega.common.utils.ImageUtils;
 import com.omega.common.utils.LabelUtils;

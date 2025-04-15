@@ -1,6 +1,6 @@
 package com.omega.engine.nn.layer.unet;
 
-import com.omega.common.data.Tensor;
+import com.omega.common.config.Tensor;
 import com.omega.engine.active.ActiveType;
 import com.omega.engine.nn.layer.DoubleConvLayer;
 import com.omega.engine.nn.layer.Layer;

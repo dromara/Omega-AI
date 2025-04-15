@@ -1,6 +1,6 @@
 package com.omega.example.rnn.data;
 
-import com.omega.common.data.Tensor;
+import com.omega.common.config.Tensor;
 import com.omega.common.utils.MathUtils;
 
 import java.io.BufferedReader;

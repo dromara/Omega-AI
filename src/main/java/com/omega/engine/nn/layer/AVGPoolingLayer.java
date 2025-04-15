@@ -1,6 +1,6 @@
 package com.omega.engine.nn.layer;
 
-import com.omega.common.data.Tensor;
+import com.omega.common.config.Tensor;
 import com.omega.engine.nn.layer.gpu.AVGPoolingKernel;
 import com.omega.engine.nn.network.Network;
 

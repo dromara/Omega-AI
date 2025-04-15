@@ -1,6 +1,6 @@
 package com.omega.engine.parallel.dp;
 
-import com.omega.common.data.Tensor;
+import com.omega.common.config.Tensor;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.nn.network.Llama3;

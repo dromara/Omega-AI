@@ -1,6 +1,6 @@
 package com.omega.example.asr.dataset;
 
-import com.omega.common.data.Tensor;
+import com.omega.common.config.Tensor;
 import com.omega.common.utils.MathUtils;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.example.asr.utils.FBank;

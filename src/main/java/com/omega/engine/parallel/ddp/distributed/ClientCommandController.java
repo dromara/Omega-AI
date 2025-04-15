@@ -1,6 +1,6 @@
 package com.omega.engine.parallel.ddp.distributed;
 
-import com.omega.common.data.Tensor;
+import com.omega.common.config.Tensor;
 import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.nn.network.NetworkType;

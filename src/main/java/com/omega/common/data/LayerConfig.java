@@ -1,4 +1,4 @@
-package com.omega.common.data;
+package com.omega.common.config;
 
 import java.io.Serializable;
 

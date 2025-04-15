@@ -1,6 +1,6 @@
 package com.omega.engine.nn.layer.diffusion;
 
-import com.omega.common.data.Tensor;
+import com.omega.common.config.Tensor;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.gpu.GPUOP;

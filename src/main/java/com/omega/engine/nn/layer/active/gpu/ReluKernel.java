@@ -1,6 +1,6 @@
 package com.omega.engine.nn.layer.active.gpu;
 
-import com.omega.common.data.Tensor;
+import com.omega.common.config.Tensor;
 import com.omega.common.task.ForkJobEngine;
 import com.omega.common.utils.CheckArrayUtils;
 import com.omega.common.utils.RandomUtils;

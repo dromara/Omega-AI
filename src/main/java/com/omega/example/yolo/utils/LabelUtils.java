@@ -1,6 +1,6 @@
 package com.omega.example.yolo.utils;
 
-import com.omega.common.data.Tensor;
+import com.omega.common.config.Tensor;
 
 import java.io.BufferedReader;
 import java.io.FileInputStream;

@@ -1,6 +1,6 @@
 package com.omega.example.gan.utils;
 
-import com.omega.common.data.Tensor;
+import com.omega.common.config.Tensor;
 import com.omega.common.utils.MathUtils;
 import com.omega.example.yolo.data.BaseDataLoader;
 import com.omega.example.yolo.data.FileDataLoader;

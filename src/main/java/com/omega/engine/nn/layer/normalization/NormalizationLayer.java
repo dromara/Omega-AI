@@ -1,6 +1,6 @@
 package com.omega.engine.nn.layer.normalization;
 
-import com.omega.common.data.Tensor;
+import com.omega.common.config.Tensor;
 import com.omega.engine.nn.layer.Layer;
 
 public abstract class NormalizationLayer extends Layer {

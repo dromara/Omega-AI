@@ -1,6 +1,6 @@
 package com.omega.engine.nn.layer.llama;
 
-import com.omega.common.data.Tensor;
+import com.omega.common.config.Tensor;
 import com.omega.engine.nn.layer.Layer;
 
 import java.io.IOException;

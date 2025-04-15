@@ -1,7 +1,7 @@
 package com.omega.engine.optimizer;
 
-import com.omega.common.data.Tensor;
-import com.omega.common.data.utils.DataTransforms;
+import com.omega.common.config.Tensor;
+import com.omega.common.config.utils.DataTransforms;
 import com.omega.common.utils.*;
 import com.omega.engine.check.BaseCheck;
 import com.omega.engine.gpu.CUDAModules;
