@@ -347,11 +347,11 @@ public class Llama3Test {
             int nKVHeadNum = 8;
             int decoderNum = 8;
             int vocab_size = 6400;
-            String vocabPath = "H:\\transformer_dataset\\6400\\vocab.json";
-            String mergesPath = "H:\\transformer_dataset\\6400\\merges.txt";
+            String vocabPath = "F:\\LLM\\llama3\\vocab.json";
+            String mergesPath = "F:\\LLM\\llama3\\merges.txt";
             BPETokenizer3 tokenizer = new BPETokenizer3(vocabPath, mergesPath);
             Llama3 network = new Llama3(LossType.softmax_with_cross_entropy_idx, UpdaterType.adamw, head_num, nKVHeadNum, decoderNum, vocab_size, max_len, embedDim, bias, dropout, flashAttention);
-            String model_path = "H:\\model\\llama3-26m-chinese-sft-med.model";
+            String model_path = "F:\\LLM\\llama3\\llama3-26m-chinese-sft-med.model";
             ModelUtils.loadModel(network, model_path);
             network.RUN_MODEL = RunModel.TEST;
             Scanner scanner = new Scanner(System.in);
@@ -814,12 +814,12 @@ public class Llama3Test {
         try {
             //			CUDAModules.initContext();
             //			llama3_dp();
-            llama3_monkey();
+//            llama3_monkey();
             //			llama3_monkey_chatglm();
             //			llama3_monkey_sft();
             //			llama3_monkey_sft_test();
             //			llama3_monkey_med_sft();
-            //			llama3_monkey_med_predict();
+            			llama3_monkey_med_predict();
             //			llama3_monkey_sql_sft();
             //			llama3_monkey_sql_predict();
         } catch (Exception e) {

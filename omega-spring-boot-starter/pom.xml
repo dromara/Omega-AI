@@ -8,11 +8,10 @@
         <groupId>io.gitee.iangellove</groupId>
         <artifactId>omega-ai</artifactId>
         <version>${revision}</version>
-        <relativePath>../pom.xml</relativePath>
     </parent>
     <groupId>io.gitee.iangellove</groupId>
     <artifactId>omega-spring-boot-starter</artifactId>
-    <version>1.0.0</version>
+    <version>${revision}</version>
     <name>omega-spring-boot-starter</name>
     <description>omega-spring-boot-starter</description>
     <url>https://gitee.com/iangellove/omega-ai</url>

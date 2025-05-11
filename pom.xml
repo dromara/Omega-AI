@@ -15,6 +15,7 @@
     <modules>
         <module>omega-engine</module>
         <module>omega-spring-boot-starter</module>
+        <module>omega-spring-boot-web</module>
     </modules>
 
     <properties>
@@ -43,14 +44,15 @@
                 <version>${revision}</version>
             </dependency>
 
+            <dependency>
+                <groupId>io.gitee.iangellove</groupId>
+                <artifactId>omega-spring-boot-starter</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
-    <dependencies>
-        <dependency>
-            <groupId>io.gitee.iangellove</groupId>
-            <artifactId>omega-engine-v4-gpu</artifactId>
-        </dependency>
-    </dependencies>
+
 
 
     <build>
