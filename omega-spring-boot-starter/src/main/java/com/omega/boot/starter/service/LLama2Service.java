@@ -21,7 +21,7 @@
 //
 //@Component
 //@Configuration
-//public class LLama2Service {
+//public class LLama2Service extends ModelAbstract{
 //
 //    private Logger logger = LoggerFactory.getLogger(LLama2Service.class);
 //

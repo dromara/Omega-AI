@@ -21,6 +21,6 @@ public class TestController {
     private Llama3Service llama3Service;
     @GetMapping("/test")
     public String test(String input) {
-        return llama3Service.predict(input);
+        return "user:"+input+"\nchatbot:" + llama3Service.predict(input);
     }
 }

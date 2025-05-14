@@ -1,38 +1,10 @@
 {
   "properties": [
     {
-      "name": "model.name",
-      "type": "java.lang.String",
-      "description": "模型名称",
-      "defaultValue": "Default"
-    },
-    {
       "name": "model.path",
-      "type": "java.lang.String",
+      "type": "java.util.List<java.lang.String>",
       "description": "模型路径",
       "defaultValue": "Default"
     }
-  ],"hints": [
-  {
-    "name": "model.name",
-    "values": [
-      {
-        "value": "llama3",
-        "description": "llama3 model"
-      },
-      {
-        "value": "llama2",
-        "description": "llama2 model"
-      },
-      {
-        "value": "gpt2",
-        "description": "gpt2 model"
-      },
-      {
-        "value": "deepseek",
-        "description": "deepseek model"
-      }
-    ]
-  }
-]
+  ]
 }

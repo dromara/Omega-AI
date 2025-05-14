@@ -1,0 +1,5 @@
+org.springframework.context.ApplicationContextInitializer=\
+com.omega.boot.starter.ModelApplicationInitializer
+
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+com.omega.boot.starter.ModelAutoConfiguration
