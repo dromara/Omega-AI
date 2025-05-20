@@ -284,28 +284,6 @@ public class CUDAManager {
 		return module;
     }
 
-    public MyCUDAModule getModule(String fileName, String content) {
-        if (CUDAModules.modules.containsKey(fileName)) {
-            return CUDAModules.modules.get(fileName);
-        }
-        setContext(getContext());
-        maxThreads = instance.getMaxThreads(device);
-        threadsPerDimension = (int) Math.sqrt(maxThreads);
-        // Load the ptx file.
-        MyCUDAModule module = new MyCUDAModule();
-        try {
-            cuModuleLoadData(module, content);
-            CUDAModules.modules.put(fileName, module);
-        } catch (Exception e) {
-            // TODO: handle exception
-            System.err.println(fileName+" init fail.");
-            e.printStackTrace();
-        }
-        return module;
-    }
-
-
-
     /**
      * The extension of the given file name is replaced with "ptx".
      * <p>
