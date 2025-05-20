@@ -28,9 +28,9 @@ import jcuda.runtime.cudaDeviceProp;
 import jcuda.runtime.cudaError;
 
 public class CUDAManager {
-	
-	private final static boolean nvcc = true;
-	
+
+    private final static boolean nvcc = false;
+
     private final String CU_PATH = "cu/";
     public static Map<String, String> ptxList;
     public Map<String, MyCUDAModule> modules = new HashMap<String, MyCUDAModule>();
@@ -39,7 +39,7 @@ public class CUDAManager {
     public cudaDeviceProp props;
 //    private static final String CU_SUFFIX = ".cu";
     private static final String PTX_SUFFIX = ".ptx";
-    
+
     public Map<String, String> functions = new HashMap<String, String>() {
         /**
          *
@@ -123,7 +123,7 @@ public class CUDAManager {
     }
 
     public CUfunction getLocalFunctionByModule(String fileName, String functionName) {
-    	
+
 		if(!nvcc) {
 			Pattern pattern = Pattern.compile("(?<=\\.)[^\\.]+$"); // 正则表达式匹配最后一个点号后的部分（扩展名）
 	        Matcher matcher = pattern.matcher(fileName);
@@ -133,11 +133,11 @@ public class CUDAManager {
 	            System.out.println("No extension found");
 	        }
 		}
-		
+
     	if(ptxList == null) {
     		listCuFiles(CU_PATH);
     	}
-    	
+
     	MyCUDAModule m = null;
 
     	if(nvcc) {
@@ -147,17 +147,17 @@ public class CUDAManager {
     	}else {
     		m = this.getModule(fileName, ptxList.get(fileName));
     	}
-    	
+
     	if (m.getFunctions().containsKey(functionName)) {
             return m.getFunctions().get(functionName);
         }
-    	
+
     	CUfunction function = new CUfunction();
         checkCUDA(cuModuleGetFunction(function, m, functionName));
         m.getFunctions().put(functionName, function);
         return function;
     }
-    
+
     public static void listCuFiles(String directory) {
 
         ptxList = new HashMap<>();
@@ -178,7 +178,7 @@ public class CUDAManager {
         }
 
     }
-    
+
     private static Map<String, byte[]> loadCuFileFromDirectory(String path, String directory) throws Exception{
 
         Map<String, byte[]> cuFiles = new HashMap<>();
@@ -210,7 +210,7 @@ public class CUDAManager {
         }
 
     }
-    
+
     public CUfunction getEXFunctionByModule(String fileName, String functionName) {
         MyCUDAModule m = this.getModule(fileName);
         if (m.getFunctions().containsKey(functionName)) {
@@ -243,7 +243,7 @@ public class CUDAManager {
         }
         return null;
     }
-    
+
     public MyCUDAModule getModule(String fileName, byte[] data) {
         if (CUDAModules.modules.containsKey(fileName)) {
 		    return CUDAModules.modules.get(fileName);
@@ -263,7 +263,7 @@ public class CUDAManager {
 		}
 		return module;
     }
-    
+
     public MyCUDAModule getModule(String fileName, String content) {
         if (CUDAModules.modules.containsKey(fileName)) {
 		    return CUDAModules.modules.get(fileName);
@@ -284,7 +284,28 @@ public class CUDAManager {
 		return module;
     }
 
-    
+    public MyCUDAModule getModule(String fileName, String content) {
+        if (CUDAModules.modules.containsKey(fileName)) {
+            return CUDAModules.modules.get(fileName);
+        }
+        setContext(getContext());
+        maxThreads = instance.getMaxThreads(device);
+        threadsPerDimension = (int) Math.sqrt(maxThreads);
+        // Load the ptx file.
+        MyCUDAModule module = new MyCUDAModule();
+        try {
+            cuModuleLoadData(module, content);
+            CUDAModules.modules.put(fileName, module);
+        } catch (Exception e) {
+            // TODO: handle exception
+            System.err.println(fileName+" init fail.");
+            e.printStackTrace();
+        }
+        return module;
+    }
+
+
+
     /**
      * The extension of the given file name is replaced with "ptx".
      * <p>
