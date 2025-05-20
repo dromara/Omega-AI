@@ -1,6 +1,5 @@
 package com.omega.engine.nn.network;
 
-import com.omega.common.data.Tensor;
 import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
@@ -12,6 +11,7 @@ import com.omega.engine.nn.layer.normalization.NormalizationLayer;
 import com.omega.engine.nn.model.NetworkInit;
 import com.omega.engine.parallel.cuda.CUDACommonManager;
 import com.omega.engine.parallel.cuda.CUDAPool;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 import com.omega.engine.updater.UpdaterType;
 import jcuda.Pointer;

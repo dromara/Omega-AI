@@ -4,7 +4,6 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Scanner;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
@@ -15,6 +14,7 @@ import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.network.ASR;
 import com.omega.engine.optimizer.EDOptimizer;
 import com.omega.engine.optimizer.lr.LearnRateUpdate;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 import com.omega.example.asr.dataset.AudioDataset;
 import com.omega.example.asr.utils.FBank;
@@ -186,7 +186,7 @@ public class ASRTest {
 	}
 
 	public static void asr_train() throws Exception {
-		boolean bias = false;
+		boolean bias = true;
 		boolean dropout = false;
 		int batchSize = 4;
 		int maxWavLength = 512;

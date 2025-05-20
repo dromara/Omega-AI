@@ -1,7 +1,7 @@
 package com.omega.example.asr.utils;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.task.ForkJobEngine;
+import com.omega.engine.tensor.Tensor;
 
 import java.util.concurrent.ForkJoinTask;
 import java.util.concurrent.RecursiveAction;

@@ -1,6 +1,6 @@
 package com.omega.example.yolo.utils;
 
-import com.omega.common.data.Tensor;
+import com.omega.engine.tensor.Tensor;
 import com.omega.example.yolo.model.YoloDetection;
 
 import java.util.List;

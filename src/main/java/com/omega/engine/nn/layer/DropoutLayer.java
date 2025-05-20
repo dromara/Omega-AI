@@ -1,12 +1,12 @@
 package com.omega.engine.nn.layer;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.GPUOP;
 import com.omega.engine.nn.layer.gpu.DropoutKernel;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * Dropout Layer

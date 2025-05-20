@@ -1,8 +1,8 @@
 package com.omega.example.yolo.utils;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.data.utils.DataTransforms;
 import com.omega.engine.nn.data.DataSet;
+import com.omega.engine.tensor.Tensor;
 
 public class YoloLabelUtils {
     public float[] mean = new float[]{0.491f, 0.482f, 0.446f};
@@ -176,17 +176,14 @@ public class YoloLabelUtils {
             float py = cy * stride - gridy;
             /**
              * c1
-
              */
             target[i * oneSize + gridy * stride * 6 + gridx * 6 + 0] = 1.0f;
             /**
              * class
-
              */
             target[i * oneSize + gridy * stride * 6 + gridx * 6 + 1] = 1.0f;
             /**
              * x1,y1,w1,h1
-
              */
             target[i * oneSize + gridy * stride * 6 + gridx * 6 + 2] = px;
             target[i * oneSize + gridy * stride * 6 + gridx * 6 + 3] = py;

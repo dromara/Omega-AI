@@ -1,8 +1,9 @@
 package com.omega.example.diffusion.utils;
 
-import com.omega.common.data.Tensor;
+import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MathUtils;
 import com.omega.common.utils.RandomUtils;
+import com.omega.engine.tensor.Tensor;
 import com.omega.example.unet.utils.SegImageLoader;
 import com.omega.example.yolo.data.BaseDataLoader;
 import com.omega.example.yolo.data.ImageLoader;
@@ -112,6 +113,7 @@ public class DiffusionImageDataLoader extends BaseDataLoader {
                         }
                     });
                 }
+//                System.err.println(JsonUtils.toJson(this.idxSet));
             }
             count = this.idxSet.length;
             count_it = this.idxSet.length / batchSize;

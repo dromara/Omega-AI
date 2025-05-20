@@ -1,6 +1,5 @@
 package com.omega.engine.nn.network.vae;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.GPUOP;
@@ -12,6 +11,7 @@ import com.omega.engine.nn.layer.vqvae.tiny.TinyVQVAEEncoder;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.NetworkType;
 import com.omega.engine.nn.network.RunModel;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 import com.omega.engine.updater.UpdaterType;
 import jcuda.jcublas.cublasOperation;

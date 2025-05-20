@@ -3,7 +3,6 @@ package com.omega.engine.nn.layer.videovae;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
@@ -19,6 +18,7 @@ import com.omega.engine.nn.model.LayerInit;
 import com.omega.engine.nn.network.CNN;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.utils.ModelUtils;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import cn.hutool.json.JSONUtil;

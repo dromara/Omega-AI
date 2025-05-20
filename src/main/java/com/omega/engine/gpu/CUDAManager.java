@@ -1,7 +1,24 @@
 package com.omega.engine.gpu;
 
+import static jcuda.driver.JCudaDriver.cuModuleGetFunction;
+import static jcuda.driver.JCudaDriver.cuModuleLoad;
+import static jcuda.driver.JCudaDriver.cuModuleLoadData;
+
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.jar.JarFile;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import com.omega.common.lib.LibPaths;
-import com.omega.common.utils.JarPathUtils;
+
+import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.io.resource.ResourceUtil;
 import jcuda.driver.CUcontext;
 import jcuda.driver.CUdevice;
 import jcuda.driver.CUfunction;
@@ -10,27 +27,22 @@ import jcuda.runtime.JCuda;
 import jcuda.runtime.cudaDeviceProp;
 import jcuda.runtime.cudaError;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
-import java.util.HashMap;
-import java.util.Map;
-
-import static jcuda.driver.JCudaDriver.cuModuleGetFunction;
-import static jcuda.driver.JCudaDriver.cuModuleLoad;
-
 public class CUDAManager {
+	
+	private final static boolean nvcc = true;
+	
     private final String CU_PATH = "cu/";
+    public static Map<String, String> ptxList;
     public Map<String, MyCUDAModule> modules = new HashMap<String, MyCUDAModule>();
     public int maxThreads;
     public int threadsPerDimension;
     public cudaDeviceProp props;
+//    private static final String CU_SUFFIX = ".cu";
+    private static final String PTX_SUFFIX = ".ptx";
+    
     public Map<String, String> functions = new HashMap<String, String>() {
         /**
          *
-
          */
         private static final long serialVersionUID = 3230964896540863511L;
 
@@ -111,28 +123,94 @@ public class CUDAManager {
     }
 
     public CUfunction getLocalFunctionByModule(String fileName, String functionName) {
-        String rootPath = LibPaths.LIB_PATH;
-        fileName = rootPath + fileName;
-        File file = new File(fileName);
-        if (!file.exists()) {
-            try {
-                URL url = CUDAManager.class.getProtectionDomain().getCodeSource().getLocation();
-                JarPathUtils.copyJarResources(url.getPath(), CU_PATH, rootPath, CUDAManager.class);
-            } catch (IOException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
-        }
-        MyCUDAModule m = this.getModule(fileName);
-        if (m.getFunctions().containsKey(functionName)) {
+    	
+		if(!nvcc) {
+			Pattern pattern = Pattern.compile("(?<=\\.)[^\\.]+$"); // 正则表达式匹配最后一个点号后的部分（扩展名）
+	        Matcher matcher = pattern.matcher(fileName);
+	        if (matcher.find()) {
+	        	fileName = fileName.replaceFirst(matcher.group(), "ptx"); // 替换匹配到的部分
+	        } else {
+	            System.out.println("No extension found");
+	        }
+		}
+		
+    	if(ptxList == null) {
+    		listCuFiles(CU_PATH);
+    	}
+    	
+    	MyCUDAModule m = null;
+
+    	if(nvcc) {
+    		String rootPath = LibPaths.LIB_PATH;
+            fileName = rootPath + fileName;
+            m = this.getModule(fileName);
+    	}else {
+    		m = this.getModule(fileName, ptxList.get(fileName));
+    	}
+    	
+    	if (m.getFunctions().containsKey(functionName)) {
             return m.getFunctions().get(functionName);
         }
-        CUfunction function = new CUfunction();
+    	
+    	CUfunction function = new CUfunction();
         checkCUDA(cuModuleGetFunction(function, m, functionName));
         m.getFunctions().put(functionName, function);
         return function;
     }
+    
+    public static void listCuFiles(String directory) {
 
+        ptxList = new HashMap<>();
+        try {
+            String path = CUDAModules.class.getProtectionDomain().getCodeSource().getLocation().getPath();
+            path = java.net.URLDecoder.decode(path, "UTF-8");
+
+            // In Jar file else in IDE
+            if (path.endsWith(".jar")) {
+               loadCuFileFromJar(path, directory);
+            } else {
+               loadCuFileFromDirectory(path, directory);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+//            log("Exception:" + e.getMessage() + "\r" + ArrayUtil.join(e.getStackTrace(), "\r"));
+        }
+
+    }
+    
+    private static Map<String, byte[]> loadCuFileFromDirectory(String path, String directory) throws Exception{
+
+        Map<String, byte[]> cuFiles = new HashMap<>();
+        String cuPath = path + "/" + directory;
+        File file = new java.io.File(cuPath);
+        if (file.isDirectory() && null != file.listFiles()) {
+            java.util.Arrays.stream(Objects.requireNonNull(file.listFiles()))
+                    .filter(entry -> entry.getName().toLowerCase().endsWith(PTX_SUFFIX))
+                    .forEach(entry -> {
+                    	String fullName = cuPath + "/" + entry.getName();
+  	            	  	ptxList.put(entry.getName(), FileUtil.readUtf8String(fullName));
+                    });
+        }
+
+        return cuFiles;
+    }
+
+    public static void loadCuFileFromJar(String path, String directory) throws Exception{
+
+        try (JarFile jarFile = new JarFile(path)) {
+            jarFile.stream()
+                    .filter(entry -> !entry.isDirectory())
+                    .filter(entry -> entry.getName().startsWith(directory))
+                    .filter(entry -> entry.getName().toLowerCase().endsWith(PTX_SUFFIX))
+                    .forEach(entry -> {
+                    	String content = ResourceUtil.readUtf8Str(entry.getName());
+  	            	  	ptxList.put(entry.getName().replaceAll(directory, ""), content);
+                    });
+        }
+
+    }
+    
     public CUfunction getEXFunctionByModule(String fileName, String functionName) {
         MyCUDAModule m = this.getModule(fileName);
         if (m.getFunctions().containsKey(functionName)) {
@@ -165,7 +243,48 @@ public class CUDAManager {
         }
         return null;
     }
+    
+    public MyCUDAModule getModule(String fileName, byte[] data) {
+        if (CUDAModules.modules.containsKey(fileName)) {
+		    return CUDAModules.modules.get(fileName);
+		}
+		setContext(getContext());
+		maxThreads = instance.getMaxThreads(device);
+		threadsPerDimension = (int) Math.sqrt(maxThreads);
+		// Load the ptx file.
+		MyCUDAModule module = new MyCUDAModule();
+		try {
+			cuModuleLoadData(module, data);
+			CUDAModules.modules.put(fileName, module);
+		} catch (Exception e) {
+			// TODO: handle exception
+			System.err.println(fileName+" init fail.");
+			e.printStackTrace();
+		}
+		return module;
+    }
+    
+    public MyCUDAModule getModule(String fileName, String content) {
+        if (CUDAModules.modules.containsKey(fileName)) {
+		    return CUDAModules.modules.get(fileName);
+		}
+		setContext(getContext());
+		maxThreads = instance.getMaxThreads(device);
+		threadsPerDimension = (int) Math.sqrt(maxThreads);
+		// Load the ptx file.
+		MyCUDAModule module = new MyCUDAModule();
+		try {
+			cuModuleLoadData(module, content);
+			CUDAModules.modules.put(fileName, module);
+		} catch (Exception e) {
+			// TODO: handle exception
+			System.err.println(fileName+" init fail.");
+			e.printStackTrace();
+		}
+		return module;
+    }
 
+    
     /**
      * The extension of the given file name is replaced with "ptx".
      * <p>

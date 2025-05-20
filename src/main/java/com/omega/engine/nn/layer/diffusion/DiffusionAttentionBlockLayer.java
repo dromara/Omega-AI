@@ -1,6 +1,5 @@
 package com.omega.engine.nn.layer.diffusion;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.gpu.GPUOP;
@@ -13,6 +12,7 @@ import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.GNLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.Transformer;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;

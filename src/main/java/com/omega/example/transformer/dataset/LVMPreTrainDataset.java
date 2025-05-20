@@ -1,7 +1,7 @@
 package com.omega.example.transformer.dataset;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixOperation;
+import com.omega.engine.tensor.Tensor;
 import com.omega.example.transformer.utils.LagJsonReader;
 import com.omega.example.transformer.utils.tokenizers.Tokenizer;
 import com.omega.example.yolo.data.ImageLoader;

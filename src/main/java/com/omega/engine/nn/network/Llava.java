@@ -1,6 +1,5 @@
 package com.omega.engine.nn.network;
 
-import com.omega.common.data.Tensor;
 import com.omega.engine.loss.LossFactory;
 import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.layer.FullyLayer;
@@ -8,6 +7,7 @@ import com.omega.engine.nn.layer.InputLayer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.SoftmaxWithCrossEntropyLayer;
 import com.omega.engine.nn.layer.llava.LlavaTransformerDecoder;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 
 import java.io.IOException;

@@ -1,13 +1,13 @@
 package com.omega.example.yolo.utils;
 
-import com.omega.common.data.Tensor;
-
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.omega.engine.tensor.Tensor;
 
 /**
  * yolo label transform to the location

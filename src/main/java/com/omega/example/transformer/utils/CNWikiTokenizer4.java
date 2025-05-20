@@ -1,8 +1,9 @@
 package com.omega.example.transformer.utils;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.PrintUtils;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.runtime.JCuda;
 
 import java.io.BufferedReader;

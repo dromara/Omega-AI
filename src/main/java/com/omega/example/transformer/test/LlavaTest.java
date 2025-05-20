@@ -1,6 +1,5 @@
 package com.omega.example.transformer.test;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.CUDAManager;
@@ -13,6 +12,7 @@ import com.omega.engine.nn.network.Llava;
 import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.optimizer.EDOptimizer;
 import com.omega.engine.optimizer.lr.LearnRateUpdate;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 import com.omega.example.clip.utils.ClipModelUtils;
 import com.omega.example.transformer.dataset.LVMPreTrainDataset;

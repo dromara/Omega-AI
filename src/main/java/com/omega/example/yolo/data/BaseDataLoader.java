@@ -1,6 +1,6 @@
 package com.omega.example.yolo.data;
 
-import com.omega.common.data.Tensor;
+import com.omega.engine.tensor.Tensor;
 
 public abstract class BaseDataLoader {
     public int number;

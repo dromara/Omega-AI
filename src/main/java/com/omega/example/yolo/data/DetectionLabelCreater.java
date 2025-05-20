@@ -1,10 +1,10 @@
 package com.omega.example.yolo.data;
 
-import com.omega.common.data.Tensor;
-
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
+
+import com.omega.engine.tensor.Tensor;
 
 public class DetectionLabelCreater implements Serializable {
     /**

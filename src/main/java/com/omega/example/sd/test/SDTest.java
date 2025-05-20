@@ -1,6 +1,5 @@
 package com.omega.example.sd.test;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
@@ -11,6 +10,7 @@ import com.omega.engine.nn.network.vae.TinyVQVAE2;
 import com.omega.engine.nn.network.vae.VQVAE2;
 import com.omega.engine.optimizer.MBSGDOptimizer;
 import com.omega.engine.optimizer.lr.LearnRateUpdate;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 import com.omega.example.clip.utils.ClipModelUtils;
 import com.omega.example.diffusion.utils.DiffusionImageDataLoader;
@@ -694,7 +694,7 @@ public class SDTest {
         clip.RUN_MODEL = RunModel.EVAL;
         String clipWeight = "H:\\model\\clip-vit-base-patch32.json";
         ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, true);
-        int z_dims = 128;
+        int z_dims = 32;
         int latendDim = 4;
         int num_vq_embeddings = 512;
         int num_res_blocks = 2;
@@ -940,8 +940,8 @@ public class SDTest {
             //			test_vqvae32();
             //			test_clip();
             //			test_clip_text();
-            //			test_vqvae32_anime();
-            tiny_sd_predict_anime_32();
+            			test_vqvae32_anime();
+//            tiny_sd_predict_anime_32();
             //			test_clip_text();
             //			testDataset();
         } catch (Exception e) {

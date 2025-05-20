@@ -1,6 +1,5 @@
 package com.omega.engine.nn.layer.gpu;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.MatrixUtils;
@@ -10,6 +9,8 @@ import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.nn.layer.transformer.RoPELayer;
 import com.omega.engine.nn.network.Transformer;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUdeviceptr;
@@ -162,7 +163,9 @@ public class RoPEKernel extends BaseKernel {
         int headSize = dim / headNum;
         float[] freqs = freqs(0, headSize, 2);
         float[] t = MatrixUtils.order(time, 0, 1);
+        System.err.println(JsonUtils.toJson(t));
         float[] o = outer(t, freqs);
+        System.err.println(JsonUtils.toJson(o));
         float[] cos = MatrixOperation.cos(o);
         float[] sin = MatrixOperation.sin(o);
         Tensor cos_t = new Tensor(1, 1, t.length, freqs.length, cos, true);
@@ -335,7 +338,6 @@ public class RoPEKernel extends BaseKernel {
             /**
              * const float* x, float* dst,float* c_cos,float* c_sin, int ncols
              * const float* x, float* dst,float* c_cos,float* c_sin, int ncols, int T,int headSize
-
              */
             backwardParameters = Pointer.to(Pointer.to(delta.getGpuData()), Pointer.to(diff.getGpuData()), Pointer.to(cos.getGpuData()), Pointer.to(sin.getGpuData()), Pointer.to(new int[]{ncol}), Pointer.to(new int[]{delta.channel}), Pointer.to(new int[]{delta.width}));
             int[] block_dims = new int[]{1, 256, 1};
@@ -358,7 +360,6 @@ public class RoPEKernel extends BaseKernel {
             int ncol = deltaQ.height * deltaQ.width;
             /**
              * float* deltaQ,float* deltaK, float* diffQ, float* diffK,float* c_cos,float* c_sin, int ncols, int T,int headSize
-
              */
             backwardParameters = Pointer.to(Pointer.to(deltaQ.getGpuData()), Pointer.to(deltaK.getGpuData()), Pointer.to(diffQ.getGpuData()), Pointer.to(diffK.getGpuData()), Pointer.to(cos.getGpuData()), Pointer.to(sin.getGpuData()), Pointer.to(new int[]{ncol}), Pointer.to(new int[]{deltaQ.channel}), Pointer.to(new int[]{deltaQ.width}));
             int[] block_dims = new int[]{1, 256, 1};

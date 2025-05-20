@@ -1,7 +1,7 @@
 package com.omega.example.yolo.utils;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.JsonUtils;
+import com.omega.engine.tensor.Tensor;
 
 public class YoloDecode {
     public static int grid_size = 7;

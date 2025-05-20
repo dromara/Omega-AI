@@ -1,11 +1,11 @@
 package com.omega.engine.optimizer;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.MathUtils;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.nn.data.BaseData;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.optimizer.lr.LearnRateUpdate;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * Stochastic Gradient Descent

@@ -1,10 +1,11 @@
 package com.omega.engine.parallel.ddp.distributed;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.nn.network.NetworkType;
 import com.omega.engine.parallel.params.Llama3Parameters;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.runtime.JCuda;

@@ -1,7 +1,8 @@
 package com.omega.engine.gpu;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.JsonUtils;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUfunction;
@@ -74,7 +75,6 @@ public class BaseKernel {
             }
             /**
              *   const float* dout, float* dx1, float* dx2,int B, int C1, int C2, int H, int W
-
              */
             Pointer kernelParameter = Pointer.to(Pointer.to(diff.getGpuData()), Pointer.to(dx1.getGpuData()), Pointer.to(dx2.getGpuData()), Pointer.to(new int[]{B}), Pointer.to(new int[]{C1}), Pointer.to(new int[]{C2}), Pointer.to(new int[]{H}), Pointer.to(new int[]{W}));
             int N = B * (int) Math.max(C1, C2) * H * W;
@@ -96,7 +96,6 @@ public class BaseKernel {
             }
             /**
              *   const float* out,float* x1, float* x2,int B, int C, int H, int W,int N, int* indices,int size
-
              */
             Pointer kernelParameter = Pointer.to(Pointer.to(output.getGpuData()), Pointer.to(x1.getGpuData()), Pointer.to(x2.getGpuData()), Pointer.to(new int[]{x1.number}), Pointer.to(new int[]{x1.channel}), Pointer.to(new int[]{x1.height}), Pointer.to(new int[]{x1.width}), Pointer.to(new int[]{x1.getDataLength()}), Pointer.to(indices.getGpuData()), Pointer.to(new int[]{size}));
             checkCUDA(cuLaunchKernel(replace_channel_forward_function, CAFFE_GET_BLOCKS(x1.getDataLength()), 1, 1,      // Grid dimension

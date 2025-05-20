@@ -1,8 +1,8 @@
 package com.omega.example.transformer.dataset;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.nn.network.utils.ModelUtils;
+import com.omega.engine.tensor.Tensor;
 import com.omega.example.transformer.utils.bpe.BinDataType;
 import com.omega.example.transformer.utils.tokenizers.Tokenizer;
 import jcuda.runtime.JCuda;

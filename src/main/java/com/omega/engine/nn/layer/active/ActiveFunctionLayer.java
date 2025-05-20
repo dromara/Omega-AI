@@ -1,7 +1,7 @@
 package com.omega.engine.nn.layer.active;
 
-import com.omega.common.data.Tensor;
 import com.omega.engine.nn.layer.Layer;
+import com.omega.engine.tensor.Tensor;
 
 public abstract class ActiveFunctionLayer extends Layer {
     public Layer preLayer;

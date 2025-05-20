@@ -1,8 +1,8 @@
 package com.omega.engine.nn.layer;
 
-import com.omega.common.data.Tensor;
 import com.omega.engine.nn.layer.gpu.UpSample3DKernel;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * 3d上采用层

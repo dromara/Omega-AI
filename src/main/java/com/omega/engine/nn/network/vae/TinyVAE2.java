@@ -1,6 +1,5 @@
 package com.omega.engine.nn.network.vae;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.gpu.GPUOP;
 import com.omega.engine.loss.LossFactory;
@@ -12,6 +11,7 @@ import com.omega.engine.nn.layer.tae.TAEEncoder;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.NetworkType;
 import com.omega.engine.nn.network.RunModel;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 
 import java.io.IOException;
