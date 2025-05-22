@@ -69,10 +69,16 @@ public class DiTFinalLayer extends Layer {
         //		NanoGPT net = (NanoGPT) this.network;
     	this.finalNorm = new RMSLayer(network);
         this.finalLinear = new FullyLayer(hidden_size, oWidth, bias, network);
+//        this.finalLinear.weight.clearGPU();
+//        this.finalLinear.bias.clearGPU();
         //		this.linear1.weight = new Tensor(1, 1, embedDim, nChannel, RandomUtils.uniform(this.embedDim * nChannel, 0.0f, 0.02f), true);
         this.m_active = new SiLULayer(network);
         this.m_linear1 = new FullyLayer(hidden_size, hidden_size, bias, network);
         this.m_linear2 = new FullyLayer(hidden_size, hidden_size, bias, network);
+//        this.m_linear1.weight.clearGPU();
+//        this.m_linear1.bias.clearGPU();
+//        this.m_linear2.weight.clearGPU();
+//        this.m_linear2.bias.clearGPU();
         //		this.linear2.weight = new Tensor(1, 1, nChannel, embedDim, RandomUtils.uniform(this.embedDim * nChannel, 0.0f, 0.02f), true);
         //		this.linear2.weight = new Tensor(1, 1, nChannel, embedDim, RandomUtils.uniform(this.embedDim * nChannel, 0.0f, (0.02f / (float) Math.sqrt(2 * net.decoderNum))), true);
     }

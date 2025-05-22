@@ -89,7 +89,8 @@ public class DiTBlock extends Layer {
         
         this.modulationAct = new SiLULayer(network);
         this.modulation = new FullyLayer(cEmbedDim, embedDim, bias, network);
-        
+//        this.modulation.weight.clearGPU();
+//        this.modulation.bias.clearGPU();
         this.attn = new DiTAttentionLayer2(embedDim, headNum, time, bias, false, network);
         this.norm2 = new RMSLayer(network);
         this.cross_attn = new DiTCrossAttentionLayer2(embedDim, textStateDim, headNum, time, textTime, bias, network);

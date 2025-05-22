@@ -276,7 +276,7 @@ public class DiTCrossAttentionLayer2 extends Layer {
         /**
          * apply RoPE
          */
-        ropeKernel.forward(cos, sin, query, rq);
+        ropeKernel.forward2d(cos, sin, query, rq, time, headNum, dk);
         Tensor_OP().permute(rq, qt, new int[]{0, 2, 1, 3});
         Tensor_OP().permute(key, kt, new int[]{0, 2, 1, 3});
         Tensor_OP().permute(value, vt, new int[]{0, 2, 1, 3});
@@ -387,7 +387,7 @@ public class DiTCrossAttentionLayer2 extends Layer {
         /**
          * RoPE backward
          */
-        ropeKernel.backward(cos, sin, qt, rq);
+        ropeKernel.backward2d(cos, sin, qt, rq, time, headNum, dk);
         Tensor queryDelta = rq.view(batchSize * time, 1, 1, headNum * dk);
         Tensor keyDelta = kt.view(batchSize * time, 1, 1, headNum * dk);
         Tensor valueDelta = vt.view(batchSize * time, 1, 1, headNum * dk);

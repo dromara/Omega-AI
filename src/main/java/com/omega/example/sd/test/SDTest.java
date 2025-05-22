@@ -296,6 +296,56 @@ public class SDTest {
         //		 */
         //		MBSGDOptimizer.showImgs("H:\\vae_dataset\\anime_test256\\", out, "test1", mean, std);
     }
+    
+    public static void test_vqvae32_poke() {
+        int batchSize = 3;
+        int imageSize = 256;
+        int z_dims = 32;
+        int latendDim = 4;
+        int num_vq_embeddings = 512;
+        int num_res_blocks = 1;
+        int[] ch_mult = new int[]{1, 2, 2, 4};
+        int ch = 32;
+        float[] mean = new float[]{0.5f, 0.5f, 0.5f};
+        float[] std = new float[]{0.5f, 0.5f, 0.5f};
+        String imgDirPath = "H:\\vae_dataset\\pokemon-blip\\dataset256\\";
+        DiffusionImageDataLoader dataLoader = new DiffusionImageDataLoader(imgDirPath, imageSize, imageSize, batchSize, true, true, mean, std);
+        VQVAE2 network = new VQVAE2(LossType.MSE, UpdaterType.adamw, z_dims, latendDim, num_vq_embeddings, imageSize, ch_mult, ch, num_res_blocks);
+        network.CUDNN = true;
+        network.learnRate = 0.001f;
+        network.RUN_MODEL = RunModel.EVAL;
+        String vqvae_model_path = "H:\\model\\pokemon_vqvae2_256.model";
+        ModelUtils.loadModel(network, vqvae_model_path);
+        String labelPath = "H:\\vae_dataset\\pokemon-blip\\data.json";
+        boolean horizontalFilp = true;
+        int imgSize = 256;
+        int maxContextLen = 77;
+        String vocabPath = "H:\\model\\bpe_tokenizer\\vocab.json";
+        String mergesPath = "H:\\model\\bpe_tokenizer\\merges.txt";
+        BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+        SDImageDataLoaderEN dataLoader2 = new SDImageDataLoaderEN(bpe, labelPath, imgDirPath, imgSize, imgSize, maxContextLen, batchSize, horizontalFilp, mean, std);
+
+        int[] indexs = new int[]{10, 212, 684};
+        Tensor label = new Tensor(batchSize * maxContextLen, 1, 1, 1, true);
+        dataLoader2.loadLabel(indexs, label);
+        Tensor input = new Tensor(batchSize, 3, imageSize, imageSize, true);
+        dataLoader.loadData(indexs, input);
+        JCudaDriver.cuCtxSynchronize();
+        Tensor latent = network.encode(input);
+        //		latent.showDM("latent");
+        latent.showShape();
+        //		Tensor latent = new Tensor(batchSize, 4, 32, 32, RandomUtils.gaussianRandom(batchSize * 4 * 32 * 32, 1.0f, 0.0f), true);
+        Tensor out = network.decode(latent);
+        //		out.showDM("out");
+        out.showShape();
+        out.syncHost();
+        out.data = MatrixOperation.clampSelf(out.data, -1, 1);
+        /**
+         * print image
+         */
+        MBSGDOptimizer.showImgs("H:\\vae_dataset\\anime_test256\\", out, "test", mean, std);
+       
+    }
 
     public static void getVQVAE32_scale_factor() {
         int batchSize = 8;
@@ -929,6 +979,7 @@ public class SDTest {
     public static void main(String[] args) {
         try {
             //			CUDAModules.initContext();
+        	test_vqvae32_poke();
             //			sd_train_pokem();
             //			sd_train_pokem_32();
             //			tiny_sd_train_pokem_32();
@@ -940,7 +991,7 @@ public class SDTest {
             //			test_vqvae32();
             //			test_clip();
             //			test_clip_text();
-            			test_vqvae32_anime();
+//            			test_vqvae32_anime();
 //            tiny_sd_predict_anime_32();
             //			test_clip_text();
             //			testDataset();

@@ -84,7 +84,7 @@ public class DiTTest {
 		
 		int ditHeadNum = 6;
         int latendSize = 32;
-        int depth = 12;
+        int depth = 6;
         int timeSteps = 1000;
         int mlpRatio = 4;
         int patchSize = 2;
@@ -92,7 +92,7 @@ public class DiTTest {
         
         DiT dit = new DiT(LossType.MSE, UpdaterType.adamw, 4, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, 77, 512, mlpRatio);
 		
-        int batchSize = 4;
+        int batchSize = 2;
         int channel = 4;
         int z_dims = 32;
         Tensor x = new Tensor(batchSize, channel, z_dims, z_dims, MatrixUtils.order(batchSize * channel * z_dims * z_dims, 0.01f, 0.01f), true);
@@ -103,25 +103,25 @@ public class DiTTest {
         int cDims = 512;
         Tensor cx = new Tensor(batchSize * cTime, 1, 1, cDims, MatrixUtils.order(batchSize * cTime * cDims, 0.01f, 0.01f), true);
         
-//        System.out.println(dit.hiddenSize);
-//        
-//        Tensor[] cs = RoPEKernel.getCosAndSin(dit.time, dit.hiddenSize, dit.headNum);
-//        Tensor cos = cs[0];
-//        Tensor sin = cs[1];
-//        cos.showDM("cos");
-//        sin.showDM("sin");
+        System.out.println(dit.hiddenSize);
+        
+        Tensor[] cs = RoPEKernel.getCosAndSin2D(dit.time, dit.hiddenSize, dit.headNum);
+        Tensor cos = cs[0];
+        Tensor sin = cs[1];
+        cos.showDM("cos");
+        sin.showDM("sin");
         
         String weight = "H:\\model\\dit.json";
         loadWeight(LagJsonReader.readJsonFileSmallWeight(weight), dit, true);
         
-        dit.forward(x, tx, cx);
+        dit.forward(x, tx, cx, cos, sin);
         
         dit.getOutput().showDM();
         dit.getOutput().showShape();
 
         Tensor dy = new Tensor(batchSize, channel, z_dims, z_dims, MatrixUtils.order(batchSize * channel * z_dims * z_dims, 0.01f, 0.01f), true);
         
-        dit.back(dy);
+        dit.back(dy, cos, sin);
         
 	}
 	
@@ -182,13 +182,72 @@ public class DiTTest {
 //        ModelUtils.saveModel(unet, save_model_path);
     }
 	
+	public static void dit_pokemon_train() throws Exception {
+        String labelPath = "H:\\vae_dataset\\pokemon-blip\\data.json";
+        String imgDirPath = "H:\\vae_dataset\\pokemon-blip\\dataset256\\";
+        boolean horizontalFilp = true;
+        int imgSize = 256;
+        int maxContextLen = 77;
+        int batchSize = 4;
+        float[] mean = new float[]{0.5f, 0.5f, 0.5f};
+        float[] std = new float[]{0.5f, 0.5f, 0.5f};
+        String vocabPath = "H:\\model\\bpe_tokenizer\\vocab.json";
+        String mergesPath = "H:\\model\\bpe_tokenizer\\merges.txt";
+        BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+        SDImageDataLoaderEN dataLoader = new SDImageDataLoaderEN(bpe, labelPath, imgDirPath, imgSize, imgSize, maxContextLen, batchSize, horizontalFilp, mean, std);
+        int time = maxContextLen;
+        int maxPositionEmbeddingsSize = 77;
+        int vocabSize = 49408;
+        int headNum = 8;
+        int n_layers = 12;
+        int textEmbedDim = 512;
+        ClipTextModel clip = new ClipTextModel(LossType.MSE, UpdaterType.adamw, headNum, time, vocabSize, textEmbedDim, maxPositionEmbeddingsSize, n_layers);
+        clip.CUDNN = true;
+        clip.time = time;
+        clip.RUN_MODEL = RunModel.EVAL;
+        String clipWeight = "H:\\model\\clip-vit-base-patch32.json";
+        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, false);
+        int z_dims = 32;
+        int latendDim = 16;
+        int num_vq_embeddings = 512;
+        int num_res_blocks = 1;
+        int[] ch_mult = new int[]{1, 2, 2, 4};
+        int ch = 32;
+        VQVAE2 vae = new VQVAE2(LossType.MSE, UpdaterType.adamw, z_dims, latendDim, num_vq_embeddings, imgSize, ch_mult, ch, num_res_blocks);
+        vae.CUDNN = true;
+        vae.learnRate = 0.001f;
+        vae.RUN_MODEL = RunModel.EVAL;
+        String vqvae_model_path = "H:\\model\\pokemon_vqvae2_256.model";
+        ModelUtils.loadModel(vae, vqvae_model_path);
+        
+        int ditHeadNum = 6;
+        int latendSize = 32;
+        int depth = 6;
+        int timeSteps = 1000;
+        int mlpRatio = 4;
+        int patchSize = 2;
+        int hiddenSize = 384;
+        
+        DiT dit = new DiT(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, maxContextLen, textEmbedDim, mlpRatio);
+        dit.CUDNN = true;
+        dit.learnRate = 0.0001f;
+        
+        MBSGDOptimizer optimizer = new MBSGDOptimizer(dit, 500, 0.00001f, batchSize, LearnRateUpdate.CONSTANT, false);
+        //		optimizer.lr_step = new int[] {20,50,80};
+        optimizer.train_DiT_Anime(dataLoader, vae, clip);
+//        String save_model_path = "/omega/models/sd_anime256.model";
+//        ModelUtils.saveModel(unet, save_model_path);
+    }
+	
 	 public static void main(String[] args) {
 	        try {
 	           
 //	        	dit_test();
 	        	
-	        	dit_train();
-
+//	        	dit_train();
+	        	
+	        	dit_pokemon_train();
+	        	
 	        } catch (Exception e) {
 	            // TODO: handle exception
 	            e.printStackTrace();

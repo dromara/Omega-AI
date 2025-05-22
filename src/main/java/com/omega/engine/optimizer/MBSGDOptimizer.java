@@ -397,7 +397,8 @@ public class MBSGDOptimizer extends Optimizer {
             /**
              * print image
              */
-            showImgs("/omega/test/sd/", result, it, mean, std, labels);
+            showImgs("H:\\vae_dataset\\anime_test256\\dit_test2\\", result, it, mean, std, labels);
+//            showImgs("/omega/test/sd/", result, it, mean, std, labels);
         } catch (Exception e) {
             // TODO: handle exception
             e.printStackTrace();
@@ -5082,7 +5083,7 @@ public class MBSGDOptimizer extends Optimizer {
             Tensor input = new Tensor(batchSize, 3, trainingData.img_h, trainingData.img_w, true);
             Tensor label = new Tensor(batchSize * network.maxContextLen, 1, 1, 1, true);
             
-            Tensor[] cs = RoPEKernel.getCosAndSin(network.time, network.hiddenSize * 2, network.headNum);
+            Tensor[] cs = RoPEKernel.getCosAndSin2D(network.time, network.hiddenSize, network.headNum);
             Tensor cos = cs[0];
             Tensor sin = cs[1];
             

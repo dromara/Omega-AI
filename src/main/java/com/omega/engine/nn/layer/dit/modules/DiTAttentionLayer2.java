@@ -243,8 +243,9 @@ public class DiTAttentionLayer2 extends Layer {
         /**
          * apply RoPE
          */
-        ropeKernel.forward(cos, sin, query, rq);
-        ropeKernel.forward(cos, sin, key, rk);
+        ropeKernel.forward2d(cos, sin, query, rq, time, headNum, dk);
+        ropeKernel.forward2d(cos, sin, key, rk, time, headNum, dk);
+        
         Tensor_OP().permute(rq, qt, new int[]{0, 2, 1, 3});
         Tensor_OP().permute(rk, kt, new int[]{0, 2, 1, 3});
         Tensor_OP().permute(value, vt, new int[]{0, 2, 1, 3});
@@ -371,7 +372,8 @@ public class DiTAttentionLayer2 extends Layer {
          /**
           * RoPE backward
           */
-         ropeKernel.backward(cos, sin, qt, kt, rq, rk);
+         ropeKernel.backward2d(cos, sin, qt, rq, time, headNum, dk);
+         ropeKernel.backward2d(cos, sin, kt, rk, time, headNum, dk);
          Tensor queryDelta = rq.view(this.getqLinerLayer().getOutput().shape());
          Tensor keyDelta = rk.view(this.getkLinerLayer().getOutput().shape());
          Tensor valueDelta = vt.view(this.getvLinerLayer().getOutput().shape());

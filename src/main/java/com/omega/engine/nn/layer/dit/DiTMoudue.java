@@ -139,8 +139,6 @@ public class DiTMoudue extends Layer {
     	return emb;
     }
     
-    
-    
     public void init(Tensor input) {
         // TODO Auto-generated method stub
         this.number = input.number;
@@ -267,13 +265,13 @@ public class DiTMoudue extends Layer {
     	}
 //     	dtc.showDM("dtc");
      	timeEmbd.back(dtc);
-    	
+
      	patchEmbd.back(dy);
     }
     
     public void diff(Tensor cos,Tensor sin) {
         // TODO Auto-generated method stub
-    	
+//    	delta.showDM("total-delta");
     	/**
     	 * unpatchify back
     	 */
@@ -286,6 +284,7 @@ public class DiTMoudue extends Layer {
     	finalLayer.back(finalLayer.getOutput(), dtc);
     	
     	Tensor dy = finalLayer.diff;
+//    	dy.showDM("block-diff");
      	for(int i = depth - 1;i>=0;i--) {
     		DiTBlock block = blocks.get(i);
     		block.back(dy, dtc, dtext, cos, sin);
@@ -293,7 +292,7 @@ public class DiTMoudue extends Layer {
     	}
      	
      	timeEmbd.back(dtc);
-    	
+//     	dy.showDM("block-diff");
      	patchEmbd.back(dy);
      	
     }

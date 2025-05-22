@@ -29,7 +29,7 @@ import jcuda.runtime.cudaError;
 
 public class CUDAManager {
 
-    private final static boolean nvcc = false;
+    private final static boolean nvcc = true;
 
     private final String CU_PATH = "cu/";
     public static Map<String, String> ptxList;

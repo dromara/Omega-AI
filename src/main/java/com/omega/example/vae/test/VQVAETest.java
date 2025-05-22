@@ -526,10 +526,10 @@ public class VQVAETest {
 
     public static void anime_vqvae2_lpips_gandisc_32_nogan2() {
         try {
-            int batchSize = 8;
-            int imageSize = 128;
+            int batchSize = 3;
+            int imageSize = 256;
             int z_dim = 32;
-            int latendDim = 16;
+            int latendDim = 4;
             int num_vq_embeddings = 512;
             int num_res_blocks = 1;
             int[] ch_mult = new int[]{1, 2, 2, 4};
@@ -537,7 +537,7 @@ public class VQVAETest {
             float[] mean = new float[]{0.5f, 0.5f, 0.5f};
             float[] std = new float[]{0.5f, 0.5f, 0.5f};
             //			String imgDirPath = "I:\\dataset\\sd-anime\\anime_op\\256\\";
-            String imgDirPath = "H:\\vae_dataset\\pokemon-blip\\dataset128\\";
+            String imgDirPath = "H:\\vae_dataset\\pokemon-blip\\dataset256\\";
             DiffusionImageDataLoader dataLoader = new DiffusionImageDataLoader(imgDirPath, imageSize, imageSize, batchSize, true, false, mean, std);
             VQVAE2 network = new VQVAE2(LossType.MSE, UpdaterType.adamw, z_dim, latendDim, num_vq_embeddings, imageSize, ch_mult, ch, num_res_blocks);
             network.CUDNN = true;
@@ -550,7 +550,7 @@ public class VQVAETest {
             MBSGDOptimizer optimizer = new MBSGDOptimizer(network, 500, 0.00001f, batchSize, LearnRateUpdate.CONSTANT, false);
             //			optimizer.lr_step = new int[] {50, 100, 150, 200, 250, 300, 350, 400, 450};
             optimizer.trainVQVAE2_lpips_nogan(dataLoader, lpips);
-            String save_model_path = "H:\\model\\pokemon_vqvae2_128.model";
+            String save_model_path = "H:\\model\\pokemon_vqvae2_256.model";
             ModelUtils.saveModel(network, save_model_path);
             //			ModelUtils.loadModel(network, save_model_path);
         } catch (Exception e) {
@@ -656,7 +656,8 @@ public class VQVAETest {
             //			anime_vqvae2_lpips_gandisc_32_nogan();
 //            anime_vqvae2_lpips_gandisc_32_nogan2();
 //            anime_vqvae2_lpips_gandisc_32_nogan2();
-            anime_vqvae2_lpips_hight();
+        	anime_vqvae2_lpips_gandisc_32_nogan2();
+//            anime_vqvae2_lpips_hight();
         } catch (Exception e) {
             // TODO: handle exception
             e.printStackTrace();
