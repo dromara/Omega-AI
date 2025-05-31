@@ -1,6 +1,5 @@
 package com.omega.engine.nn.layer.unet;
 
-import com.omega.common.data.Tensor;
 import com.omega.engine.gpu.cudnn.SoftmaxCudnnKernel;
 import com.omega.engine.nn.layer.DropoutLayer;
 import com.omega.engine.nn.layer.FullyLayer;
@@ -10,6 +9,7 @@ import com.omega.engine.nn.layer.gpu.AttentionKernel;
 import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;
@@ -615,6 +615,7 @@ public class UNetAttentionLayer2 extends Layer {
     }
 
     public void saveModel(RandomAccessFile outputStream) throws IOException {
+    	norm.saveModel(outputStream);
         getqLinerLayer().saveModel(outputStream);
         getkLinerLayer().saveModel(outputStream);
         getvLinerLayer().saveModel(outputStream);
@@ -622,6 +623,7 @@ public class UNetAttentionLayer2 extends Layer {
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
+    	norm.loadModel(inputStream);
         getqLinerLayer().loadModel(inputStream);
         getkLinerLayer().loadModel(inputStream);
         getvLinerLayer().loadModel(inputStream);

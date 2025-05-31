@@ -29,7 +29,7 @@ import jcuda.runtime.cudaError;
 
 public class CUDAManager {
 
-    private final static boolean nvcc = false;
+    private final static boolean nvcc = true;
 
     private final String CU_PATH = "cu/";
     public static Map<String, String> ptxList;
@@ -37,7 +37,7 @@ public class CUDAManager {
     public int maxThreads;
     public int threadsPerDimension;
     public cudaDeviceProp props;
-    //    private static final String CU_SUFFIX = ".cu";
+//    private static final String CU_SUFFIX = ".cu";
     private static final String PTX_SUFFIX = ".ptx";
 
     public Map<String, String> functions = new HashMap<String, String>() {
@@ -124,35 +124,35 @@ public class CUDAManager {
 
     public CUfunction getLocalFunctionByModule(String fileName, String functionName) {
 
-        if(!nvcc) {
-            Pattern pattern = Pattern.compile("(?<=\\.)[^\\.]+$"); // 正则表达式匹配最后一个点号后的部分（扩展名）
-            Matcher matcher = pattern.matcher(fileName);
-            if (matcher.find()) {
-                fileName = fileName.replaceFirst(matcher.group(), "ptx"); // 替换匹配到的部分
-            } else {
-                System.out.println("No extension found");
-            }
-        }
+		if(!nvcc) {
+			Pattern pattern = Pattern.compile("(?<=\\.)[^\\.]+$"); // 正则表达式匹配最后一个点号后的部分（扩展名）
+	        Matcher matcher = pattern.matcher(fileName);
+	        if (matcher.find()) {
+	        	fileName = fileName.replaceFirst(matcher.group(), "ptx"); // 替换匹配到的部分
+	        } else {
+	            System.out.println("No extension found");
+	        }
+		}
 
-        if(ptxList == null) {
-            listCuFiles(CU_PATH);
-        }
+    	if(ptxList == null) {
+    		listCuFiles(CU_PATH);
+    	}
 
-        MyCUDAModule m = null;
+    	MyCUDAModule m = null;
 
-        if(nvcc) {
-            String rootPath = LibPaths.LIB_PATH;
+    	if(nvcc) {
+    		String rootPath = LibPaths.LIB_PATH;
             fileName = rootPath + fileName;
             m = this.getModule(fileName);
-        }else {
-            m = this.getModule(fileName, ptxList.get(fileName));
-        }
+    	}else {
+    		m = this.getModule(fileName, ptxList.get(fileName));
+    	}
 
-        if (m.getFunctions().containsKey(functionName)) {
+    	if (m.getFunctions().containsKey(functionName)) {
             return m.getFunctions().get(functionName);
         }
 
-        CUfunction function = new CUfunction();
+    	CUfunction function = new CUfunction();
         checkCUDA(cuModuleGetFunction(function, m, functionName));
         m.getFunctions().put(functionName, function);
         return function;
@@ -167,9 +167,9 @@ public class CUDAManager {
 
             // In Jar file else in IDE
             if (path.endsWith(".jar")) {
-                loadCuFileFromJar(path, directory);
+               loadCuFileFromJar(path, directory);
             } else {
-                loadCuFileFromDirectory(path, directory);
+               loadCuFileFromDirectory(path, directory);
             }
 
         } catch (Exception e) {
@@ -188,8 +188,8 @@ public class CUDAManager {
             java.util.Arrays.stream(Objects.requireNonNull(file.listFiles()))
                     .filter(entry -> entry.getName().toLowerCase().endsWith(PTX_SUFFIX))
                     .forEach(entry -> {
-                        String fullName = cuPath + "/" + entry.getName();
-                        ptxList.put(entry.getName(), FileUtil.readUtf8String(fullName));
+                    	String fullName = cuPath + "/" + entry.getName();
+  	            	  	ptxList.put(entry.getName(), FileUtil.readUtf8String(fullName));
                     });
         }
 
@@ -204,8 +204,8 @@ public class CUDAManager {
                     .filter(entry -> entry.getName().startsWith(directory))
                     .filter(entry -> entry.getName().toLowerCase().endsWith(PTX_SUFFIX))
                     .forEach(entry -> {
-                        String content = ResourceUtil.readUtf8Str(entry.getName());
-                        ptxList.put(entry.getName().replaceAll(directory, ""), content);
+                    	String content = ResourceUtil.readUtf8Str(entry.getName());
+  	            	  	ptxList.put(entry.getName().replaceAll(directory, ""), content);
                     });
         }
 
@@ -246,44 +246,43 @@ public class CUDAManager {
 
     public MyCUDAModule getModule(String fileName, byte[] data) {
         if (CUDAModules.modules.containsKey(fileName)) {
-            return CUDAModules.modules.get(fileName);
-        }
-        setContext(getContext());
-        maxThreads = instance.getMaxThreads(device);
-        threadsPerDimension = (int) Math.sqrt(maxThreads);
-        // Load the ptx file.
-        MyCUDAModule module = new MyCUDAModule();
-        try {
-            cuModuleLoadData(module, data);
-            CUDAModules.modules.put(fileName, module);
-        } catch (Exception e) {
-            // TODO: handle exception
-            System.err.println(fileName+" init fail.");
-            e.printStackTrace();
-        }
-        return module;
+		    return CUDAModules.modules.get(fileName);
+		}
+		setContext(getContext());
+		maxThreads = instance.getMaxThreads(device);
+		threadsPerDimension = (int) Math.sqrt(maxThreads);
+		// Load the ptx file.
+		MyCUDAModule module = new MyCUDAModule();
+		try {
+			cuModuleLoadData(module, data);
+			CUDAModules.modules.put(fileName, module);
+		} catch (Exception e) {
+			// TODO: handle exception
+			System.err.println(fileName+" init fail.");
+			e.printStackTrace();
+		}
+		return module;
     }
 
     public MyCUDAModule getModule(String fileName, String content) {
         if (CUDAModules.modules.containsKey(fileName)) {
-            return CUDAModules.modules.get(fileName);
-        }
-        setContext(getContext());
-        maxThreads = instance.getMaxThreads(device);
-        threadsPerDimension = (int) Math.sqrt(maxThreads);
-        // Load the ptx file.
-        MyCUDAModule module = new MyCUDAModule();
-        try {
-            cuModuleLoadData(module, content);
-            CUDAModules.modules.put(fileName, module);
-        } catch (Exception e) {
-            // TODO: handle exception
-            System.err.println(fileName+" init fail.");
-            e.printStackTrace();
-        }
-        return module;
+		    return CUDAModules.modules.get(fileName);
+		}
+		setContext(getContext());
+		maxThreads = instance.getMaxThreads(device);
+		threadsPerDimension = (int) Math.sqrt(maxThreads);
+		// Load the ptx file.
+		MyCUDAModule module = new MyCUDAModule();
+		try {
+			cuModuleLoadData(module, content);
+			CUDAModules.modules.put(fileName, module);
+		} catch (Exception e) {
+			// TODO: handle exception
+			System.err.println(fileName+" init fail.");
+			e.printStackTrace();
+		}
+		return module;
     }
-
 
     /**
      * The extension of the given file name is replaced with "ptx".

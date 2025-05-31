@@ -1,9 +1,9 @@
 package com.omega.example.transformer.utils;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.PrintUtils;
+import com.omega.engine.tensor.Tensor;
 
 import java.io.BufferedReader;
 import java.io.FileReader;

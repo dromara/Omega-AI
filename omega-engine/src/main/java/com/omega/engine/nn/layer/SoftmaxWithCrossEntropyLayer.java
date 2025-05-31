@@ -1,7 +1,7 @@
 package com.omega.engine.nn.layer;
 
-import com.omega.common.data.Tensor;
 import com.omega.engine.gpu.SoftmaxKernel;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * SoftmaxWithCrossEntropyLayer

@@ -1,8 +1,8 @@
 package com.omega.example.yolo.data;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.task.ForkJobEngine;
 import com.omega.common.utils.*;
+import com.omega.engine.tensor.Tensor;
 import com.omega.example.yolo.utils.OMImage;
 import com.omega.example.yolo.utils.YoloImageUtils;
 

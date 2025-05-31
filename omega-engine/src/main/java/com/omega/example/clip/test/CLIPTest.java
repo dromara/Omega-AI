@@ -1,6 +1,5 @@
 package com.omega.example.clip.test;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.gpu.BaseKernel;
@@ -10,6 +9,7 @@ import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.network.ClipText;
 import com.omega.engine.nn.network.ClipVision;
 import com.omega.engine.nn.network.RunModel;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 import com.omega.example.clip.utils.ClipModelUtils;
 import com.omega.example.transformer.tokenizer.bertTokenizer.BertTokenizer;

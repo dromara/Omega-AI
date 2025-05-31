@@ -1,8 +1,9 @@
 package com.omega.engine.nn.layer.gpu;
 
-import com.omega.common.data.Tensor;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
 
@@ -110,6 +111,27 @@ public class BiasKernel extends BaseKernel {
                 this.N = output.number;
             }
             cuLaunchKernel(fast_function, this.CAFFE_GET_BLOCKS(output.height * output.width), output.channel, output.getNumber(),      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    biasConvKernelParameters, null // Kernel- and extra parameters
+            );
+            //	        JCudaDriver.cuCtxSynchronize();
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void addConvBiasFast(Tensor output, Tensor bias,int channel,int depth) {
+        try {
+            this.N = output.number;
+        	 /**
+             * 设置入参
+             * float *output, float *biases, int n, int size
+             */
+            biasConvKernelParameters = Pointer.to(Pointer.to(output.getGpuData()), Pointer.to(bias.getGpuData()), Pointer.to(new int[]{channel}), Pointer.to(new int[]{depth * output.height * output.width}));
+
+            cuLaunchKernel(fast_function, this.CAFFE_GET_BLOCKS(depth * output.height * output.width), channel, output.getNumber(),      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     biasConvKernelParameters, null // Kernel- and extra parameters

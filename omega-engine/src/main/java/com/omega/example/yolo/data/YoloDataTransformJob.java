@@ -1,8 +1,8 @@
 package com.omega.example.yolo.data;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.data.utils.DataTransforms;
 import com.omega.common.task.ForkJobEngine;
+import com.omega.engine.tensor.Tensor;
 
 import java.util.Map;
 import java.util.concurrent.ForkJoinTask;

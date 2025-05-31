@@ -1,6 +1,5 @@
 package com.omega.engine.nn.layer.normalization;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.gpu.cudnn.BNCudnnKernel;
 import com.omega.engine.nn.layer.Layer;
@@ -10,6 +9,7 @@ import com.omega.engine.nn.layer.normalization.gpu.BNKernel3;
 import com.omega.engine.nn.model.LayerInit;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.utils.ModelUtils;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;

@@ -1,6 +1,5 @@
 package com.omega.engine.optimizer;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.task.TaskEngine;
 import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.LabelUtils;
@@ -16,6 +15,7 @@ import com.omega.engine.optimizer.lr.GDDecay;
 import com.omega.engine.optimizer.lr.HalfDecay;
 import com.omega.engine.optimizer.lr.LRDecay;
 import com.omega.engine.optimizer.lr.LearnRateUpdate;
+import com.omega.engine.tensor.Tensor;
 import com.omega.example.transformer.tokenizer.bertTokenizer.BertTokenizer;
 import com.omega.example.transformer.utils.BPETokenizer;
 import com.omega.example.transformer.utils.SentencePieceTokenizer;

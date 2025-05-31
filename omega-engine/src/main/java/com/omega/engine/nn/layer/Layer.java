@@ -1,6 +1,5 @@
 package com.omega.engine.nn.layer;
 
-import com.omega.common.data.Tensor;
 import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
@@ -9,6 +8,7 @@ import com.omega.engine.gpu.data.CacheDataSet;
 import com.omega.engine.nn.layer.utils.LayerHook;
 import com.omega.engine.nn.model.LayerInit;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.Updater;
 
 import java.util.ArrayList;
@@ -177,12 +177,10 @@ public abstract class Layer {
     public void setDelta(Tensor delta) {
         /**
          * 获取上一层的输出作为当前层的输入
-
          */
         this.delta = delta;
         /**
          * 合并路由层误差
-
          */
         if (this.cache_delta != null) {
             //			System.out.println("in===>:"+this.getLayerType());

@@ -1,6 +1,5 @@
 package com.omega.engine.parallel.dp;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.nn.network.Llama3;
@@ -8,6 +7,7 @@ import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.NetworkType;
 import com.omega.engine.parallel.params.Llama3Parameters;
 import com.omega.engine.parallel.params.Parameters;
+import com.omega.engine.tensor.Tensor;
 import com.omega.example.transformer.dataset.parallel.params.DataLoaderParamters;
 import com.omega.example.transformer.dataset.parallel.params.SFTBinParamters;
 import com.omega.example.transformer.utils.ModelUtils;

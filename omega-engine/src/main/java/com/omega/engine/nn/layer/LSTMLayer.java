@@ -1,11 +1,11 @@
 package com.omega.engine.nn.layer;
 
-import com.omega.common.data.Tensor;
 import com.omega.engine.active.ActiveType;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.active.*;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RNN;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * LSTM

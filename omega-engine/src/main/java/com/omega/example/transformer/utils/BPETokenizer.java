@@ -1,8 +1,8 @@
 package com.omega.example.transformer.utils;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.RandomUtils;
+import com.omega.engine.tensor.Tensor;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;

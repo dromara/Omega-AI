@@ -1,11 +1,11 @@
 package com.omega.example.clip.utils;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.nn.layer.clip.bert.BertLayer;
 import com.omega.engine.nn.network.ClipText;
 import com.omega.engine.nn.network.ClipTextModel;
 import com.omega.engine.nn.network.ClipVision;
+import com.omega.engine.tensor.Tensor;
 
 import java.util.List;
 import java.util.Map;
@@ -218,7 +218,53 @@ public class ClipModelUtils {
             } else if (dim == 3) {
                 float[][][] data = (float[][][]) meta;
                 x.data = MatrixUtils.transform(data);
-            } else {
+            }else {
+                List<List<List<List<Double>>>> dataA = (List<List<List<List<Double>>>>) meta;
+                int N = dataA.size();
+                int C = dataA.get(0).size();
+                int H = dataA.get(0).get(0).size();
+                int W = dataA.get(0).get(0).get(0).size();
+                for (int n = 0; n < N; n++) {
+                    for (int c = 0; c < C; c++) {
+                        for (int h = 0; h < H; h++) {
+                            for (int w = 0; w < W; w++) {
+                                x.data[n * x.getOnceSize() + c * H * W + h * W + w] = dataA.get(n).get(c).get(h).get(w).floatValue();
+                            }
+                        }
+                    }
+                }
+            }
+            x.hostToDevice();
+            System.out.println(key + "_finish.");
+        }else {
+        	System.err.println(key+" is null.");
+        }
+    }
+    
+    public static void loadData(Tensor x, Map<String, Object> weightMap, String key,int dim) {
+        Object meta = weightMap.get(key);
+        if (meta != null) {
+        	if (dim == 1) {
+                List<Double> dataA = (List<Double>) meta;
+                for (int n = 0; n < dataA.size(); n++) {
+                    x.data[n] = dataA.get(n).floatValue();
+                }
+            } else if (dim == 2) {
+                List<List<Double>> dataA = (List<List<Double>>) meta;
+                //				x.showShape();
+                //				System.out.println(dataA.size()+":"+dataA.get(0).size());
+                for (int n = 0; n < dataA.size(); n++) {
+                    for (int w = 0; w < dataA.get(n).size(); w++) {
+                        x.data[n * dataA.get(n).size() + w] = dataA.get(n).get(w).floatValue();
+                    }
+                }
+            } else if (dim == 3) {
+                float[][][] data = (float[][][]) meta;
+                x.data = MatrixUtils.transform(data);
+            } else if (dim == 5) {
+            	List<List<List<List<List<Double>>>>> data = (List<List<List<List<List<Double>>>>>) meta;
+                x.data = MatrixUtils.transform(data);
+            }  else {
                 List<List<List<List<Double>>>> dataA = (List<List<List<List<Double>>>>) meta;
                 int N = dataA.size();
                 int C = dataA.get(0).size();

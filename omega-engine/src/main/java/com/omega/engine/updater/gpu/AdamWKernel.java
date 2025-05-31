@@ -1,6 +1,5 @@
 package com.omega.engine.updater.gpu;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
@@ -8,6 +7,8 @@ import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.loss.SoftmaxWithCrossEntropyLoss;
 import com.omega.engine.nn.network.BPNetwork;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
 import jcuda.driver.CUstream;
@@ -34,28 +35,28 @@ public class AdamWKernel extends BaseKernel {
 
     public AdamWKernel(int weightLength, float weight_decay, CUDAManager cudaManager) {
         super(cudaManager);
-        this.mw = new Tensor(1, 1, 1, weightLength, true);
-        this.vw = new Tensor(1, 1, 1, weightLength, true);
+        this.mw = Tensor.createGPUTensor(mb, 1, 1, 1, weightLength, true);
+        this.vw = Tensor.createGPUTensor(vw, 1, 1, 1, weightLength, true);
         this.weight_decay = weight_decay;
         init();
     }
 
     public AdamWKernel(int weightLength, int biasLength, float weight_decay, CUDAManager cudaManager) {
         super(cudaManager);
-        this.mw = new Tensor(1, 1, 1, weightLength, true);
-        this.vw = new Tensor(1, 1, 1, weightLength, true);
-        this.mb = new Tensor(1, 1, 1, biasLength, true);
-        this.vb = new Tensor(1, 1, 1, biasLength, true);
+        this.mw = Tensor.createGPUTensor(mb, 1, 1, 1, weightLength, true);
+        this.vw = Tensor.createGPUTensor(vw, 1, 1, 1, weightLength, true);
+        this.mb = Tensor.createGPUTensor(mb, 1, 1, 1, biasLength, true);
+        this.vb = Tensor.createGPUTensor(vb, 1, 1, 1, biasLength, true);
         this.weight_decay = weight_decay;
         init();
     }
 
     public AdamWKernel(int weightLength, int biasLength, float beta1, float beta2, float weight_decay, CUDAManager cudaManager) {
         super(cudaManager);
-        this.mw = new Tensor(1, 1, 1, weightLength, true);
-        this.vw = new Tensor(1, 1, 1, weightLength, true);
-        this.mb = new Tensor(1, 1, 1, biasLength, true);
-        this.vb = new Tensor(1, 1, 1, biasLength, true);
+        this.mw = Tensor.createGPUTensor(mb, 1, 1, 1, weightLength, true);
+        this.vw = Tensor.createGPUTensor(vw, 1, 1, 1, weightLength, true);
+        this.mb = Tensor.createGPUTensor(mb, 1, 1, 1, biasLength, true);
+        this.vb = Tensor.createGPUTensor(vb, 1, 1, 1, biasLength, true);
         this.beta1 = beta1;
         this.beta2 = beta2;
         this.weight_decay = weight_decay;

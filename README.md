@@ -20,6 +20,38 @@ Omega-AI：基于java打造的深度学习框架，帮助你快速搭建神经�
 ## 依赖
 由于omega-engine-v4-gpu加入了jcuda支持，所以omega-engine-v4-gpu需要安装与jcuda版本对应的cuda，如果您的机器安装的CUDA版本是11.7.x，那么对应omega-engine需要引入的jcuda 11.7.0版本。
 
+## 环境要求
+
+- jdk：17+
+- Maven：3.6.3+
+
+
+## springboot快速体验
+ **llama3体验** 
+
+1. 下载模型权重
+
+基础模型权重（在此基础上训练自己专业模型）：
+
+- gitee: https://gitee.com/hay_lee/omega-llama3-base
+- github: https://github.com/haylee2025/omega-llama3-base
+
+chat模型权重：
+
+- gitee: https://gitee.com/hay_lee/omega-llama3-chat
+- github: https://github.com/haylee2025/omega-llama3-chat
+
+2. 配置
+
+application.yml
+
+```
+model:
+  path:
+   - F:\LLM\llama3
+```
+
+
 ## 快速开始
 ##### 1.检查当前CUDA版本
 ```txt

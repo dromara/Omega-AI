@@ -1,8 +1,8 @@
 package com.omega.example.yolo.utils;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.ImageUtils;
 import com.omega.engine.nn.data.ImageData;
+import com.omega.engine.tensor.Tensor;
 import com.omega.example.yolo.data.ImageLoader;
 import com.omega.example.yolo.model.YoloDataSet;
 import com.omega.example.yolo.model.YoloImage;

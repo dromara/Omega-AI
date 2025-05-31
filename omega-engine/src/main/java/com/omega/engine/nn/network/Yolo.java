@@ -1,12 +1,12 @@
 package com.omega.engine.nn.network;
 
-import com.omega.common.data.Tensor;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.loss.LossFactory;
 import com.omega.engine.loss.LossFunction;
 import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 import jcuda.Sizeof;
 import jcuda.runtime.JCuda;

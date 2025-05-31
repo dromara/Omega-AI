@@ -3,12 +3,12 @@ package com.omega.engine.nn.layer.opensora.vae.modules;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
-import com.omega.common.data.Tensor;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.ParamsInit;
 import com.omega.engine.nn.layer.active.SiLULayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 /**
@@ -21,15 +21,15 @@ public class Resnet3DBlock extends Layer {
 	public int depth;
 	public int oDepth;
 	
-    private GNLayer3D norm1;
-    private SiLULayer act1;
-    private CausalConv3DPlainAR conv1;
+    public GNLayer3D norm1;
+    public SiLULayer act1;
+    public CausalConv3DPlainAR conv1;
     
-    private GNLayer3D norm2;
-    private SiLULayer act2;
-    private CausalConv3DPlainAR conv2;
+    public GNLayer3D norm2;
+    public SiLULayer act2;
+    public CausalConv3DPlainAR conv2;
     
-    private CausalConv3DPlainAR shortcut;
+    public CausalConv3DPlainAR shortcut;
     
     public Resnet3DBlock(int channel, int oChannel, int depth, int height, int width, Network network) {
         this.network = network;
@@ -37,8 +37,8 @@ public class Resnet3DBlock extends Layer {
         this.depth = depth;
         this.height = height;
         this.width = width;
-        initLayers();
         this.oChannel = oChannel;
+        initLayers();
         this.oDepth = conv2.oDepth;
         this.oHeight = conv2.oHeight;
         this.oWidth = conv2.oWidth;
@@ -46,13 +46,13 @@ public class Resnet3DBlock extends Layer {
 
     public void initLayers() {
     	
-    	norm1 = new GNLayer3D(channel, depth, height, width, 32, this, network);
+    	norm1 = new GNLayer3D(channel, depth, height, width, 32, network);
     	act1 = new SiLULayer(norm1);
     	conv1 = new CausalConv3DPlainAR(channel, oChannel, depth, width, height, 3, 1, true, network);
     	conv1.setUpdater(UpdaterFactory.create(this.network));
     	conv1.paramsInit = ParamsInit.silu;
     	
-    	norm2 = new GNLayer3D(conv1.oChannel, conv1.oDepth, conv1.oHeight, conv1.oWidth, 32, conv1, network);
+    	norm2 = new GNLayer3D(conv1.oChannel, conv1.oDepth, conv1.oHeight, conv1.oWidth, 32, network);
     	act2 = new SiLULayer(norm2);
     	conv2 = new CausalConv3DPlainAR(oChannel, oChannel, conv1.oDepth, conv1.oWidth, conv1.oHeight, 3, 1, true, network);
     	conv2.setUpdater(UpdaterFactory.create(this.network));
@@ -90,6 +90,7 @@ public class Resnet3DBlock extends Layer {
     @Override
     public void output() {
         // TODO Auto-generated method stub
+
     	norm1.forward(input);
     	act1.forward(norm1.getOutput());
     	conv1.forward(act1.getOutput());

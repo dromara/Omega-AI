@@ -1,6 +1,5 @@
 package com.omega.example.transformer.test;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.loss.LossType;
@@ -12,6 +11,7 @@ import com.omega.engine.optimizer.EDOptimizer;
 import com.omega.engine.optimizer.lr.LearnRateUpdate;
 import com.omega.engine.parallel.dp.DP;
 import com.omega.engine.parallel.params.Llama3Parameters;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 import com.omega.example.transformer.dataset.PreTrainDataset2;
 import com.omega.example.transformer.dataset.SFTBinDataset;

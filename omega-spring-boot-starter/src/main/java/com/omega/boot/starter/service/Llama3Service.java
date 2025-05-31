@@ -3,7 +3,6 @@ package com.omega.boot.starter.service;
 
 import cn.hutool.json.JSONObject;
 import com.omega.boot.starter.entity.ModelData;
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.CUDAManager;
@@ -12,6 +11,7 @@ import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.layer.gpu.RoPEKernel;
 import com.omega.engine.nn.network.Llama3;
 import com.omega.engine.nn.network.RunModel;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 import com.omega.example.transformer.utils.ModelUtils;
 import com.omega.example.transformer.utils.bpe.BPETokenizer3;
@@ -52,7 +52,6 @@ public class Llama3Service extends ModelAbstract{
     private int head_num = 16;
     private int nKVHeadNum = 8;
     private int decoderNum = 8;
-    private int vocab_size = 6400;
     @Autowired
     @Qualifier("modelConfig")
     private Map<String, ModelData> modelConfig;
@@ -74,7 +73,7 @@ public class Llama3Service extends ModelAbstract{
         try {
             String path = this.modelData.getPath();
             String name = this.modelData.getConfig().getStr("name");
-            Llama3 network = new Llama3(LossType.softmax_with_cross_entropy_idx, UpdaterType.adamw, head_num, nKVHeadNum, decoderNum, vocab_size, max_len, embedDim, bias, dropout, flashAttention);
+            Llama3 network = new Llama3(LossType.softmax_with_cross_entropy_idx, UpdaterType.adamw, head_num, nKVHeadNum, decoderNum, ((BPETokenizer3)this.tokenizer).voc_size, max_len, embedDim, bias, dropout, flashAttention);
             ModelUtils.loadModel(network, path+ File.separator + name);
             network.RUN_MODEL = RunModel.TEST;
             return network;
@@ -92,7 +91,7 @@ public class Llama3Service extends ModelAbstract{
             BPETokenizer3 tokenizer = (BPETokenizer3)this.tokenizer;
             Llama3 network = getNetwork();
 
-            Tensor testInput = null;
+            Tensor inputTensor = null;
 
             logger.info("请输入中文:");
             input_txt = input_txt.toLowerCase();
@@ -100,7 +99,7 @@ public class Llama3Service extends ModelAbstract{
             //				System.out.println(qaStr);
             int[] idx = tokenizer.encodeInt(qaStr);
             int startLen = idx.length;
-            Tensor input = loadByTxtToIdx(testInput, idx);
+            Tensor input = loadByTxtToIdx(inputTensor, idx);
             //				input.showDM();
             Tensor[] pos = RoPEKernel.getCosAndSin(input.number, network.embedDim, network.headNum);
             for (int t = 0; t < max_len - startLen; t++) {
@@ -115,7 +114,7 @@ public class Llama3Service extends ModelAbstract{
                 if (nextIDX == tokenizer.eos) {
                     break;
                 }
-                input = loadByTxtToIdx(testInput, idx);
+                input = loadByTxtToIdx(inputTensor, idx);
                 RoPEKernel.getCosAndSin(input.number, network.embedDim, network.headNum, pos);
             }
             int[] awIdx = Arrays.copyOfRange(idx, startLen, idx.length);

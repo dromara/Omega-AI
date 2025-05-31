@@ -6,13 +6,16 @@ import static jcuda.jcublas.cublasOperation.CUBLAS_OP_T;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
-import com.omega.common.data.Tensor;
+import com.omega.common.utils.MatrixUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.cudnn.SoftmaxCudnnKernel;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.gpu.AttentionKernel;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
+import com.omega.engine.nn.network.Transformer;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 /**
@@ -33,6 +36,8 @@ public class AttentionBlock3D extends Layer {
     
     private boolean bias = false;
     
+    private boolean isCausal = true;
+    
     private AttentionKernel attentionKernel;
     private SoftmaxCudnnKernel softmaxKernel;
     
@@ -40,6 +45,9 @@ public class AttentionBlock3D extends Layer {
     private int headNum = 1;
     private int dk;
 
+    private float maskFill = -1e9f;
+    
+    private Tensor mask;
     private Tensor qt;
     private Tensor kt;
     private Tensor vt;
@@ -50,8 +58,9 @@ public class AttentionBlock3D extends Layer {
     private Tensor oit;
     private Tensor dattn;
 
-    public AttentionBlock3D(int channel, int depth, int height, int width, boolean bias, Network network) {
+    public AttentionBlock3D(int channel, int depth, int height, int width, boolean isCausal, boolean bias, Network network) {
         this.bias = bias;
+        this.isCausal = isCausal;
         this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
@@ -71,25 +80,26 @@ public class AttentionBlock3D extends Layer {
     }
 
     public static void main(String[] args) {
-//        int embedDim = 64;
-//        int headNum = 8;
-//        int batchSize = 2;
-//        int time = 512;
-//        Transformer tf = new Transformer();
-//        tf.number = batchSize * time;
-//        tf.time = time;
-//        float[] data = RandomUtils.order(batchSize * time * embedDim, 0.1f, 0.1f);
-//        Tensor input = new Tensor(batchSize * time, 1, 1, embedDim, data, true);
+    	int batchSize = 2;
+    	int channel = 64;
+    	int numFrames = 17;
+    	int imageSize = 8;
+    	Tensor input = new Tensor(batchSize, channel * numFrames, imageSize, imageSize, true);
+    	
+        Transformer tf = new Transformer();
+        tf.CUDNN = true;
+        float[] data = RandomUtils.order(input.dataLength, 0.001f, 0.001f);
+        Tensor input2 = new Tensor(batchSize, channel * numFrames, imageSize, imageSize, data, true);
 //        float[] delta_data = MatrixUtils.val(batchSize * time * embedDim, 1.0f);
 //        Tensor delta = new Tensor(batchSize * time, 1, 1, embedDim, delta_data, true);
-//        AttentionBlock3D mal = new AttentionBlock3D(embedDim, headNum, time, false, tf);
-//        for (int i = 0; i < 10; i++) {
-//            mal.forward(input);
-//            mal.getOutput().showShape();
-//            mal.getOutput().showDM();
+        AttentionBlock3D mal = new AttentionBlock3D(channel, numFrames, imageSize, imageSize, true, false, tf);
+        for (int i = 0; i < 10; i++) {
+            mal.forward(input2);
+            mal.getOutput().showShape();
+            mal.getOutput().showDM();
 //            mal.back(delta);
 //            mal.diff.showDM();
-//        }
+        }
     }
 
     public static boolean same(Tensor a, Tensor b) {
@@ -106,7 +116,7 @@ public class AttentionBlock3D extends Layer {
 
     public void initLayers() {
     	
-    	this.norm = new GNLayer3D(channel, depth, height, width, 32, this, network);
+    	this.norm = new GNLayer3D(channel, depth, height, width, 32, network);
     	
         this.qLinerLayer = new CausalConv3DPlainAR(channel, channel, depth, width, height, 1, 1, bias, network);
         this.kLinerLayer = new CausalConv3DPlainAR(channel, channel, depth, width, height, 1, 1, bias, network);
@@ -119,6 +129,10 @@ public class AttentionBlock3D extends Layer {
         if (softmaxKernel == null) {
             softmaxKernel = new SoftmaxCudnnKernel(time, 1, 1, cuda());
         }
+        
+        if(isCausal) {
+        	mask = new Tensor(1, 1, time, time, MatrixUtils.triu(1, 1, time, time, 1), true);
+        }
     }
 
     @Override
@@ -129,13 +143,16 @@ public class AttentionBlock3D extends Layer {
     public void init(Tensor input) {
         // TODO Auto-generated method stub
         this.number = input.number;
-
+        
         if (this.qt != null) {
             this.qt.viewOrg();
             this.kt.viewOrg();
             this.vt.viewOrg();
             this.oi.viewOrg();
             this.oit.viewOrg();
+            this.qLinerLayer.getOutput().viewOrg();
+            this.kLinerLayer.getOutput().viewOrg();
+            this.vLinerLayer.getOutput().viewOrg();
         }
         if (this.qt == null || this.qt.number != this.number) {
             // [batch_size，time，head_num，d_k]
@@ -155,7 +172,7 @@ public class AttentionBlock3D extends Layer {
             this.oit = Tensor.createGPUTensor(this.oit, number, channel, 1, time, true);
         }
         if(this.output == null || this.output.number != number) {
-        	this.output = Tensor.createGPUTensor(input, number, channel * depth, height, width, true);
+        	this.output = Tensor.createGPUTensor(output, number, channel * depth, height, width, true);
         }
     }
 
@@ -204,9 +221,9 @@ public class AttentionBlock3D extends Layer {
 //    }
 
     public void train() {
-    	
+
     	this.norm.forward(input);
-    	
+    	norm.getOutput().showDM("norm");
         this.qLinerLayer.forward(norm.getOutput());
         this.kLinerLayer.forward(norm.getOutput());
         this.vLinerLayer.forward(norm.getOutput());
@@ -225,7 +242,7 @@ public class AttentionBlock3D extends Layer {
         Tensor_OP().permute(oi, oit, new int[]{0, 3, 2, 1});  //n t 1 c -> n c 1 t
         oit.view(number, channel * depth , height, width);
         this.oLinerLayer.forward(oit);
-        
+
         Tensor_OP().add(this.oLinerLayer.getOutput(), input, this.output);
 
     }
@@ -235,6 +252,9 @@ public class AttentionBlock3D extends Layer {
         Tensor preatt = temp;
         GPU_OP().bmmEX(CUBLAS_OP_T, CUBLAS_OP_N, time, time, dk, 1.0f, key.getGpuData(), dk, time * dk, query.getGpuData(), dk, time * dk, 0.0f, preatt.getGpuData(), time, time * time, number * headNum);
         Tensor_OP().mul(preatt, d_k, preatt);
+        if(isCausal) {
+        	Tensor_OP().mask(preatt, mask, preatt, maskFill);
+        }
         softmaxKernel.softmax(preatt, attn, number * headNum * time);
         Tensor tmp = attn;
         Tensor vaccum = temp;

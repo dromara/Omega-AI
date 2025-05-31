@@ -1,6 +1,5 @@
 package com.omega.engine.gpu;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.task.Task;
 import com.omega.common.task.TaskEngine;
 import com.omega.common.utils.CheckArrayUtils;
@@ -8,6 +7,7 @@ import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.network.RunModel;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.MWAUtils;
 import jcuda.Pointer;
 import jcuda.Sizeof;

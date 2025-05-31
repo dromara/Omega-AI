@@ -1,6 +1,5 @@
 package com.omega.engine.nn.layer.normalization;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -8,6 +7,7 @@ import com.omega.engine.nn.layer.normalization.gpu.GNKernel;
 import com.omega.engine.nn.model.LayerInit;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.utils.ModelUtils;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;
@@ -61,10 +61,10 @@ public class GNLayer extends NormalizationLayer {
         this.hasParams = false;
         this.setUpdater(UpdaterFactory.create(this.network));
     }
-
-    public GNLayer(int groupNum, int channel, int height, int width, BNType bnType, Layer preLayer) {
-        this.preLayer = preLayer;
-        this.network = preLayer.network;
+    
+    public GNLayer(int groupNum, int channel, int height, int width, BNType bnType, Network network) {
+    	this.network = network;
+		this.setUpdater(UpdaterFactory.create(this.network));
         this.channel = channel;
         this.height = height;
         this.width = width;
@@ -79,7 +79,28 @@ public class GNLayer extends NormalizationLayer {
         } else {
             this.numChannel = this.height * this.width;
         }
-        this.setUpdater(UpdaterFactory.create(this.network));
+    }
+    
+    public GNLayer(int groupNum, int channel, int height, int width, BNType bnType, Layer preLayer) {
+    	if(preLayer != null) {
+    		 this.preLayer = preLayer;
+    		 this.network = preLayer.network;
+    		 this.setUpdater(UpdaterFactory.create(this.network));
+    	}
+        this.channel = channel;
+        this.height = height;
+        this.width = width;
+        this.oChannel = this.channel;
+        this.oHeight = this.height;
+        this.oWidth = this.width;
+        this.bnType = bnType;
+        this.groupNum = groupNum;
+        this.hasParams = false;
+        if (bnType == BNType.conv_bn) {
+            this.numChannel = this.channel;
+        } else {
+            this.numChannel = this.height * this.width;
+        }
     }
 
     public GNLayer(int groupNum, Layer preLayer, boolean hasBias) {

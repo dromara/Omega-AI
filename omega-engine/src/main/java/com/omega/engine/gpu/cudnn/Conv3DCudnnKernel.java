@@ -1,10 +1,11 @@
 package com.omega.engine.gpu.cudnn;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.JsonUtils;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.nn.layer.gpu.Conv3DBaseKernel;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.jcudnn.*;
 import jcuda.runtime.JCuda;
@@ -105,7 +106,7 @@ public class Conv3DCudnnKernel extends Conv3DBaseKernel {
             JCudnn.cudnnSetConvolutionNdDescriptor(convDesc, convDims, padA, filterStrideA, upscaleA, CUDNN_CROSS_CORRELATION, CUDNN_DATA_FLOAT);
             handle(JCudnn.cudnnGetConvolutionNdForwardOutputDim(convDesc, xDesc, kernelDesc, 5, tensorOuputDimA));
             int[] out_strideA = computeStride(tensorOuputDimA);
-            System.out.println(JsonUtils.toJson(tensorOuputDimA));
+//            System.out.println(JsonUtils.toJson(tensorOuputDimA));
             JCudnn.cudnnSetTensorNdDescriptor(yDesc, CUDNN_DATA_FLOAT, 5, tensorOuputDimA, out_strideA);
             this.fw_algo = getForwardAlgorithm(convAlgorithm, xDesc, kernelDesc, convDesc, yDesc);
             this.bkf_algo = getBKFGO(convDims, xDesc, yDesc, kernelDesc, convDesc);

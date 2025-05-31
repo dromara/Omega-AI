@@ -1,8 +1,8 @@
 package com.omega.engine.nn.layer;
 
-import com.omega.common.data.Tensor;
 import com.omega.engine.nn.layer.gpu.ShotcutKernel;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 
 public class ShortcutLayer extends Layer {
     private int c1;

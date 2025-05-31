@@ -1,11 +1,12 @@
 package com.omega.engine.model;
 
-import com.omega.common.data.Tensor;
 import com.omega.engine.nn.layer.CBLLayer;
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.normalization.BNLayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Sizeof;
 
 import java.io.IOException;

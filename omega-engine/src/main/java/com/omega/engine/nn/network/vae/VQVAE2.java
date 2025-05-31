@@ -1,6 +1,5 @@
 package com.omega.engine.nn.network.vae;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.GPUOP;
@@ -15,6 +14,7 @@ import com.omega.engine.nn.layer.vqvae.tiny.TinyVQVAEEncoder2;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.NetworkType;
 import com.omega.engine.nn.network.RunModel;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 import jcuda.jcublas.cublasOperation;
 
@@ -31,8 +31,8 @@ public class VQVAE2 extends Network {
     public float decay = 0.999f;
     public int num_res_blocks;
     public int num_vq_embeddings;
-    public int z_dims;
     public int latendDim = 4;
+    public int z_dim;
     public int imageSize;
     public TinyVQVAEEncoder2 encoder;
     public TinyVQVAEDecoder2 decoder;
@@ -65,28 +65,41 @@ public class VQVAE2 extends Network {
 
     //	private Tensor avg_probs;
     //	private Tensor avg_probs_log;
-    public VQVAE2(LossType lossType, UpdaterType updater, int z_dims, int latendDim, int num_vq_embeddings, int imageSize, int[] ch_mult, int ch, int num_res_blocks) {
+    public VQVAE2(LossType lossType, UpdaterType updater, int latendDim, int num_vq_embeddings, int imageSize, int[] ch_mult, int ch, int num_res_blocks) {
         this.lossFunction = LossFactory.create(lossType, this);
-        this.z_dims = z_dims;
         this.latendDim = latendDim;
         this.num_vq_embeddings = num_vq_embeddings;
         this.imageSize = imageSize;
         this.ch_mult = ch_mult;
         this.num_res_blocks = num_res_blocks;
         this.ch = ch;
+        this.z_dim = latendDim * 2;
         this.updater = updater;
         initLayers();
     }
 
+    public VQVAE2(LossType lossType, UpdaterType updater,int z_dim, int latendDim, int num_vq_embeddings, int imageSize, int[] ch_mult, int ch, int num_res_blocks) {
+        this.lossFunction = LossFactory.create(lossType, this);
+        this.latendDim = latendDim;
+        this.num_vq_embeddings = num_vq_embeddings;
+        this.imageSize = imageSize;
+        this.ch_mult = ch_mult;
+        this.num_res_blocks = num_res_blocks;
+        this.ch = ch;
+        this.z_dim = z_dim;
+        this.updater = updater;
+        initLayers();
+    }
+    
     public void initLayers() {
         this.inputLayer = new InputLayer(3, imageSize, imageSize);
-        this.encoder = new TinyVQVAEEncoder2(3, z_dims, imageSize, imageSize, num_res_blocks, groups, headNum, ch_mult, ch, this);
-        pre_quant_conv = new ConvolutionLayer(z_dims, latendDim, encoder.oWidth, encoder.oHeight, 1, 1, 0, 1, true, this);
+        this.encoder = new TinyVQVAEEncoder2(3, z_dim, imageSize, imageSize, num_res_blocks, groups, headNum, ch_mult, ch, this);
+        pre_quant_conv = new ConvolutionLayer(z_dim, latendDim, encoder.oWidth, encoder.oHeight, 1, 1, 0, 1, true, this);
         embedding = new EmbeddingIDLayer(num_vq_embeddings, latendDim, true, this);
         float initrange = 1.0f / num_vq_embeddings;
         embedding.weight = new Tensor(1, 1, num_vq_embeddings, latendDim, RandomUtils.uniform(num_vq_embeddings * latendDim, -initrange, initrange), true);
-        post_quant_conv = new ConvolutionLayer(latendDim, z_dims, encoder.oWidth, encoder.oHeight, 1, 1, 0, 1, true, this);
-        this.decoder = new TinyVQVAEDecoder2(z_dims, 3, encoder.oHeight, encoder.oWidth, num_res_blocks, groups, headNum, ch_mult, ch, this);
+        post_quant_conv = new ConvolutionLayer(latendDim, z_dim, encoder.oWidth, encoder.oHeight, 1, 1, 0, 1, true, this);
+        this.decoder = new TinyVQVAEDecoder2(z_dim, 3, encoder.oHeight, encoder.oWidth, num_res_blocks, groups, headNum, ch_mult, ch, this);
         this.addLayer(inputLayer);
         this.addLayer(encoder);
         this.addLayer(pre_quant_conv);
@@ -156,7 +169,6 @@ public class VQVAE2 extends Network {
     public Tensor encode(Tensor input) {
         /**
          * 设置输入数据
-
          */
         this.setInputData(input);
         inputLayer.forward();
@@ -179,6 +191,9 @@ public class VQVAE2 extends Network {
     }
 
     public void quantizer(Tensor ze) {
+    	if(z_flattened != null) {
+    		 z_flattened.viewOrg();
+    	}
         if (this.z_flattened == null || this.z_flattened.number != ze.number) {
             this.z_flattened = Tensor.createGPUTensor(this.z_flattened, ze.number, ze.height, ze.width, this.latendDim, true);
             this.idx = Tensor.createGPUTensor(this.idx, ze.number * ze.height * ze.width, 1, 1, 1, true);
@@ -186,11 +201,6 @@ public class VQVAE2 extends Network {
             //			if(this.RUN_MODEL == RunModel.TRAIN) {
             //				this.avg_probs = Tensor.createGPUTensor(this.avg_probs, 1, 1, 1, num_vq_embeddings, true);
             //				this.avg_probs_log = Tensor.createGPUTensor(this.avg_probs_log, 1, 1, 1, num_vq_embeddings, true);
-            //			}
-        } else {
-            z_flattened.viewOrg();
-            //			if(this.RUN_MODEL == RunModel.TRAIN) {
-            //				avg_probs.clear();
             //			}
         }
         //		ze.showDMByOffsetRed(0, 10, "ze");
@@ -358,7 +368,6 @@ public class VQVAE2 extends Network {
         /**
          * 设置误差
          * 将误差值输入到最后一层
-
          */
         this.setLossDiff(lossDiff);  //only decoder delta
         initBack();
@@ -386,14 +395,15 @@ public class VQVAE2 extends Network {
         }
         //		output.showDMByOffset(0, 10, "out");
         Tensor decoerLoss = this.lossFunction.loss(output, label);
-        System.out.println("decoderLoss:" + MatrixOperation.sum(decoerLoss.syncHost()) / output.number);
+        float decoderLossV = MatrixOperation.sum(decoerLoss.syncHost()) / output.number;
+        System.out.println("decoderLoss:" + decoderLossV);
         embedding.getOutput().viewOrg();
         //		embedding.getOutput().showDMByOffset(0, 10, "embedding");
-        //		z_flattened.showDMByOffset(0, 10, "z_flattened");
+//        		z_flattened.showDMByOffset(0, 10, "z_flattened");
         vaeKernel.MSE_C(embedding.getOutput(), z_flattened, vqLoss, beta);
         //		vaeKernel.MSE_C_SUM(embedding.getOutput(), z_flattened, vqLoss, beta);
         vqLoss.showDM(0, "vqLoss");
-        return (MatrixOperation.sum(decoerLoss.syncHost()) / output.number + MatrixOperation.sum(vqLoss.syncHost()));
+        return (decoderLossV + MatrixOperation.sum(vqLoss.syncHost()));
     }
 
     @Override

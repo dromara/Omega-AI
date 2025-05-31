@@ -1,4 +1,4 @@
-package com.omega.common.data;
+package com.omega.engine.tensor;
 
 import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixOperation;
@@ -228,6 +228,17 @@ public class Tensor implements Serializable {
         //		System.err.println("in-create");
         return t;
     }
+    
+    public static Tensor createGPUTensor(Tensor t, int[] shape, boolean hasGPU) {
+        if (t == null) {
+            t = new Tensor(shape[0], shape[1], shape[2], shape[3], hasGPU, true);
+        } else {
+            t.resize(shape[0], shape[1], shape[2], shape[3], true);
+            t.orgShape = new int[]{shape[0], shape[1], shape[2], shape[3]};
+        }
+        //		System.err.println("in-create");
+        return t;
+    }
 
     public Tensor getTmp() {
         if (tmp == null) {
@@ -277,6 +288,10 @@ public class Tensor implements Serializable {
 
     public Tensor createLike() {
         return new Tensor(number, channel, height, width, hasGPU);
+    }
+    
+    public Tensor createGPULike() {
+        return new Tensor(number, channel, height, width, hasGPU, true);
     }
 
     public Tensor createLike(float value) {
@@ -536,7 +551,7 @@ public class Tensor implements Serializable {
     }
 
     public float[] syncHost() {
-        if (data == null || data.length != this.dataLength) {
+        if (data == null || data.length != this.getDataLength()) {
             this.data = new float[this.dataLength];
         }
         JCuda.cudaMemcpy(Pointer.to(data), gpuData, this.dataLength * (long) Sizeof.FLOAT, cudaMemcpyKind.cudaMemcpyDeviceToHost);

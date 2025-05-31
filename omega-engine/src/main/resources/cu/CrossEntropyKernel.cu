@@ -463,7 +463,6 @@ __global__ void cross_softmax_forward_kernel(float* loss,float* out, const float
             maxval = fmaxf(maxval, x[min(C - 1, i + u*blockDim.x)]);
         }
     }
-
     // now within-warp reductions for maxval
     maxval = warpReduceMax(maxval);
     // the 0th thread of each warp writes the maxval of that warp to shared memory
@@ -522,7 +521,6 @@ __global__ void cross_softmax_forward_kernel(float* loss,float* out, const float
     __syncthreads();
     // broadcast the sum to all threads
     float sum = sumvals[0];
-
     // divide the whole row by the sum
     for (int i = tid; i < C; i += blockDim.x * UNROLL_FACTOR) {
         float reg_array[UNROLL_FACTOR];
@@ -542,6 +540,9 @@ __global__ void cross_softmax_forward_kernel(float* loss,float* out, const float
     if(tx == igone){
 		loss[idx] = 0;
 	}else{
+		//if(y[tx] == 0){
+	    //	y[tx] = 1e-35f;
+	    //}
 		loss[idx] = -logf(y[tx]);
 	}
 }

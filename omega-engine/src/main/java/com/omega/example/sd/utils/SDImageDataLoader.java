@@ -1,10 +1,10 @@
 package com.omega.example.sd.utils;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.MathUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
+import com.omega.engine.tensor.Tensor;
 import com.omega.example.diffusion.utils.DiffusionImageLoader;
 import com.omega.example.transformer.tokenizer.bertTokenizer.BertTokenizer;
 import com.omega.example.transformer.utils.LagJsonReader;
@@ -72,6 +72,7 @@ public class SDImageDataLoader extends BaseDataLoader {
         boolean do_lower_case = true;
         boolean tokenize_chinese_chars = true;
         tokenizer = new BertTokenizer(tokenizerPath, do_lower_case, tokenize_chinese_chars);
+        System.err.println("tokenizer is ready.");
     }
 
     public void loadFileCount() {
@@ -163,7 +164,6 @@ public class SDImageDataLoader extends BaseDataLoader {
         // TODO Auto-generated method stub
         /**
          * 加载input数据
-
          */
         if (mean != null) {
             SegImageLoader.load(imgDirPath, extName, idxSet, indexs, input.number, input, false, true, mean, std);
@@ -185,7 +185,6 @@ public class SDImageDataLoader extends BaseDataLoader {
         // TODO Auto-generated method stub
         /**
          * 加载input数据
-
          */
         if (mean != null) {
             SegImageLoader.load(imgDirPath, extName, idxSet, indexs, input.number, input, false, true, mean, std);

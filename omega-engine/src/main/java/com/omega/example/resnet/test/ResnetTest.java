@@ -1,6 +1,5 @@
 package com.omega.example.resnet.test;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.data.utils.DataTransforms;
 import com.omega.common.utils.DataLoader;
 import com.omega.common.utils.ImageUtils;
@@ -17,6 +16,7 @@ import com.omega.engine.nn.network.CNN;
 import com.omega.engine.optimizer.MBSGDOptimizer;
 import com.omega.engine.optimizer.lr.LearnRateUpdate;
 import com.omega.engine.pooling.PoolingType;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 
 import java.io.File;

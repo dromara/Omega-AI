@@ -1,6 +1,5 @@
 package com.omega.engine.nn.layer;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.active.ActiveType;
@@ -13,6 +12,7 @@ import com.omega.engine.nn.model.LayerInit;
 import com.omega.engine.nn.network.CNN;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.utils.ModelUtils;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;
@@ -112,7 +112,7 @@ public class ConvolutionLayer extends Layer {
         this.stride = stride;
         this.hasBias = hasBias;
         this.network = network;
-        //		network.paramLayers.add(this);
+        this.network.paramLayers.add(this);
         this.setUpdater(UpdaterFactory.create(this.network));
         this.hasParams = true;
         this.initParam();
@@ -144,7 +144,7 @@ public class ConvolutionLayer extends Layer {
         this.hasBias = hasBias;
         this.network = network;
         this.freeze = freeze;
-        //		network.paramLayers.add(this);
+        this.network.paramLayers.add(this);
         this.setUpdater(UpdaterFactory.create(this.network));
         this.hasParams = true;
         this.initParam();
@@ -176,7 +176,7 @@ public class ConvolutionLayer extends Layer {
         this.stride = stride;
         this.hasBias = hasBias;
         this.network = network;
-        //		network.paramLayers.add(this);
+        this.network.paramLayers.add(this);
         this.hasParams = true;
         this.paramsInit = paramsInit;
         this.initParam();
@@ -193,7 +193,7 @@ public class ConvolutionLayer extends Layer {
         this.stride = stride;
         this.hasBias = hasBias;
         this.network = network;
-        //		network.paramLayers.add(this);
+        this.network.paramLayers.add(this);
         this.hasParams = true;
         switch (activeType) {
             case sigmoid:

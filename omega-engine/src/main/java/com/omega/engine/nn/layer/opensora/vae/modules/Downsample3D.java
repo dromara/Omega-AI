@@ -3,10 +3,10 @@ package com.omega.engine.nn.layer.opensora.vae.modules;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
-import com.omega.common.data.Tensor;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * Downsample3D
@@ -20,7 +20,7 @@ public class Downsample3D extends Layer {
     public int depth;
     public int oDepth;
     
-    private CausalConv3DPlainAR conv3d;
+    public CausalConv3DPlainAR conv3d;
     
     public Downsample3D(int channel,int depth, int height, int width,int stride, Network network) {
         this.network = network;

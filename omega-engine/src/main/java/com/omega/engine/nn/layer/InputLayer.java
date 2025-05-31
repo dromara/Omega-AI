@@ -1,6 +1,6 @@
 package com.omega.engine.nn.layer;
 
-import com.omega.common.data.Tensor;
+import com.omega.engine.tensor.Tensor;
 
 public class InputLayer extends Layer {
     public InputLayer(int channel, int height, int width) {

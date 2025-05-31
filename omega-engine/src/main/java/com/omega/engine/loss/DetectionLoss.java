@@ -1,6 +1,6 @@
 package com.omega.engine.loss;
 
-import com.omega.common.data.Tensor;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * yolov1 loss

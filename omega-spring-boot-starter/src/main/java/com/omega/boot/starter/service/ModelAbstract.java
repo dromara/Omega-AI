@@ -1,10 +1,10 @@
 package com.omega.boot.starter.service;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.SoftmaxKernel;
+import com.omega.engine.tensor.Tensor;
 
 import java.util.Arrays;
 
@@ -37,6 +37,12 @@ public class ModelAbstract extends TokenizerAbstract{
         return 0;
     }
 
+    public static int output2NextIDX(Tensor output, int nextTokenIdx, int topK) {
+        if (nextTokenIdx < output.number) {
+            return pickTopN(output.getByNumber(nextTokenIdx), topK);
+        }
+        return 0;
+    }
     public static int pickTopN(float[] x, int n) {
         float[] sort = Arrays.copyOf(x, x.length);
         Arrays.sort(sort);

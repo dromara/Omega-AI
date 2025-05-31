@@ -1,6 +1,6 @@
 package com.omega.example.yolo.data;
 
-import com.omega.common.data.Tensor;
+import com.omega.engine.tensor.Tensor;
 import com.omega.example.yolo.utils.OMImage;
 
 import java.util.Map;
@@ -72,7 +72,7 @@ public class ImageLoaderJob extends RecursiveAction {
             //			MemeryBlock block = pool.getBlock(4096 * 4096 * 3);
             //			OMImage orig = ImageLoader.loadImage(imagePath, block.getData());
             OMImage orig = ImageLoader.loadImage(imagePath);
-            System.out.println(imagePath);
+//            System.out.println(imagePath);
             float[] labelXYWH = ImageLoader.formatXYWH(labelBoxs, orig.getWidth(), orig.getHeight());
             //			ImageLoader.loadDataDetection(input, label, i, orig, labelXYWH, input.width, input.height, boxes, classes, jitter, hue, saturation, exposure);
             ImageLoader.loadDataDetection2(input, label, i, orig, labelXYWH, input.width, input.height, boxes, classes, jitter, hue, saturation, exposure, resized, letter_box);

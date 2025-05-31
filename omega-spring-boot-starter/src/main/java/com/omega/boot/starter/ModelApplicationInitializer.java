@@ -45,8 +45,7 @@ public class ModelApplicationInitializer implements ApplicationContextInitialize
                 .orElse(Collections.emptyList());
 
         if (paths.isEmpty()) {
-            logger.debug("No model paths configured");
-            return;
+            logger.info("No model paths configured");
         }
 
         logger.info("Configured model paths: {}", paths);

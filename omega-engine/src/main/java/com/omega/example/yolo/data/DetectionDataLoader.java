@@ -1,7 +1,7 @@
 package com.omega.example.yolo.data;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.MathUtils;
+import com.omega.engine.tensor.Tensor;
 import com.omega.example.yolo.utils.LabelFileType;
 import com.omega.example.yolo.utils.YoloImageUtils;
 
@@ -384,17 +384,14 @@ public class DetectionDataLoader extends BaseDataLoader {
                 float py = cy * stride - gridy;
                 /**
                  * c1
-
                  */
                 label.data[b * oneSize + gridy * stride * once + gridx * once + 0] = 1.0f;
                 /**
                  * class
-
                  */
                 label.data[b * oneSize + gridy * stride * once + gridx * once + clazz] = 1.0f;
                 /**
                  * x1,y1,w1,h1
-
                  */
                 label.data[b * oneSize + gridy * stride * once + gridx * once + classNum + 1] = px;
                 label.data[b * oneSize + gridy * stride * once + gridx * once + classNum + 2] = py;

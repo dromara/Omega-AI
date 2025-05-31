@@ -1,6 +1,5 @@
 package com.omega.engine.nn.network.utils;
 
-import com.omega.common.data.Tensor;
 import jcuda.Sizeof;
 
 import java.io.IOException;
@@ -8,6 +7,8 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.stream.IntStream;
+
+import com.omega.engine.tensor.Tensor;
 
 public class ModelUtils {
     public static void saveIntData(RandomAccessFile outputStream, int[] data) throws IOException {

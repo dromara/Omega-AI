@@ -1,8 +1,8 @@
 package com.omega.common.utils;
 
-import com.omega.common.data.Tensor;
 import com.omega.engine.active.ActiveType;
 import com.omega.engine.nn.layer.ParamsInit;
+import com.omega.engine.tensor.Tensor;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -31,7 +31,16 @@ public class RandomUtils {
     public static int rand() {
         return getInstance().nextInt();
     }
-
+    
+    public static void uniformInt(int max,Tensor data) {
+    	for (int i = 0; i < data.dataLength; i++) {
+            data.data[i] = getInstance().nextInt(max);
+        }
+        if(data.isHasGPU()) {
+        	data.hostToDevice();
+        }
+    }
+    
     public static int randomInt(int min, int max) {
         return min + (int) (Math.random() * (max - min));
     }
@@ -42,6 +51,29 @@ public class RandomUtils {
             tmp[i] = min + (int) (Math.random() * (max - min));
         }
         return tmp;
+    }
+    
+    public static int[] randomInt2(int min, int max, int[] data) {
+        for (int i = 0; i < data.length; i++) {
+        	data[i] = min + (int) (Math.random() * (max - min));
+        }
+        return data;
+    }
+    
+    public static int[] randomInt(int max, int[] data) {
+        for (int i = 0; i < data.length; i++) {
+        	data[i] = getInstance().nextInt(max);
+        }
+        return data;
+    }
+    
+    public static void randomInt(int min, int max, int count,Tensor data) {
+        for (int i = 0; i < count; i++) {
+            data.data[i] = min + (int) (Math.random() * (max - min));
+        }
+        if(data.isHasGPU()) {
+        	data.hostToDevice();
+        }
     }
 
     //	public static int[] randomInt2(int min,int max,int count) {
@@ -293,6 +325,14 @@ public class RandomUtils {
         float[] temp = new float[x];
         for (int i = 0; i < x; i++) {
             temp[i] = (float) (getInstance().nextGaussian() * std + mean);
+        }
+        return temp;
+    }
+    
+    public static float[] gaussianRandom(int x, float mean, float std,float tmp) {
+        float[] temp = new float[x];
+        for (int i = 0; i < x; i++) {
+            temp[i] = (float) (getInstance().nextGaussian() * std + mean) * tmp;
         }
         return temp;
     }

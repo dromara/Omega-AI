@@ -1,7 +1,5 @@
 package com.omega.example.transformer.utils;
 
-import com.omega.common.data.Tensor;
-
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
@@ -9,6 +7,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import com.omega.engine.tensor.Tensor;
 
 public class ENTokenizer {
     private final String[] _patterns = new String[]{"\\'", "\\\"", "\\.", "<br />", "\\,", "\\(", "\\)", "\\!", "\\?", "\\;", "\\:", "\\s+"};

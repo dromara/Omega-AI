@@ -1,8 +1,8 @@
 package com.omega.engine.nn.layer;
 
-import com.omega.common.data.Tensor;
 import com.omega.engine.nn.layer.gpu.AdaptiveAvgPool2DKernel;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 
 public class AdaptiveAvgPool2DLayer extends Layer {
     private AdaptiveAvgPool2DKernel kernel;

@@ -36,14 +36,13 @@ __global__ void add_bias_kernel(float *output, float *biases, int n, int size)
 }
 
 extern "C"
-__global__ void backward_bias_conn_kernel(float *bias_updates, float *delta, int batch, int n)
+__global__ void backward_bias_conn_kernel(float *bias_updates, float *delta, int batch, int W)
 {
     int index = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
-    if (index >= n) return;
-    int b;
+    if (index >= W) return;
     float sum = 0;
-    for(b = 0; b < batch; ++b){
-        int i = b*n + index;
+    for(int b = 0; b < batch; ++b){
+        int i = b*W + index;
         sum += delta[i];
     }
     bias_updates[index] += sum;
