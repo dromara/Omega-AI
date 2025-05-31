@@ -3,7 +3,6 @@ package com.omega.boot.starter.service;
 
 import cn.hutool.json.JSONObject;
 import com.omega.boot.starter.entity.ModelData;
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.CUDAManager;
@@ -12,6 +11,7 @@ import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.layer.gpu.RoPEKernel;
 import com.omega.engine.nn.network.Llama3;
 import com.omega.engine.nn.network.RunModel;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 import com.omega.example.transformer.utils.ModelUtils;
 import com.omega.example.transformer.utils.bpe.BPETokenizer3;

@@ -1,10 +1,10 @@
 package com.omega.boot.starter.service;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.SoftmaxKernel;
+import com.omega.engine.tensor.Tensor;
 
 import java.util.Arrays;
 
