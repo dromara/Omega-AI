@@ -1,11 +1,11 @@
 package com.omega.engine.nn.layer.llava;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.layer.*;
 import com.omega.engine.nn.layer.llama.LlamaTransformerBlock;
 import com.omega.engine.nn.layer.normalization.RMSLayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;

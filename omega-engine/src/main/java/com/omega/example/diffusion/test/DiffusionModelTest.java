@@ -1,6 +1,5 @@
 package com.omega.example.diffusion.test;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.loss.LossType;
@@ -12,6 +11,7 @@ import com.omega.engine.nn.layer.normalization.GNLayer;
 import com.omega.engine.nn.network.DiffusionUNet;
 import com.omega.engine.optimizer.MBSGDOptimizer;
 import com.omega.engine.optimizer.lr.LearnRateUpdate;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 import com.omega.example.diffusion.utils.DiffusionImageDataLoader;
 

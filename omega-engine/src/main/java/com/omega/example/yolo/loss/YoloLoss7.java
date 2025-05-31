@@ -1,10 +1,10 @@
 package com.omega.example.yolo.loss;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.loss.LossFunction;
 import com.omega.engine.loss.LossType;
+import com.omega.engine.tensor.Tensor;
 import com.omega.example.yolo.utils.YoloUtils;
 
 /**

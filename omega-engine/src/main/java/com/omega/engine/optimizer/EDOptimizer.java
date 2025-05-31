@@ -1,6 +1,5 @@
 package com.omega.engine.optimizer;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.MathUtils;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.MatrixUtils;
@@ -11,6 +10,7 @@ import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.gpu.RoPEKernel;
 import com.omega.engine.nn.network.*;
 import com.omega.engine.optimizer.lr.LearnRateUpdate;
+import com.omega.engine.tensor.Tensor;
 import com.omega.example.asr.dataset.AudioDataset;
 import com.omega.example.rnn.data.IndexDataLoader;
 import com.omega.example.transformer.dataset.LVMPreTrainDataset;
@@ -2575,7 +2575,6 @@ public class EDOptimizer extends Optimizer {
                 Tensor output = null;
                 /**
                  * 遍历整个训练集
-                 *
                  */
                 for (int it = 0; it < trainingData.count_it; it++) {
                     if (Math.abs(this.currentError) <= this.error) {
@@ -2586,32 +2585,26 @@ public class EDOptimizer extends Optimizer {
                     this.lossDiff.clear();
                     /**
                      * 读取训练数据
-                     *
                      */
                     trainingData.loadData2(input, label, tmpInput, tmpLabel, it);
                     /**
                      * forward
-                     *
                      */
                     output = network.forward(cos, sin, input);
                     /**
                      * loss
-                     *
                      */
                     this.loss = network.loss(output, label, pad);
                     /**
                      * loss diff
-                     *
                      */
                     this.lossDiff = network.lossDiff(output, label, pad);
                     /**
                      * back
-                     *
                      */
                     network.back(cos, sin, this.lossDiff);
                     /**
                      * update
-                     *
                      */
                     if (gradAccSteps > 1) {
                         this.network.accGrad(gradAccSteps);
@@ -2624,7 +2617,6 @@ public class EDOptimizer extends Optimizer {
                     }
                     /**
                      * current time error
-                     *
                      */
                     if (this.loss.isHasGPU()) {
                         this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.number;
@@ -2643,7 +2635,6 @@ public class EDOptimizer extends Optimizer {
                     System.out.println(msg);
                     /**
                      * dynamic update learnRate
-                     *
                      */
                     updateLRDynamic(i * trainingData.count_it + it, this.trainTime * trainingData.count_it);
                     this.batchIndex++;

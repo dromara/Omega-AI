@@ -1,6 +1,6 @@
 package com.omega.engine.nn.layer;
 
-import com.omega.common.data.Tensor;
+import com.omega.engine.tensor.Tensor;
 
 public abstract class BaseRNNLayer extends Layer {
     public int layerNum = 1;

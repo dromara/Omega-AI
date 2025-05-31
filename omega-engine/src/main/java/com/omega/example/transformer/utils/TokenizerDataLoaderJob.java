@@ -1,9 +1,9 @@
 package com.omega.example.transformer.utils;
 
-import com.omega.common.data.Tensor;
-
 import java.util.concurrent.ForkJoinTask;
 import java.util.concurrent.RecursiveAction;
+
+import com.omega.engine.tensor.Tensor;
 
 public class TokenizerDataLoaderJob extends RecursiveAction {
     /**

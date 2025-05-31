@@ -3,11 +3,11 @@ package com.omega.engine.nn.layer.opensora.vae.modules;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
-import com.omega.common.data.Tensor;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.UPSample3DLayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * Downsample2D
@@ -21,9 +21,9 @@ public class Upsample3D extends Layer {
     public int depth;
     public int oDepth;
     
-    private UPSample3DLayer up;
+    public UPSample3DLayer up;
     
-    private Res3DBlockUpsample conv3d;
+    public Res3DBlockUpsample conv3d;
     
     public Upsample3D(int channel,int depth, int height, int width,int scale_factor, Network network) {
         this.network = network;

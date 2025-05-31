@@ -1,10 +1,10 @@
 package com.omega.example.transformer.dataset.parallel;
 
-import com.omega.common.data.Tensor;
 import com.omega.engine.nn.layer.gpu.RoPEKernel;
 import com.omega.engine.nn.network.Llama3;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.utils.ModelUtils;
+import com.omega.engine.tensor.Tensor;
 import com.omega.example.transformer.dataset.parallel.params.DataLoaderParamters;
 import com.omega.example.transformer.dataset.parallel.params.SFTBinParamters;
 import com.omega.example.transformer.utils.bpe.BinDataType;

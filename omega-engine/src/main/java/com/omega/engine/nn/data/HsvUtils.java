@@ -1,7 +1,7 @@
 package com.omega.engine.nn.data;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.RandomUtils;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * hsv utils

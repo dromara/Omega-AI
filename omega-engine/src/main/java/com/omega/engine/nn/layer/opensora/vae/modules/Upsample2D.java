@@ -3,13 +3,13 @@ package com.omega.engine.nn.layer.opensora.vae.modules;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
-import com.omega.common.data.Tensor;
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.ParamsInit;
 import com.omega.engine.nn.layer.UPSampleLayer2;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 /**
@@ -23,7 +23,7 @@ public class Upsample2D extends Layer {
 	
     private UPSampleLayer2 up;
 
-    private ConvolutionLayer conv;
+    public ConvolutionLayer conv;
     
     private int depth;
     
@@ -80,18 +80,21 @@ public class Upsample2D extends Layer {
     @Override
     public void output() {
         // TODO Auto-generated method stub
-        
+
     	input.view(number, channel, depth, height * width);
     	inputT.view(number, depth, channel, height * width);
     	Tensor_OP().permute(input, inputT, new int[]{0, 2, 1, 3});
+
     	inputT.viewOrg();
-    	
+
     	up.forward(inputT);
-    	
+
     	conv.forward(up.getOutput());
-    	
+
     	conv.getOutput().view(number, depth, conv.oChannel, conv.oHeight * conv.oWidth);
+
     	output.view(number, conv.oChannel, depth, conv.oHeight * conv.oWidth);
+
     	Tensor_OP().permute(conv.getOutput(), output, new int[]{0, 2, 1, 3});
     	
         output.viewOrg();

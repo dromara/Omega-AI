@@ -3,7 +3,6 @@ package com.omega.engine.nn.layer.opensora.vae;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.omega.common.data.Tensor;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.ParamsInit;
@@ -15,6 +14,7 @@ import com.omega.engine.nn.layer.opensora.vae.modules.Downsample3D;
 import com.omega.engine.nn.layer.opensora.vae.modules.GNLayer3D;
 import com.omega.engine.nn.layer.opensora.vae.modules.Resnet3DBlock;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 /**
@@ -35,12 +35,12 @@ public class VideoEncoder extends Layer {
     
     private boolean double_z = true;
     
-    private CausalConv3DPlainAR convIn;
-    private List<Layer> downBlock;
-    private List<Layer> midBlock;
-    private GNLayer3D convNormOut;
-    private SiLULayer convAct;
-    private CausalConv3DPlainAR convOut;
+    public CausalConv3DPlainAR convIn;
+    public List<Layer> downBlock;
+    public List<Layer> midBlock;
+    public GNLayer3D convNormOut;
+    public SiLULayer convAct;
+    public CausalConv3DPlainAR convOut;
 
     public VideoEncoder(int channel, int z_channels, int depth, int height, int width, int ch, int num_res_blocks, int[] ch_mult, int[] down_sampling_layer, boolean double_z, Network network) {
         this.network = network;
@@ -65,7 +65,6 @@ public class VideoEncoder extends Layer {
     	for(int idx:down_sampling_layer) {
     		down_sampling_layers.add(idx);
     	}
-    	
         convIn = new CausalConv3DPlainAR(channel, ch, depth, width, height, 3, 1, true, network);
         convIn.setUpdater(UpdaterFactory.create(this.network));
         convIn.paramsInit = ParamsInit.silu;
@@ -99,8 +98,8 @@ public class VideoEncoder extends Layer {
                     iw = dwon2d .oWidth;
             	}
             }
-
         }
+        
         // mid
         midBlock = new ArrayList<Layer>();
         Resnet3DBlock mb1 = new Resnet3DBlock(outc, outc, id, ih, iw, network);
@@ -108,7 +107,7 @@ public class VideoEncoder extends Layer {
         id = mb1.oDepth;
         ih = mb1.oHeight;
         iw = mb1.oWidth;
-        AttentionBlock3D attn = new AttentionBlock3D(outc, id, ih, iw, true, network);
+        AttentionBlock3D attn = new AttentionBlock3D(outc, id, ih, iw, true, true, network);
         midBlock.add(attn);
         Resnet3DBlock mb2 = new Resnet3DBlock(outc, outc, id, ih, iw, network);
         midBlock.add(mb2);
@@ -117,7 +116,7 @@ public class VideoEncoder extends Layer {
         iw = mb2.oWidth;
         
         //out
-        convNormOut = new GNLayer3D(outc, id, ih, iw, 32, mb2, network);
+        convNormOut = new GNLayer3D(outc, id, ih, iw, 32, network);
         convAct = new SiLULayer(convNormOut);
         int zc = z_channels;
         if(double_z) {
@@ -149,17 +148,21 @@ public class VideoEncoder extends Layer {
     public void output() {
         // TODO Auto-generated method stub
         convIn.forward(this.input);
+
         Tensor x = convIn.getOutput();
+       
         for (int i = 0; i < downBlock.size(); i++) {
             Layer layer = downBlock.get(i);
             layer.forward(x);
             x = layer.getOutput();
         }
+
         for (int i = 0; i < midBlock.size(); i++) {
         	Layer layer = midBlock.get(i);
             layer.forward(x);
             x = layer.getOutput();
         }
+        
         convNormOut.forward(x);
         convAct.forward(convNormOut.getOutput());
         convOut.forward(convAct.getOutput());

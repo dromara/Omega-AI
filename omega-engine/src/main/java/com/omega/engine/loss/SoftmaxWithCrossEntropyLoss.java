@@ -1,7 +1,7 @@
 package com.omega.engine.loss;
 
-import com.omega.common.data.Tensor;
-import com.omega.common.data.Tensors;
+import com.omega.engine.tensor.Tensor;
+import com.omega.engine.tensor.Tensors;
 
 /**
  * Cross Entropy loss function

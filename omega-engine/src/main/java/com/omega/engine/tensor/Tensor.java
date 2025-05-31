@@ -1,4 +1,4 @@
-package com.omega.common.data;
+package com.omega.engine.tensor;
 
 import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixOperation;
@@ -224,6 +224,17 @@ public class Tensor implements Serializable {
         } else {
             t.resize(number, channel, height, width, true);
             t.orgShape = new int[]{number, channel, height, width};
+        }
+        //		System.err.println("in-create");
+        return t;
+    }
+    
+    public static Tensor createGPUTensor(Tensor t, int[] shape, boolean hasGPU) {
+        if (t == null) {
+            t = new Tensor(shape[0], shape[1], shape[2], shape[3], hasGPU, true);
+        } else {
+            t.resize(shape[0], shape[1], shape[2], shape[3], true);
+            t.orgShape = new int[]{shape[0], shape[1], shape[2], shape[3]};
         }
         //		System.err.println("in-create");
         return t;

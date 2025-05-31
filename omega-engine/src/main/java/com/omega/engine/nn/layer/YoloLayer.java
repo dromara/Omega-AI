@@ -1,7 +1,7 @@
 package com.omega.engine.nn.layer;
 
-import com.omega.common.data.Tensor;
 import com.omega.engine.nn.layer.active.gpu.SigmodKernel;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * yolo layer

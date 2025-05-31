@@ -2,6 +2,8 @@ package com.omega.common.data;
 
 import java.io.Serializable;
 
+import com.omega.engine.tensor.Tensor;
+
 public class LayerConfig implements Serializable {
     /**
      *

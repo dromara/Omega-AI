@@ -1,6 +1,6 @@
 package com.omega.example.transformer.dataset.parallel;
 
-import com.omega.common.data.Tensor;
+import com.omega.engine.tensor.Tensor;
 import com.omega.example.transformer.dataset.JSONDatasetLoader;
 import com.omega.example.transformer.utils.tokenizers.Tokenizer;
 import jcuda.runtime.JCuda;

@@ -1,8 +1,8 @@
 package com.omega.example.diffusion.utils;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.data.utils.DataTransforms;
 import com.omega.common.task.ForkJobEngine;
+import com.omega.engine.tensor.Tensor;
 import com.omega.example.yolo.utils.YoloImageUtils;
 
 import java.util.concurrent.ForkJoinTask;

@@ -1,8 +1,8 @@
 package com.omega.common.utils;
 
-import com.omega.common.data.Tensor;
 import com.omega.engine.active.ActiveType;
 import com.omega.engine.nn.layer.ParamsInit;
+import com.omega.engine.tensor.Tensor;
 
 import java.util.ArrayList;
 import java.util.Collections;

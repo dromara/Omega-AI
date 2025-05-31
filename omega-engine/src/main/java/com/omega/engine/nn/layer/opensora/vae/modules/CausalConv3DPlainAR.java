@@ -3,7 +3,6 @@ package com.omega.engine.nn.layer.opensora.vae.modules;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.active.ActiveType;
@@ -18,6 +17,7 @@ import com.omega.engine.nn.model.LayerInit;
 import com.omega.engine.nn.network.CNN;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.utils.ModelUtils;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 /**
@@ -31,7 +31,7 @@ public class CausalConv3DPlainAR extends Layer {
     public int kernelSize = 0;
     public int stride = 1;
     public int oDepth = 0;
-    private Conv3DBaseKernel kernel;
+    public Conv3DBaseKernel kernel;
     private BiasKernel biasKernel;
     private PaddingKernel paddingKernel;
     
@@ -226,14 +226,14 @@ public class CausalConv3DPlainAR extends Layer {
     public static void main(String[] args) {
         int N = 2;
         int C = 3;
-        int F = 5;
-        int H = 4;
-        int W = 4;
+        int F = 6;
+        int H = 64;
+        int W = 64;
         
         int KC = 4;
         int KS = 3;
-
         int stride = 1;
+        
         float[] data = RandomUtils.order(N * C * F * H * W, 0.1f, 0.1f);
         Tensor input = new Tensor(N, C * F, H, W, data, true);
         CNN nn = new CNN(null);
@@ -241,18 +241,17 @@ public class CausalConv3DPlainAR extends Layer {
         nn.number = N;
         //nt channel,int kernelNum,int depth,int width,int height,int kDepth,int kWidth,int kHeight,int padding,int stride
         CausalConv3DPlainAR conv1 = new CausalConv3DPlainAR(C, KC, F, W, H, KS, stride, true, nn);
-
-        conv1.weight = new Tensor(KC, C * KS, KS, KS, RandomUtils.order(KC * C * KS * KS * KS, 0.1f, 0.1f), true);
-        conv1.bias = new Tensor(1, 1, 1, KC, RandomUtils.order(KC, 0.1f, 0.1f), true);
+//        conv1.weight = new Tensor(KC, C * KS, KS, KS, RandomUtils.order(KC * C * KS * KS * KS, 0.1f, 0.1f), true);
+//        conv1.bias = new Tensor(1, 1, 1, KC, RandomUtils.order(KC, 0.1f, 0.1f), true);
         conv1.forward(input);
         float[] delta_data = MatrixUtils.val(conv1.getOutput().dataLength, 1.0f);
         Tensor delta = new Tensor(N, conv1.oChannel * conv1.oDepth, conv1.oHeight, conv1.oWidth, delta_data, true);
-        conv1.back(delta);
-        conv1.getOutput().showShape();
-        conv1.getOutput().showDM();
-        conv1.diff.showDM();
-        conv1.diffW.showDM();
-        conv1.diffB.showDM();
+//        conv1.back(delta);
+//        conv1.getOutput().showShape();
+//        conv1.getOutput().showDM();
+//        conv1.diff.showDM();
+//        conv1.diffW.showDM();
+//        conv1.diffB.showDM();
     }
 
     @Override
@@ -271,8 +270,8 @@ public class CausalConv3DPlainAR extends Layer {
         this.oWidth = (this.pWidth - kernelSize) / this.stride + 1;
         this.oHeight = (this.pHeight - kernelSize) / this.stride + 1;
 
-        this.weight = new Tensor(kernelNum, channel * kernelSize, kernelSize, kernelSize, RandomUtils.kaiming_uniform(dataLength, this.channel * kernelSize * kernelSize * kernelSize, this.paramsInit), true);
-
+//        this.weight = new Tensor(kernelNum, channel * kernelSize, kernelSize, kernelSize, RandomUtils.kaiming_uniform(dataLength, this.channel * kernelSize * kernelSize * kernelSize, this.paramsInit), true);
+        this.weight = new Tensor(kernelNum, channel * kernelSize, kernelSize, kernelSize, RandomUtils.order(dataLength, 0.1f, 0.1f), true);
         if (hasBias) {
             this.bias = new Tensor(1, 1, 1, kernelNum, true);
         }
@@ -349,10 +348,10 @@ public class CausalConv3DPlainAR extends Layer {
         // TODO Auto-generated method stub
     	
     	paddingKernel.padding3d(input, pOutput, depth, padding3d, 0);
-    	
+
         kernel.conv(pOutput, weight, output);
         if (this.hasBias) {
-            biasKernel.addConvBiasFast(output, bias);
+            biasKernel.addConvBiasFast(output, bias, oChannel, oDepth);
         }
     }
 

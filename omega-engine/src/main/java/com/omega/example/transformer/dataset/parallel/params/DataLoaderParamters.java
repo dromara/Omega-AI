@@ -1,8 +1,8 @@
 package com.omega.example.transformer.dataset.parallel.params;
 
-import com.omega.common.data.Tensor;
-
 import java.io.Serializable;
+
+import com.omega.engine.tensor.Tensor;
 
 public abstract class DataLoaderParamters implements Serializable {
     /**

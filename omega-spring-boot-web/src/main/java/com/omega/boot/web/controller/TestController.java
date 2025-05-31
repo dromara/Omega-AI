@@ -1,5 +1,6 @@
 package com.omega.boot.web.controller;
 
+import com.omega.boot.starter.service.LLama2Service;
 import com.omega.boot.starter.service.Llama3Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,9 +19,9 @@ import org.springframework.web.bind.annotation.RestController;
 public class TestController {
 
     @Autowired
-    private Llama3Service llama3Service;
+    private LLama2Service llama2Service;
     @GetMapping("/test")
     public String test(String input) {
-        return "user:"+input+"\nchatbot:" + llama3Service.predict(input);
+        return "user:"+input+"\nchatbot:" + llama2Service.predict(input);
     }
 }

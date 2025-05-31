@@ -1,9 +1,9 @@
 package com.omega.engine.nn.layer.unet;
 
-import com.omega.common.data.Tensor;
 import com.omega.engine.active.ActiveType;
 import com.omega.engine.nn.layer.*;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * conv + bn + activefunction * 2

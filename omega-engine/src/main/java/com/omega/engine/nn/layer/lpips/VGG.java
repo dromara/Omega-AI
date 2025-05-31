@@ -1,10 +1,10 @@
 package com.omega.engine.nn.layer.lpips;
 
-import com.omega.common.data.Tensor;
 import com.omega.engine.nn.layer.*;
 import com.omega.engine.nn.layer.active.ReluLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.pooling.PoolingType;
+import com.omega.engine.tensor.Tensor;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -220,12 +220,10 @@ public class VGG extends Layer {
     public void featuresCopy(Tensor input, int[] featuresIndex, Tensor[] fr) {
         /**
          * 参数初始化
-
          */
         this.init();
         /**
          * 设置输入
-
          */
         this.setInput(input);
         Tensor x = input;

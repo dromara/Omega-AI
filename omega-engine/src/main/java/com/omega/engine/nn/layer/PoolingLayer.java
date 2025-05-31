@@ -1,11 +1,11 @@
 package com.omega.engine.nn.layer;
 
-import com.omega.common.data.Tensor;
 import com.omega.engine.gpu.cudnn.PoolingCudnnKernel;
 import com.omega.engine.nn.layer.gpu.PoolingBaseKernel;
 import com.omega.engine.nn.layer.gpu.PoolingKernel;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.pooling.PoolingType;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * PoolingLayer

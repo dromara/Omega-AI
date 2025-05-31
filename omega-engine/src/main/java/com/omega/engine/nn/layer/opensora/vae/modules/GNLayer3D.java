@@ -3,12 +3,14 @@ package com.omega.engine.nn.layer.opensora.vae.modules;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
-import com.omega.common.data.Tensor;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.GNLayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.nn.network.Transformer;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * GNLayer3D
@@ -22,7 +24,21 @@ public class GNLayer3D extends Layer {
     public int depth;
     public int oDepth;
     
-    private GNLayer norm;
+    public GNLayer norm;
+    
+    public GNLayer3D(int channel,int depth, int height, int width,int groupNum, Network network) {
+        this.network = network;
+        this.channel = channel;
+        this.depth = depth;
+        this.height = height;
+        this.width = width;
+        this.groupNum = groupNum;
+        initLayers();
+        this.oChannel = channel;
+        this.oDepth = depth;
+        this.oHeight = height;
+        this.oWidth = width;
+    }
     
     public GNLayer3D(int channel,int depth, int height, int width,int groupNum, Layer preLayer, Network network) {
         this.network = network;
@@ -31,16 +47,16 @@ public class GNLayer3D extends Layer {
         this.height = height;
         this.width = width;
         this.groupNum = groupNum;
-        initLayers(preLayer);
+        initLayers();
         this.oChannel = channel;
         this.oDepth = depth;
         this.oHeight = height;
         this.oWidth = width;
     }
 
-    public void initLayers(Layer preLayer) {
+    public void initLayers() {
     	//int groupNum, int channel, int height, int width, BNType bnType, Layer preLayer
-    	norm = new GNLayer(groupNum, channel, depth * height, width, BNType.conv_bn, preLayer);
+    	norm = new GNLayer(groupNum, channel, depth * height, width, BNType.conv_bn, network);
     }
 
     @Override
@@ -48,6 +64,10 @@ public class GNLayer3D extends Layer {
         this.number = this.network.number;
     }
 
+    public void init(Tensor input) {
+        this.number = input.number;
+    }
+    
     @Override
     public void initBack() {
 
@@ -57,7 +77,28 @@ public class GNLayer3D extends Layer {
     public void initParam() {
         // TODO Auto-generated method stub
     }
-
+    
+    public static void main(String[] args) {
+    	int batchSize = 2;
+    	int channel = 3;
+    	int numFrames = 2;
+    	int imageSize = 8;
+    	Tensor input = new Tensor(batchSize, channel * numFrames, imageSize, imageSize, true);
+    	
+        Transformer tf = new Transformer();
+        tf.CUDNN = true;
+        float[] data = RandomUtils.order(input.dataLength, 0.1f, 0.1f);
+        Tensor input2 = new Tensor(batchSize, channel * numFrames, imageSize, imageSize, data, true);
+        GNLayer3D norm = new GNLayer3D(channel, numFrames, imageSize, imageSize, 32, tf);
+        for (int i = 0; i < 10; i++) {
+        	norm.forward(input2);
+        	norm.getOutput().showShape();
+        	norm.getOutput().showDM();
+//            mal.back(delta);
+//            mal.diff.showDM();
+        }
+    }
+    
     @Override
     public void output() {
         // TODO Auto-generated method stub
@@ -155,7 +196,7 @@ public class GNLayer3D extends Layer {
          * 参数初始化
 
          */
-        this.init();
+        this.init(input);
         /**
          * 设置输入
 

@@ -1,6 +1,6 @@
 package com.omega.common.utils;
 
-import com.omega.common.data.Tensor;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * PrintUtils

@@ -1,8 +1,8 @@
 package com.omega.engine.database;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.MathUtils;
 import com.omega.engine.nn.data.DataSet;
+import com.omega.engine.tensor.Tensor;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;

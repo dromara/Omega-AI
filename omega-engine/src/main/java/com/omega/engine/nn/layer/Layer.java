@@ -1,6 +1,5 @@
 package com.omega.engine.nn.layer;
 
-import com.omega.common.data.Tensor;
 import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
@@ -9,6 +8,7 @@ import com.omega.engine.gpu.data.CacheDataSet;
 import com.omega.engine.nn.layer.utils.LayerHook;
 import com.omega.engine.nn.model.LayerInit;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.Updater;
 
 import java.util.ArrayList;

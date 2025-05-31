@@ -1,10 +1,10 @@
 package com.omega.engine.ad.op.data;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.ad.Tape;
 import com.omega.engine.ad.op.OP;
 import com.omega.engine.ad.op.OPType;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * 获取指定向量数据

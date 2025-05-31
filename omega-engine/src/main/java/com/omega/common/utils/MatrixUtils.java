@@ -1,10 +1,11 @@
 package com.omega.common.utils;
 
+import java.util.List;
+import java.util.Vector;
+
 import com.omega.common.task.ForkJobEngine;
 import com.omega.common.task.Task;
 import com.omega.common.task.TaskEngine;
-
-import java.util.Vector;
 
 /**
  * MatrixUtils
@@ -639,7 +640,59 @@ public class MatrixUtils {
         }
         return result;
     }
-
+    
+    /**
+     * transform
+     *
+     * @param x c * h * w
+     * @return
+     * @index ci * h * w + hi * w + wi
+     */
+    public static float[] transform(float[][][][][] x) {
+    	int d1 = x.length;
+    	int d2 = x[0].length;
+    	int d3 = x[0][0].length;
+    	int d4 = x[0][0][0].length;
+    	int d5 = x[0][0][0][0].length;
+        float[] result = new float[d1 * d2 * d3 * d4 * d5];
+        for (int c = 0; c < d1; c++) {
+            for (int h = 0; h < d2; h++) {
+                for (int w = 0; w < d3; w++) {
+                	for(int i = 0;i<d4;i++) {
+                		for(int j = 0;j<d5;j++) {
+                			result[c * d2 * d3 * d4 * d5 + h * d3 * d4 * d5 + w * d4 * d5 + i * d5 + j] = x[d1][d2][d3][d4][d5];
+                		}
+                	}
+                }
+            }
+        }
+        return result;
+    }
+    
+    public static float[] transform(List<List<List<List<List<Double>>>>> x) {
+    	int d1 = x.size();
+    	int d2 = x.get(0).size();
+    	int d3 = x.get(0).get(0).size();
+    	int d4 = x.get(0).get(0).get(0).size();
+    	int d5 = x.get(0).get(0).get(0).get(0).size();
+    	int cl = d2 * d3 * d4 * d5;
+    	int hl = d3 * d4 * d5;
+    	int wl = d4 * d5;
+        float[] result = new float[d1 * d2 * d3 * d4 * d5];
+        for (int c = 0; c < d1; c++) {
+            for (int h = 0; h < d2; h++) {
+                for (int w = 0; w < d3; w++) {
+                	for(int i = 0;i<d4;i++) {
+                		for(int j = 0;j<d5;j++) {
+                			result[c * cl + h * hl + w * wl + i * d5 + j] = x.get(c).get(h).get(w).get(i).get(j).floatValue();
+                		}
+                	}
+                }
+            }
+        }
+        return result;
+    }
+    
     /**
      * transform
      *
@@ -1030,6 +1083,22 @@ public class MatrixUtils {
         }
         System.out.println(count);
         return error;
+    }
+    
+    public static float[] triu(int b, int h, int size1, int size2, float val) {
+        float[] data = new float[b * h * size1 * size2];
+        for (int n = 0; n < b; n++) {
+            for (int hn = 0; hn < h; hn++) {
+                for (int i = 0; i < size1; i++) {
+                    for (int j = 0; j < size2; j++) {
+                        if (i < j) {
+                            data[n * h * size1 * size2 + hn * size1 * size2 + i * size1 + j] = val;
+                        }
+                    }
+                }
+            }
+        }
+        return data;
     }
 }
 

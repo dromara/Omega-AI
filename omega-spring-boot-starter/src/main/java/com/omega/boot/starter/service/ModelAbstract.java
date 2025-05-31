@@ -37,6 +37,12 @@ public class ModelAbstract extends TokenizerAbstract{
         return 0;
     }
 
+    public static int output2NextIDX(Tensor output, int nextTokenIdx, int topK) {
+        if (nextTokenIdx < output.number) {
+            return pickTopN(output.getByNumber(nextTokenIdx), topK);
+        }
+        return 0;
+    }
     public static int pickTopN(float[] x, int n) {
         float[] sort = Arrays.copyOf(x, x.length);
         Arrays.sort(sort);

@@ -1,14 +1,16 @@
 package com.omega.engine.nn.layer.gpu;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUfunction;
+import jcuda.runtime.JCuda;
 import jcuda.runtime.cudaError;
 
 import static jcuda.driver.JCudaDriver.cuLaunchKernel;
@@ -50,10 +52,12 @@ public class FlashAttentionV2Kernel extends BaseKernel {
         for (int i = 0; i < 100; i++) {
             long startTime = System.nanoTime();
             kernel.forward(Q, K, V, output);
+            JCuda.cudaDeviceSynchronize();
             System.out.println((System.nanoTime() - startTime) / 1e6 + "ms.");
             //			output.
             long startTime2 = System.nanoTime();
             kernel.backward(Q, K, V, output, delta, dQ, dK, dV);
+            JCuda.cudaDeviceSynchronize();
             System.out.println((System.nanoTime() - startTime2) / 1e6 + "ms.");
             //			dQ.showDMByOffset(0, 100);
             //			dK.showDMByOffset(0, 100);
@@ -129,7 +133,6 @@ public class FlashAttentionV2Kernel extends BaseKernel {
             N = input.number;
             /**
              * 申请向前传播参数显存
-
              */
             this.d_l = new Tensor(input.number, headNum, time, 1, true);
         }
@@ -225,9 +228,9 @@ public class FlashAttentionV2Kernel extends BaseKernel {
             int col_tile_size = Bc * d;  // size of Kj, Vj
             int row_tile_size = Br * d;  // size of Qi
             int sram_size = (4 * col_tile_size * Sizeof.FLOAT) + (3 * row_tile_size * Sizeof.FLOAT) + (2 * Bc * Br * Sizeof.FLOAT);
-            dQ.clearGPU();
-            dK.clearGPU();
-            dV.clearGPU();
+//            dQ.clearGPU();
+//            dK.clearGPU();
+//            dV.clearGPU();
             /**
              *  设置入参
              *  const float* Q,

@@ -1,6 +1,6 @@
 package com.omega.engine.nn.data;
 
-import com.omega.common.data.Tensors;
+import com.omega.engine.tensor.Tensors;
 
 /**
  * data set

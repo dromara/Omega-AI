@@ -1,6 +1,5 @@
 package com.omega.engine.nn.layer.llama;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.layer.DropoutLayer;
@@ -11,6 +10,7 @@ import com.omega.engine.nn.layer.gpu.FlashAttentionV2Kernel;
 import com.omega.engine.nn.layer.gpu.RoPEKernel;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.Transformer;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;

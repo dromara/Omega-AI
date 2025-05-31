@@ -1,6 +1,6 @@
 package com.omega.example.transformer.dataset.parallel.params;
 
-import com.omega.common.data.Tensor;
+import com.omega.engine.tensor.Tensor;
 
 public class SFTBinParamters extends DataLoaderParamters {
     /**

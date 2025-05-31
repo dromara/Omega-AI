@@ -1,9 +1,9 @@
 package com.omega.engine.ad;
 
-import com.omega.common.data.Tensor;
 import com.omega.engine.ad.op.OP;
 import com.omega.engine.ad.op.OPType;
 import com.omega.engine.ad.op.TensorOP;
+import com.omega.engine.tensor.Tensor;
 
 import java.io.Serializable;
 

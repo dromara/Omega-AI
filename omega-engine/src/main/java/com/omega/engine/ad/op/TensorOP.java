@@ -1,12 +1,13 @@
 package com.omega.engine.ad.op;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.ad.op.gpu.NormalizeKernel;
 import com.omega.engine.ad.op.gpu.OPKernel;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.GPUOP;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.driver.CUstream;
 import jcuda.jcublas.cublasOperation;
 
@@ -44,6 +45,20 @@ public class TensorOP {
             op.add_axis_gpu(a, b, c, axis);
         } else {
             c.data = MatrixOperation.add(a.data, b.data);
+        }
+    }
+    
+    public void addAxis(Tensor a, Tensor b, Tensor c,int N, int C, int H, int W, int axis) {
+        if (c.isHasGPU()) {
+            op.add_axis_gpu(a, b, c, N, C, H, W, axis);
+        } else {
+            c.data = MatrixOperation.add(a.data, b.data);
+        }
+    }
+    
+    public void addAxisBack(Tensor dx, Tensor dy,int N, int C, int H, int W, int axis) {
+        if (dx.isHasGPU()) {
+            op.add_axis_back_gpu(dx, dy, N, C, H, W, axis);
         }
     }
 
@@ -138,7 +153,7 @@ public class TensorOP {
             c.data = MatrixOperation.multiplication(a.data, b.data);
         }
     }
-
+    
     public void bool(Tensor a, Tensor b, Tensor c, float val) {
         if (c.isHasGPU()) {
             op.bool_gpu(a, b, c, val);
@@ -146,12 +161,38 @@ public class TensorOP {
             c.data = MatrixOperation.bool(a.data, b.data, val);
         }
     }
-
+    
+    public void mask(Tensor a, Tensor b, Tensor c, float val) {
+        if (c.isHasGPU()) {
+            op.mask_gpu(a, b, c, val);
+        }else {
+        	
+        }
+    }
+    
     public void mul(Tensor a, Tensor b, Tensor c, int offset, int N) {
         if (c.isHasGPU()) {
             op.mul_gpu(a, b, c, offset, N);
         } else {
             c.data = MatrixOperation.multiplication(a.data, b.data);
+        }
+    }
+    
+    public void mul(Tensor a, Tensor b, Tensor c, int N, int C, int H, int W, int axis) {
+        if (c.isHasGPU()) {
+            op.mul_gpu(a, b, c, N, C, H, W, axis);
+        }
+    }
+    
+    public void mul_left_back(Tensor b, Tensor delta, Tensor da, int N, int C, int H, int W, int axis) {
+        if (da.isHasGPU()) {
+            op.mul_back_left_gpu(b, delta, da, N, C, H, W, axis);
+        }
+    }
+    
+    public void mul_right_back(Tensor a, Tensor delta, Tensor db, int N, int C, int H, int W, int axis) {
+        if (db.isHasGPU()) {
+            op.mul_back_right_gpu(a, delta, db, N, C, H, W, axis);
         }
     }
 
@@ -639,5 +680,60 @@ public class TensorOP {
         x.view(N, C, H, W);
         y.view(N, C, H, W);
     }
+    
+    /**
+     * cp = 0 [org->target]
+     * cp = 1 [target->org]
+     * @param org
+     * @param target
+     * @param position[dims, start, count]
+     * @param cp
+     */
+    public void getByPosition(Tensor org, Tensor target, int[] position, int cp) {
+        int dims = position[0];
+        int start = position[1];
+        int count = position[2];
+        switch (dims) {
+            case 0:
+                getByNumber(org, target, start, count);
+                break;
+            case 1:
+                getByChannel(org, target, start, count);
+                break;
+            default:
+                break;
+        }
+    }
+    
+    public void getByNumber(Tensor org, Tensor target, int start, int count) {
+        assert org.getNumber() >= (start + count - 1);
+        if (org.isHasGPU()) {
+            this.op.copy_number_gpu(org, target, start * count, 0);
+        } else {
+            System.arraycopy(org.data, start * count * org.channel * org.height * org.width, target.data, 0, target.dataLength);
+        }
+    }
+
+    public void getByChannel(Tensor org, Tensor target, int start, int count) {
+        assert org.getChannel() >= (start + count - 1);
+        if (org.isHasGPU()) {
+            this.op.copy_channel_gpu(org, target, start, 0);
+        } else {
+            int size = org.height * org.width;
+            for (int n = 0; n < org.number; n++) {
+                int startIndex = n * org.channel * size + start * size;
+                System.arraycopy(org.data, startIndex, target.data, n * count * size, count * size);
+            }
+        }
+    }
+    
+    public void abs(Tensor x,Tensor y) {
+    	op.abs_gpu(x, y);
+    }
+    
+    public void abs_backward(Tensor x,Tensor dx,Tensor dy) {
+    	op.abs_backward_gpu(x, dx, dy);
+    }
+    
 }
 

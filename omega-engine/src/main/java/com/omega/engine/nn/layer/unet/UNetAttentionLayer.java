@@ -1,6 +1,5 @@
 package com.omega.engine.nn.layer.unet;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.gpu.cudnn.SoftmaxCudnnKernel;
 import com.omega.engine.nn.layer.DropoutLayer;
@@ -11,6 +10,7 @@ import com.omega.engine.nn.layer.gpu.AttentionKernel;
 import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.Transformer;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;
@@ -770,6 +770,9 @@ public class UNetAttentionLayer extends Layer {
     }
 
     public void saveModel(RandomAccessFile outputStream) throws IOException {
+    	if (gn != null) {
+            gn.saveModel(outputStream);
+        }
         getqLinerLayer().saveModel(outputStream);
         getkLinerLayer().saveModel(outputStream);
         getvLinerLayer().saveModel(outputStream);
@@ -777,6 +780,9 @@ public class UNetAttentionLayer extends Layer {
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
+    	if (gn != null) {
+            gn.loadModel(inputStream);
+        }
         getqLinerLayer().loadModel(inputStream);
         getkLinerLayer().loadModel(inputStream);
         getvLinerLayer().loadModel(inputStream);
@@ -818,6 +824,9 @@ public class UNetAttentionLayer extends Layer {
     @Override
     public void accGrad(float scale) {
         // TODO Auto-generated method stub
+    	if (gn != null) {
+            gn.accGrad(scale);
+        }
         qLinerLayer.accGrad(scale);
         kLinerLayer.accGrad(scale);
         vLinerLayer.accGrad(scale);

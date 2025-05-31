@@ -1,6 +1,6 @@
 package com.omega.engine.check;
 
-import com.omega.common.data.Tensor;
+import com.omega.engine.tensor.Tensor;
 
 public class VailCodeCheck extends BaseCheck {
     private static int labelClassLength = 4;

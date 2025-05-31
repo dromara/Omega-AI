@@ -34,7 +34,7 @@ public class JarPathUtils {
      * @throws IOException
      */
     public static void copyJarResources(String jarPath, String otPath, String targetFolderPath, Class clazz) throws IOException {
-        System.out.println(jarPath);
+//        System.out.println(jarPath);
         JarFile jarFile = new JarFile(jarPath);
         Enumeration<JarEntry> entrys = jarFile.entries();
         while (entrys.hasMoreElements()) {

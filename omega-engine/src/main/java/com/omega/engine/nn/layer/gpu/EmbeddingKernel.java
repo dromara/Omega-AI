@@ -1,9 +1,9 @@
 package com.omega.engine.nn.layer.gpu;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
+import com.omega.engine.tensor.Tensor;
 import com.omega.example.transformer.utils.bpe.BPETokenizerEN;
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
@@ -199,7 +199,6 @@ public class EmbeddingKernel extends BaseKernel {
             /**
              * 设置入参
              *  float* input, float* factor, float* output, int N,int dim
-
              */
             kernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(factor.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{input.number * dim}), Pointer.to(new int[]{dim}));
             this.N = input.number;

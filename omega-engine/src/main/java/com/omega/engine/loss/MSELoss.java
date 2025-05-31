@@ -1,11 +1,11 @@
 package com.omega.engine.loss;
 
-import com.omega.common.data.Tensor;
-import com.omega.common.data.Tensors;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.loss.gpu.MSELossKernel;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
+import com.omega.engine.tensor.Tensors;
 
 /**
  * Square loss

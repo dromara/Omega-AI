@@ -1,7 +1,8 @@
 package com.omega.engine.gpu;
 
-import com.omega.common.data.Tensor;
 import com.omega.engine.parallel.ddp.distributed.SerializablePointer;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUdeviceptr;

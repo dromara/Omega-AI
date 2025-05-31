@@ -1,9 +1,9 @@
 package com.omega.engine.nn.layer.gpu;
 
-import com.omega.common.data.Tensor;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.nn.network.RunModel;
+import com.omega.engine.tensor.Tensor;
 
 public abstract class RNNBaseKernel extends BaseKernel {
     public int seqLength = 1;

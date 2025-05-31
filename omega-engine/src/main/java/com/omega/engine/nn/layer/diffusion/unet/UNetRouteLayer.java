@@ -1,9 +1,9 @@
 package com.omega.engine.nn.layer.diffusion.unet;
 
-import com.omega.common.data.Tensor;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * 路由层

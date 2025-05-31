@@ -1,14 +1,8 @@
 package com.omega.engine.gpu;
 
-import com.omega.common.lib.LibPaths;
-import com.omega.common.utils.JarPathUtils;
-import jcuda.driver.CUcontext;
-import jcuda.driver.CUdevice;
-import jcuda.driver.CUfunction;
-import jcuda.driver.JCudaDriver;
-import jcuda.runtime.JCuda;
-import jcuda.runtime.cudaDeviceProp;
-import jcuda.runtime.cudaError;
+import static jcuda.driver.JCudaDriver.cuModuleGetFunction;
+import static jcuda.driver.JCudaDriver.cuModuleLoad;
+import static jcuda.driver.JCudaDriver.cuModuleLoadData;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -18,20 +12,28 @@ import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 
-import static jcuda.driver.JCudaDriver.cuModuleGetFunction;
-import static jcuda.driver.JCudaDriver.cuModuleLoad;
+import com.omega.common.lib.LibPaths;
+import com.omega.common.utils.JarPathUtils;
+
+import jcuda.driver.CUcontext;
+import jcuda.driver.CUdevice;
+import jcuda.driver.CUfunction;
+import jcuda.driver.JCudaDriver;
+import jcuda.runtime.JCuda;
+import jcuda.runtime.cudaDeviceProp;
+import jcuda.runtime.cudaError;
 
 public class CUDAModules {
     private static final String CU_PATH = "cu/";
-    private static final String TMP_PATH = "/tmp/";
+//    private static final String TMP_PATH = "/tmp/";
     public static Map<String, MyCUDAModule> modules = new HashMap<String, MyCUDAModule>();
     public static int maxThreads;
     public static int threadsPerDimension;
     public static cudaDeviceProp props;
+    
     public static Map<String, String> functions = new HashMap<String, String>() {
         /**
          *
-
          */
         private static final long serialVersionUID = -7636602208380901817L;
 
@@ -98,6 +100,7 @@ public class CUDAModules {
         fileName = rootPath + fileName;
         File file = new File(fileName);
         if (!file.exists()) {
+
             try {
                 URL url = CUDAModules.class.getProtectionDomain().getCodeSource().getLocation();
                 JarPathUtils.copyJarResources(url.getPath(), CU_PATH, rootPath, CUDAModules.class);
@@ -148,6 +151,30 @@ public class CUDAModules {
         }
         return null;
     }
+    
+    public static MyCUDAModule getModule(String fileName,byte[] data) {
+        // Create the PTX file by calling the NVCC
+        try {
+            String ptxFileName = preparePtxFile(fileName);
+            if (CUDAModules.modules.containsKey(ptxFileName)) {
+                return CUDAModules.modules.get(ptxFileName);
+            }
+            setContext(getContext());
+            maxThreads = instance.getMaxThreads(device);
+            threadsPerDimension = (int) Math.sqrt(maxThreads);
+            // Load the ptx file.
+            MyCUDAModule module = new MyCUDAModule();
+            cuModuleLoadData(module, data);
+            CUDAModules.modules.put(ptxFileName, module);
+            return module;
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+
 
     /**
      * The extension of the given file name is replaced with "ptx".

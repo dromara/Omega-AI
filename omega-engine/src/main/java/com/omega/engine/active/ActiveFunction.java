@@ -1,9 +1,10 @@
 package com.omega.engine.active;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.MatrixUtils;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 
 /**

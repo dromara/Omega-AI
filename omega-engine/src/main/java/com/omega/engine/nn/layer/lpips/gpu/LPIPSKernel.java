@@ -1,9 +1,10 @@
 package com.omega.engine.nn.layer.lpips.gpu;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
 import jcuda.runtime.cudaError;
@@ -99,7 +100,7 @@ public class LPIPSKernel extends BaseKernel {
              * float *delta,float *x1,float *x2, float *diff, int N
 
              */
-            forwardKernelParameters = Pointer.to(Pointer.to(delta.getGpuData()), Pointer.to(x1.getGpuData()), Pointer.to(x2.getGpuData()), Pointer.to(diff.getGpuData()), Pointer.to(new int[]{delta.getDataLength()}));
+        	Pointer forwardKernelParameters = Pointer.to(Pointer.to(delta.getGpuData()), Pointer.to(x1.getGpuData()), Pointer.to(x2.getGpuData()), Pointer.to(diff.getGpuData()), Pointer.to(new int[]{delta.getDataLength()}));
             cuLaunchKernel(lpip_l2_backward_function, this.CAFFE_GET_BLOCKS(delta.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
@@ -116,7 +117,6 @@ public class LPIPSKernel extends BaseKernel {
             /**
              * 设置入参
              * int N,float *x,float *shift, float *scale, float *out, int C,int HW
-
              */
             forwardKernelParameters = Pointer.to(Pointer.to(new int[]{x.getDataLength()}), Pointer.to(x.getGpuData()), Pointer.to(shift.getGpuData()), Pointer.to(scale.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{x.channel}), Pointer.to(new int[]{x.height * x.width}));
             cuLaunchKernel(scaling_function, this.CAFFE_GET_BLOCKS(x.getDataLength()), 1, 1,      // Grid dimension
@@ -135,7 +135,6 @@ public class LPIPSKernel extends BaseKernel {
             /**
              * 设置入参
              * int N,float *dy, float *scale, float *dx, int C,int HW
-
              */
             forwardKernelParameters = Pointer.to(Pointer.to(new int[]{dy.getDataLength()}), Pointer.to(dy.getGpuData()), Pointer.to(scale.getGpuData()), Pointer.to(dx.getGpuData()), Pointer.to(new int[]{dy.channel}), Pointer.to(new int[]{dy.height * dy.width}));
             cuLaunchKernel(scaling_backwad_function, this.CAFFE_GET_BLOCKS(dy.getDataLength()), 1, 1,      // Grid dimension

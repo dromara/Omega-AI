@@ -1,6 +1,5 @@
 package com.omega.example.unet.test;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.ImageUtils;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.loss.LossType;
@@ -8,6 +7,7 @@ import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.nn.network.SimpleUNet;
 import com.omega.engine.optimizer.MBSGDOptimizer;
 import com.omega.engine.optimizer.lr.LearnRateUpdate;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 import com.omega.example.unet.utils.SegImageDataLoader;
 

@@ -1,4 +1,4 @@
-package com.omega.common.data;
+package com.omega.engine.tensor;
 
 public class Tensors {
     public static Tensor tensor(int n, int c, int h, int w, float[] x, boolean isGPU) {

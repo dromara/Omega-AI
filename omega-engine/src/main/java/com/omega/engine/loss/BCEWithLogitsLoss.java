@@ -1,8 +1,8 @@
 package com.omega.engine.loss;
 
-import com.omega.common.data.Tensor;
-import com.omega.common.data.Tensors;
 import com.omega.engine.loss.gpu.BCEWithLogitsLossKernel;
+import com.omega.engine.tensor.Tensor;
+import com.omega.engine.tensor.Tensors;
 
 /**
  * 二分类loss

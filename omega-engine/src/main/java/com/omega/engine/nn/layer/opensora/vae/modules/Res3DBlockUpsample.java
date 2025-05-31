@@ -3,12 +3,12 @@ package com.omega.engine.nn.layer.opensora.vae.modules;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
-import com.omega.common.data.Tensor;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.ParamsInit;
 import com.omega.engine.nn.layer.active.SiLULayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 /**
@@ -21,13 +21,13 @@ public class Res3DBlockUpsample extends Layer {
 	public int depth;
 	public int oDepth;
 	
-    private CausalConv3DPlainAR conv1;
-    private GNLayer3D norm1;
-    private SiLULayer act1;
+	public CausalConv3DPlainAR conv1;
+	public GNLayer3D norm1;
+	public SiLULayer act1;
     
-    private CausalConv3DPlainAR conv2;
-    private GNLayer3D norm2;
-    private SiLULayer act2;
+	public CausalConv3DPlainAR conv2;
+	public GNLayer3D norm2;
+	public SiLULayer act2;
     
     private Tensor resOut;
     

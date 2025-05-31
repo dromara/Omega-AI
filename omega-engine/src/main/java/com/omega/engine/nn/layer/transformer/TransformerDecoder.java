@@ -1,11 +1,11 @@
 package com.omega.engine.nn.layer.transformer;
 
-import com.omega.common.data.Tensor;
 import com.omega.engine.nn.layer.EmbeddingLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.util.ArrayList;

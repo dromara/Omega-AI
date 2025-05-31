@@ -1,6 +1,5 @@
 package com.omega.example.transformer.test;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
@@ -15,6 +14,7 @@ import com.omega.engine.nn.network.Llama2;
 import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.optimizer.EDOptimizer;
 import com.omega.engine.optimizer.lr.LearnRateUpdate;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 import com.omega.example.transformer.dataset.PreTrainDataset;
 import com.omega.example.transformer.tokenizer.bertTokenizer.BertTokenizer;

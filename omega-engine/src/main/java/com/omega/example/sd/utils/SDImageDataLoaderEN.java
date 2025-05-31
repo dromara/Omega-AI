@@ -1,10 +1,10 @@
 package com.omega.example.sd.utils;
 
-import com.omega.common.data.Tensor;
 import com.omega.common.utils.MathUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
+import com.omega.engine.tensor.Tensor;
 import com.omega.example.diffusion.utils.DiffusionImageLoader;
 import com.omega.example.transformer.utils.LagJsonReader;
 import com.omega.example.transformer.utils.bpe.BPETokenizerEN;
