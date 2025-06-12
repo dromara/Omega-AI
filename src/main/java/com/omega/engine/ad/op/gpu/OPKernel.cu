@@ -417,13 +417,13 @@ __global__ void mul_axis_back_right_kernel(int N, float *X, float *delta, float 
 		float dy = 0;
     	if(axis == 0){
 			for(int j = 0;j<B;j++){
-				dy += X[j * C * H * W + i] * delta[j * C * H * W + i];
+				dy += delta[j * C * H * W + i] * X[j * C * H * W + i];
 			}
 		}else if(axis == 1){
 			int n = i / H / W;
 			int hw = i % (H * W);
 			for(int j = 0;j<C;j++){
-				dy += X[n * C * H * W + j * H * W + hw] * delta[n * C * H * W + j * H * W + hw];
+				dy += delta[n * C * H * W + j * H * W + hw] * X[n * C * H * W + j * H * W + hw];
 			}
 		}
     	dY[i] = dy;
@@ -1545,9 +1545,7 @@ __global__ void permute_add_kernel(int N, float *data_in, float *data_out, int *
 }
 
 
-
 extern "C"
-
 __global__ void mean_kernel(int N, float *x, float *y, int C) {
 
     int tid = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
@@ -1568,12 +1566,7 @@ __global__ void mean_kernel(int N, float *x, float *y, int C) {
 
 }
 
-
-
-
-
 extern "C"
-
 __global__ void mean_back_kernel(int N, float *dy, float *dx, int C) {
 
     int tid = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
@@ -1588,4 +1581,49 @@ __global__ void mean_back_kernel(int N, float *dy, float *dx, int C) {
 
     }
 
+}
+
+extern "C"
+__global__ void cat_width_kernel(int N, float *a, float *b, float *y, int W) {
+
+    int tid = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+
+    if (tid < N) {
+        for (int i = 0; i < W * 2; i++) {
+			int oi = i / 2;
+			if(i / W < 1){
+				y[tid * W * 2 + i] = a[tid * W + oi];
+			}else{
+				y[tid * W * 2 + i] = b[tid * W + oi];
+			}
+        }
+    }
+
+}
+
+extern "C"
+__global__ void cat_width_back_kernel(int N, float *da, float *db, float *dy, int W) {
+
+    int tid = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+
+    if (tid < N) {
+        for (int i = 0; i < W * 2; i++) {
+			int oi = i / 2;
+			if(i / W < 1){
+				da[tid * W + oi] = dy[tid * W * 2 + i];
+			}else{
+				db[tid * W + oi] = dy[tid * W * 2 + i];
+			}
+        }
+    }
+
+}
+
+
+extern "C"
+__global__ void update_ema(int N,float *ema, float *model,float decay)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (i >= N) return;
+	ema[i] = ema[i] * decay + model[i] * (1 - decay);
 }

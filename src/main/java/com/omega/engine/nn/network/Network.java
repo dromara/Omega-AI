@@ -53,6 +53,7 @@ public abstract class Network {
     public float learnRate = 0.01f;
     public float errorRate = 0.001f;
     public float currentError = 0.0f;
+    public float weight_decay = 1e-4f;
     /**
      * batch number
      */
@@ -431,11 +432,64 @@ public abstract class Network {
         }
         routeLayers.add(layer);
     }
-
+    
     public void clearCacheDelta() {
+    	System.err.println(routeLayers.size());
         for (RouteLayer rl : routeLayers) {
             rl.clearCacheDelta();
         }
         JCuda.cudaDeviceSynchronize();
+    }
+    
+    public void copyParams(Network model) {
+    	for(int i = 0;i<paramLayers.size();i++) {
+    		Layer l1 = paramLayers.get(i);
+    		Layer l2 = model.paramLayers.get(i);
+    		if (l1 instanceof NormalizationLayer) {
+                NormalizationLayer ema_nl = (NormalizationLayer) l1;
+                NormalizationLayer model_nl = (NormalizationLayer) l2;
+                if(ema_nl.gamma == null) {
+                	ema_nl.gamma = model_nl.gamma.createLike();
+                }
+                tensorOP.copyTensorGPU(model_nl.gamma, ema_nl.gamma);
+                if(model_nl.beta != null) {
+                	if(ema_nl.beta == null) {
+                    	ema_nl.beta = model_nl.beta.createLike();
+                    }
+                	tensorOP.copyTensorGPU(model_nl.beta, ema_nl.beta);
+                }
+    		}else {
+    			if(l1.weight == null) {
+    				l1.weight = l2.weight.createLike();
+                }
+    			tensorOP.copyTensorGPU(l2.weight, l1.weight);
+    			if(l2.bias != null) {
+    				if(l1.bias == null) {
+        				l1.bias = l2.bias.createLike();
+                    }
+       			 	tensorOP.copyTensorGPU(l2.bias, l1.bias);
+    			}
+    		}
+    	}
+    }
+    
+    public void update_ema(Network model, float decay) {
+    	for(int i = 0;i<paramLayers.size();i++) {
+    		Layer l1 = paramLayers.get(i);
+    		Layer l2 = model.paramLayers.get(i);
+    		if (l1 instanceof NormalizationLayer) {
+                NormalizationLayer ema_nl = (NormalizationLayer) l1;
+                NormalizationLayer model_nl = (NormalizationLayer) l2;
+                tensorOP.update_ema(ema_nl.gamma, model_nl.gamma, decay);
+                if(ema_nl.beta != null) {
+                	tensorOP.update_ema(ema_nl.beta, model_nl.beta, decay);
+                }
+    		}else {
+    			tensorOP.update_ema(l1.weight, l2.weight, decay);
+    			if(l1.bias != null) {
+    				tensorOP.update_ema(l1.bias, l2.bias, decay);
+    			}
+    		}
+    	}
     }
 }

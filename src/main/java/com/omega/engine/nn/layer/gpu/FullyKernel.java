@@ -184,7 +184,6 @@ public class FullyKernel extends BaseKernel {
                 /**
                  * 设置入参
                  * float* data_im,float* data_col,int n,int height,int width,int kh,int kw,int s,int p,int oh,int ow
-
                  */
                 kernelBackParameters = Pointer.to(Pointer.to(diffB.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(new int[]{delta.getNumber()}), Pointer.to(new int[]{delta.getWidth()}));
             }

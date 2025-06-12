@@ -1,4 +1,4 @@
-package com.omega.engine.nn.layer.dit.modules;
+package com.omega.engine.nn.layer.dit;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -10,67 +10,57 @@ import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.active.GeluLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.tensor.Tensor;
-import com.omega.engine.updater.UpdaterFactory;
 
 /**
- * DiT_PoswiseFeedForward Layer
+ * diffsion model CaptionEmbeddingLayer
  *
  * @author Administrator
  */
-public class DiTMLPLayer extends Layer {
-    private int embedDim = 0;
-    private int nChannel = 1;
-    private boolean bias = false;
+public class DiTCaptionEmbeddingLayer extends Layer {
 
     public FullyLayer linear1;
-    private GeluLayer active;
+    public GeluLayer act;
     public FullyLayer linear2;
+    private boolean bias = true;
+    private int inChannel;
+    private int outChannel;
 
-    public DiTMLPLayer(int embedDim, int nChannel, boolean bias) {
-        this.embedDim = embedDim;
-        this.nChannel = nChannel;
-        this.bias = bias;
-        this.oChannel = 1;
-        this.oHeight = 1;
-        this.oWidth = embedDim;
-        this.initLayers();
-    }
-
-    public DiTMLPLayer(int embedDim, int nChannel, boolean bias, Network network) {
+    public DiTCaptionEmbeddingLayer(int inChannel, int outChannel, boolean bias, Network network) {
         this.network = network;
-        if (this.updater == null) {
-            this.setUpdater(UpdaterFactory.create(network));
-        }
-        this.embedDim = embedDim;
-        this.nChannel = nChannel;
         this.bias = bias;
-        this.oChannel = 1;
+        this.inChannel = inChannel;
+        this.outChannel = outChannel;
+        this.height = 1;
+        this.width = inChannel;
         this.oHeight = 1;
-        this.oWidth = embedDim;
-        this.initLayers();
-    }
-
-    public static void main(String[] args) {
+        this.oWidth = outChannel;
+        initLayers();
     }
 
     public void initLayers() {
-        this.linear1 = new FullyLayer(embedDim, nChannel, bias, network);
-        this.linear1.weight.setData(RandomUtils.xavierUniform(embedDim * nChannel, embedDim, nChannel, 1.0f));
-        if(this.linear1.bias != null) {
-        	this.linear1.bias.clearGPU();
+        linear1 = new FullyLayer(inChannel, outChannel, bias, network);
+        linear1.weight.setData(RandomUtils.normal_(inChannel * outChannel, 0.0f, 0.02f));
+        if(linear1.bias != null) {
+        	linear1.bias.clearGPU();
         }
-        this.active = new GeluLayer(linear1);
-        this.linear2 = new FullyLayer(nChannel, embedDim, bias, network);
-        this.linear2.weight.setData(RandomUtils.xavierUniform(embedDim * nChannel, nChannel, embedDim, 1.0f));
-        if(this.linear2.bias != null) {
-        	this.linear2.bias.clearGPU();
+        act = new GeluLayer(linear1);
+        linear2 = new FullyLayer(outChannel, outChannel, bias, network);
+        linear2.weight.setData(RandomUtils.normal_(outChannel * outChannel, 0.0f, 0.02f));
+        if(linear2.bias != null) {
+        	linear2.bias.clearGPU();
         }
+//        linear2.weight = new Tensor(1, 1, dim, dim, MatrixUtils.order(dim * dim, 0.01f, 0.01f), true);
     }
 
     @Override
     public void init() {
         // TODO Auto-generated method stub
-        this.number = this.input.number;
+        this.number = this.network.number;
+    }
+    
+    public void init(Tensor input) {
+        // TODO Auto-generated method stub
+        this.number = input.number;
     }
 
     @Override
@@ -87,41 +77,46 @@ public class DiTMLPLayer extends Layer {
     public void output() {
         // TODO Auto-generated method stub
         linear1.forward(input);
-        active.forward(linear1.getOutput());
-        linear2.forward(active.getOutput());
+
+        act.forward(linear1.getOutput());
+
+        linear2.forward(act.getOutput());
+
         this.output = linear2.getOutput();
     }
 
     @Override
     public Tensor getOutput() {
         // TODO Auto-generated method stub
-        return output;
+        return this.output;
     }
 
     @Override
     public void diff() {
         // TODO Auto-generated method stub
-    	this.linear2.back(this.delta);
-        active.back(this.linear2.diff);
-        linear1.back(active.diff);
-        this.diff = this.linear1.diff;
-        //		System.out.println("mlp diff:");
-        //		diff.showDMByNumber(0);
+
+        linear2.back(delta);
+        act.back(linear2.diff);
+        linear1.back(act.diff);
+
     }
 
     @Override
     public void forward() {
         // TODO Auto-generated method stub
         /**
-         * 设置输入
-         */
-        this.setInput();
-        /**
          * 参数初始化
+
          */
         this.init();
         /**
+         * 设置输入
+
+         */
+        this.setInput();
+        /**
          * 计算输出
+
          */
         this.output();
     }
@@ -129,33 +124,40 @@ public class DiTMLPLayer extends Layer {
     @Override
     public void back() {
         // TODO Auto-generated method stub
-        this.initBack();
+        initBack();
         /**
          * 设置梯度
+
          */
         this.setDelta();
         /**
          * 计算梯度
+
          */
         this.diff();
-        if (this.network.GRADIENT_CHECK) {
-            this.gradientCheck();
-        }
+    }
+
+    @Override
+    public void backTemp() {
+        // TODO Auto-generated method stub
     }
 
     @Override
     public void forward(Tensor input) {
         // TODO Auto-generated method stub
         /**
+         * 参数初始化
+
+         */
+        this.init(input);
+        /**
          * 设置输入
+
          */
         this.setInput(input);
         /**
-         * 参数初始化
-         */
-        this.init();
-        /**
          * 计算输出
+
          */
         this.output();
     }
@@ -163,7 +165,7 @@ public class DiTMLPLayer extends Layer {
     @Override
     public void back(Tensor delta) {
         // TODO Auto-generated method stub
-        this.initBack();
+        initBack();
         /**
          * 设置梯度
 
@@ -174,9 +176,6 @@ public class DiTMLPLayer extends Layer {
 
          */
         this.diff();
-        if (this.network.GRADIENT_CHECK) {
-            this.gradientCheck();
-        }
     }
 
     @Override
@@ -194,7 +193,7 @@ public class DiTMLPLayer extends Layer {
     @Override
     public LayerType getLayerType() {
         // TODO Auto-generated method stub
-        return LayerType.mlp;
+        return LayerType.time_embedding;
     }
 
     @Override
@@ -205,11 +204,6 @@ public class DiTMLPLayer extends Layer {
 
     @Override
     public void initCache() {
-        // TODO Auto-generated method stub
-    }
-
-    @Override
-    public void backTemp() {
         // TODO Auto-generated method stub
     }
 

@@ -3,6 +3,7 @@ package com.omega.engine.nn.layer.dit;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -10,7 +11,7 @@ import com.omega.engine.nn.layer.active.SiLULayer;
 import com.omega.engine.nn.layer.dit.modules.DiTAttentionLayer2;
 import com.omega.engine.nn.layer.dit.modules.DiTCrossAttentionLayer2;
 import com.omega.engine.nn.layer.dit.modules.DiTMLPLayer;
-import com.omega.engine.nn.layer.normalization.LNLayer;
+import com.omega.engine.nn.layer.normalization.RMSLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
@@ -19,7 +20,7 @@ import com.omega.engine.updater.UpdaterFactory;
  * DiT_Block
  * @author Administrator
  */
-public class DiTBlock extends Layer {
+public class PixArtBlock extends Layer {
 	
 	private int batchSize;
 	
@@ -37,20 +38,30 @@ public class DiTBlock extends Layer {
     public FullyLayer modulation;
     
 //    private LNLayer norm1;
-    public LNLayer norm1;
+    public RMSLayer norm1;
     public DiTAttentionLayer2 attn;
-    public LNLayer norm2;
+    public RMSLayer norm2;
     public DiTCrossAttentionLayer2 cross_attn;
-    public LNLayer norm3;
+    public RMSLayer norm3;
     public DiTMLPLayer mlp;
     
+    public Tensor[] scale_shift_table;
+    
+    private Tensor shift_msa;
+    private Tensor scale_msa;
+    private Tensor gate_msa;
+    private Tensor shift_mlp;
+    private Tensor scale_mlp;
+    private Tensor gate_mlp;
+
     private Tensor attnInput;
     private Tensor crossAttnInput;
+    private Tensor crossAttnOut;
     private Tensor mlpInput;
     
     private Tensor dtc_cache;
 
-    public DiTBlock(int embedDim, int cEmbedDim, int textStateDim, int time, int textTime, int mlpHiddenDim, int headNum, boolean bias, boolean qkNorm) {
+    public PixArtBlock(int embedDim, int cEmbedDim, int textStateDim, int time, int textTime, int mlpHiddenDim, int headNum, boolean bias, boolean qkNorm) {
         this.embedDim = embedDim;
         this.cEmbedDim = cEmbedDim;
         this.headNum = headNum;
@@ -66,7 +77,7 @@ public class DiTBlock extends Layer {
         this.initLayers();
     }
 
-    public DiTBlock(int embedDim, int cEmbedDim, int textStateDim, int time, int textTime, int mlpHiddenDim, int headNum, boolean bias, boolean qkNorm, Network network) {
+    public PixArtBlock(int embedDim, int cEmbedDim, int textStateDim, int time, int textTime, int mlpHiddenDim, int headNum, boolean bias, boolean qkNorm, Network network) {
         this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
@@ -88,18 +99,26 @@ public class DiTBlock extends Layer {
 
     public void initLayers() {
     	
-        this.norm1 = new LNLayer(network);
+        this.norm1 = new RMSLayer(network);
         
         this.modulationAct = new SiLULayer(network);
         this.modulation = new FullyLayer(cEmbedDim, embedDim, bias, network);
         this.modulation.weight.clearGPU();
         this.modulation.bias.clearGPU();
         this.attn = new DiTAttentionLayer2(embedDim, headNum, time, bias, qkNorm, network);
-        this.norm2 = new LNLayer(network);
+        this.norm2 = new RMSLayer(network);
         this.cross_attn = new DiTCrossAttentionLayer2(embedDim, textStateDim, headNum, time, textTime, bias, qkNorm, network);
-        this.norm3 = new LNLayer(network);
+        this.norm3 = new RMSLayer(network);
        
         this.mlp = new DiTMLPLayer(embedDim, mlpHiddenDim, bias, network);
+        
+        this.scale_shift_table = new Tensor[6];
+        scale_shift_table[0] = new Tensor(1, 1, 1, embedDim, RandomUtils.gaussianRandom(embedDim, 0.0f, 1.0f, (float) (Math.pow(embedDim, 0.5))), true);
+        scale_shift_table[1] = new Tensor(1, 1, 1, embedDim, RandomUtils.gaussianRandom(embedDim, 0.0f, 1.0f, (float) (Math.pow(embedDim, 0.5))), true);
+        scale_shift_table[2] = new Tensor(1, 1, 1, embedDim, RandomUtils.gaussianRandom(embedDim, 0.0f, 1.0f, (float) (Math.pow(embedDim, 0.5))), true);
+        scale_shift_table[3] = new Tensor(1, 1, 1, embedDim, RandomUtils.gaussianRandom(embedDim, 0.0f, 1.0f, (float) (Math.pow(embedDim, 0.5))), true);
+        scale_shift_table[4] = new Tensor(1, 1, 1, embedDim, RandomUtils.gaussianRandom(embedDim, 0.0f, 1.0f, (float) (Math.pow(embedDim, 0.5))), true);
+        scale_shift_table[5] = new Tensor(1, 1, 1, embedDim, RandomUtils.gaussianRandom(embedDim, 0.0f, 1.0f, (float) (Math.pow(embedDim, 0.5))), true);
     }
 
     @Override
@@ -196,6 +215,50 @@ public class DiTBlock extends Layer {
     	mlp.forward(norm3.getOutput());
     	
     	Tensor_OP().add(mlpInput, mlp.getOutput(), output);
+    }
+    
+    public void modulate(Tensor x,Tensor shift,Tensor scale,Tensor output) {
+    	/**
+    	 * modulate
+    	 * x = x * (1 + scale) + shift
+    	 */
+    	Tensor_OP().add(scale, 1, scale);
+    	Tensor_OP().mul(x, shift, output, batchSize, time, 1, output.width, 1);
+    	Tensor_OP().addAxis(output, shift, output, batchSize, time, 1, output.width, 1);
+    }
+    
+    public void output(Tensor tc,Tensor text,Tensor cos,Tensor sin, Tensor[] ts) {
+    	
+    	Tensor_OP().addAxis(ts[0], scale_shift_table[0], shift_msa, batchSize, 1, 1, embedDim, 1);
+    	Tensor_OP().addAxis(ts[1], scale_shift_table[1], scale_msa, batchSize, 1, 1, embedDim, 1);
+    	Tensor_OP().addAxis(ts[2], scale_shift_table[2], gate_msa, batchSize, 1, 1, embedDim, 1);
+    	Tensor_OP().addAxis(ts[3], scale_shift_table[3], shift_mlp, batchSize, 1, 1, embedDim, 1);
+    	Tensor_OP().addAxis(ts[4], scale_shift_table[4], scale_mlp, batchSize, 1, 1, embedDim, 1);
+    	Tensor_OP().addAxis(ts[5], scale_shift_table[5], gate_mlp, batchSize, 1, 1, embedDim, 1);
+    	
+    	norm1.forward(input);
+    	
+    	modulate(norm1.getOutput(), shift_msa, scale_msa, attnInput);
+
+    	attn.forward(attnInput, cos , sin);
+    	
+    	Tensor_OP().mul(attn.getOutput(), gate_msa, crossAttnInput, batchSize, time, 1, crossAttnInput.width, 1);
+    	
+    	Tensor_OP().add(input, crossAttnInput, crossAttnInput);
+    	
+    	cross_attn.forward(crossAttnInput, text, cos , sin);
+
+    	Tensor_OP().add(crossAttnInput, cross_attn.getOutput(), crossAttnOut);
+    	
+    	norm3.forward(crossAttnOut);
+    	
+    	modulate(norm3.getOutput(), shift_mlp, scale_mlp, mlpInput);
+    	
+    	mlp.forward(mlpInput);
+
+    	Tensor_OP().mul(mlp.getOutput(), gate_mlp, output, batchSize, time, 1, output.width, 1);
+
+    	Tensor_OP().add(mlpInput, output, output);
     }
 
     @Override

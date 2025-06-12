@@ -180,7 +180,6 @@ public class SDImageDataLoaderEN extends BaseDataLoader {
         // TODO Auto-generated method stub
         /**
          * 加载input数据
-         *
          */
         if (mean != null) {
             SegImageLoader.load(imgDirPath, extName, idxSet, indexs, input.number, input, false, true, mean, std);
@@ -191,11 +190,31 @@ public class SDImageDataLoaderEN extends BaseDataLoader {
         RandomUtils.gaussianRandom(noise, 0, 1);
         /**
          * copy data to gpu.
+         */
+        input.hostToDevice();
+        label.hostToDevice();
+    }
+    
+    public void loadData(int[] indexs, Tensor input, Tensor label, String[] labels) {
+        // TODO Auto-generated method stub
+        /**
+         * 加载input数据
+         *
+         */
+        if (mean != null) {
+            SegImageLoader.load(imgDirPath, extName, idxSet, indexs, input.number, input, false, true, mean, std);
+        } else {
+            SegImageLoader.load(imgDirPath, extName, idxSet, indexs, input.number, input, false, true);
+        }
+        loadLabels(indexs, label, labels);
+        /**
+         * copy data to gpu.
          *
          */
         input.hostToDevice();
         label.hostToDevice();
     }
+
 
     public void loadData_uncond(int[] indexs, Tensor input, Tensor noise) {
         // TODO Auto-generated method stub

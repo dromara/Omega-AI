@@ -17,7 +17,7 @@ import com.omega.engine.updater.UpdaterFactory;
  * DiT_Block
  * @author Administrator
  */
-public class DiTMoudue extends Layer {
+public class DiTOrgMoudue extends Layer {
 	
 	public int inChannel;
     public int width;
@@ -35,7 +35,7 @@ public class DiTMoudue extends Layer {
     public DiTPatchEmbeddingLayer patchEmbd;
     public DiTTimeEmbeddingLayer timeEmbd;
     public DiTCaptionEmbeddingLayer labelEmbd;
-    public List<DiTSkipBlock> blocks;
+    public List<DiTOrgBlock> blocks;
     public DiTFinalLayer finalLayer;
     
     private Tensor posEmbd;
@@ -43,7 +43,7 @@ public class DiTMoudue extends Layer {
     private Tensor dtc;
     private Tensor dtext;
     
-    public DiTMoudue(int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio, boolean learnSigma,Network network) {
+    public DiTOrgMoudue(int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio, boolean learnSigma,Network network) {
 		this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
@@ -75,16 +75,10 @@ public class DiTMoudue extends Layer {
         
         labelEmbd = new DiTCaptionEmbeddingLayer(textEmbedDim, hiddenSize, true, network);
         
-        blocks = new ArrayList<DiTSkipBlock>();
+        blocks = new ArrayList<DiTOrgBlock>();
          
         for(int i = 0;i<depth;i++) {
-        	DiTSkipBlock block = null;
-        	if(i > depth / 2) {
-        		Layer[] skipLayesr = new Layer[] {blocks.get(i - 1), blocks.get(depth - i - 1)};
-        		block = new DiTSkipBlock(hiddenSize, hiddenSize, hiddenSize, patchEmbd.oChannel, maxContextLen, mlpRatio * hiddenSize, headNum, true, skipLayesr, network);
-        	}else {
-        		block = new DiTSkipBlock(hiddenSize, hiddenSize, hiddenSize, patchEmbd.oChannel, maxContextLen, mlpRatio * hiddenSize, headNum, true, network);
-        	}
+        	DiTOrgBlock block = new DiTOrgBlock(hiddenSize, hiddenSize, hiddenSize, patchEmbd.oChannel, maxContextLen, mlpRatio * hiddenSize, headNum, true, false, network);
 	        blocks.add(block);
         }
         int os = inChannel;
@@ -202,7 +196,7 @@ public class DiTMoudue extends Layer {
     	Tensor x = patchEmbd.getOutput().view(patchEmbd.getOutput().number * patchEmbd.getOutput().channel, 1, 1, patchEmbd.getOutput().width);
     	
     	for(int i = 0;i<depth;i++) {
-    		DiTSkipBlock block = blocks.get(i);
+    		DiTOrgBlock block = blocks.get(i);
     		block.forward(x, timeEmbd.getOutput(), labelEmbd.getOutput());
     		x = block.getOutput();
     	}
@@ -233,7 +227,7 @@ public class DiTMoudue extends Layer {
     	Tensor x = patchEmbd.getOutput().view(patchEmbd.getOutput().number * patchEmbd.getOutput().channel, 1, 1, patchEmbd.getOutput().width);
     	
     	for(int i = 0;i<depth;i++) {
-    		DiTSkipBlock block = blocks.get(i);
+    		DiTOrgBlock block = blocks.get(i);
     		block.forward(x, timeEmbd.getOutput(), labelEmbd.getOutput(), cos, sin);
     		x = block.getOutput();
 //    		x.showDM("x["+i+"]");
@@ -278,7 +272,7 @@ public class DiTMoudue extends Layer {
     	Tensor dy = finalLayer.diff;
 
      	for(int i = depth - 1;i>=0;i--) {
-     		DiTSkipBlock block = blocks.get(i);
+     		DiTOrgBlock block = blocks.get(i);
     		block.back(dy, dtc, dtext);
     		dy = block.diff;
     	}
@@ -308,7 +302,7 @@ public class DiTMoudue extends Layer {
     	Tensor dy = finalLayer.diff;
 //    	dy.showDM("in-block-diff");
      	for(int i = depth - 1;i>=0;i--) {
-     		DiTSkipBlock block = blocks.get(i);
+     		DiTOrgBlock block = blocks.get(i);
     		block.back(dy, dtc, dtext, cos, sin);
     		dy = block.diff;
 //    		dy.showDM("in-block-diff");
@@ -540,7 +534,7 @@ public class DiTMoudue extends Layer {
     	finalLayer.accGrad(scale);
     }
     
-    public static void loadWeight(Map<String, Object> weightMap, DiTMoudue block, boolean showLayers) {
+    public static void loadWeight(Map<String, Object> weightMap, DiTOrgMoudue block, boolean showLayers) {
         if (showLayers) {
             for (String key : weightMap.keySet()) {
                 System.out.println(key);

@@ -14,6 +14,8 @@ import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 import com.omega.example.clip.utils.ClipModelUtils;
 import com.omega.example.diffusion.utils.DiffusionImageDataLoader;
+import com.omega.example.dit.models.BetaType;
+import com.omega.example.dit.models.IDDPM;
 import com.omega.example.sd.utils.SDImageDataLoader;
 import com.omega.example.sd.utils.SDImageDataLoaderEN;
 import com.omega.example.transformer.tokenizer.bertTokenizer.BertTokenizer;
@@ -267,7 +269,7 @@ public class SDTest {
          * print image
          *
          */
-        MBSGDOptimizer.showImgs("H:\\vae_dataset\\anime_test256\\", out, "test", mean, std);
+        MBSGDOptimizer.showImgs("H:\\vae_dataset\\anime_test256\\vae\\", out, "test", mean, std);
         //		indexs = new int[] {4, 5, 6, 7};
         //
         //		dataLoader.loadData(indexs, input);
@@ -772,7 +774,64 @@ public class SDTest {
         String save_model_path = "/omega/models/sd_anime256.model";
         ModelUtils.saveModel(unet, save_model_path);
     }
-
+    
+    public static void tiny_sd_train_anime_iddpm() throws Exception {
+        String labelPath = "I:\\dataset\\sd-anime\\anime_op\\data.json";
+        String imgDirPath = "I:\\dataset\\sd-anime\\anime_op\\256\\";
+        boolean horizontalFilp = true;
+        int imgSize = 256;
+        int maxContextLen = 77;
+        int batchSize = 8;
+        float[] mean = new float[]{0.5f, 0.5f, 0.5f};
+        float[] std = new float[]{0.5f, 0.5f, 0.5f};
+        String vocabPath = "H:\\model\\bpe_tokenizer\\vocab.json";
+        String mergesPath = "H:\\model\\bpe_tokenizer\\merges.txt";
+        BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+        SDImageDataLoaderEN dataLoader = new SDImageDataLoaderEN(bpe, labelPath, imgDirPath, imgSize, imgSize, maxContextLen, batchSize, horizontalFilp, mean, std);
+        int time = maxContextLen;
+        int maxPositionEmbeddingsSize = 77;
+        int vocabSize = 49408;
+        int headNum = 8;
+        int n_layers = 12;
+        int textEmbedDim = 512;
+        ClipTextModel clip = new ClipTextModel(LossType.MSE, UpdaterType.adamw, headNum, time, vocabSize, textEmbedDim, maxPositionEmbeddingsSize, n_layers);
+        clip.CUDNN = true;
+        clip.time = time;
+        clip.RUN_MODEL = RunModel.EVAL;
+        String clipWeight = "H:\\model\\clip-vit-base-patch32.json";
+        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, true);
+        int z_dims = 128;
+        int latendDim = 4;
+        int num_vq_embeddings = 512;
+        int num_res_blocks = 2;
+        int[] ch_mult = new int[]{1, 2, 2, 4};
+        int ch = 128;
+        VQVAE2 vae = new VQVAE2(LossType.MSE, UpdaterType.adamw, z_dims, latendDim, num_vq_embeddings, imgSize, ch_mult, ch, num_res_blocks);
+        vae.CUDNN = true;
+        vae.learnRate = 0.001f;
+        vae.RUN_MODEL = RunModel.EVAL;
+        String vaeModel = "anime_vqvae2_256.model";
+        ModelUtils.loadModel(vae, vaeModel);
+        int unetHeadNum = 8;
+        int[] downChannels = new int[]{128, 256, 512, 768};
+        int numLayer = 2;
+        int timeSteps = 1000;
+        int tEmbDim = 512;
+        int latendSize = 32;
+        int groupNum = 32;
+        DiffusionUNetCond2 unet = new DiffusionUNetCond2(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, downChannels, unetHeadNum, numLayer, timeSteps, tEmbDim, maxContextLen, textEmbedDim, groupNum, true);
+        unet.CUDNN = true;
+        unet.learnRate = 0.0001f;
+        
+        IDDPM iddpm = new IDDPM(timeSteps, BetaType.linear, unet.cudaManager);
+        
+        MBSGDOptimizer optimizer = new MBSGDOptimizer(unet, 500, 0.00001f, batchSize, LearnRateUpdate.CONSTANT, false);
+        //		optimizer.lr_step = new int[] {20,50,80};
+        optimizer.trainTinySD_Anime_iddpm(dataLoader, vae, clip, iddpm, "/omega/test/sd/");
+        String save_model_path = "/omega/models/sd_anime256.model";
+        ModelUtils.saveModel(unet, save_model_path);
+    }
+    
     public static void testDataset() {
         String labelPath = "I:\\dataset\\sd-anime\\anime_op\\data.json";
         String imgDirPath = "I:\\dataset\\sd-anime\\anime_op\\256\\";
@@ -975,11 +1034,70 @@ public class SDTest {
         }
         scanner.close();
     }
+    
+    public static void sd_train_pokem_iddpm() throws Exception {
+        String labelPath = "H:\\vae_dataset\\pokemon-blip\\data.json";
+        String imgDirPath = "H:\\vae_dataset\\pokemon-blip\\dataset256\\";
+        boolean horizontalFilp = true;
+        int imgSize = 256;
+        int maxContextLen = 77;
+        int batchSize = 3;
+        float[] mean = new float[]{0.5f, 0.5f, 0.5f};
+        float[] std = new float[]{0.5f, 0.5f, 0.5f};
+        String vocabPath = "H:\\model\\bpe_tokenizer\\vocab.json";
+        String mergesPath = "H:\\model\\bpe_tokenizer\\merges.txt";
+        BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+        SDImageDataLoaderEN dataLoader = new SDImageDataLoaderEN(bpe, labelPath, imgDirPath, imgSize, imgSize, maxContextLen, batchSize, horizontalFilp, mean, std);
+        int time = maxContextLen;
+        int maxPositionEmbeddingsSize = 77;
+        int vocabSize = 49408;
+        int headNum = 8;
+        int n_layers = 12;
+        int textEmbedDim = 512;
+        ClipTextModel clip = new ClipTextModel(LossType.MSE, UpdaterType.adamw, headNum, time, vocabSize, textEmbedDim, maxPositionEmbeddingsSize, n_layers);
+        clip.CUDNN = true;
+        clip.time = time;
+        clip.RUN_MODEL = RunModel.EVAL;
+        String clipWeight = "H:\\model\\clip-vit-base-patch32.json";
+        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, true);
+        
+        int z_dims = 32;
+        int latendDim = 4;
+        int num_vq_embeddings = 512;
+        int num_res_blocks = 1;
+        int[] ch_mult = new int[]{1, 2, 2, 4};
+        int ch = 32;
+        VQVAE2 vae = new VQVAE2(LossType.MSE, UpdaterType.adamw, z_dims, latendDim, num_vq_embeddings, imgSize, ch_mult, ch, num_res_blocks);
+        vae.CUDNN = true;
+        vae.learnRate = 0.001f;
+        vae.RUN_MODEL = RunModel.EVAL;
+        String vqvae_model_path = "H:\\model\\pokemon_vqvae2_256.model";
+        ModelUtils.loadModel(vae, vqvae_model_path);
+        
+        int unetHeadNum = 8;
+        int[] downChannels = new int[]{64, 128, 256, 512};
+        int numLayer = 1;
+        int timeSteps = 1000;
+        int tEmbDim = 512;
+        int latendSize = 32;
+        int groupNum = 32;
+        DiffusionUNetCond2 unet = new DiffusionUNetCond2(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, downChannels, unetHeadNum, numLayer, timeSteps, tEmbDim, maxContextLen, textEmbedDim, groupNum, true);
+        unet.CUDNN = true;
+        unet.learnRate = 0.0001f;
+        
+        IDDPM iddpm = new IDDPM(timeSteps, BetaType.scaled_linear, unet.cudaManager);
+        
+        MBSGDOptimizer optimizer = new MBSGDOptimizer(unet, 500, 0.00001f, batchSize, LearnRateUpdate.SMART_HALF, false);
+        optimizer.lr_step = new int[]{20, 50, 80};
+        optimizer.trainSD_iddpm(dataLoader, vae, clip, iddpm, "H:\\vae_dataset\\anime_test256\\sd2_test2\\");
+        //		String save_model_path = "H:\\model\\vqvae2_128_500.model";
+        //		ModelUtils.saveModel(unet, save_model_path);
+    }
 
     public static void main(String[] args) {
         try {
             //			CUDAModules.initContext();
-        	test_vqvae32_poke();
+//        	test_vqvae32_poke();
             //			sd_train_pokem();
             //			sd_train_pokem_32();
             //			tiny_sd_train_pokem_32();
@@ -995,6 +1113,9 @@ public class SDTest {
 //            tiny_sd_predict_anime_32();
             //			test_clip_text();
             //			testDataset();
+//        	tiny_sd_train_anime_iddpm();
+//        	test_vqvae32_anime();
+        	sd_train_pokem_iddpm();
         } catch (Exception e) {
             // TODO: handle exception
             e.printStackTrace();

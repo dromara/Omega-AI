@@ -9,6 +9,7 @@ import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.active.SiLULayer;
+import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.layer.normalization.RMSLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.Transformer;
@@ -29,6 +30,7 @@ public class DiTFinalLayer extends Layer {
     private int hidden_size = 1;
     private boolean bias = false;
 
+//    public LNLayer finalNorm;
     public RMSLayer finalNorm;
     public FullyLayer finalLinear;
     
@@ -69,16 +71,16 @@ public class DiTFinalLayer extends Layer {
         //		NanoGPT net = (NanoGPT) this.network;
     	this.finalNorm = new RMSLayer(network);
         this.finalLinear = new FullyLayer(hidden_size, oWidth, bias, network);
-//        this.finalLinear.weight.clearGPU();
-//        this.finalLinear.bias.clearGPU();
+        this.finalLinear.weight.clearGPU();
+        this.finalLinear.bias.clearGPU();
         //		this.linear1.weight = new Tensor(1, 1, embedDim, nChannel, RandomUtils.uniform(this.embedDim * nChannel, 0.0f, 0.02f), true);
         this.m_active = new SiLULayer(network);
         this.m_linear1 = new FullyLayer(hidden_size, hidden_size, bias, network);
         this.m_linear2 = new FullyLayer(hidden_size, hidden_size, bias, network);
-//        this.m_linear1.weight.clearGPU();
-//        this.m_linear1.bias.clearGPU();
-//        this.m_linear2.weight.clearGPU();
-//        this.m_linear2.bias.clearGPU();
+        this.m_linear1.weight.clearGPU();
+        this.m_linear1.bias.clearGPU();
+        this.m_linear2.weight.clearGPU();
+        this.m_linear2.bias.clearGPU();
         //		this.linear2.weight = new Tensor(1, 1, nChannel, embedDim, RandomUtils.uniform(this.embedDim * nChannel, 0.0f, 0.02f), true);
         //		this.linear2.weight = new Tensor(1, 1, nChannel, embedDim, RandomUtils.uniform(this.embedDim * nChannel, 0.0f, (0.02f / (float) Math.sqrt(2 * net.decoderNum))), true);
     }
@@ -133,11 +135,11 @@ public class DiTFinalLayer extends Layer {
     	 */
     	Tensor_OP().add(m_linear2.getOutput(), 1, m_linear2.getOutput());
     	Tensor_OP().mul(finalNorm.getOutput(), m_linear2.getOutput(), linearInput, batchSize, time, 1, finalNorm.getOutput().width, 1);
-
     	Tensor_OP().addAxis(linearInput, m_linear1.getOutput(), linearInput, batchSize, time, 1, finalNorm.getOutput().width, 1);
     	
     	finalLinear.forward(linearInput);
     	this.output = finalLinear.getOutput();
+
     }
     
     @Override
@@ -284,6 +286,8 @@ public class DiTFinalLayer extends Layer {
         // TODO Auto-generated method stub
     	finalNorm.update();
     	finalLinear.update();
+    	m_linear1.update();
+    	m_linear2.update();
     }
 
     @Override
@@ -316,11 +320,15 @@ public class DiTFinalLayer extends Layer {
     public void saveModel(RandomAccessFile outputStream) throws IOException {
     	finalNorm.saveModel(outputStream);
     	finalLinear.saveModel(outputStream);
+    	m_linear1.saveModel(outputStream);
+    	m_linear2.saveModel(outputStream);
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
     	finalNorm.loadModel(inputStream);
     	finalLinear.loadModel(inputStream);
+    	m_linear1.loadModel(inputStream);
+    	m_linear2.loadModel(inputStream);
     }
 
     @Override
@@ -328,6 +336,8 @@ public class DiTFinalLayer extends Layer {
         // TODO Auto-generated method stub
     	finalNorm.accGrad(scale);
         finalLinear.accGrad(scale);
+        m_linear1.accGrad(scale);
+    	m_linear2.accGrad(scale);
     }
     
     public static void loadWeight(Map<String, Object> weightMap, DiTFinalLayer block, boolean showLayers) {

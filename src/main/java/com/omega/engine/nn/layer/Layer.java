@@ -177,12 +177,10 @@ public abstract class Layer {
     public void setDelta(Tensor delta) {
         /**
          * 获取上一层的输出作为当前层的输入
-
          */
         this.delta = delta;
         /**
          * 合并路由层误差
-
          */
         if (this.cache_delta != null) {
             //			System.out.println("in===>:"+this.getLayerType());

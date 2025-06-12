@@ -119,7 +119,7 @@ public class RouteLayer extends Layer {
     public void initBack() {
         // TODO Auto-generated method stub
         //		if(layers[0].cache_delta == null || layers[0].cache_delta.number != this.number) {
-        for (Layer layer : layers) {
+        for (Layer layer : getLayers()) {
             if (layer.cache_delta == null || layer.cache_delta.number != this.number) {
                 layer.cache_delta = new Tensor(number, layer.oChannel, oHeight, oWidth, true);
             }
@@ -136,8 +136,8 @@ public class RouteLayer extends Layer {
     public void output() {
         // TODO Auto-generated method stub
         int offset = 0;
-        for (int l = 0; l < layers.length; l++) {
-            Tensor input = layers[l].output;
+        for (int l = 0; l < getLayers().length; l++) {
+            Tensor input = getLayers()[l].output;
             //			input.showDM("l"+l);
             int part_input_size = input.getOnceSize() / groups;
             for (int n = 0; n < this.number; n++) {
@@ -157,8 +157,8 @@ public class RouteLayer extends Layer {
     public void diff() {
         // TODO Auto-generated method stub
         int offset = 0;
-        for (int l = 0; l < layers.length; l++) {
-            Tensor delta = layers[l].cache_delta;
+        for (int l = 0; l < getLayers().length; l++) {
+            Tensor delta = getLayers()[l].cache_delta;
             //			System.out.println(layers[l].index+":"+delta);
             int part_input_size = delta.getOnceSize() / groups;
             for (int n = 0; n < this.number; n++) {
@@ -172,9 +172,9 @@ public class RouteLayer extends Layer {
     public void diff(Layer skip) {
         // TODO Auto-generated method stub
         int offset = 0;
-        for (int l = 0; l < layers.length; l++) {
-            if (skip != layers[l]) {
-                Tensor delta = layers[l].cache_delta;
+        for (int l = 0; l < getLayers().length; l++) {
+            if (skip != getLayers()[l]) {
+                Tensor delta = getLayers()[l].cache_delta;
                 //				System.out.println(layers[l].index+":"+delta);
                 int part_input_size = delta.getOnceSize() / groups;
                 for (int n = 0; n < this.number; n++) {
@@ -225,12 +225,10 @@ public class RouteLayer extends Layer {
         // TODO Auto-generated method stub
         /**
          * 参数初始化
-
          */
         this.init();
         /**
          * 计算输出
-
          */
         this.output();
     }
@@ -310,11 +308,16 @@ public class RouteLayer extends Layer {
     }
 
     public void clearCacheDelta() {
-        for (Layer layer : layers) {
+        for (Layer layer : getLayers()) {
+        	System.err.println("in");
             if (layer.cache_delta != null) {
                 layer.cache_delta.clearGPU();
             }
         }
     }
+
+	public Layer[] getLayers() {
+		return layers;
+	}
 }
 

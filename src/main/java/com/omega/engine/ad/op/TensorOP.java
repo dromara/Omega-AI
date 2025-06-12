@@ -627,7 +627,23 @@ public class TensorOP {
             //			c.data = MatrixOperation.add(a.data, b.data);
         }
     }
+    
+    public void cat_width(Tensor a, Tensor b, Tensor c) {
+        if (a.isHasGPU()) {
+            op.cat_width_gpu(a, b, c);
+        } else {
+            //			c.data = MatrixOperation.add(a.data, b.data);
+        }
+    }
 
+    public void cat_width_back(Tensor c, Tensor a, Tensor b) {
+        if (a.isHasGPU()) {
+            op.cat_width_back_gpu(c, a, b);
+        } else {
+            //			c.data = MatrixOperation.add(a.data, b.data);
+        }
+    }
+    
     public void onehot(Tensor a, Tensor b) {
         if (a.isHasGPU()) {
             op.one_hot(a, b);
@@ -654,6 +670,14 @@ public class TensorOP {
 
     public void copyGPU(Tensor a, Tensor b) {
         op.copy_gpu(a, b);
+    }
+    
+    public Tensor copyTensorGPU(Tensor a, Tensor b) {
+    	if(b == null) {
+    		b = a.createLike();
+    	}
+        op.copy_gpu(a, b);
+        return b;
     }
 
     public void normalize(Tensor x, Tensor y, int dim) {
@@ -733,6 +757,10 @@ public class TensorOP {
     
     public void abs_backward(Tensor x,Tensor dx,Tensor dy) {
     	op.abs_backward_gpu(x, dx, dy);
+    }
+    
+    public void update_ema(Tensor ema,Tensor model,float decay) {
+    	op.update_ema_gpu(ema, model, decay);
     }
     
 }

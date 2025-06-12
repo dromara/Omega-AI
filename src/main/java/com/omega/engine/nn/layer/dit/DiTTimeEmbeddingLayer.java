@@ -1,6 +1,7 @@
 package com.omega.engine.nn.layer.dit;
 
 import com.omega.common.utils.MatrixUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.nn.layer.EmbeddingIDLayer;
@@ -81,10 +82,17 @@ public class DiTTimeEmbeddingLayer extends Layer {
 //        emb.weight = emb.getTimeEMB2(T, d_model);
 //        emb.initFactor(T, d_model);
         linear1 = new FullyLayer(d_model, dim, bias, network);
-        //		linear1.weight = new Tensor(1, 1, dim, d_model, MatrixUtils.order(dim * d_model, 0.01f, 0.01f), true);
+        linear1.weight.setData(RandomUtils.normal_(d_model * dim, 0.0f, 0.02f));
+        if(linear1.bias != null) {
+        	linear1.bias.clearGPU();
+        }
         act = new SiLULayer(linear1);
         linear2 = new FullyLayer(dim, dim, bias, network);
-        //		linear2.weight = new Tensor(1, 1, dim, dim, MatrixUtils.order(dim * dim, 0.01f, 0.01f), true);
+        linear2.weight.setData(RandomUtils.normal_(dim * dim, 0.0f, 0.02f));
+        if(linear2.bias != null) {
+        	linear2.bias.clearGPU();
+        }
+//        linear2.weight = new Tensor(1, 1, dim, dim, MatrixUtils.order(dim * dim, 0.01f, 0.01f), true);
     }
 
     @Override

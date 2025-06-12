@@ -9,15 +9,17 @@ import java.util.Map;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
+import com.omega.engine.nn.layer.dit.modules.DiTSimpleHeadLayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 /**
- * DiT_Block
+ * DiT_Block with sra
  * @author Administrator
  */
-public class DiTMoudue extends Layer {
+public class DiTMoudue_SRA extends Layer {
 	
 	public int inChannel;
     public int width;
@@ -31,19 +33,25 @@ public class DiTMoudue extends Layer {
     private int textEmbedDim;
     private int mlpRatio = 4;
     private boolean learnSigma = true;
+    private boolean qkNorm = false;
     
     public DiTPatchEmbeddingLayer patchEmbd;
     public DiTTimeEmbeddingLayer timeEmbd;
     public DiTCaptionEmbeddingLayer labelEmbd;
-    public List<DiTSkipBlock> blocks;
+    public List<DiTBlock> blocks;
     public DiTFinalLayer finalLayer;
+    
+    private int ad = 0;
+    public DiTSimpleHeadLayer ap_head;
     
     private Tensor posEmbd;
     
     private Tensor dtc;
     private Tensor dtext;
     
-    public DiTMoudue(int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio, boolean learnSigma,Network network) {
+    public Tensor xr;
+    
+    public DiTMoudue_SRA(int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio, boolean learnSigma,boolean qkNorm,int ad,Network network) {
 		this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
@@ -60,8 +68,9 @@ public class DiTMoudue extends Layer {
 		this.maxContextLen = maxContextLen;
 		this.mlpRatio = mlpRatio;
 		this.learnSigma = learnSigma;
+		this.qkNorm = qkNorm;
 		this.headNum = headNum;
-//		this.bias = bias;
+		this.ad = ad;
 		this.initLayers();
 		this.oHeight = height;
 		this.oWidth = width;
@@ -75,18 +84,15 @@ public class DiTMoudue extends Layer {
         
         labelEmbd = new DiTCaptionEmbeddingLayer(textEmbedDim, hiddenSize, true, network);
         
-        blocks = new ArrayList<DiTSkipBlock>();
-         
+        blocks = new ArrayList<DiTBlock>();
+        
         for(int i = 0;i<depth;i++) {
-        	DiTSkipBlock block = null;
-        	if(i > depth / 2) {
-        		Layer[] skipLayesr = new Layer[] {blocks.get(i - 1), blocks.get(depth - i - 1)};
-        		block = new DiTSkipBlock(hiddenSize, hiddenSize, hiddenSize, patchEmbd.oChannel, maxContextLen, mlpRatio * hiddenSize, headNum, true, skipLayesr, network);
-        	}else {
-        		block = new DiTSkipBlock(hiddenSize, hiddenSize, hiddenSize, patchEmbd.oChannel, maxContextLen, mlpRatio * hiddenSize, headNum, true, network);
-        	}
+        	DiTBlock block = new DiTBlock(hiddenSize, hiddenSize, hiddenSize, patchEmbd.oChannel, maxContextLen, mlpRatio * hiddenSize, headNum, true, qkNorm, network);
 	        blocks.add(block);
         }
+        
+        this.ap_head = new DiTSimpleHeadLayer(hiddenSize, hiddenSize, true, network);
+        
         int os = inChannel;
         if(learnSigma) {
         	os = inChannel * 2;
@@ -198,13 +204,21 @@ public class DiTMoudue extends Layer {
     	timeEmbd.forward(tc);
     	
     	labelEmbd.forward(text);
-
+    	
     	Tensor x = patchEmbd.getOutput().view(patchEmbd.getOutput().number * patchEmbd.getOutput().channel, 1, 1, patchEmbd.getOutput().width);
     	
     	for(int i = 0;i<depth;i++) {
-    		DiTSkipBlock block = blocks.get(i);
+    		DiTBlock block = blocks.get(i);
     		block.forward(x, timeEmbd.getOutput(), labelEmbd.getOutput());
     		x = block.getOutput();
+    		if(i + 1 == ad){
+    			if(network.RUN_MODEL == RunModel.TRAIN) {
+    				ap_head.forward(x);
+        			xr = ap_head.getOutput();
+    			}else {
+        			xr = x;
+    			}
+    		}
     	}
 
     	finalLayer.forward(x, timeEmbd.getOutput());
@@ -233,9 +247,18 @@ public class DiTMoudue extends Layer {
     	Tensor x = patchEmbd.getOutput().view(patchEmbd.getOutput().number * patchEmbd.getOutput().channel, 1, 1, patchEmbd.getOutput().width);
     	
     	for(int i = 0;i<depth;i++) {
-    		DiTSkipBlock block = blocks.get(i);
+    		DiTBlock block = blocks.get(i);
     		block.forward(x, timeEmbd.getOutput(), labelEmbd.getOutput(), cos, sin);
     		x = block.getOutput();
+    		if(i + 1 == ad){
+    			if(network.RUN_MODEL == RunModel.TRAIN) {
+    				ap_head.forward(x);
+        			xr = ap_head.getOutput();
+    			}else {
+        			xr = x;
+//        			return;
+    			}
+    		}
 //    		x.showDM("x["+i+"]");
     	}
     	
@@ -278,7 +301,10 @@ public class DiTMoudue extends Layer {
     	Tensor dy = finalLayer.diff;
 
      	for(int i = depth - 1;i>=0;i--) {
-     		DiTSkipBlock block = blocks.get(i);
+     		if(i + 1 == ad) {
+     			Tensor_OP().add(dy, ap_head.diff, dy);
+     		}
+     		DiTBlock block = blocks.get(i);
     		block.back(dy, dtc, dtext);
     		dy = block.diff;
     	}
@@ -308,7 +334,10 @@ public class DiTMoudue extends Layer {
     	Tensor dy = finalLayer.diff;
 //    	dy.showDM("in-block-diff");
      	for(int i = depth - 1;i>=0;i--) {
-     		DiTSkipBlock block = blocks.get(i);
+     		if(i + 1 == ad) {
+     			Tensor_OP().add(dy, ap_head.diff, dy);
+     		}
+     		DiTBlock block = blocks.get(i);
     		block.back(dy, dtc, dtext, cos, sin);
     		dy = block.diff;
 //    		dy.showDM("in-block-diff");
@@ -462,6 +491,8 @@ public class DiTMoudue extends Layer {
     	
     	labelEmbd.update();
     	
+    	ap_head.update();
+    	
     	for(int i = 0;i<depth;i++) {
     		blocks.get(i).update();
     	}
@@ -503,6 +534,8 @@ public class DiTMoudue extends Layer {
 
     	labelEmbd.saveModel(outputStream);
     	
+    	ap_head.saveModel(outputStream);
+    	
     	for(int i = 0;i<depth;i++) {
     		blocks.get(i).saveModel(outputStream);
     	}
@@ -516,6 +549,8 @@ public class DiTMoudue extends Layer {
     	timeEmbd.loadModel(inputStream);
     	
     	labelEmbd.loadModel(inputStream);
+    	
+    	ap_head.loadModel(inputStream);
     	
     	for(int i = 0;i<depth;i++) {
     		blocks.get(i).loadModel(inputStream);
@@ -540,7 +575,7 @@ public class DiTMoudue extends Layer {
     	finalLayer.accGrad(scale);
     }
     
-    public static void loadWeight(Map<String, Object> weightMap, DiTMoudue block, boolean showLayers) {
+    public static void loadWeight(Map<String, Object> weightMap, DiTMoudue_SRA block, boolean showLayers) {
         if (showLayers) {
             for (String key : weightMap.keySet()) {
                 System.out.println(key);

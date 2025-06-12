@@ -73,7 +73,10 @@ public class DiTPatchEmbeddingLayer extends Layer {
     public void initLayers(int inChannel, int height, int width, int patchSize, boolean bias) {
     	
         this.patchEmbedding = new ConvolutionLayer(inChannel, embedDim, height, width, patchSize, patchSize, 0, patchSize, bias, network);
-        //		float[] wdata = RandomUtils.order(patchEmbedding.weight.dataLength, 0.001f, 0.001f);
+        this.patchEmbedding.weight.setData(RandomUtils.xavierUniform(this.patchEmbedding.weight.dataLength, inChannel * patchSize * patchSize, embedDim * patchSize * patchSize, 1));
+        if(this.patchEmbedding.bias != null) {
+        	this.patchEmbedding.bias.clearGPU();
+        }
         int pChannel = this.getPatchEmbedding().oHeight * this.getPatchEmbedding().oWidth;
         this.oChannel = pChannel;
         this.oHeight = 1;

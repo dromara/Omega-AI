@@ -8,10 +8,11 @@ import java.util.List;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.loss.LossFactory;
 import com.omega.engine.loss.LossType;
+import com.omega.engine.loss.gpu.SmoothL1Kernel;
 import com.omega.engine.nn.layer.InputLayer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.SoftmaxWithCrossEntropyLayer;
-import com.omega.engine.nn.layer.dit.DiTMoudue;
+import com.omega.engine.nn.layer.dit.DiTMoudue_SRA;
 import com.omega.engine.nn.layer.dit.modules.DiTRouteLayer;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
@@ -24,7 +25,7 @@ import jcuda.runtime.JCuda;
  *
  * @author Administrator
  */
-public class DiT extends Network {
+public class DiT_SRA extends Network {
 	
     public int inChannel;
     public int width;
@@ -38,13 +39,17 @@ public class DiT extends Network {
     private int textEmbedDim;
     private int mlpRatio = 4;
     private boolean learnSigma = true;
+    private int ad;
+    private boolean qkNorm = false;
     
     private InputLayer inputLayer;
-    public DiTMoudue main;
+    public DiTMoudue_SRA main;
     
     private List<DiTRouteLayer> skipLayers;
+    
+    private SmoothL1Kernel smoothL1Kernel;
 
-    public DiT(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio,boolean learnSigma) {
+    public DiT_SRA(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio,boolean learnSigma,boolean qkNorm,int ad) {
         this.lossFunction = LossFactory.create(lossType, this);
         this.updater = updater;
         this.inChannel = inChannel;
@@ -59,6 +64,8 @@ public class DiT extends Network {
         this.maxContextLen = maxContextLen;
         this.mlpRatio = mlpRatio;
         this.learnSigma = learnSigma;
+        this.qkNorm = qkNorm;
+        this.ad = ad;
         this.time = (width / patchSize) * (height / patchSize);
         initLayers();
     }
@@ -67,12 +74,20 @@ public class DiT extends Network {
     	
         this.inputLayer = new InputLayer(inChannel, height, width);
         
-        main = new DiTMoudue(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, maxContextLen, textEmbedDim, mlpRatio, learnSigma, this);
+        main = new DiTMoudue_SRA(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, maxContextLen, textEmbedDim, mlpRatio, learnSigma, qkNorm, ad, this);
         
         this.addLayer(inputLayer);
         this.addLayer(main);
     }
-
+    
+    public void setXRDelta(Tensor xrDelta) {
+    	main.ap_head.back(xrDelta);
+    }
+    
+    public Tensor getXR() {
+    	return main.xr;
+    }
+    
     @Override
     public void init() throws Exception {
         // TODO Auto-generated method stub
@@ -91,6 +106,9 @@ public class DiT extends Network {
         }
         if ((layerList.get(layerList.size() - 1).getLayerType() == LayerType.softmax || layerList.get(layerList.size() - 1).getLayerType() == LayerType.softmax_cross_entropy) && this.lossFunction.getLossType() != LossType.cross_entropy) {
             throw new Exception("The softmax function support only cross entropy loss function now.");
+        }
+        if(smoothL1Kernel == null) {
+        	smoothL1Kernel = new SmoothL1Kernel(this.cudaManager);
         }
         System.out.println("the network is ready.");
     }
@@ -131,7 +149,7 @@ public class DiT extends Network {
         this.main.forward(input, t, context, cos, sin);
         return this.main.getOutput();
     }
-
+    
     public void initBack() {
     }
 
@@ -230,6 +248,16 @@ public class DiT extends Network {
     public Tensor lossDiff(Tensor output, Tensor label, int igonre) {
         // TODO Auto-generated method stub
         return this.lossFunction.diff(output, label, igonre);
+    }
+    
+    public Tensor smoothL1(Tensor s,Tensor t,Tensor alignLoss,float beta) {
+    	smoothL1Kernel.forward(s, t, alignLoss, beta);
+    	return alignLoss;
+    }
+    
+    public Tensor smoothL1Back(Tensor s,Tensor t,Tensor sxrDiff,float beta) {
+    	smoothL1Kernel.backward(s, t, sxrDiff, beta);
+    	return sxrDiff;
     }
 
     public void saveModel(RandomAccessFile outputStream) throws IOException {

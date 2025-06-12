@@ -2,6 +2,7 @@
 #include <cuda_runtime.h>
 #include <cooperative_groups.h>
 #include <cooperative_groups/reduce.h>
+#define WARP_SIZE 32
 
 extern "C"
 __global__ void layernorm_forward_kernel(float* __restrict__ out, float* __restrict__ mean, float* __restrict__ rstd,
@@ -432,5 +433,52 @@ __global__ void layernorm_backward_kernel7(float* dinp, float* dweight, float* d
             dbias[i] = (float)scratch_dbias[i];
             dweight[i] = (float)scratch_dweight[i];
         }
+    }
+}
+
+__global__ void layernorm_forward_kernel3_llm(float* __restrict__ out, float* __restrict__ mean, float* __restrict__ rstd,
+                                    const float*  __restrict__ inp, const float*  __restrict__ weight,
+                                    const float* __restrict__ bias, int N, int C) {
+    int lane_id = threadIdx.x % WARP_SIZE;
+    int warp_id = threadIdx.x / WARP_SIZE;
+    int num_warps = blockDim.x / WARP_SIZE;
+
+    int idx = blockIdx.x * num_warps + warp_id;
+    if(idx >= N) { return; } // guard
+
+    // the row of input that this group of threads is responsible for
+    const floatX* x = inp + idx * C;
+
+    // mean
+    float sum = 0.0f;
+    for (int i = lane_id; i < C; i += WARP_SIZE) {
+        sum += (float)x[i];
+    }
+    sum = warpReduceSum(sum);
+    float m = sum / C;
+    if(lane_id == 0 && mean != nullptr) {
+        __stcs(mean + idx, m);
+    }
+
+    // rstd
+    sum = 0.0f;
+    for (int i = lane_id; i < C; i += WARP_SIZE) {
+        float diff = (float)x[i] - m;
+        sum += diff * diff;
+    }
+    sum = warpReduceSum(sum);
+    float s = rsqrtf(sum / C + 1e-5f);
+    if(lane_id == 0 && rstd != nullptr) {
+        __stcs(rstd + idx, s);
+    }
+
+    // final normalization and scaling by weight/bias
+    floatX* o = out + idx * C;
+    for (int c = lane_id; c < C; c += WARP_SIZE) {
+        // load and store using the .cs "streaming" hint to the compiler,
+        // indicating that this data will not be reused soon, and can be streamed through the caches
+        // this allows the threads to get more cache-hits for the (shared) weight and bias parameters
+        float n = s * ((float)__ldcs(x+c) - m);
+        __stcs(o+c, (floatX)(n * (float)weight[c] + (float)bias[c]));
     }
 }

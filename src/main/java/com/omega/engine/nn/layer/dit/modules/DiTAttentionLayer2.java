@@ -6,6 +6,7 @@ import static jcuda.jcublas.cublasOperation.CUBLAS_OP_T;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.cudnn.SoftmaxCudnnKernel;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
@@ -112,12 +113,28 @@ public class DiTAttentionLayer2 extends Layer {
         }
     	
         this.setqLinerLayer(new FullyLayer(embedDim, embedDim, bias, this.network));
+        this.qLinerLayer.weight.setData(RandomUtils.xavierUniform(this.embedDim * this.embedDim, this.embedDim, this.embedDim,  1.0f));
+        if(this.qLinerLayer.bias != null) {
+        	this.qLinerLayer.bias.clearGPU();
+        }
         //		this.qLinerLayer.weight = new Tensor(1, 1, embedDim, embedDim, MatrixUtils.order(embedDim * embedDim, 0.1f, 0.01f), true);
         this.setkLinerLayer(new FullyLayer(embedDim, embedDim, bias, this.network));
+        this.kLinerLayer.weight.setData(RandomUtils.xavierUniform(this.embedDim * this.embedDim, this.embedDim, this.embedDim,  1.0f));
+        if(this.kLinerLayer.bias != null) {
+        	this.kLinerLayer.bias.clearGPU();
+        }
         //		this.kLinerLayer.weight = new Tensor(1, 1, embedDim, kDim, MatrixUtils.order(embedDim * kDim, 0.1f, 0.01f), true);
         this.setvLinerLayer(new FullyLayer(embedDim, embedDim, bias, this.network));
+        this.vLinerLayer.weight.setData(RandomUtils.xavierUniform(this.embedDim * this.embedDim, this.embedDim, this.embedDim,  1.0f));
+        if(this.vLinerLayer.bias != null) {
+        	this.vLinerLayer.bias.clearGPU();
+        }
         //		this.vLinerLayer.weight = new Tensor(1, 1, embedDim, vDim, MatrixUtils.order(embedDim * vDim, 0.1f, 0.01f), true);
         this.setoLinerLayer(new FullyLayer(embedDim, embedDim, bias, this.network));
+        this.oLinerLayer.weight.setData(RandomUtils.xavierUniform(this.embedDim * this.embedDim, this.embedDim, this.embedDim,  1.0f));
+        if(this.oLinerLayer.bias != null) {
+        	this.oLinerLayer.bias.clearGPU();
+        }
         //		this.oLinerLayer.weight = new Tensor(1, 1, embedDim, embedDim, MatrixUtils.order(embedDim * embedDim, 0.1f, 0.01f), true);
 
         if (attentionKernel == null) {
@@ -475,6 +492,10 @@ public class DiTAttentionLayer2 extends Layer {
     @Override
     public void update() {
         // TODO Auto-generated method stub
+    	if(qkNorm) {
+	        qNorm.update();
+	        kNorm.update();
+    	}
         getqLinerLayer().update();
         getkLinerLayer().update();
         getvLinerLayer().update();
@@ -512,6 +533,10 @@ public class DiTAttentionLayer2 extends Layer {
     }
 
     public void saveModel(RandomAccessFile outputStream) throws IOException {
+    	if(qkNorm) {
+	        qNorm.saveModel(outputStream);
+	        kNorm.saveModel(outputStream);
+    	}
         getqLinerLayer().saveModel(outputStream);
         getkLinerLayer().saveModel(outputStream);
         getvLinerLayer().saveModel(outputStream);
@@ -519,6 +544,10 @@ public class DiTAttentionLayer2 extends Layer {
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
+    	if(qkNorm) {
+	        qNorm.loadModel(inputStream);
+	        kNorm.loadModel(inputStream);
+    	}
         getqLinerLayer().loadModel(inputStream);
         getkLinerLayer().loadModel(inputStream);
         getvLinerLayer().loadModel(inputStream);
@@ -560,6 +589,10 @@ public class DiTAttentionLayer2 extends Layer {
     @Override
     public void accGrad(float scale) {
         // TODO Auto-generated method stub
+    	if(qkNorm) {
+	        qNorm.accGrad(scale);
+	        kNorm.accGrad(scale);
+    	}
         qLinerLayer.accGrad(scale);
         kLinerLayer.accGrad(scale);
         vLinerLayer.accGrad(scale);

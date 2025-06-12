@@ -13,40 +13,40 @@ import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 /**
- * DiT_PoswiseFeedForward Layer
+ * DiTSimpleHeadLayer
  *
  * @author Administrator
  */
-public class DiTMLPLayer extends Layer {
-    private int embedDim = 0;
-    private int nChannel = 1;
+public class DiTSimpleHeadLayer extends Layer {
+    private int iChannel = 0;
+    private int oChannel = 1;
     private boolean bias = false;
 
     public FullyLayer linear1;
     private GeluLayer active;
     public FullyLayer linear2;
 
-    public DiTMLPLayer(int embedDim, int nChannel, boolean bias) {
-        this.embedDim = embedDim;
-        this.nChannel = nChannel;
+    public DiTSimpleHeadLayer(int iChannel, int oChannel, boolean bias) {
+        this.iChannel = iChannel;
+        this.oChannel = oChannel;
         this.bias = bias;
         this.oChannel = 1;
         this.oHeight = 1;
-        this.oWidth = embedDim;
+        this.oWidth = oChannel;
         this.initLayers();
     }
 
-    public DiTMLPLayer(int embedDim, int nChannel, boolean bias, Network network) {
+    public DiTSimpleHeadLayer(int iChannel, int oChannel, boolean bias, Network network) {
         this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
         }
-        this.embedDim = embedDim;
-        this.nChannel = nChannel;
+        this.iChannel = iChannel;
+        this.oChannel = oChannel;
         this.bias = bias;
         this.oChannel = 1;
         this.oHeight = 1;
-        this.oWidth = embedDim;
+        this.oWidth = oChannel;
         this.initLayers();
     }
 
@@ -54,14 +54,14 @@ public class DiTMLPLayer extends Layer {
     }
 
     public void initLayers() {
-        this.linear1 = new FullyLayer(embedDim, nChannel, bias, network);
-        this.linear1.weight.setData(RandomUtils.xavierUniform(embedDim * nChannel, embedDim, nChannel, 1.0f));
+        this.linear1 = new FullyLayer(iChannel, iChannel + oChannel, bias, network);
+        this.linear1.weight.setData(RandomUtils.xavierUniform(iChannel * (iChannel + oChannel), iChannel, (iChannel + oChannel), 1.0f));
         if(this.linear1.bias != null) {
         	this.linear1.bias.clearGPU();
         }
         this.active = new GeluLayer(linear1);
-        this.linear2 = new FullyLayer(nChannel, embedDim, bias, network);
-        this.linear2.weight.setData(RandomUtils.xavierUniform(embedDim * nChannel, nChannel, embedDim, 1.0f));
+        this.linear2 = new FullyLayer((iChannel + oChannel), oChannel, bias, network);
+        this.linear2.weight.setData(RandomUtils.xavierUniform((iChannel + oChannel) * oChannel, (iChannel + oChannel), oChannel, 1.0f));
         if(this.linear2.bias != null) {
         	this.linear2.bias.clearGPU();
         }

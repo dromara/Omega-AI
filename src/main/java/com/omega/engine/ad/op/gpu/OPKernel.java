@@ -1,5 +1,9 @@
 package com.omega.engine.ad.op.gpu;
 
+import static jcuda.driver.JCudaDriver.cuLaunchKernel;
+
+import java.io.Serializable;
+
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
@@ -13,16 +17,12 @@ import jcuda.runtime.JCuda;
 import jcuda.runtime.cudaError;
 import jcuda.runtime.cudaMemcpyKind;
 
-import java.io.Serializable;
-
-import static jcuda.driver.JCudaDriver.cuLaunchKernel;
-
 public class OPKernel extends BaseKernel implements Serializable {
     /**
      *
      */
     private static final long serialVersionUID = 3345793649705471080L;
-    private static OPKernel kernel = null;
+//    private static OPKernel kernel = null;
     public int N = 0;
     private int CAFFE_CUDA_NUM_THREADS = 1024;
     private CUfunction fill_gpu_function;
@@ -103,7 +103,10 @@ public class OPKernel extends BaseKernel implements Serializable {
     private CUfunction mul_axis_function;
     private CUfunction mul_axis_back_left_function;
     private CUfunction mul_axis_back_right_function;
-
+    private CUfunction cat_width_function;
+    private CUfunction cat_width_back_function;
+    private CUfunction update_ema_function;
+    
     public OPKernel(CUDAManager cudaManager) {
         super(cudaManager);
         fill_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "fill_kernel");
@@ -184,6 +187,9 @@ public class OPKernel extends BaseKernel implements Serializable {
         mul_axis_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "mul_axis_kernel");
         mul_axis_back_left_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "mul_axis_back_left_kernel");
         mul_axis_back_right_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "mul_axis_back_right_kernel");
+        cat_width_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "cat_width_kernel");
+        cat_width_back_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "cat_width_back_kernel");
+        update_ema_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "update_ema");
     }
 
     public void fill_gpu(Tensor x, float val) {
@@ -1798,12 +1804,12 @@ public class OPKernel extends BaseKernel implements Serializable {
             int offset = 0;
             int part_input_size = a.getOnceSize() / 1;
             for (int n = 0; n < a.number; n++) {
-                kernel.copy_gpu(a, c, part_input_size, n * a.getOnceSize() + part_input_size * 0, 1, offset + n * c.getOnceSize(), 1);
+                this.copy_gpu(a, c, part_input_size, n * a.getOnceSize() + part_input_size * 0, 1, offset + n * c.getOnceSize(), 1);
             }
             offset += part_input_size;
             part_input_size = b.getOnceSize() / 1;
             for (int n = 0; n < a.number; n++) {
-                kernel.copy_gpu(b, c, part_input_size, n * b.getOnceSize() + part_input_size * 0, 1, offset + n * c.getOnceSize(), 1);
+            	this.copy_gpu(b, c, part_input_size, n * b.getOnceSize() + part_input_size * 0, 1, offset + n * c.getOnceSize(), 1);
             }
         } catch (Exception e) {
             // TODO: handle exception
@@ -1817,24 +1823,61 @@ public class OPKernel extends BaseKernel implements Serializable {
             int offset = 0;
             int part_input_size = a.getOnceSize() / 1;
             for (int n = 0; n < c.number; n++) {
-                kernel.axpy_gpu(c, a, part_input_size, 1, offset + n * c.getOnceSize(), 1, n * a.getOnceSize() + part_input_size * 0, 1);
+                this.axpy_gpu(c, a, part_input_size, 1, offset + n * c.getOnceSize(), 1, n * a.getOnceSize() + part_input_size * 0, 1);
             }
             offset += part_input_size;
             part_input_size = b.getOnceSize() / 1;
             for (int n = 0; n < c.number; n++) {
-                kernel.axpy_gpu(c, b, part_input_size, 1, offset + n * c.getOnceSize(), 1, n * b.getOnceSize() + part_input_size * 0, 1);
+            	this.axpy_gpu(c, b, part_input_size, 1, offset + n * c.getOnceSize(), 1, n * b.getOnceSize() + part_input_size * 0, 1);
             }
         } catch (Exception e) {
             // TODO: handle exception
             e.printStackTrace();
         }
     }
-
+    
+    public void cat_width_gpu(Tensor a, Tensor b, Tensor c) {
+        // TODO Auto-generated method stub
+        try {
+        	/**
+             * int N, float *a, float *b, float *y, int W
+             */
+            Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{a.number * a.channel * a.height}), Pointer.to(a.getGpuData()), Pointer.to(b.getGpuData()), Pointer.to(c.getGpuData()), Pointer.to(new int[]{a.width}));
+            checkCUDA(cuLaunchKernel(cat_width_function, CAFFE_GET_BLOCKS(a.number * a.channel * a.height), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameter, null // Kernel- and extra parameters
+            ));
+        	
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void cat_width_back_gpu(Tensor dc, Tensor da, Tensor db) {
+        // TODO Auto-generated method stub
+        try {
+        	/**
+             * int N, float *da, float *db, float *dy, int W
+             */
+            Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{da.number * da.channel * da.height}), Pointer.to(da.getGpuData()), Pointer.to(db.getGpuData()), Pointer.to(dc.getGpuData()), Pointer.to(new int[]{da.width}));
+            checkCUDA(cuLaunchKernel(cat_width_back_function, CAFFE_GET_BLOCKS(da.number * da.channel * da.height), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameter, null // Kernel- and extra parameters
+            ));
+        	
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
     public void one_hot(Tensor a, Tensor b) {
         try {
             /**
              * int N, float *X, float *Y, int K
-
              */
             Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{a.getDataLength()}), Pointer.to(a.getGpuData()), Pointer.to(b.getGpuData()), Pointer.to(new int[]{b.width}));
             checkCUDA(cuLaunchKernel(onehot_function, CAFFE_GET_BLOCKS(a.getDataLength()), 1, 1,      // Grid dimension
@@ -1885,7 +1928,24 @@ public class OPKernel extends BaseKernel implements Serializable {
             e.printStackTrace();
         }
     }
-
+    
+    public void update_ema_gpu(Tensor x, Tensor y, float decay) {
+        try {
+            /**
+             * int N, float *ema, float *model,float decay
+             */
+            Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{x.getDataLength()}), Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(new float[]{decay}));
+            checkCUDA(cuLaunchKernel(update_ema_function, CAFFE_GET_BLOCKS(x.getDataLength()), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameter, null // Kernel- and extra parameters
+            ));
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
     public int CAFFE_GET_BLOCKS(int N) {
         return (N + CAFFE_CUDA_NUM_THREADS - 1) / CAFFE_CUDA_NUM_THREADS;
     }

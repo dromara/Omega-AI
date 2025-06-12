@@ -547,7 +547,7 @@ public class Tensor implements Serializable {
     }
 
     public float[] syncHost() {
-        if (data == null || data.length != this.dataLength) {
+        if (data == null || data.length != this.getDataLength()) {
             this.data = new float[this.dataLength];
         }
         JCuda.cudaMemcpy(Pointer.to(data), gpuData, this.dataLength * (long) Sizeof.FLOAT, cudaMemcpyKind.cudaMemcpyDeviceToHost);

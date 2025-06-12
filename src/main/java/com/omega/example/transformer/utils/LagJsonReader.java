@@ -39,8 +39,10 @@ public class LagJsonReader {
     public static Map<String, Object> readJsonFileSmallWeight(String path) {
         Map<String, Object> mapList = new LinkedHashMap<String, Object>();
         try {
+        	System.out.println(path+" model load start.");
             String jsonString = new String(Files.readAllBytes(Paths.get(path)));
             mapList = JsonUtils.gson.fromJson(jsonString, mapList.getClass());
+            System.out.println(path+" model load finish.");
             return mapList;
         } catch (IOException e) {
             e.printStackTrace();

@@ -34,6 +34,7 @@ public class DiffusionUNetCond2 extends Network {
     private int textEmbedDim;
     private InputLayer inputLayer;
     private UNetCond2 unet;
+    private boolean learSigma = false;
 
     public DiffusionUNetCond2(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int[] downChannels, int headNum, int numLayer, int timeSteps, int tEmbDim, int maxContextLen, int textEmbedDim, int groupNum) {
         this.lossFunction = LossFactory.create(lossType, this);
@@ -51,10 +52,28 @@ public class DiffusionUNetCond2 extends Network {
         this.groupNum = groupNum;
         initLayers();
     }
+    
+    public DiffusionUNetCond2(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int[] downChannels, int headNum, int numLayer, int timeSteps, int tEmbDim, int maxContextLen, int textEmbedDim, int groupNum,boolean learSigma) {
+        this.lossFunction = LossFactory.create(lossType, this);
+        this.updater = updater;
+        this.inChannel = inChannel;
+        this.width = width;
+        this.height = height;
+        this.headNum = headNum;
+        this.downChannels = downChannels;
+        this.numLayer = numLayer;
+        this.timeSteps = timeSteps;
+        this.tEmbDim = tEmbDim;
+        this.textEmbedDim = textEmbedDim;
+        this.maxContextLen = maxContextLen;
+        this.groupNum = groupNum;
+        this.learSigma = learSigma;
+        initLayers();
+    }
 
     public void initLayers() {
         this.inputLayer = new InputLayer(inChannel, height, width);
-        unet = new UNetCond2(inChannel, height, width, downChannels, headNum, tEmbDim, timeSteps, maxContextLen, textEmbedDim, numLayer, groupNum, this);
+        unet = new UNetCond2(inChannel, height, width, downChannels, headNum, tEmbDim, timeSteps, maxContextLen, textEmbedDim, numLayer, groupNum, learSigma, this);
         this.addLayer(inputLayer);
         this.addLayer(unet);
     }
@@ -103,7 +122,6 @@ public class DiffusionUNetCond2 extends Network {
     public Tensor forward(Tensor input, Tensor t) {
         /**
          * 设置输入数据
-
          */
         this.setInputData(input);
         this.unet.forward(input, t);
@@ -113,7 +131,6 @@ public class DiffusionUNetCond2 extends Network {
     public Tensor forward(Tensor input, Tensor t, Tensor context) {
         /**
          * 设置输入数据
-
          */
         this.setInputData(input);
         this.unet.forward(input, t, context);

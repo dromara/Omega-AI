@@ -10,7 +10,8 @@ import com.omega.engine.nn.layer.active.SiLULayer;
 import com.omega.engine.nn.layer.dit.modules.DiTAttentionLayer2;
 import com.omega.engine.nn.layer.dit.modules.DiTCrossAttentionLayer2;
 import com.omega.engine.nn.layer.dit.modules.DiTMLPLayer;
-import com.omega.engine.nn.layer.normalization.LNLayer;
+import com.omega.engine.nn.layer.dit.modules.DiTRouteLayer;
+import com.omega.engine.nn.layer.normalization.RMSLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
@@ -19,7 +20,7 @@ import com.omega.engine.updater.UpdaterFactory;
  * DiT_Block
  * @author Administrator
  */
-public class DiTBlock extends Layer {
+public class DiTSkipBlock extends Layer {
 	
 	private int batchSize;
 	
@@ -31,17 +32,21 @@ public class DiTBlock extends Layer {
     private int textTime;
     private int mlpHiddenDim = 1;
     private boolean bias = false;
-    private boolean qkNorm = false;
+    public boolean longSkip = false;
     
     private SiLULayer modulationAct;
     public FullyLayer modulation;
     
+    private DiTRouteLayer skipRoute;
+    public RMSLayer skipNorm;
+    public FullyLayer skipLinear;
+    
 //    private LNLayer norm1;
-    public LNLayer norm1;
+    public RMSLayer norm1;
     public DiTAttentionLayer2 attn;
-    public LNLayer norm2;
+    public RMSLayer norm2;
     public DiTCrossAttentionLayer2 cross_attn;
-    public LNLayer norm3;
+    public RMSLayer norm3;
     public DiTMLPLayer mlp;
     
     private Tensor attnInput;
@@ -50,7 +55,7 @@ public class DiTBlock extends Layer {
     
     private Tensor dtc_cache;
 
-    public DiTBlock(int embedDim, int cEmbedDim, int textStateDim, int time, int textTime, int mlpHiddenDim, int headNum, boolean bias, boolean qkNorm) {
+    public DiTSkipBlock(int embedDim, int cEmbedDim, int textStateDim, int time, int textTime, int mlpHiddenDim, int headNum, boolean bias) {
         this.embedDim = embedDim;
         this.cEmbedDim = cEmbedDim;
         this.headNum = headNum;
@@ -59,14 +64,13 @@ public class DiTBlock extends Layer {
         this.textTime = textTime;
         this.mlpHiddenDim = mlpHiddenDim;
         this.bias = bias;
-        this.qkNorm = qkNorm;
         this.oChannel = 1;
         this.oHeight = 1;
         this.oWidth = embedDim;
-        this.initLayers();
+        this.initLayers(null);
     }
 
-    public DiTBlock(int embedDim, int cEmbedDim, int textStateDim, int time, int textTime, int mlpHiddenDim, int headNum, boolean bias, boolean qkNorm, Network network) {
+    public DiTSkipBlock(int embedDim, int cEmbedDim, int textStateDim, int time, int textTime, int mlpHiddenDim, int headNum, boolean bias, Network network) {
         this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
@@ -82,22 +86,47 @@ public class DiTBlock extends Layer {
         this.oChannel = 1;
         this.oHeight = 1;
         this.oWidth = embedDim;
-        this.qkNorm = qkNorm;
-        this.initLayers();
+        this.initLayers(null);
+    }
+    
+    public DiTSkipBlock(int embedDim, int cEmbedDim, int textStateDim, int time, int textTime, int mlpHiddenDim, int headNum, boolean bias,Layer[] skipLayers, Network network) {
+        this.network = network;
+        if (this.updater == null) {
+            this.setUpdater(UpdaterFactory.create(network));
+        }
+        this.embedDim = embedDim;
+        this.cEmbedDim = cEmbedDim;
+        this.headNum = headNum;
+        this.textStateDim = textStateDim;
+        this.time = time;
+        this.textTime = textTime;
+        this.mlpHiddenDim = mlpHiddenDim;
+        this.bias = bias;
+        this.oChannel = 1;
+        this.oHeight = 1;
+        this.oWidth = embedDim;
+        this.longSkip = true;
+        this.initLayers(skipLayers);
     }
 
-    public void initLayers() {
+    public void initLayers(Layer[] skipLayers) {
     	
-        this.norm1 = new LNLayer(network);
+    	if (this.longSkip){
+    		this.skipRoute = new DiTRouteLayer(skipLayers, time);
+    		this.skipNorm = new RMSLayer(network);
+    		this.skipLinear = new FullyLayer(embedDim * skipLayers.length, embedDim, bias, network);
+    	}
+    	
+        this.norm1 = new RMSLayer(network);
         
         this.modulationAct = new SiLULayer(network);
         this.modulation = new FullyLayer(cEmbedDim, embedDim, bias, network);
         this.modulation.weight.clearGPU();
         this.modulation.bias.clearGPU();
-        this.attn = new DiTAttentionLayer2(embedDim, headNum, time, bias, qkNorm, network);
-        this.norm2 = new LNLayer(network);
-        this.cross_attn = new DiTCrossAttentionLayer2(embedDim, textStateDim, headNum, time, textTime, bias, qkNorm, network);
-        this.norm3 = new LNLayer(network);
+        this.attn = new DiTAttentionLayer2(embedDim, headNum, time, bias, true, network);
+        this.norm2 = new RMSLayer(network);
+        this.cross_attn = new DiTCrossAttentionLayer2(embedDim, textStateDim, headNum, time, textTime, bias, true, network);
+        this.norm3 = new RMSLayer(network);
        
         this.mlp = new DiTMLPLayer(embedDim, mlpHiddenDim, bias, network);
     }
@@ -148,7 +177,16 @@ public class DiTBlock extends Layer {
     
     public void output(Tensor tc,Tensor text) {
     	
-    	norm1.forward(input);
+    	Tensor x = this.input;
+    	
+    	if(longSkip) {
+    		skipRoute.forward();
+    		skipNorm.forward(skipRoute.getOutput());
+    		skipLinear.forward(skipNorm.getOutput());
+    		x = skipLinear.getOutput();
+    	}
+    	
+    	norm1.forward(x);
 
     	modulationAct.forward(tc);
     	modulation.forward(modulationAct.getOutput());
@@ -157,7 +195,7 @@ public class DiTBlock extends Layer {
 
     	attn.forward(attnInput);
 //    	attn.getOutput().showDM("attn");
-    	Tensor_OP().add(input, attn.getOutput(), crossAttnInput);
+    	Tensor_OP().add(x, attn.getOutput(), crossAttnInput);
     	
     	norm2.forward(crossAttnInput);
 
@@ -173,8 +211,17 @@ public class DiTBlock extends Layer {
     }
     
     public void output(Tensor tc,Tensor text,Tensor cos,Tensor sin) {
+
+    	Tensor x = this.input;
+
+    	if(longSkip) {
+    		skipRoute.forward();
+    		skipNorm.forward(skipRoute.getOutput());
+    		skipLinear.forward(skipNorm.getOutput());
+    		x = skipLinear.getOutput();
+    	}
     	
-    	norm1.forward(input);
+    	norm1.forward(x);
     	
     	modulationAct.forward(tc);
     	modulation.forward(modulationAct.getOutput());
@@ -183,7 +230,7 @@ public class DiTBlock extends Layer {
 
     	attn.forward(attnInput, cos , sin);
 
-    	Tensor_OP().add(input, attn.getOutput(), crossAttnInput);
+    	Tensor_OP().add(x, attn.getOutput(), crossAttnInput);
     	
     	norm2.forward(crossAttnInput);
 
@@ -234,8 +281,17 @@ public class DiTBlock extends Layer {
         
     	Tensor_OP().add(dtc, modulationAct.diff, dtc);
     	Tensor_OP().add(dText, cross_attn.kLinerLayer.diff, dText);
-    	
-    	this.diff = norm1.diff;
+
+    	if(longSkip) {
+    		skipLinear.back(norm1.diff);
+    		skipNorm.back(skipLinear.diff);
+    		skipRoute.back(skipNorm.diff);
+    		this.diff = skipRoute.getLayers()[1].cache_delta;
+    		skipNorm.diff.viewOrg();
+    	}else {
+    		this.diff = norm1.diff;
+    	}
+
     }
 
     public void diff(Tensor dtc,Tensor dText,Tensor cos,Tensor sin) {
@@ -264,7 +320,15 @@ public class DiTBlock extends Layer {
     	Tensor_OP().add(dtc, modulationAct.diff, dtc);
     	Tensor_OP().add(dText, cross_attn.kLinerLayer.diff, dText);
 
-    	this.diff = norm1.diff;
+    	if(longSkip) {
+    		skipLinear.back(norm1.diff);
+    		skipNorm.back(skipLinear.diff);
+    		skipRoute.back(skipNorm.diff);
+    		this.diff = skipRoute.getLayers()[1].cache_delta;
+    		skipNorm.diff.viewOrg();
+    	}else {
+    		this.diff = norm1.diff;
+    	}
 
     }
 
@@ -417,6 +481,10 @@ public class DiTBlock extends Layer {
     @Override
     public void update() {
         // TODO Auto-generated method stub
+    	if(longSkip) {
+    		skipLinear.update();
+    		skipNorm.update();
+    	}
     	norm1.update();
     	modulation.update();
     	
@@ -457,6 +525,10 @@ public class DiTBlock extends Layer {
     }
 
     public void saveModel(RandomAccessFile outputStream) throws IOException {
+    	if(longSkip) {
+    		skipLinear.saveModel(outputStream);
+    		skipNorm.saveModel(outputStream);
+    	}
     	norm1.saveModel(outputStream);
     	modulation.saveModel(outputStream);
     	
@@ -470,6 +542,10 @@ public class DiTBlock extends Layer {
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
+    	if(longSkip) {
+    		skipLinear.loadModel(inputStream);
+    		skipNorm.loadModel(inputStream);
+    	}
     	norm1.loadModel(inputStream);
     	modulation.loadModel(inputStream);
     	
@@ -485,6 +561,10 @@ public class DiTBlock extends Layer {
     @Override
     public void accGrad(float scale) {
         // TODO Auto-generated method stub
+    	if(longSkip) {
+    		skipLinear.accGrad(scale);
+    		skipNorm.accGrad(scale);
+    	}
     	norm1.accGrad(scale);
     	modulation.accGrad(scale);
     	

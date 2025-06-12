@@ -386,8 +386,8 @@ public class UNetCrossAttentionLayer extends Layer {
         Tensor_OP().permute(dkt, kt, new int[]{0, 2, 1, 3});
         Tensor_OP().permute(dvt, vt, new int[]{0, 2, 1, 3});
         Tensor queryDelta = qt.view(batchSize * time, 1, 1, headNum * dk);
-        Tensor keyDelta = kt.view(batchSize * time, 1, 1, headNum * dk);
-        Tensor valueDelta = vt.view(batchSize * time, 1, 1, headNum * dk);
+        Tensor keyDelta = kt.view(batchSize * kvTime, 1, 1, headNum * dk);
+        Tensor valueDelta = vt.view(batchSize * kvTime, 1, 1, headNum * dk);
         this.qLinerLayer.back(queryDelta);
         this.kLinerLayer.back(keyDelta);
         this.vLinerLayer.back(valueDelta);

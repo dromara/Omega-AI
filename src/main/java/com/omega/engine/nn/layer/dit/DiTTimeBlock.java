@@ -1,70 +1,76 @@
-package com.omega.engine.nn.layer.dit.modules;
+package com.omega.engine.nn.layer.dit;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
-import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
-import com.omega.engine.nn.layer.active.GeluLayer;
+import com.omega.engine.nn.layer.active.SiLULayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 /**
- * DiT_PoswiseFeedForward Layer
- *
+ * DiTTimeBlock
  * @author Administrator
  */
-public class DiTMLPLayer extends Layer {
-    private int embedDim = 0;
-    private int nChannel = 1;
+public class DiTTimeBlock extends Layer {
+	
+    private int timeDim;
+    private int hiddenSize;
+    
     private boolean bias = false;
+    
+    private SiLULayer act;
+    public FullyLayer shift_msa_l;
+    public FullyLayer scale_msa_l;
+    public FullyLayer gate_msa_l;
+    public FullyLayer shift_mlp_l;
+    public FullyLayer scale_mlp_l;
+    public FullyLayer gate_mlp_l;
+    
 
-    public FullyLayer linear1;
-    private GeluLayer active;
-    public FullyLayer linear2;
-
-    public DiTMLPLayer(int embedDim, int nChannel, boolean bias) {
-        this.embedDim = embedDim;
-        this.nChannel = nChannel;
+    public DiTTimeBlock(int timeDim, int hiddenSize, boolean bias) {
+        this.timeDim = timeDim;
+        this.hiddenSize = hiddenSize;
         this.bias = bias;
         this.oChannel = 1;
         this.oHeight = 1;
-        this.oWidth = embedDim;
+        this.oWidth = hiddenSize;
         this.initLayers();
     }
 
-    public DiTMLPLayer(int embedDim, int nChannel, boolean bias, Network network) {
+    public DiTTimeBlock(int timeDim, int hiddenSize, boolean bias, Network network) {
         this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
         }
-        this.embedDim = embedDim;
-        this.nChannel = nChannel;
+        this.timeDim = timeDim;
+        this.hiddenSize = hiddenSize;
         this.bias = bias;
         this.oChannel = 1;
         this.oHeight = 1;
-        this.oWidth = embedDim;
+        this.oWidth = hiddenSize;
         this.initLayers();
     }
 
-    public static void main(String[] args) {
-    }
-
     public void initLayers() {
-        this.linear1 = new FullyLayer(embedDim, nChannel, bias, network);
-        this.linear1.weight.setData(RandomUtils.xavierUniform(embedDim * nChannel, embedDim, nChannel, 1.0f));
-        if(this.linear1.bias != null) {
-        	this.linear1.bias.clearGPU();
-        }
-        this.active = new GeluLayer(linear1);
-        this.linear2 = new FullyLayer(nChannel, embedDim, bias, network);
-        this.linear2.weight.setData(RandomUtils.xavierUniform(embedDim * nChannel, nChannel, embedDim, 1.0f));
-        if(this.linear2.bias != null) {
-        	this.linear2.bias.clearGPU();
-        }
+    	
+        this.act = new SiLULayer(network);
+        this.shift_msa_l = new FullyLayer(timeDim, hiddenSize, bias, network);
+        this.shift_msa_l.bias.clearGPU();
+        this.scale_msa_l = new FullyLayer(timeDim, hiddenSize, bias, network);
+        this.scale_msa_l.bias.clearGPU();
+        this.gate_msa_l = new FullyLayer(timeDim, hiddenSize, bias, network);
+        this.gate_msa_l.bias.clearGPU();
+        this.shift_mlp_l = new FullyLayer(timeDim, hiddenSize, bias, network);
+        this.shift_mlp_l.bias.clearGPU();
+        this.scale_mlp_l = new FullyLayer(timeDim, hiddenSize, bias, network);
+        this.scale_mlp_l.bias.clearGPU();
+        this.gate_mlp_l = new FullyLayer(timeDim, hiddenSize, bias, network);
+        this.gate_mlp_l.bias.clearGPU();
+        
     }
 
     @Override
@@ -73,9 +79,16 @@ public class DiTMLPLayer extends Layer {
         this.number = this.input.number;
     }
 
+    public void init(Tensor input) {
+        // TODO Auto-generated method stub
+        this.number = input.number;
+
+    }
+    
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
+
     }
 
     @Override
@@ -86,12 +99,15 @@ public class DiTMLPLayer extends Layer {
     @Override
     public void output() {
         // TODO Auto-generated method stub
-        linear1.forward(input);
-        active.forward(linear1.getOutput());
-        linear2.forward(active.getOutput());
-        this.output = linear2.getOutput();
+    	act.forward(input);
+    	shift_msa_l.forward(act.getOutput());
+    	scale_msa_l.forward(act.getOutput());
+    	gate_msa_l.forward(act.getOutput());
+    	shift_mlp_l.forward(act.getOutput());
+    	scale_mlp_l.forward(act.getOutput());
+    	gate_mlp_l.forward(act.getOutput());
     }
-
+    
     @Override
     public Tensor getOutput() {
         // TODO Auto-generated method stub
@@ -101,12 +117,39 @@ public class DiTMLPLayer extends Layer {
     @Override
     public void diff() {
         // TODO Auto-generated method stub
-    	this.linear2.back(this.delta);
-        active.back(this.linear2.diff);
-        linear1.back(active.diff);
-        this.diff = this.linear1.diff;
-        //		System.out.println("mlp diff:");
-        //		diff.showDMByNumber(0);
+    	/**
+    	 * this layer is fisrt time layer, so this layer's diff not to need complate.
+    	 */
+    	shift_msa_l.back(delta);
+    	scale_msa_l.back(delta);
+    	gate_msa_l.back(delta);
+    	shift_mlp_l.back(delta);
+    	scale_mlp_l.back(delta);
+    	gate_mlp_l.back(delta);
+    }
+    
+    public Tensor getShiftMAS(){
+    	return shift_msa_l.getOutput();
+    }
+    
+    public Tensor getScaleMSA(){
+    	return scale_msa_l.getOutput();
+    }
+    
+    public Tensor getGateMSA(){
+    	return gate_msa_l.getOutput();
+    }
+    
+    public Tensor getShiftMLP(){
+    	return shift_mlp_l.getOutput();
+    }
+    
+    public Tensor getScaleMLP(){
+    	return scale_mlp_l.getOutput();
+    }
+    
+    public Tensor getGateMLP(){
+    	return gate_mlp_l.getOutput();
     }
 
     @Override
@@ -159,7 +202,7 @@ public class DiTMLPLayer extends Layer {
          */
         this.output();
     }
-
+    
     @Override
     public void back(Tensor delta) {
         // TODO Auto-generated method stub
@@ -178,12 +221,16 @@ public class DiTMLPLayer extends Layer {
             this.gradientCheck();
         }
     }
-
+    
     @Override
     public void update() {
         // TODO Auto-generated method stub
-        linear1.update();
-        linear2.update();
+    	shift_msa_l.update();
+    	scale_msa_l.update();
+    	gate_msa_l.update();
+    	shift_mlp_l.update();
+    	scale_mlp_l.update();
+    	gate_mlp_l.update();
     }
 
     @Override
@@ -214,20 +261,33 @@ public class DiTMLPLayer extends Layer {
     }
 
     public void saveModel(RandomAccessFile outputStream) throws IOException {
-        linear1.saveModel(outputStream);
-        linear2.saveModel(outputStream);
+    	shift_msa_l.saveModel(outputStream);
+    	scale_msa_l.saveModel(outputStream);
+    	gate_msa_l.saveModel(outputStream);
+    	shift_mlp_l.saveModel(outputStream);
+    	scale_mlp_l.saveModel(outputStream);
+    	gate_mlp_l.saveModel(outputStream);
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
-        linear1.loadModel(inputStream);
-        linear2.loadModel(inputStream);
+    	shift_msa_l.loadModel(inputStream);
+    	scale_msa_l.loadModel(inputStream);
+    	gate_msa_l.loadModel(inputStream);
+    	shift_mlp_l.loadModel(inputStream);
+    	scale_mlp_l.loadModel(inputStream);
+    	gate_mlp_l.loadModel(inputStream);
     }
 
     @Override
     public void accGrad(float scale) {
         // TODO Auto-generated method stub
-        linear1.accGrad(scale);
-        linear2.accGrad(scale);
+    	shift_msa_l.accGrad(scale);
+    	scale_msa_l.accGrad(scale);
+    	gate_msa_l.accGrad(scale);
+    	shift_mlp_l.accGrad(scale);
+    	scale_mlp_l.accGrad(scale);
+    	gate_mlp_l.accGrad(scale);
     }
+   
 }
 
