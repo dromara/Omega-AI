@@ -436,6 +436,7 @@ __global__ void layernorm_backward_kernel7(float* dinp, float* dweight, float* d
     }
 }
 
+extern "C"
 __global__ void layernorm_forward_kernel3_llm(float* __restrict__ out, float* __restrict__ mean, float* __restrict__ rstd,
                                     const float*  __restrict__ inp, const float*  __restrict__ weight,
                                     const float* __restrict__ bias, int N, int C) {
@@ -447,7 +448,7 @@ __global__ void layernorm_forward_kernel3_llm(float* __restrict__ out, float* __
     if(idx >= N) { return; } // guard
 
     // the row of input that this group of threads is responsible for
-    const floatX* x = inp + idx * C;
+    const float* x = inp + idx * C;
 
     // mean
     float sum = 0.0f;
@@ -473,12 +474,12 @@ __global__ void layernorm_forward_kernel3_llm(float* __restrict__ out, float* __
     }
 
     // final normalization and scaling by weight/bias
-    floatX* o = out + idx * C;
+    float* o = out + idx * C;
     for (int c = lane_id; c < C; c += WARP_SIZE) {
         // load and store using the .cs "streaming" hint to the compiler,
         // indicating that this data will not be reused soon, and can be streamed through the caches
         // this allows the threads to get more cache-hits for the (shared) weight and bias parameters
         float n = s * ((float)__ldcs(x+c) - m);
-        __stcs(o+c, (floatX)(n * (float)weight[c] + (float)bias[c]));
+        __stcs(o+c, (float)(n * (float)weight[c] + (float)bias[c]));
     }
 }

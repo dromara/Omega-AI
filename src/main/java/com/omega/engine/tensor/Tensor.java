@@ -289,6 +289,10 @@ public class Tensor implements Serializable {
     public Tensor createLike() {
         return new Tensor(number, channel, height, width, hasGPU);
     }
+    
+    public Tensor createGPULike() {
+        return new Tensor(number, channel, height, width, hasGPU, true);
+    }
 
     public Tensor createLike(float value) {
         return new Tensor(number, channel, height, width, MatrixUtils.val(this.dataLength, value), hasGPU);

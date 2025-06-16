@@ -21,6 +21,7 @@ public class AdamW extends Updater {
 
     public AdamW(Network network) {
         this.net = network;
+        this.weight_decay = this.net.weight_decay;
         this.params = network.updaterParams;
     }
 
@@ -30,7 +31,6 @@ public class AdamW extends Updater {
         layer.learnRate = layer.network.learnRate;
         /**
          * init
-
          */
         if (kernel == null) {
             if (layer.hasBias) {

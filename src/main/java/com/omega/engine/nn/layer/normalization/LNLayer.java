@@ -197,7 +197,7 @@ public class LNLayer extends NormalizationLayer {
             }
         }
         if (this.output == null || this.number != this.output.number) {
-            this.output = input.createLike();
+            this.output = input.createGPULike();
         }
     }
 
@@ -233,6 +233,24 @@ public class LNLayer extends NormalizationLayer {
         //		kernel.forward(gamma, beta, input, output);
         //		kernel.forwardAten(gamma, beta, input, output);
         kernel.forward_llm(gamma, beta, input, output);
+        //		System.err.println("1:");
+        //		output.showDMByNumber(0);
+        //		System.err.println("2:");
+        //		output2.showDMByNumber(0);
+        //
+        //		System.out.println("bn-output:");
+        //		output.showDM();
+    }
+    
+    public void output_llmc() {
+        // TODO Auto-generated method stub
+        //		System.out.println(this.index+":"+input.number+":"+input.channel+":"+input.height+":"+input.width);
+        //		System.out.println(this.index+":"+output.number+":"+output.channel+":"+output.height+":"+output.width);
+        //		System.out.println(JsonUtils.toJson(gamma.shape()));
+        //		System.out.println(JsonUtils.toJson(beta.shape()));
+        //		kernel.forward(gamma, beta, input, output);
+        //		kernel.forwardAten(gamma, beta, input, output);
+        kernel.forward_llmc(gamma, beta, input, output);
         //		System.err.println("1:");
         //		output.showDMByNumber(0);
         //		System.err.println("2:");
@@ -397,6 +415,25 @@ public class LNLayer extends NormalizationLayer {
 
          */
         this.output();
+    }
+    
+    public void forward_llmc(Tensor input) {
+        // TODO Auto-generated method stub
+        /**
+         * 参数初始化
+
+         */
+        this.init(input);
+        /**
+         * 设置输入
+
+         */
+        this.setInput(input);
+        /**
+         * 计算输出
+
+         */
+        this.output_llmc();
     }
 
     public void forward(Tensor input, Tensor output) {

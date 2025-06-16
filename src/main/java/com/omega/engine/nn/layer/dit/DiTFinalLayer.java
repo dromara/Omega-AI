@@ -10,7 +10,6 @@ import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.active.SiLULayer;
 import com.omega.engine.nn.layer.normalization.LNLayer;
-import com.omega.engine.nn.layer.normalization.RMSLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
@@ -30,8 +29,8 @@ public class DiTFinalLayer extends Layer {
     private int hidden_size = 1;
     private boolean bias = false;
 
-//    public LNLayer finalNorm;
-    public RMSLayer finalNorm;
+    public LNLayer finalNorm;
+//    public RMSLayer finalNorm;
     public FullyLayer finalLinear;
     
     private SiLULayer m_active;
@@ -69,7 +68,7 @@ public class DiTFinalLayer extends Layer {
 
     public void initLayers() {
         //		NanoGPT net = (NanoGPT) this.network;
-    	this.finalNorm = new RMSLayer(network);
+    	this.finalNorm = new LNLayer(network);
         this.finalLinear = new FullyLayer(hidden_size, oWidth, bias, network);
         this.finalLinear.weight.clearGPU();
         this.finalLinear.bias.clearGPU();
@@ -127,7 +126,7 @@ public class DiTFinalLayer extends Layer {
     	m_linear1.forward(m_active.getOutput());
     	m_linear2.forward(m_active.getOutput());
     	
-    	finalNorm.forward(input);
+    	finalNorm.forward_llmc(input);
     	
     	/**
     	 * modulate

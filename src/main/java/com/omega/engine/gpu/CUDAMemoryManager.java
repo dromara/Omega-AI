@@ -193,5 +193,10 @@ public class CUDAMemoryManager {
         porints.add(p);
         return p;
     }
+    
+	public void freeCUPointer(Pointer pointer) {
+		checkCUDA(JCuda.cudaFree(pointer), "free" + pointer.toString());
+		porints.remove(pointer);
+	}
 }
 

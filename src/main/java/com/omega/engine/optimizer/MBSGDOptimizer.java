@@ -5994,7 +5994,7 @@ public class MBSGDOptimizer extends Optimizer {
             Tensor input = new Tensor(batchSize, 3, trainingData.img_h, trainingData.img_w, true);
             Tensor label = new Tensor(batchSize * network.maxContextLen, 1, 1, 1, true);
             Tensor mask = new Tensor(batchSize, 1, 1, network.maxContextLen, true);
-            Tensor context = null;
+//            Tensor context = null;
             Tensor xt = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
             
             Tensor[] cs = RoPEKernel.getCosAndSin2D(network.time, network.hiddenSize, network.headNum);
@@ -6030,9 +6030,9 @@ public class MBSGDOptimizer extends Optimizer {
                  */
                 for (int it = 0; it < indexs.length; it++) {
                     long start = System.nanoTime();
-                    if (Math.abs(this.currentError) <= this.error) {
-                        break;
-                    }
+//                    if (Math.abs(this.currentError) <= this.error) {
+//                        break;
+//                    }
                     
                     RandomUtils.uniformInt(T, t);
 

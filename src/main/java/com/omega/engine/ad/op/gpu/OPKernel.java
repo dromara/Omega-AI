@@ -6,7 +6,6 @@ import java.io.Serializable;
 
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
-import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.tensor.Tensor;
 
 import jcuda.Pointer;
@@ -1627,9 +1626,9 @@ public class OPKernel extends BaseKernel implements Serializable {
                     0, null,               // Shared memory size and stream
                     kernelParameter, null // Kernel- and extra parameters
             ));
-            CUDAMemoryManager.free(permutes_p);
-            CUDAMemoryManager.free(sip);
-            CUDAMemoryManager.free(sop);
+            this.getCudaManager().getMemoryManager().freeCUPointer(permutes_p);
+            this.getCudaManager().getMemoryManager().freeCUPointer(sip);
+            this.getCudaManager().getMemoryManager().freeCUPointer(sop);
         } catch (Exception e) {
             // TODO: handle exception
             e.printStackTrace();
@@ -1656,9 +1655,9 @@ public class OPKernel extends BaseKernel implements Serializable {
                     0, null,               // Shared memory size and stream
                     kernelParameter, null // Kernel- and extra parameters
             ));
-            CUDAMemoryManager.free(permutes_p);
-            CUDAMemoryManager.free(sip);
-            CUDAMemoryManager.free(sop);
+            this.getCudaManager().getMemoryManager().freeCUPointer(permutes_p);
+            this.getCudaManager().getMemoryManager().freeCUPointer(sip);
+            this.getCudaManager().getMemoryManager().freeCUPointer(sop);
         } catch (Exception e) {
             // TODO: handle exception
             e.printStackTrace();
@@ -1684,9 +1683,9 @@ public class OPKernel extends BaseKernel implements Serializable {
                     0, null,               // Shared memory size and stream
                     kernelParameter, null // Kernel- and extra parameters
             ));
-            CUDAMemoryManager.free(permutes_p);
-            CUDAMemoryManager.free(sip);
-            CUDAMemoryManager.free(sop);
+            this.getCudaManager().getMemoryManager().freeCUPointer(permutes_p);
+            this.getCudaManager().getMemoryManager().freeCUPointer(sip);
+            this.getCudaManager().getMemoryManager().freeCUPointer(sop);
         } catch (Exception e) {
             // TODO: handle exception
             e.printStackTrace();

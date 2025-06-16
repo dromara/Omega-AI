@@ -216,7 +216,7 @@ public class LNKernel extends BaseKernel {
         tf.number = N * T;
         LNLayer ln = new LNLayer(tf, true);
         for (int i = 0; i < 10; i++) {
-            ln.forward(input);
+            ln.forward_llmc(input);
             ln.getOutput().showDM();
             //    		ln.forward(input2);
             //        	ln.getOutput().showDM();
@@ -351,7 +351,7 @@ public class LNKernel extends BaseKernel {
                 backward_llm_function = getCudaManager().getLocalFunctionByModule("LNKernel.cu", "layernorm_backward_kernel7");
             }
             if(forward_llmc_function == null) {
-//            	forward_llmc_function = getCudaManager().getLocalFunctionByModule("LNKernel.cu", "layernorm_forward_kernel3_llm");
+            	forward_llmc_function = getCudaManager().getLocalFunctionByModule("LNKernel.cu", "layernorm_forward_kernel3_llm");
             }
         } catch (Exception e) {
             // TODO: handle exception
@@ -456,6 +456,10 @@ public class LNKernel extends BaseKernel {
 
     public int CAFFE_GET_BLOCKS(int N) {
         return (N + CAFFE_CUDA_NUM_THREADS - 1) / CAFFE_CUDA_NUM_THREADS;
+    }
+    
+    public int ceilDiv(int N,int block) {
+        return (N + block - 1) / block;
     }
 
     public void forward(Tensor gamma, Tensor beta, Tensor input, Tensor output) {
@@ -683,9 +687,12 @@ public class LNKernel extends BaseKernel {
                const float*  __restrict__ inp, const float*  __restrict__ weight,
                const float* __restrict__ bias, int N, int C
              */
+            int block_size = 256;
+            int WARP_SIZE = 32;
+            int grid_size = ceilDiv(B * WARP_SIZE, block_size);
             forwardLLMParameters = Pointer.to(Pointer.to(output.getGpuData()), Pointer.to(aten_mean), Pointer.to(aten_var), Pointer.to(input.getGpuData()), Pointer.to(gamma.getGpuData()), Pointer.to(beta.getGpuData()), Pointer.to(new int[]{B}), Pointer.to(new int[]{W}));
-            checkCUDA(cuLaunchKernel(forward_llm_function, B, 1, 1,      // Grid dimension
-                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+            checkCUDA(cuLaunchKernel(forward_llmc_function, grid_size, 1, 1,      // Grid dimension
+            		block_size, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     forwardLLMParameters, null // Kernel- and extra parameters
             ));
