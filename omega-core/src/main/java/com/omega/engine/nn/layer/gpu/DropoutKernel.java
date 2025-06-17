@@ -1,8 +1,9 @@
 package com.omega.engine.nn.layer.gpu;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
 
@@ -69,7 +70,7 @@ public class DropoutKernel extends BaseKernel {
 
              */
             kernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(new int[]{input.getDataLength()}), Pointer.to(rand.getGpuData()), Pointer.to(new float[]{prob}), Pointer.to(new float[]{scale}));
-            this.N = input.number;
+            this.N = input.getShape()[0];
             //			}
             cuLaunchKernel(function, this.get_number_of_blocks(input.getDataLength(), BLOCK), 1, 1,      // Grid dimension
                     BLOCK, 1, 1,      // Block dimension
@@ -85,14 +86,14 @@ public class DropoutKernel extends BaseKernel {
 
     public void backward(Tensor delta, Tensor rand) {
         try {
-            if (kernelBackParameters == null || delta.number != this.N) {
+            if (kernelBackParameters == null || delta.getShape()[0] != this.N) {
                 /**
                  * 设置入参
                  * float *input, int size, float *rand, float prob, float scale
 
                  */
                 kernelBackParameters = Pointer.to(Pointer.to(delta.getGpuData()), Pointer.to(new int[]{delta.getDataLength()}), Pointer.to(rand.getGpuData()), Pointer.to(new float[]{prob}), Pointer.to(new float[]{scale}));
-                this.N = delta.number;
+                this.N = delta.getShape()[0];
             }
             cuLaunchKernel(back_function, this.get_number_of_blocks(delta.getDataLength(), BLOCK), 1, 1,      // Grid dimension
                     BLOCK, 1, 1,      // Block dimension
@@ -116,11 +117,11 @@ public class DropoutKernel extends BaseKernel {
 
              */
             dropoutKernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(rand.getGpuData()), Pointer.to(new int[]{input.getDataLength()}), Pointer.to(new float[]{prob}), Pointer.to(new float[]{scale}));
-            this.N = input.number;
+            this.N = input.getShape()[0];
             //		        rand.showDM(0);
             //			}
             //			int[] grid = cuda_gridsize(input.getDataLength());
-            cuLaunchKernel(dropout_function, this.CAFFE_GET_BLOCKS(output.dataLength), 1, 1,      // Grid dimension
+            cuLaunchKernel(dropout_function, this.CAFFE_GET_BLOCKS(output.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1, 0, null,               // Shared memory size and stream
                     dropoutKernelParameters, null // Kernel- and extra parameters
             );

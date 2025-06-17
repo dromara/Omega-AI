@@ -1,11 +1,12 @@
 package com.omega.engine.nn.layer.gpu;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixUtils;
+import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.cudnn.SoftmaxCudnnKernel;
 import com.omega.engine.nn.network.Transformer;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUfunction;
@@ -278,8 +279,8 @@ public class AttentionKernel extends BaseKernel {
              * int N, int C,int H,int W, float *input, float *mask,float *output
 
              */
-            addMaskParameters = Pointer.to(Pointer.to(new int[]{input.dataLength}), Pointer.to(new int[]{input.channel}), Pointer.to(new int[]{input.height}), Pointer.to(new int[]{input.width}), Pointer.to(input.getGpuData()), Pointer.to(mask.getGpuData()), Pointer.to(output.getGpuData()));
-            checkCUDA(cuLaunchKernel(add_mask_function, this.CAFFE_GET_BLOCKS(input.dataLength), 1, 1,      // Grid dimension
+            addMaskParameters = Pointer.to(Pointer.to(new int[]{input.getDataLength()}), Pointer.to(new int[]{input.getShape()[1]}), Pointer.to(new int[]{input.getShape()[2]}), Pointer.to(new int[]{input.getShape()[3]}), Pointer.to(input.getGpuData()), Pointer.to(mask.getGpuData()), Pointer.to(output.getGpuData()));
+            checkCUDA(cuLaunchKernel(add_mask_function, this.CAFFE_GET_BLOCKS(input.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1, 0, null,               // Shared memory size and stream
                     addMaskParameters, null // Kernel- and extra parameters
             ));

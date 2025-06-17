@@ -1,7 +1,8 @@
 package com.omega.engine.gpu;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.parallel.ddp.distributed.SerializablePointer;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUdeviceptr;
@@ -32,7 +33,7 @@ public class CUDAMemoryManager {
         if (caches.containsKey(key)) {
             c = caches.get(key);
             //			System.err.println("["+key+"]"+c.gpuLength+":["+N+":"+C+":"+H+":"+W+"]:"+N * C * H * W);
-            if (c.gpuLength < N * C * H * W) {
+            if (c.getGpuLength() < N * C * H * W) {
                 c = Tensor.createGPUTensor(c, N, C, H, W, true);
             } else {
                 c = c.viewOrg(N, C, H, W);
@@ -50,7 +51,7 @@ public class CUDAMemoryManager {
         //		if(globalCache != null) {
         //			System.out.println(globalCache.dataLength+":"+N * C * H * W);
         //		}
-        if (globalCache == null || globalCache.dataLength < N * C * H * W) {
+        if (globalCache == null || globalCache.getDataLength() < N * C * H * W) {
             globalCache = Tensor.createGPUTensor(globalCache, N, C, H, W, true);
         } else {
             globalCache = globalCache.viewOrg(N, C, H, W);
@@ -172,7 +173,7 @@ public class CUDAMemoryManager {
         if (privateCaches.containsKey(key)) {
             c = privateCaches.get(key);
             //			System.err.println("["+key+"]"+c.gpuLength+":["+N+":"+C+":"+H+":"+W+"]:"+N * C * H * W);
-            if (c.gpuLength < N * C * H * W) {
+            if (c.getGpuLength() < N * C * H * W) {
                 c = Tensor.createGPUTensor(c, N, C, H, W, true);
             } else {
                 c = c.viewOrg(N, C, H, W);
@@ -192,5 +193,10 @@ public class CUDAMemoryManager {
         porints.add(p);
         return p;
     }
+    
+	public void freeCUPointer(Pointer pointer) {
+		checkCUDA(JCuda.cudaFree(pointer), "free" + pointer.toString());
+		porints.remove(pointer);
+	}
 }
 

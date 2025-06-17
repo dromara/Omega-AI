@@ -1,11 +1,11 @@
 package com.omega.engine.loss;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.JsonUtils;
-import com.omega.utils.MatrixUtils;
+import com.omega.common.utils.JsonUtils;
+import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.loss.gpu.CrossEntropyKernel;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -60,16 +60,16 @@ public class CrossEntropyLossIdx extends LossFunction {
 
     public static int getDim(Tensor x) {
         int dim = 0;
-        if (x.number > 1) {
+        if (x.getShape()[0] > 1) {
             dim++;
         }
-        if (x.channel > 1) {
+        if (x.getShape()[1] > 1) {
             dim++;
         }
-        if (x.height > 1) {
+        if (x.getShape()[2] > 1) {
             dim++;
         }
-        if (x.width > 1) {
+        if (x.getShape()[3] > 1) {
             dim++;
         }
         return dim;
@@ -78,13 +78,13 @@ public class CrossEntropyLossIdx extends LossFunction {
     public static void loadData(Tensor x, Object meta, String key) {
         if (meta != null) {
             List<List<List<Double>>> dataA = (List<List<List<Double>>>) meta;
-            int N = x.number;
-            int C = x.channel;
-            int W = x.width;
+            int N = x.getShape()[0];
+            int C = x.getShape()[1];
+            int W = x.getShape()[3];
             for (int n = 0; n < N; n++) {
                 for (int c = 0; c < C; c++) {
                     for (int w = 0; w < W; w++) {
-                        x.data[n * x.getOnceSize() + c * W + w] = dataA.get(n).get(c).get(w).floatValue();
+                        x.getData()[n * x.getOnceSize() + c * W + w] = dataA.get(n).get(c).get(w).floatValue();
                     }
                 }
             }
@@ -132,11 +132,11 @@ public class CrossEntropyLossIdx extends LossFunction {
     }
 
     public void init(Tensor input) {
-        if (loss == null || loss.number != input.number) {
-            this.loss = new Tensor(input.number, 1, 1, 1, true);
-            this.probs = new Tensor(input.number, input.channel, input.height, input.width, true);
+        if (loss == null || loss.getShape()[0] != input.getShape()[0]) {
+            this.loss = new Tensor(input.getShape()[0], 1, 1, 1, true);
+            this.probs = new Tensor(input.getShape()[0], input.getShape()[1], input.getShape()[2], input.getShape()[3], true);
             //			this.output = new Tensor(input.number, input.channel, input.height, input.width, true);
-            this.diff = new Tensor(input.number, input.channel, input.height, input.width, true);
+            this.diff = new Tensor(input.getShape()[0], input.getShape()[1], input.getShape()[2], input.getShape()[3], true);
         }
     }
 

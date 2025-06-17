@@ -1,13 +1,13 @@
 package com.omega.engine.nn.layer.normalization;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixUtils;
+import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.normalization.gpu.LNKernel;
 import com.omega.engine.nn.model.LayerInit;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.utils.ModelUtils;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;
@@ -156,17 +156,17 @@ public class LNLayer extends NormalizationLayer {
                 this.diffBeta = new Tensor(1, 1, 1, meanNum, true);
             }
         }
-        if (this.output == null || this.number != this.output.number) {
+        if (this.output == null || this.number != this.output.getShape()[0]) {
             this.output = Tensor.createTensor(this.output, number, oChannel, oHeight, oWidth, true);
         }
     }
 
     public void init(Tensor input) {
-        this.number = input.number;
+        this.number = input.getShape()[0];
         if (this.bnType == null) {
-            this.channel = input.channel;
-            this.height = input.height;
-            this.width = input.width;
+            this.channel = input.getShape()[1];
+            this.height = input.getShape()[2];
+            this.width = input.getShape()[3];
             this.oChannel = this.channel;
             this.oHeight = this.height;
             this.oWidth = this.width;
@@ -196,8 +196,8 @@ public class LNLayer extends NormalizationLayer {
                 this.diffBeta = new Tensor(1, 1, 1, meanNum, true);
             }
         }
-        if (this.output == null || this.number != this.output.number) {
-            this.output = input.createLike();
+        if (this.output == null || this.number != this.output.getShape()[0]) {
+            this.output = input.createGPULike();
         }
     }
 
@@ -209,13 +209,13 @@ public class LNLayer extends NormalizationLayer {
     @Override
     public void initBack() {
         if (this.diff == null) {
-            this.diff = new Tensor(input.number, input.channel, input.height, input.width, true);
+            this.diff = new Tensor(input.getShape()[0], input.getShape()[1], input.getShape()[2], input.getShape()[3], true);
         }
     }
 
     public void initBack(Tensor diff) {
         if (this.diff == null) {
-            this.diff = new Tensor(diff.number, diff.channel, diff.height, diff.width, true);
+            this.diff = new Tensor(diff.getShape()[0], diff.getShape()[1], diff.getShape()[2], diff.getShape()[3], true);
         }
         if (this.diffGamma == null) {
             this.diffGamma = new Tensor(1, 1, 1, meanNum, true);
@@ -233,6 +233,24 @@ public class LNLayer extends NormalizationLayer {
         //		kernel.forward(gamma, beta, input, output);
         //		kernel.forwardAten(gamma, beta, input, output);
         kernel.forward_llm(gamma, beta, input, output);
+        //		System.err.println("1:");
+        //		output.showDMByNumber(0);
+        //		System.err.println("2:");
+        //		output2.showDMByNumber(0);
+        //
+        //		System.out.println("bn-output:");
+        //		output.showDM();
+    }
+
+    public void output_llmc() {
+        // TODO Auto-generated method stub
+        //		System.out.println(this.index+":"+input.number+":"+input.channel+":"+input.height+":"+input.width);
+        //		System.out.println(this.index+":"+output.number+":"+output.channel+":"+output.height+":"+output.width);
+        //		System.out.println(JsonUtils.toJson(gamma.shape()));
+        //		System.out.println(JsonUtils.toJson(beta.shape()));
+        //		kernel.forward(gamma, beta, input, output);
+        //		kernel.forwardAten(gamma, beta, input, output);
+        kernel.forward_llmc(gamma, beta, input, output);
         //		System.err.println("1:");
         //		output.showDMByNumber(0);
         //		System.err.println("2:");
@@ -332,11 +350,11 @@ public class LNLayer extends NormalizationLayer {
             if (this.updater != null) {
                 this.updater.updateForBN(this);
             } else {
-                for (int i = 0; i < this.gamma.dataLength; i++) {
-                    this.gamma.data[i] -= this.learnRate * this.diffGamma.data[i];
+                for (int i = 0; i < this.gamma.getDataLength(); i++) {
+                    this.gamma.getData()[i] -= this.learnRate * this.diffGamma.getData()[i];
                 }
-                for (int i = 0; i < this.beta.dataLength; i++) {
-                    this.beta.data[i] -= this.learnRate * this.diffBeta.data[i];
+                for (int i = 0; i < this.beta.getDataLength(); i++) {
+                    this.beta.getData()[i] -= this.learnRate * this.diffBeta.getData()[i];
                 }
             }
             this.clearAccGrad();
@@ -397,6 +415,25 @@ public class LNLayer extends NormalizationLayer {
 
          */
         this.output();
+    }
+
+    public void forward_llmc(Tensor input) {
+        // TODO Auto-generated method stub
+        /**
+         * 参数初始化
+
+         */
+        this.init(input);
+        /**
+         * 设置输入
+
+         */
+        this.setInput(input);
+        /**
+         * 计算输出
+
+         */
+        this.output_llmc();
     }
 
     public void forward(Tensor input, Tensor output) {
@@ -464,13 +501,13 @@ public class LNLayer extends NormalizationLayer {
         if (accDW == null) {
             accDW = diffGamma.copyGPU();
         } else {
-            kernel.axpy_gpu(diffGamma, accDW, accDW.dataLength, scale, 1, 1);
+            kernel.axpy_gpu(diffGamma, accDW, accDW.getDataLength(), scale, 1, 1);
         }
         if (hasBias) {
             if (accDB == null) {
                 accDB = diffBeta.copyGPU();
             } else {
-                kernel.axpy_gpu(diffBeta, accDB, accDB.dataLength, scale, 1, 1);
+                kernel.axpy_gpu(diffBeta, accDB, accDB.getDataLength(), scale, 1, 1);
             }
         }
     }

@@ -1,7 +1,7 @@
 package com.omega.engine.loss;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.common.tensor.Tensors;
+import com.omega.engine.tensor.Tensor;
+import com.omega.engine.tensor.Tensors;
 
 /**
  * Cross Entropy loss function
@@ -40,12 +40,12 @@ public class SoftmaxWithCrossEntropyLoss extends LossFunction {
     @Override
     public Tensor loss(Tensor x, Tensor label) {
         // TODO Auto-generated method stub
-        Tensor temp = Tensors.tensor(x.number, x.channel, x.height, x.width);
+        Tensor temp = Tensors.tensor(x.getShape()[0], x.getShape()[1], x.getShape()[2], x.getShape()[3]);
         for (int i = 0; i < x.getDataLength(); i++) {
-            if (x.data[i] == 0.0f) {
-                temp.data[i] = (float) (-label.data[i] * Math.log(eta));
+            if (x.getData()[i] == 0.0f) {
+                temp.getData()[i] = (float) (-label.getData()[i] * Math.log(eta));
             } else {
-                temp.data[i] = (float) (-label.data[i] * Math.log(x.data[i]));
+                temp.getData()[i] = (float) (-label.getData()[i] * Math.log(x.getData()[i]));
             }
         }
         temp.hostToDevice();
@@ -55,9 +55,9 @@ public class SoftmaxWithCrossEntropyLoss extends LossFunction {
     @Override
     public Tensor diff(Tensor x, Tensor label) {
         // TODO Auto-generated method stub
-        Tensor temp = Tensors.tensor(x.number, x.channel, x.height, x.width);
+        Tensor temp = Tensors.tensor(x.getShape()[0], x.getShape()[1], x.getShape()[2], x.getShape()[3]);
         for (int i = 0; i < x.getDataLength(); i++) {
-            temp.data[i] = -label.data[i] / x.data[i];
+            temp.getData()[i] = -label.getData()[i] / x.getData()[i];
             //			System.out.println(temp.data[i]);
         }
         temp.hostToDevice();

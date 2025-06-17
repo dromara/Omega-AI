@@ -1,6 +1,5 @@
 package com.omega.engine.nn.layer.clip;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
@@ -8,6 +7,7 @@ import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.active.GeluLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;
@@ -62,7 +62,7 @@ public class CLIPMLPLayer extends Layer {
     @Override
     public void init() {
         // TODO Auto-generated method stub
-        this.number = this.input.number;
+        this.number = this.input.getShape()[0];
     }
 
     @Override
@@ -79,8 +79,8 @@ public class CLIPMLPLayer extends Layer {
     public void output() {
         // TODO Auto-generated method stub
         if (network.RUN_MODEL == RunModel.EVAL) {
-            Tensor cache = CUDAMemoryManager.getCache("CLIIP_mlp_cache", input.number, 1, 1, nChannel);
-            Tensor cache2 = CUDAMemoryManager.getCache("CLIIP_mlp_cache2", input.number, 1, 1, embedDim);
+            Tensor cache = CUDAMemoryManager.getCache("CLIIP_mlp_cache", input.getShape()[0], 1, 1, nChannel);
+            Tensor cache2 = CUDAMemoryManager.getCache("CLIIP_mlp_cache2", input.getShape()[0], 1, 1, embedDim);
             getLinear1().forward(input, cache);
             active.forward(getLinear1().getOutput(), cache);
             getLinear2().forward(active.getOutput(), cache2);

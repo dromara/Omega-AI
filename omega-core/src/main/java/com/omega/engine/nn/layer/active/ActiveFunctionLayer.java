@@ -1,7 +1,7 @@
 package com.omega.engine.nn.layer.active;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.nn.layer.Layer;
+import com.omega.engine.tensor.Tensor;
 
 public abstract class ActiveFunctionLayer extends Layer {
     public Layer preLayer;
@@ -28,26 +28,26 @@ public abstract class ActiveFunctionLayer extends Layer {
         } else {
             this.number = preLayer.number;
         }
-        if (output == null || number != output.number) {
+        if (output == null || number != output.getShape()[0]) {
             this.output = Tensor.createGPUTensor(this.output, number, oChannel, oHeight, oWidth, true);
             //			this.output = new Tensor(number, oChannel, oHeight, oWidth, true);
         }
     }
 
     public void init(Tensor input) {
-        this.number = input.number;
+        this.number = input.getShape()[0];
         if (this.preLayer == null) {
             this.preLayer = this.network.getPreLayer(this.index);
-            this.channel = input.channel;
-            this.height = input.height;
-            this.width = input.width;
+            this.channel = input.getShape()[1];
+            this.height = input.getShape()[2];
+            this.width = input.getShape()[3];
             this.oChannel = this.channel;
             this.oHeight = this.height;
             this.oWidth = this.width;
         }
-        if (output == null || number != output.number || input.channel != this.output.channel) {
+        if (output == null || number != output.getShape()[0] || input.getShape()[1] != this.output.getShape()[1]) {
             //			System.out.println("atc--->");
-            this.output = Tensor.createGPUTensor(this.output, number, input.channel, input.height, input.width, true);
+            this.output = Tensor.createGPUTensor(this.output, number, input.getShape()[1], input.getShape()[2], input.getShape()[3], true);
         }
     }
 

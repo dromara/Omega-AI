@@ -1,9 +1,9 @@
 package com.omega.engine.nn.layer.diffusion.unet;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * 路由层
@@ -31,7 +31,7 @@ public class UNetRouteLayer extends Layer {
         int offset = 0;
         for (int l = 0; l < x.length; l++) {
             Tensor input = x[l];
-            for (int n = 0; n < output.number; n++) {
+            for (int n = 0; n < output.getShape()[0]; n++) {
                 kernel.copy_gpu(input, output, input.getOnceSize(), n * input.getOnceSize(), 1, offset + n * output.getOnceSize(), 1);
             }
             offset += input.getOnceSize();
@@ -42,7 +42,7 @@ public class UNetRouteLayer extends Layer {
         int offset = 0;
         for (int l = 0; l < diffs.length; l++) {
             Tensor diff = diffs[l];
-            for (int n = 0; n < delta.number; n++) {
+            for (int n = 0; n < delta.getShape()[0]; n++) {
                 //				kernel.axpy_gpu(delta, diff, diff.getOnceSize(), 1, offset + n * delta.getOnceSize(), 1, n * diff.getOnceSize(), 1);
                 kernel.copy_gpu(delta, diff, diff.getOnceSize(), offset + n * delta.getOnceSize(), 1, n * diff.getOnceSize(), 1);
             }
@@ -54,7 +54,7 @@ public class UNetRouteLayer extends Layer {
     public void init() {
         // TODO Auto-generated method stub
         this.number = this.network.number;
-        if (this.output == null || this.output.number != this.number) {
+        if (this.output == null || this.output.getShape()[0] != this.number) {
             this.output = Tensor.createTensor(this.output, number, oChannel, oHeight, oWidth, true);
         }
     }
@@ -62,7 +62,7 @@ public class UNetRouteLayer extends Layer {
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
-        if (layer_start.cache_delta == null || layer_start.cache_delta.number != this.number) {
+        if (layer_start.cache_delta == null || layer_start.cache_delta.getShape()[0] != this.number) {
             layer_start.cache_delta = new Tensor(number, layer_start.oChannel, oHeight, oWidth, true);
         }
     }

@@ -1,10 +1,10 @@
 package com.omega.engine.ad.op.data;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixOperation;
+import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.ad.Tape;
 import com.omega.engine.ad.op.OP;
 import com.omega.engine.ad.op.OPType;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * 获取指定向量数据
@@ -53,7 +53,7 @@ public class SetOP extends OP {
         if (a.isHasGPU()) {
             switch (dims) {
                 case 0:
-                    tape.getTensorOP().op.axpy_gpu(b, a, start * a.channel * a.height * a.width, 0);
+                    tape.getTensorOP().op.axpy_gpu(b, a, start * a.getShape()[1] * a.getShape()[2] * a.getShape()[3], 0);
                     break;
             }
         } else {
@@ -61,7 +61,7 @@ public class SetOP extends OP {
             int c = a.getChannel();
             int h = a.getHeight();
             int w = a.getWidth();
-            MatrixOperation.add(b.data, a.data, n, c, h, w, position);
+            MatrixOperation.add(b.getData(), a.getData(), n, c, h, w, position);
         }
     }
 
@@ -82,9 +82,9 @@ public class SetOP extends OP {
     public void setByNumber(Tensor org, Tensor target, int start, Tape tape) {
         assert org.getNumber() >= (start - 1);
         if (org.isHasGPU()) {
-            tape.getTensorOP().op.copy_gpu(target, org, 0, start * target.channel * target.height * target.width);
+            tape.getTensorOP().op.copy_gpu(target, org, 0, start * target.getShape()[1] * target.getShape()[2] * target.getShape()[3]);
         } else {
-            System.arraycopy(target.data, 0, org.data, start * target.channel * target.height * target.width, target.dataLength);
+            System.arraycopy(target.getData(), 0, org.getData(), start * target.getShape()[1] * target.getShape()[2] * target.getShape()[3], target.getDataLength());
         }
     }
 }

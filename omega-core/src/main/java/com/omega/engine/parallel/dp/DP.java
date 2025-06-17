@@ -1,10 +1,10 @@
 package com.omega.engine.parallel.dp;
 
-import com.omega.utils.JsonUtils;
+import com.omega.common.utils.JsonUtils;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.NetworkType;
 import com.omega.engine.parallel.params.Parameters;
-import com.omega.data.transformer.parallel.ParallelDataLoader;
+import com.omega.example.transformer.dataset.parallel.ParallelDataLoader;
 import jcuda.runtime.JCuda;
 
 import java.util.ArrayList;

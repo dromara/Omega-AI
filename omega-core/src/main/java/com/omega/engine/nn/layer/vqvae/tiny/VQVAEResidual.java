@@ -1,6 +1,5 @@
 package com.omega.engine.nn.layer.vqvae.tiny;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.Layer;
@@ -12,6 +11,7 @@ import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.GNLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;
@@ -34,7 +34,7 @@ public class VQVAEResidual extends Layer {
     private ConvolutionLayer conv_shortcut;
     private boolean shortcut = false;
     private Tensor cache;
-
+    
     public VQVAEResidual(int channel, int oChannel, int height, int width, int group, Network network) {
         this.network = network;
         this.channel = channel;
@@ -80,6 +80,12 @@ public class VQVAEResidual extends Layer {
 
     @Override
     public void initBack() {
+//    	if (network.gradCacheMode) {
+////    		conv1.diff = network.cudaManager.getMemoryManager().getPrivateCaches("vqvae-resblock-conv1", conv1.input.number, conv1.input.channel, conv1.input.height, conv1.input.width);
+//            if(conv2.diff == null || !conv2.diff.checkShape(conv2.input)) {
+//            	conv2.diff = network.cudaManager.getMemoryManager().getPrivateCaches("vqvae-resblock-conv2", conv2.input.number, conv2.input.channel, conv2.input.height, conv2.input.width);
+//            }
+//    	}
     }
 
     @Override
@@ -111,7 +117,7 @@ public class VQVAEResidual extends Layer {
 
     public void output_eval() {
         // TODO Auto-generated method stub
-        Tensor norm_out = CUDAMemoryManager.getCache("VQVAEResidual_norm1_cache", input.number, input.channel, input.height, input.width);
+        Tensor norm_out = CUDAMemoryManager.getCache("VQVAEResidual_norm1_cache", input.getShape()[0], input.getShape()[1], input.getShape()[2], input.getShape()[3]);
         norm1.forward(this.input, norm_out);
         a1.forward(norm1.getOutput(), norm1.getOutput());
         conv1.forward(a1.getOutput(), cache);
@@ -137,10 +143,10 @@ public class VQVAEResidual extends Layer {
     public void diff() {
         // TODO Auto-generated method stub
         //		System.out.println(index);
-        conv2.back(delta);
+        conv2.back(delta, conv2.input);
         a2.back(conv2.diff);
         norm2.back(a2.diff);
-        conv1.back(norm2.diff);
+        conv1.back(norm2.diff, conv1.input);
         a1.back(conv1.diff);
         norm1.back(a1.diff);
         if (shortcut) {

@@ -1,9 +1,10 @@
 package com.omega.engine.gpu.cudnn;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.nn.layer.gpu.BNBaseKernel;
 import com.omega.engine.nn.network.RunModel;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.jcudnn.JCudnn;
 import jcuda.jcudnn.cudnnBatchNormMode;
@@ -48,8 +49,8 @@ public class InstanceNormalizationCudnnKernel extends BNBaseKernel {
     }
 
     public void initForward(Tensor input) {
-        if (input.number != this.N) {
-            this.N = input.number;
+        if (input.getShape()[0] != this.N) {
+            this.N = input.getShape()[0];
             CudnnHandleManager.handle(JCudnn.cudnnDestroyTensorDescriptor(normTensorDesc));
             JCudnn.cudnnCreateTensorDescriptor(normTensorDesc);
             JCudnn.cudnnSetTensor4dDescriptor(normTensorDesc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, 1, N * C, 1, 1);

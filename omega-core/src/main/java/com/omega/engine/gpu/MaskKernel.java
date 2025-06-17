@@ -1,7 +1,8 @@
 package com.omega.engine.gpu;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.PrintUtils;
+import com.omega.common.utils.PrintUtils;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
 import jcuda.runtime.cudaError;
@@ -67,8 +68,8 @@ public class MaskKernel extends CUDAKernel {
              *const size_t size, const float *lens, float *mask,const int number,const int maxLen,const headNum
 
              */
-            kernelParameters = Pointer.to(Pointer.to(new long[]{mask.dataLength}), Pointer.to(lens.getGpuData()), Pointer.to(mask.getGpuData()), Pointer.to(new int[]{number}), Pointer.to(new int[]{maxLen}), Pointer.to(new int[]{headNum}));
-            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(mask.dataLength), 1, 1,      // Grid dimension
+            kernelParameters = Pointer.to(Pointer.to(new long[]{mask.getDataLength()}), Pointer.to(lens.getGpuData()), Pointer.to(mask.getGpuData()), Pointer.to(new int[]{number}), Pointer.to(new int[]{maxLen}), Pointer.to(new int[]{headNum}));
+            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(mask.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameters, null // Kernel- and extra parameters
@@ -86,8 +87,8 @@ public class MaskKernel extends CUDAKernel {
              *const size_t size, const float *lens, float *mask,const int number,const int max_label_len,const int max_feat_len,const int headNum
 
              */
-            kernelParameters = Pointer.to(Pointer.to(new long[]{mask.dataLength}), Pointer.to(lens.getGpuData()), Pointer.to(mask.getGpuData()), Pointer.to(new int[]{number}), Pointer.to(new int[]{max_label_len}), Pointer.to(new int[]{max_feat_len}), Pointer.to(new int[]{headNum}));
-            cuLaunchKernel(unmask_function, this.CAFFE_GET_BLOCKS(mask.dataLength), 1, 1,      // Grid dimension
+            kernelParameters = Pointer.to(Pointer.to(new long[]{mask.getDataLength()}), Pointer.to(lens.getGpuData()), Pointer.to(mask.getGpuData()), Pointer.to(new int[]{number}), Pointer.to(new int[]{max_label_len}), Pointer.to(new int[]{max_feat_len}), Pointer.to(new int[]{headNum}));
+            cuLaunchKernel(unmask_function, this.CAFFE_GET_BLOCKS(mask.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameters, null // Kernel- and extra parameters

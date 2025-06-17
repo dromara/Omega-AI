@@ -1,8 +1,9 @@
 package com.omega.engine.nn.layer.gpu;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
 
@@ -48,8 +49,8 @@ public class BasicBlockKernel extends BaseKernel {
              * float* output, float* biases, int batch, int n, int size
 
              */
-            kernelParameters = Pointer.to(Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{output.dataLength}));
-            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(output.dataLength), 1, 1,      // Grid dimension
+            kernelParameters = Pointer.to(Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{output.getDataLength()}));
+            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(output.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameters, null // Kernel- and extra parameters

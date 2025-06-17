@@ -1,17 +1,17 @@
 package com.omega.engine.parallel.dp;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixOperation;
+import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.nn.network.Llama3;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.NetworkType;
 import com.omega.engine.parallel.params.Llama3Parameters;
 import com.omega.engine.parallel.params.Parameters;
-import com.omega.data.transformer.parallel.params.DataLoaderParamters;
-import com.omega.data.transformer.parallel.params.SFTBinParamters;
-import com.omega.models.transformer.ModelUtils;
-import com.omega.models.transformer.tokenizers.Tokenizer;
+import com.omega.engine.tensor.Tensor;
+import com.omega.example.transformer.dataset.parallel.params.DataLoaderParamters;
+import com.omega.example.transformer.dataset.parallel.params.SFTBinParamters;
+import com.omega.example.transformer.utils.ModelUtils;
+import com.omega.example.transformer.utils.tokenizers.Tokenizer;
 import jcuda.Sizeof;
 import jcuda.driver.CUstream;
 import jcuda.runtime.JCuda;
@@ -74,7 +74,7 @@ public class NetworkRunnable implements Callable<Boolean> {
         Tensor c = null;
         if (caches.containsKey(key)) {
             c = caches.get(key);
-            if (c.gpuLength < N * C * H * W) {
+            if (c.getGpuLength() < N * C * H * W) {
                 c = Tensor.createGPUTensor(c, N, C, H, W, true);
             } else {
                 c = c.viewOrg(N, C, H, W);
@@ -92,7 +92,7 @@ public class NetworkRunnable implements Callable<Boolean> {
             CUDAModules.checkCUDA(JCuda.cudaStreamCreate(stream));
             getCudaStreams().add(stream);
             Tensor src = getNetwork().paramters.get(i);
-            Tensor rec_box = getCache("[" + rankId + "]reduce_cache_" + i, src.number, src.channel, src.height, src.width);
+            Tensor rec_box = getCache("[" + rankId + "]reduce_cache_" + i, src.getShape()[0], src.getShape()[1], src.getShape()[2], src.getShape()[3]);
             getCacheBoxs().add(rec_box);
         }
     }
@@ -322,7 +322,7 @@ public class NetworkRunnable implements Callable<Boolean> {
              * collect and compute loss
              *
              */
-            int count = input.number;
+            int count = input.getShape()[0];
             if (pad >= 0) {
                 count = paramters.getPadCount()[0];
             }
@@ -332,7 +332,7 @@ public class NetworkRunnable implements Callable<Boolean> {
                 if (it % 100 == 0) {
                     Tokenizer tokenizer = dp.getPd().getDataloaders().get(rankId).tokenizer;
                     int batchSize = dp.getPd().getDataloaders().get(rankId).getBatchSize();
-                    int time = output.number / dp.getPd().getDataloaders().get(rankId).getBatchSize();
+                    int time = output.getShape()[0] / dp.getPd().getDataloaders().get(rankId).getBatchSize();
                     this.accuracyBatchFisrt(input, output, label, time, batchSize, tokenizer, pad);
                 }
                 allReduce_sum_loss(start, it);
@@ -393,7 +393,7 @@ public class NetworkRunnable implements Callable<Boolean> {
                     NetworkRunnable rank = dp.getThreads().get(key);
                     Tensor tag = rank.getNetwork().deltaParamters.get(i);
                     //					CUDAModules.checkCUDA(JCuda.cudaMemcpy(cache.getGpuData(), tag.getGpuData(), tag.dataLength * (long)Sizeof.FLOAT, cudaMemcpyKind.cudaMemcpyDeviceToDevice));
-                    CUDAModules.checkCUDA(JCuda.cudaMemcpyPeer(cache.getGpuData(), rankId, tag.getGpuData(), key, tag.dataLength * (long) Sizeof.FLOAT));
+                    CUDAModules.checkCUDA(JCuda.cudaMemcpyPeer(cache.getGpuData(), rankId, tag.getGpuData(), key, tag.getDataLength() * (long) Sizeof.FLOAT));
                     CUDAModules.checkCUDA(JCuda.cudaDeviceSynchronize());
                     getNetwork().tensorOP.add(src, cache, src);
                     CUDAModules.checkCUDA(JCuda.cudaDeviceSynchronize());
@@ -423,7 +423,7 @@ public class NetworkRunnable implements Callable<Boolean> {
                             if (key != rankId) {
                                 NetworkRunnable rank = dp.getThreads().get(key);
                                 Tensor tag = rank.getNetwork().deltaParamters.get(idx);
-                                JCuda.cudaMemcpyPeerAsync(cache.getGpuData(), rankId, tag.getGpuData(), key, tag.dataLength * (long) Sizeof.FLOAT, stream);
+                                JCuda.cudaMemcpyPeerAsync(cache.getGpuData(), rankId, tag.getGpuData(), key, tag.getDataLength() * (long) Sizeof.FLOAT, stream);
                                 getNetwork().tensorOP.add(src, cache, src, cs);
                             }
                         }
@@ -449,7 +449,7 @@ public class NetworkRunnable implements Callable<Boolean> {
                 if (key != rankId) {
                     NetworkRunnable rank = dp.getThreads().get(key);
                     Tensor tag = rank.getNetwork().deltaParamters.get(i);
-                    CUDAModules.checkCUDA(JCuda.cudaMemcpyPeerAsync(cache.getGpuData(), rankId, tag.getGpuData(), key, tag.dataLength * (long) Sizeof.FLOAT, stream));
+                    CUDAModules.checkCUDA(JCuda.cudaMemcpyPeerAsync(cache.getGpuData(), rankId, tag.getGpuData(), key, tag.getDataLength() * (long) Sizeof.FLOAT, stream));
                     getNetwork().tensorOP.add(src, cache, src, cs);
                 }
             }
@@ -485,7 +485,7 @@ public class NetworkRunnable implements Callable<Boolean> {
                          * unblocking send src
                          *
                          */
-                        JCuda.cudaMemcpyPeerAsync(next.getGpuData(), nextRand.rankId, src.getGpuData(), rankId, src.dataLength * (long) Sizeof.FLOAT, stream);
+                        JCuda.cudaMemcpyPeerAsync(next.getGpuData(), nextRand.rankId, src.getGpuData(), rankId, src.getDataLength() * (long) Sizeof.FLOAT, stream);
                         /**
                          * blocking receive rec_box
                          *
@@ -500,7 +500,7 @@ public class NetworkRunnable implements Callable<Boolean> {
                     }
                     //					JCuda.cudaStreamSynchronize(stream);
                     if (dp.getThreads().size() % 2 == 0) {
-                        JCuda.cudaMemcpyAsync(getNetwork().deltaParamters.get(idx).getGpuData(), cacheBoxs.get(idx).getGpuData(), cacheBoxs.get(idx).dataLength * (long) Sizeof.FLOAT, cudaMemcpyKind.cudaMemcpyDeviceToDevice, stream);
+                        JCuda.cudaMemcpyAsync(getNetwork().deltaParamters.get(idx).getGpuData(), cacheBoxs.get(idx).getGpuData(), cacheBoxs.get(idx).getDataLength() * (long) Sizeof.FLOAT, cudaMemcpyKind.cudaMemcpyDeviceToDevice, stream);
                         //						network.tensorOP.copyGPU(cacheBoxs.get(idx), network.deltaParamters.get(idx));
                     }
                     JCuda.cudaStreamSynchronize(stream);
@@ -519,7 +519,7 @@ public class NetworkRunnable implements Callable<Boolean> {
                     NetworkRunnable rank = dp.getThreads().get(key);
                     Tensor tag = rank.getNetwork().paramters.get(i);
                     //					CUDAModules.checkCUDA(JCuda.cudaMemcpy(tag.getGpuData(), src.getGpuData(), src.dataLength * (long)Sizeof.FLOAT, cudaMemcpyKind.cudaMemcpyDeviceToDevice));
-                    CUDAModules.checkCUDA(JCuda.cudaMemcpyPeer(tag.getGpuData(), key, src.getGpuData(), this.rankId, src.dataLength * (long) Sizeof.FLOAT));
+                    CUDAModules.checkCUDA(JCuda.cudaMemcpyPeer(tag.getGpuData(), key, src.getGpuData(), this.rankId, src.getDataLength() * (long) Sizeof.FLOAT));
                 }
             }
         }
@@ -544,7 +544,7 @@ public class NetworkRunnable implements Callable<Boolean> {
                             if (key != rankId) {
                                 NetworkRunnable rank = dp.getThreads().get(key);
                                 Tensor tag = rank.getNetwork().paramters.get(idx);
-                                CUDAModules.checkCUDA(JCuda.cudaMemcpyPeerAsync(tag.getGpuData(), key, src.getGpuData(), rankId, src.dataLength * (long) Sizeof.FLOAT, stream));
+                                CUDAModules.checkCUDA(JCuda.cudaMemcpyPeerAsync(tag.getGpuData(), key, src.getGpuData(), rankId, src.getDataLength() * (long) Sizeof.FLOAT, stream));
                             }
                         }
                         JCuda.cudaStreamSynchronize(stream);
@@ -567,7 +567,7 @@ public class NetworkRunnable implements Callable<Boolean> {
                 if (key != rankId) {
                     NetworkRunnable rank = dp.getThreads().get(key);
                     Tensor tag = rank.getNetwork().paramters.get(i);
-                    CUDAModules.checkCUDA(JCuda.cudaMemcpyPeerAsync(tag.getGpuData(), key, src.getGpuData(), rankId, src.dataLength * (long) Sizeof.FLOAT, stream));
+                    CUDAModules.checkCUDA(JCuda.cudaMemcpyPeerAsync(tag.getGpuData(), key, src.getGpuData(), rankId, src.getDataLength() * (long) Sizeof.FLOAT, stream));
                 }
             }
         }
@@ -583,7 +583,7 @@ public class NetworkRunnable implements Callable<Boolean> {
                     NetworkRunnable rank = dp.getThreads().get(key);
                     Tensor tag = rank.getNetwork().deltaParamters.get(i);
                     //					CUDAModules.checkCUDA(JCuda.cudaMemcpy(tag.getGpuData(), src.getGpuData(), src.dataLength * (long)Sizeof.FLOAT, cudaMemcpyKind.cudaMemcpyDeviceToDevice));
-                    CUDAModules.checkCUDA(JCuda.cudaMemcpyPeer(tag.getGpuData(), key, src.getGpuData(), this.rankId, src.dataLength * (long) Sizeof.FLOAT));
+                    CUDAModules.checkCUDA(JCuda.cudaMemcpyPeer(tag.getGpuData(), key, src.getGpuData(), this.rankId, src.getDataLength() * (long) Sizeof.FLOAT));
                 }
             }
         }
@@ -607,7 +607,7 @@ public class NetworkRunnable implements Callable<Boolean> {
             for (int t = 0; t < time; t++) {
                 int predictIndex = MatrixOperation.maxIndex(output.getByNumber(n * time + t));
                 //					int labelIndex = MatrixOperation.maxIndex(labelData.getByNumber(n * time + t));
-                int labelIndex = (int) label.data[n * time + t];
+                int labelIndex = (int) label.getData()[n * time + t];
                 if (labelIndex != igonre && labelIndex != predictIndex) {
                     allRight = false;
                     score--;
@@ -624,8 +624,8 @@ public class NetworkRunnable implements Callable<Boolean> {
         for (int t = 0; t < time; t++) {
             int predictIndex = MatrixOperation.maxIndex(output.getByNumber(max_index * time + t));
             //			int labelIndex = MatrixOperation.maxIndex(labelData.getByNumber(n * time + t));
-            int labelIndex = (int) label.data[max_index * time + t];
-            int inputIndex = (int) input.data[max_index * time + t];
+            int labelIndex = (int) label.getData()[max_index * time + t];
+            int inputIndex = (int) input.getData()[max_index * time + t];
             itxt[t] = inputIndex;
             ptxt[t] = predictIndex;
             ltxt[t] = labelIndex;

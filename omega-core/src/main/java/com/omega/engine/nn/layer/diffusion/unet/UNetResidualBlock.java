@@ -1,7 +1,6 @@
 package com.omega.engine.nn.layer.diffusion.unet;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -12,9 +11,10 @@ import com.omega.engine.nn.layer.unet.UNetTEmbLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.nn.network.Transformer;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
-import com.omega.utils.clip.ClipModelUtils;
-import com.omega.models.transformer.LagJsonReader;
+import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.transformer.utils.LagJsonReader;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -135,8 +135,8 @@ public class UNetResidualBlock extends Layer {
 
     public void init(Tensor input) {
         // TODO Auto-generated method stub
-        this.number = input.number;
-        if (tout == null || tout.number != this.number) {
+        this.number = input.getShape()[0];
+        if (tout == null || tout.getShape()[0] != this.number) {
             tout = Tensor.createGPUTensor(tout, number, oChannel, height, width, true);
         }
         //		if(this.output == null || this.output.number != this.number) {
@@ -147,7 +147,7 @@ public class UNetResidualBlock extends Layer {
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
-        if (dt == null || dt.number != this.number) {
+        if (dt == null || dt.getShape()[0] != this.number) {
             dt = Tensor.createGPUTensor(dt, this.number, 1, 1, oChannel, true);
         }
     }

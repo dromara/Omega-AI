@@ -1,10 +1,9 @@
 package com.omega.engine.optimizer;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.image.ImageUtils;
-import com.omega.utils.MathUtils;
-import com.omega.utils.MatrixOperation;
-import com.omega.utils.MatrixUtils;
+import com.omega.common.utils.ImageUtils;
+import com.omega.common.utils.MathUtils;
+import com.omega.common.utils.MatrixOperation;
+import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.ad.Graph;
 import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.loss.BCELoss;
@@ -12,7 +11,8 @@ import com.omega.engine.nn.data.BaseData;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.optimizer.lr.LearnRateUpdate;
-import com.omega.utils.image.ImageDataLoader;
+import com.omega.engine.tensor.Tensor;
+import com.omega.example.gan.utils.ImageDataLoader;
 
 public class GANOptimizer extends Optimizer {
     private Network netG;
@@ -59,16 +59,16 @@ public class GANOptimizer extends Optimizer {
         ImageUtils utils = new ImageUtils();
         int gifw = 8;
         int gifh = 8;
-        int imgw = input.width;
-        int imgh = input.height;
+        int imgw = input.getShape()[3];
+        int imgh = input.getShape()[2];
         if (imgh == 1 && imgw > 1) {
             imgh = (int) Math.sqrt(imgw);
             imgw = (int) Math.sqrt(imgw);
         }
         int gifWidth = gifw * imgw;
         int gifHeight = gifh * imgh;
-        float[] gif = new float[imgw * imgh * 64 * input.channel];
-        for (int c = 0; c < input.channel; c++) {
+        float[] gif = new float[imgw * imgh * 64 * input.getShape()[1]];
+        for (int c = 0; c < input.getShape()[1]; c++) {
             for (int b = 0; b < gifw * gifh; b++) {
                 int gh = b / gifw;
                 int gw = b % gifh;
@@ -83,7 +83,7 @@ public class GANOptimizer extends Optimizer {
                 }
             }
         }
-        utils.createRGBImage(outputPath + it + ".png", "png", ImageUtils.color2rgb2(gif, input.channel, gifHeight, gifWidth, false), gifWidth, gifHeight, null, null);
+        utils.createRGBImage(outputPath + it + ".png", "png", ImageUtils.color2rgb2(gif, input.getShape()[1], gifHeight, gifWidth, false), gifWidth, gifHeight, null, null);
     }
 
     public static void showImgs(String outputPath, Tensor input) {
@@ -91,7 +91,7 @@ public class GANOptimizer extends Optimizer {
         for (int b = 0; b < 64; b++) {
             float[] once = input.getByNumber(b);
             once = MatrixOperation.multiplication(MatrixOperation.add(once, 1.0f), 255.0f / 2);
-            utils.createRGBImage(outputPath + b + ".png", "png", ImageUtils.color2rgb2(once, input.channel, 28, 28, false), 28, 28, null, null);
+            utils.createRGBImage(outputPath + b + ".png", "png", ImageUtils.color2rgb2(once, input.getShape()[1], 28, 28, false), 28, 28, null, null);
         }
     }
 
@@ -324,7 +324,7 @@ public class GANOptimizer extends Optimizer {
         Tensor loss1 = y.mul(i.log());
         Tensor loss2 = y.scalarSub(1.0f).mul(i.scalarSub(1.0f).log());
         Tensor loss = loss1.add(loss2);
-        return loss.sum(0).div(-x.number * x.width);
+        return loss.sum(0).div(-x.getShape()[0] * x.getShape()[3]);
     }
 
     public Tensor MSELoss(Tensor x, Tensor y, Graph g) {
@@ -332,7 +332,7 @@ public class GANOptimizer extends Optimizer {
         x.setG(g);
         y.setG(g);
         Tensor loss = x.sub(y).pow(2);
-        return loss.sum(0).div(x.number * x.width);
+        return loss.sum(0).div(x.getShape()[0] * x.getShape()[3]);
     }
 
     public void trainDG2(BaseData trainingData, int index, int[][] indexs, int it, Tensor true_labels, Tensor fake_labels, Tensor inputG, Tensor inputD, Graph gd1, Graph gd2, Graph gg, Tensor d_fake_output, Tensor d_true_output) {
@@ -734,7 +734,7 @@ public class GANOptimizer extends Optimizer {
                 }
             }
         }
-        int[][] rgb = ImageUtils.color2rgb2(gif, input.channel, gifHeight, gifWidth, false);
+        int[][] rgb = ImageUtils.color2rgb2(gif, input.getShape()[1], gifHeight, gifWidth, false);
         rgbs[gif_index] = rgb;
         if (gif_index == count - 1) {
             utils.createRGBGIF(outputPath + it + ".gif", "gif", rgbs, gifWidth, gifHeight);

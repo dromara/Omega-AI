@@ -1,18 +1,25 @@
 package com.omega.engine.gpu.cudnn;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.engine.gpu.CUDAManager;
-import com.omega.engine.nn.layer.gpu.ConvBaseKernel;
-import com.omega.engine.nn.network.Network;
-import jcuda.Pointer;
-import jcuda.jcudnn.*;
-import jcuda.runtime.JCuda;
-
 import static jcuda.jcudnn.cudnnConvolutionBwdDataAlgo.CUDNN_CONVOLUTION_BWD_DATA_ALGO_COUNT;
 import static jcuda.jcudnn.cudnnConvolutionFwdAlgo.CUDNN_CONVOLUTION_FWD_ALGO_COUNT;
 import static jcuda.jcudnn.cudnnConvolutionMode.CUDNN_CROSS_CORRELATION;
 import static jcuda.jcudnn.cudnnDataType.CUDNN_DATA_FLOAT;
 import static jcuda.jcudnn.cudnnTensorFormat.CUDNN_TENSOR_NCHW;
+
+import com.omega.engine.gpu.CUDAManager;
+import com.omega.engine.nn.layer.gpu.ConvBaseKernel;
+import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
+
+import jcuda.Pointer;
+import jcuda.jcudnn.JCudnn;
+import jcuda.jcudnn.cudnnConvolutionBwdDataAlgoPerf;
+import jcuda.jcudnn.cudnnConvolutionBwdFilterAlgoPerf;
+import jcuda.jcudnn.cudnnConvolutionDescriptor;
+import jcuda.jcudnn.cudnnConvolutionFwdAlgoPerf;
+import jcuda.jcudnn.cudnnFilterDescriptor;
+import jcuda.jcudnn.cudnnTensorDescriptor;
+import jcuda.runtime.JCuda;
 
 public class ConvCudnnKernel extends ConvBaseKernel {
     private int C;
@@ -88,7 +95,7 @@ public class ConvCudnnKernel extends ConvBaseKernel {
             int[] weight = {ko, C, kh, kw};
             int[] upscaleA = {1, 1};
             int[] tensorOuputDimA = {N, C, H, W};
-            //			System.out.println(JsonUtils.toJson(tensorOuputDimA));
+//            			System.out.println(JsonUtils.toJson(tensorOuputDimA));
             JCudnn.cudnnSetTensor4dDescriptor(xDesc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, N, C, H, W);
             JCudnn.cudnnSetFilterNdDescriptor(kernelDesc, CUDNN_DATA_FLOAT, CUDNN_TENSOR_NCHW, 4, weight);
             int[] filterStrideA = {stride, stride};
@@ -107,7 +114,7 @@ public class ConvCudnnKernel extends ConvBaseKernel {
     }
 
     public void conv(Tensor input, Tensor kernel, Tensor output) {
-        this.init(input.number);
+        this.init(input.getShape()[0]);
         handle(JCudnn.cudnnConvolutionForward(CudnnHandleManager.getHandle(), alpha_P, xDesc, input.getGpuData(), kernelDesc, kernel.getGpuData(), convDesc, fw_algo, this.network.workspace, this.network.workspaceSize, beta_P, yDesc, output.getGpuData()));
     }
 

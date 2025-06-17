@@ -1,8 +1,8 @@
 package com.omega.engine.database;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MathUtils;
+import com.omega.common.utils.MathUtils;
 import com.omega.engine.nn.data.DataSet;
+import com.omega.engine.tensor.Tensor;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -34,8 +34,8 @@ public class DataLoader {
     public void loadTrainData(int[] indexs, Tensor input, Tensor label) {
         for (int i = 0; i < indexs.length; i++) {
             int index = indexs[i];
-            System.arraycopy(input.data, index * channel * height * width, input.data, i * channel * height * width, channel * height * width);
-            System.arraycopy(label.data, index * labelSize, label.data, i * labelSize, labelSize);
+            System.arraycopy(input.getData(), index * channel * height * width, input.getData(), i * channel * height * width, channel * height * width);
+            System.arraycopy(label.getData(), index * labelSize, label.getData(), i * labelSize, labelSize);
         }
     }
 

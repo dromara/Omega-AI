@@ -1,8 +1,7 @@
 package com.omega.engine.nn.layer;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixUtils;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.MatrixUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.gpu.cudnn.ConvTransposeCudnnKernel;
 import com.omega.engine.nn.layer.gpu.BiasKernel;
@@ -13,6 +12,7 @@ import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.nn.network.utils.ModelUtils;
+import com.omega.engine.tensor.Tensor;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -189,7 +189,7 @@ public class ConvolutionTransposeLayer extends Layer {
     public void init() {
         // TODO Auto-generated method stub
         this.number = this.network.number;
-        if (this.output == null || this.number != this.output.number) {
+        if (this.output == null || this.number != this.output.getShape()[0]) {
             //			this.output = new Tensor(number, oChannel, oHeight, oWidth, true);
             this.output = Tensor.createTensor(this.output, number, oChannel, oHeight, oWidth, true);
         }
@@ -208,7 +208,7 @@ public class ConvolutionTransposeLayer extends Layer {
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
-        if (this.diff == null || this.number != this.diff.number) {
+        if (this.diff == null || this.number != this.diff.getShape()[0]) {
             this.diff = new Tensor(number, channel, height, width, true);
         }
     }
@@ -333,10 +333,10 @@ public class ConvolutionTransposeLayer extends Layer {
                 this.updater.update(this);
             } else {
                 for (int i = 0; i < this.weight.getDataLength(); i++) {
-                    this.weight.data[i] -= this.learnRate * this.diffW.data[i];
+                    this.weight.getData()[i] -= this.learnRate * this.diffW.getData()[i];
                 }
                 for (int i = 0; i < this.bias.getDataLength(); i++) {
-                    this.bias.data[i] -= this.learnRate * this.diffB.data[i];
+                    this.bias.getData()[i] -= this.learnRate * this.diffB.getData()[i];
                 }
             }
             this.clearAccGrad();
@@ -349,13 +349,13 @@ public class ConvolutionTransposeLayer extends Layer {
         if (accDW == null) {
             accDW = diffW.copyGPU();
         } else {
-            kernel.axpy_gpu(diffW, accDW, accDW.dataLength, scale, 1, 1);
+            kernel.axpy_gpu(diffW, accDW, accDW.getDataLength(), scale, 1, 1);
         }
         if (hasBias) {
             if (accDB == null) {
                 accDB = diffB.copyGPU();
             } else {
-                kernel.axpy_gpu(diffB, accDB, accDB.dataLength, scale, 1, 1);
+                kernel.axpy_gpu(diffB, accDB, accDB.getDataLength(), scale, 1, 1);
             }
         }
     }

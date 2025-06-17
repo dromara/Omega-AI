@@ -1,8 +1,9 @@
 package com.omega.engine.nn.layer.gpu;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUfunction;
@@ -64,16 +65,16 @@ public class RNNKernel extends BaseKernel {
 
     public void addBias(Tensor output, Tensor bias) {
         try {
-            if (biasKernelParameters == null || output.number != this.N) {
+            if (biasKernelParameters == null || output.getShape()[0] != this.N) {
                 /**
                  * 设置入参
                  * float* output, float* biases, int batch, int n, int size
 
                  */
                 biasKernelParameters = Pointer.to(Pointer.to(output.getGpuData()), Pointer.to(bias.getGpuData()), Pointer.to(new int[]{output.getNumber()}), Pointer.to(new int[]{output.getWidth()}), Pointer.to(new int[]{1}));
-                this.N = output.number;
+                this.N = output.getShape()[0];
             }
-            cuLaunchKernel(bias_function, this.CAFFE_GET_BLOCKS(output.dataLength), 1, 1,      // Grid dimension
+            cuLaunchKernel(bias_function, this.CAFFE_GET_BLOCKS(output.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     biasKernelParameters, null // Kernel- and extra parameters
@@ -86,16 +87,16 @@ public class RNNKernel extends BaseKernel {
 
     public void addBias(Tensor output, Tensor bias, int t) {
         try {
-            if (biasKernelParameters == null || output.number != this.N) {
+            if (biasKernelParameters == null || output.getShape()[0] != this.N) {
                 /**
                  * 设置入参
                  * float* output, float* biases, int batch, int n, int size
 
                  */
                 biasKernelParameters = Pointer.to(Pointer.to(output.getGpuData().withByteOffset(t * Sizeof.FLOAT)), Pointer.to(bias.getGpuData()), Pointer.to(new int[]{output.getNumber()}), Pointer.to(new int[]{output.getWidth()}), Pointer.to(new int[]{1}));
-                this.N = output.number;
+                this.N = output.getShape()[0];
             }
-            cuLaunchKernel(bias_function, this.CAFFE_GET_BLOCKS(output.dataLength), 1, 1,      // Grid dimension
+            cuLaunchKernel(bias_function, this.CAFFE_GET_BLOCKS(output.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     biasKernelParameters, null // Kernel- and extra parameters
@@ -108,16 +109,16 @@ public class RNNKernel extends BaseKernel {
 
     public void addOutputBias(Tensor o1, Tensor o2, Tensor bias, int t) {
         try {
-            if (outputBiasKernelParameters == null || o1.number != this.N) {
+            if (outputBiasKernelParameters == null || o1.getShape()[0] != this.N) {
                 /**
                  * 设置入参
                  * float* output, float* biases, int batch, int n, int size
 
                  */
                 outputBiasKernelParameters = Pointer.to(Pointer.to(o1.getGpuData().withByteOffset(t * Sizeof.FLOAT)), Pointer.to(o2.getGpuData().withByteOffset(t * Sizeof.FLOAT)), Pointer.to(bias.getGpuData()), Pointer.to(new int[]{o1.getNumber()}), Pointer.to(new int[]{o1.getWidth()}), Pointer.to(new int[]{1}));
-                this.N = o1.number;
+                this.N = o1.getShape()[0];
             }
-            cuLaunchKernel(output_bias_function, this.CAFFE_GET_BLOCKS(o1.dataLength), 1, 1,      // Grid dimension
+            cuLaunchKernel(output_bias_function, this.CAFFE_GET_BLOCKS(o1.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     outputBiasKernelParameters, null // Kernel- and extra parameters
@@ -130,16 +131,16 @@ public class RNNKernel extends BaseKernel {
 
     public void addOutput(Tensor o1, Tensor o2, int t) {
         try {
-            if (outputKernelParameters == null || o1.number != this.N) {
+            if (outputKernelParameters == null || o1.getShape()[0] != this.N) {
                 /**
                  * 设置入参
                  * float* output, float* biases, int batch, int n, int size
 
                  */
                 outputKernelParameters = Pointer.to(Pointer.to(o1.getGpuData().withByteOffset(t * Sizeof.FLOAT)), Pointer.to(o2.getGpuData().withByteOffset(t * Sizeof.FLOAT)), Pointer.to(new int[]{o1.getNumber()}), Pointer.to(new int[]{o1.getWidth()}), Pointer.to(new int[]{1}));
-                this.N = o1.number;
+                this.N = o1.getShape()[0];
             }
-            cuLaunchKernel(output_function, this.CAFFE_GET_BLOCKS(o1.dataLength), 1, 1,      // Grid dimension
+            cuLaunchKernel(output_function, this.CAFFE_GET_BLOCKS(o1.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     outputKernelParameters, null // Kernel- and extra parameters

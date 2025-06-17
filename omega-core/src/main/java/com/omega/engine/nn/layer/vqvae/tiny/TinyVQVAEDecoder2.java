@@ -1,6 +1,10 @@
 package com.omega.engine.nn.layer.vqvae.tiny;
 
-import com.omega.common.tensor.Tensor;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.util.ArrayList;
+import java.util.List;
+
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -8,11 +12,7 @@ import com.omega.engine.nn.layer.active.SiLULayer;
 import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.GNLayer;
 import com.omega.engine.nn.network.Network;
-
-import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.util.ArrayList;
-import java.util.List;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * VQVAEDecoder
@@ -30,7 +30,7 @@ public class TinyVQVAEDecoder2 extends Layer {
     private GNLayer convNormOut;
     private SiLULayer convAct;
     private ConvolutionLayer convOut;
-
+    
     public TinyVQVAEDecoder2(int channel, int oChannel, int height, int width, int num_res_blocks, int groups, int headNum, int[] ch_mult, int ch, Network network) {
         this.network = network;
         this.channel = channel;
@@ -86,6 +86,7 @@ public class TinyVQVAEDecoder2 extends Layer {
         convOut = new ConvolutionLayer(c_out, oChannel, iw, ih, 3, 3, 1, 1, true, this.network);
         this.oHeight = convOut.oHeight;
         this.oWidth = convOut.oWidth;
+        
     }
 
     @Override
@@ -135,7 +136,12 @@ public class TinyVQVAEDecoder2 extends Layer {
         Tensor d = convNormOut.diff;
         for (int i = up.size() - 1; i >= 0; i--) {
             Layer l = up.get(i);
-            l.back(d);
+            if(l instanceof ConvolutionLayer) {
+            	ConvolutionLayer conv = (ConvolutionLayer) l;
+            	conv.back(d, conv.input);
+            }else {
+            	l.back(d);
+            }
             d = l.diff;
         }
         convIn.back(d);

@@ -1,6 +1,5 @@
 package com.omega.engine.nn.network.utils;
 
-import com.omega.common.tensor.Tensor;
 import jcuda.Sizeof;
 
 import java.io.IOException;
@@ -8,6 +7,8 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.stream.IntStream;
+
+import com.omega.engine.tensor.Tensor;
 
 public class ModelUtils {
     public static void saveIntData(RandomAccessFile outputStream, int[] data) throws IOException {
@@ -27,9 +28,9 @@ public class ModelUtils {
     }
 
     public static void readFloat(RandomAccessFile inputStream, Tensor data) throws IOException {
-        for (int i = 0; i < data.data.length; i++) {
+        for (int i = 0; i < data.getData().length; i++) {
             float v = readFloat(inputStream);
-            data.data[i] = v;
+            data.getData()[i] = v;
             if (v == Float.NaN) {
                 System.err.println(v);
             }
@@ -145,8 +146,8 @@ public class ModelUtils {
         if (data.isHasGPU()) {
             data.syncHost();
         }
-        for (int i = 0; i < data.data.length; i++) {
-            writeFloat(outputStream, data.data[i]);
+        for (int i = 0; i < data.getData().length; i++) {
+            writeFloat(outputStream, data.getData()[i]);
         }
     }
 

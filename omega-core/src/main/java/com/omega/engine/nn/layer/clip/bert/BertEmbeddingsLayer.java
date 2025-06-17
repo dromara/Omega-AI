@@ -1,12 +1,12 @@
 package com.omega.engine.nn.layer.clip.bert;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.layer.EmbeddingIDLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;
@@ -73,8 +73,8 @@ public class BertEmbeddingsLayer extends Layer {
     @Override
     public void init() {
         // TODO Auto-generated method stub
-        this.number = this.input.number;
-        if (positionIDS == null || positionIDS.number != this.number * maxPositionEmbeddingsSize) {
+        this.number = this.input.getShape()[0];
+        if (positionIDS == null || positionIDS.getShape()[0] != this.number * maxPositionEmbeddingsSize) {
             float[] data = RandomUtils.orderAndUnsqueeze(maxPositionEmbeddingsSize, this.number, 1.0f, 0.0f);
             positionIDS = new Tensor(this.number * maxPositionEmbeddingsSize, 1, 1, 1, data, true);
         }

@@ -1,8 +1,8 @@
 package com.omega.engine.nn.layer;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.nn.layer.gpu.UpSampleKernel;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * 上采用层
@@ -48,7 +48,7 @@ public class UPSampleLayer extends Layer {
     public void init() {
         // TODO Auto-generated method stub
         this.number = this.network.number;
-        if (this.output == null || this.output.number != number) {
+        if (this.output == null || this.output.getShape()[0] != number) {
             //			this.output = new Tensor(number, oChannel, oHeight, oWidth, true);
             this.output = Tensor.createTensor(this.output, number, oChannel, oHeight, oWidth, true);
         }
@@ -59,8 +59,8 @@ public class UPSampleLayer extends Layer {
 
     public void init(Tensor input) {
         // TODO Auto-generated method stub
-        this.number = input.number;
-        if (this.output == null || this.output.number != number) {
+        this.number = input.getShape()[0];
+        if (this.output == null || this.output.getShape()[0] != number) {
             //			this.output = new Tensor(number, oChannel, oHeight, oWidth, true);
             this.output = Tensor.createTensor(this.output, number, oChannel, oHeight, oWidth, true);
         }
@@ -72,7 +72,7 @@ public class UPSampleLayer extends Layer {
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
-        if (this.diff == null || this.diff.number != number) {
+        if (this.diff == null || this.diff.getShape()[0] != number) {
             this.diff = new Tensor(number, channel, height, width, true);
         }
     }

@@ -1,9 +1,9 @@
 package com.omega.engine.ad.op.sign;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.ad.Tape;
 import com.omega.engine.ad.op.OPType;
 import com.omega.engine.ad.op.SignOP;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * f(a,b) = a / b;
@@ -77,7 +77,7 @@ public class DivOP extends SignOP {
             if (y.getGrad().isHasGPU()) {
                 tape.getTensorOP().op.div_bGrad_gpu(delta, x, y, y.getGrad());
             } else {
-                bGrad(delta.data, x.data, y.data, y.getGrad().data);
+                bGrad(delta.getData(), x.getData(), y.getData(), y.getGrad().getData());
             }
         }
     }

@@ -1,13 +1,14 @@
 package com.omega.engine.updater.gpu;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.loss.SoftmaxWithCrossEntropyLoss;
 import com.omega.engine.nn.network.BPNetwork;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
 
@@ -111,8 +112,8 @@ public class RMSPropKernel extends BaseKernel {
              * float *diffW, float *rw, float *weight, float mul, float eta, float learnRate, int n, int batch, int clamp, float min, float max
 
              */
-            kernelParameters = Pointer.to(Pointer.to(diffW.getGpuData()), Pointer.to(rw.getGpuData()), Pointer.to(weight.getGpuData()), Pointer.to(new float[]{mua}), Pointer.to(new float[]{eta}), Pointer.to(new float[]{lr}), Pointer.to(new float[]{weight_decay}), Pointer.to(new int[]{diffW.dataLength}), Pointer.to(new int[]{net.number}), Pointer.to(new int[]{clamp}), Pointer.to(new float[]{min}), Pointer.to(new float[]{max}));
-            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(diffW.dataLength), 1, 1,      // Grid dimension
+            kernelParameters = Pointer.to(Pointer.to(diffW.getGpuData()), Pointer.to(rw.getGpuData()), Pointer.to(weight.getGpuData()), Pointer.to(new float[]{mua}), Pointer.to(new float[]{eta}), Pointer.to(new float[]{lr}), Pointer.to(new float[]{weight_decay}), Pointer.to(new int[]{diffW.getDataLength()}), Pointer.to(new int[]{net.number}), Pointer.to(new int[]{clamp}), Pointer.to(new float[]{min}), Pointer.to(new float[]{max}));
+            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(diffW.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameters, null // Kernel- and extra parameters
@@ -130,8 +131,8 @@ public class RMSPropKernel extends BaseKernel {
              * float *diffW, float *rw, float *weight, float mul, float eta, float learnRate, int n, int batch, int clamp, float min, float max
 
              */
-            kernelParameters = Pointer.to(Pointer.to(diffW.getGpuData()), Pointer.to(rw.getGpuData()), Pointer.to(weight.getGpuData()), Pointer.to(new float[]{mua}), Pointer.to(new float[]{eta}), Pointer.to(new float[]{lr}), Pointer.to(new float[]{weight_decay}), Pointer.to(new int[]{diffW.dataLength}), Pointer.to(new int[]{batchSize}), Pointer.to(new int[]{clamp}), Pointer.to(new float[]{min}), Pointer.to(new float[]{max}));
-            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(diffW.dataLength), 1, 1,      // Grid dimension
+            kernelParameters = Pointer.to(Pointer.to(diffW.getGpuData()), Pointer.to(rw.getGpuData()), Pointer.to(weight.getGpuData()), Pointer.to(new float[]{mua}), Pointer.to(new float[]{eta}), Pointer.to(new float[]{lr}), Pointer.to(new float[]{weight_decay}), Pointer.to(new int[]{diffW.getDataLength()}), Pointer.to(new int[]{batchSize}), Pointer.to(new int[]{clamp}), Pointer.to(new float[]{min}), Pointer.to(new float[]{max}));
+            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(diffW.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameters, null // Kernel- and extra parameters
@@ -149,8 +150,8 @@ public class RMSPropKernel extends BaseKernel {
              * float *diffW, float *rw, float *weight, float mul, float eta, float learnRate, int n, int batch, int clamp, float min, float max
 
              */
-            kernelParameters = Pointer.to(Pointer.to(diffBias.getGpuData()), Pointer.to(rb.getGpuData()), Pointer.to(bias.getGpuData()), Pointer.to(new float[]{mua}), Pointer.to(new float[]{eta}), Pointer.to(new float[]{lr}), Pointer.to(new float[]{weight_decay}), Pointer.to(new int[]{diffBias.dataLength}), Pointer.to(new int[]{net.number}), Pointer.to(new int[]{clamp}), Pointer.to(new float[]{min}), Pointer.to(new float[]{max}));
-            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(diffBias.dataLength), 1, 1,      // Grid dimension
+            kernelParameters = Pointer.to(Pointer.to(diffBias.getGpuData()), Pointer.to(rb.getGpuData()), Pointer.to(bias.getGpuData()), Pointer.to(new float[]{mua}), Pointer.to(new float[]{eta}), Pointer.to(new float[]{lr}), Pointer.to(new float[]{weight_decay}), Pointer.to(new int[]{diffBias.getDataLength()}), Pointer.to(new int[]{net.number}), Pointer.to(new int[]{clamp}), Pointer.to(new float[]{min}), Pointer.to(new float[]{max}));
+            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(diffBias.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameters, null // Kernel- and extra parameters
@@ -168,8 +169,8 @@ public class RMSPropKernel extends BaseKernel {
              * float *diffW, float *rw, float *weight, float mul, float eta, float learnRate, int n, int batch, int clamp, float min, float max
 
              */
-            kernelParameters = Pointer.to(Pointer.to(diffBias.getGpuData()), Pointer.to(rb.getGpuData()), Pointer.to(bias.getGpuData()), Pointer.to(new float[]{mua}), Pointer.to(new float[]{eta}), Pointer.to(new float[]{lr}), Pointer.to(new float[]{weight_decay}), Pointer.to(new int[]{diffBias.dataLength}), Pointer.to(new int[]{batchSize}), Pointer.to(new int[]{clamp}), Pointer.to(new float[]{min}), Pointer.to(new float[]{max}));
-            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(diffBias.dataLength), 1, 1,      // Grid dimension
+            kernelParameters = Pointer.to(Pointer.to(diffBias.getGpuData()), Pointer.to(rb.getGpuData()), Pointer.to(bias.getGpuData()), Pointer.to(new float[]{mua}), Pointer.to(new float[]{eta}), Pointer.to(new float[]{lr}), Pointer.to(new float[]{weight_decay}), Pointer.to(new int[]{diffBias.getDataLength()}), Pointer.to(new int[]{batchSize}), Pointer.to(new int[]{clamp}), Pointer.to(new float[]{min}), Pointer.to(new float[]{max}));
+            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(diffBias.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameters, null // Kernel- and extra parameters

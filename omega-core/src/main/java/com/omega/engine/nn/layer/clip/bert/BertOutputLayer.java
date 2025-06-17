@@ -1,6 +1,5 @@
 package com.omega.engine.nn.layer.clip.bert;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
@@ -8,6 +7,7 @@ import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;
@@ -58,7 +58,7 @@ public class BertOutputLayer extends Layer {
     @Override
     public void init() {
         // TODO Auto-generated method stub
-        this.number = this.input.number;
+        this.number = this.input.getShape()[0];
         //		if(this.mid == null || this.number != this.mid.number){
         //			this.mid = Tensor.createGPUTensor(this.mid, number, oChannel, oHeight, oWidth, true);
         //		}
@@ -87,7 +87,7 @@ public class BertOutputLayer extends Layer {
 
     public void output(Tensor x) {
         if (network.RUN_MODEL == RunModel.EVAL) {
-            Tensor cache = CUDAMemoryManager.getCache("CLIIP_output_cache", input.number, 1, 1, oWidth);
+            Tensor cache = CUDAMemoryManager.getCache("CLIIP_output_cache", input.getShape()[0], 1, 1, oWidth);
             linear.forward(input, cache);
             Tensor_OP().add(linear.getOutput(), x, linear.getOutput());
             norm.forward(linear.getOutput(), cache);

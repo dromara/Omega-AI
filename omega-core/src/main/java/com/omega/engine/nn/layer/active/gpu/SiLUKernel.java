@@ -1,10 +1,11 @@
 package com.omega.engine.nn.layer.active.gpu;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixUtils;
+import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUfunction;
@@ -129,10 +130,10 @@ public class SiLUKernel extends BaseKernel {
              * float* data_im,float* data_col,int n,int height,int width,int kh,int kw,int s,int p,int oh,int ow
 
              */
-            forwardKernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{input.dataLength}));
-            this.N = output.number;
+            forwardKernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{input.getDataLength()}));
+            this.N = output.getShape()[0];
             //			}
-            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(input.dataLength), 1, 1,      // Grid dimension
+            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(input.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     forwardKernelParameters, null // Kernel- and extra parameters
@@ -154,11 +155,10 @@ public class SiLUKernel extends BaseKernel {
             /**
              * 设置入参
              * float* data_im,float* data_col,int n,int height,int width,int kh,int kw,int s,int p,int oh,int ow
-
              */
-            backwardKernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(diff.getGpuData()), Pointer.to(new int[]{output.dataLength}));
+            backwardKernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(diff.getGpuData()), Pointer.to(new int[]{output.getDataLength()}));
             //			}
-            cuLaunchKernel(function_back, this.CAFFE_GET_BLOCKS(output.dataLength), 1, 1,      // Grid dimension
+            cuLaunchKernel(function_back, this.CAFFE_GET_BLOCKS(output.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     backwardKernelParameters, null // Kernel- and extra parameters
@@ -182,9 +182,9 @@ public class SiLUKernel extends BaseKernel {
              * float* data_im,float* data_col,int n,int height,int width,int kh,int kw,int s,int p,int oh,int ow
 
              */
-            backwardKernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(diff.getGpuData()), Pointer.to(new int[]{output.dataLength}));
+            backwardKernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(diff.getGpuData()), Pointer.to(new int[]{output.getDataLength()}));
             //			}
-            cuLaunchKernel(function_back_temp, this.CAFFE_GET_BLOCKS(output.dataLength), 1, 1,      // Grid dimension
+            cuLaunchKernel(function_back_temp, this.CAFFE_GET_BLOCKS(output.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     backwardKernelParameters, null // Kernel- and extra parameters

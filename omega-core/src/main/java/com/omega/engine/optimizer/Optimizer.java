@@ -1,11 +1,10 @@
 package com.omega.engine.optimizer;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.common.task.TaskEngine;
-import com.omega.utils.JsonUtils;
-import com.omega.utils.LabelUtils;
-import com.omega.utils.MatrixOperation;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.JsonUtils;
+import com.omega.common.utils.LabelUtils;
+import com.omega.common.utils.MatrixOperation;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.check.BaseCheck;
 import com.omega.engine.nn.data.BaseData;
 import com.omega.engine.nn.layer.YoloLayer;
@@ -16,17 +15,18 @@ import com.omega.engine.optimizer.lr.GDDecay;
 import com.omega.engine.optimizer.lr.HalfDecay;
 import com.omega.engine.optimizer.lr.LRDecay;
 import com.omega.engine.optimizer.lr.LearnRateUpdate;
-import com.omega.data.transformer.bertTokenizer.BertTokenizer;
-import com.omega.models.transformer.BPETokenizer;
-import com.omega.models.transformer.SentencePieceTokenizer;
-import com.omega.models.transformer.tokenizers.Tokenizer;
-import com.omega.data.yolo.BaseDataLoader;
-import com.omega.data.yolo.DetectionDataLoader;
-import com.omega.models.yolo.YoloBox;
-import com.omega.models.yolo.YoloDetection;
-import com.omega.utils.yolo.YoloDataLoader;
-import com.omega.utils.yolo.YoloDecode;
-import com.omega.utils.yolo.YoloUtils;
+import com.omega.engine.tensor.Tensor;
+import com.omega.example.transformer.tokenizer.bertTokenizer.BertTokenizer;
+import com.omega.example.transformer.utils.BPETokenizer;
+import com.omega.example.transformer.utils.SentencePieceTokenizer;
+import com.omega.example.transformer.utils.tokenizers.Tokenizer;
+import com.omega.example.yolo.data.BaseDataLoader;
+import com.omega.example.yolo.data.DetectionDataLoader;
+import com.omega.example.yolo.model.YoloBox;
+import com.omega.example.yolo.model.YoloDetection;
+import com.omega.example.yolo.utils.YoloDataLoader;
+import com.omega.example.yolo.utils.YoloDecode;
+import com.omega.example.yolo.utils.YoloUtils;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -469,7 +469,7 @@ public abstract class Optimizer {
             output.syncHost();
             String label = testData.labels[n];
             //			System.out.println(JsonUtils.toJson(output.data));
-            String predictLabel = LabelUtils.vectorTolabel(output.data, testData.labelSet);
+            String predictLabel = LabelUtils.vectorTolabel(output.getData(), testData.labelSet);
             //			System.out.println("final output:"+JsonUtils.toJson(output.data));
             //
             //			System.out.println(label+"="+predictLabel+":"+label.equals(predictLabel));
@@ -491,7 +491,7 @@ public abstract class Optimizer {
         long startTime = System.nanoTime();
         this.network.RUN_MODEL = RunModel.TEST;
         Tensor input = new Tensor(batchSize, testData.channel, testData.height, testData.width, true);
-        Tensor label = new Tensor(batchSize, testData.label.channel, testData.label.height, testData.label.width);
+        Tensor label = new Tensor(batchSize, testData.label.getShape()[1], testData.label.getShape()[2], testData.label.getShape()[3]);
         int itc = new BigDecimal(testData.number).divide(new BigDecimal(batchSize), 0, BigDecimal.ROUND_DOWN).intValue();
         for (int pageIndex = 0; pageIndex < itc; pageIndex++) {
             testData.getBatchData(pageIndex, batchSize, input, label);
@@ -513,7 +513,7 @@ public abstract class Optimizer {
         long startTime = System.nanoTime();
         this.network.RUN_MODEL = RunModel.TEST;
         Tensor input = new Tensor(batchSize, testData.channel, testData.height, testData.width, true);
-        Tensor label = new Tensor(batchSize, testData.label.channel, testData.label.height, testData.label.width);
+        Tensor label = new Tensor(batchSize, testData.label.getShape()[1], testData.label.getShape()[2], testData.label.getShape()[3]);
         int itc = new BigDecimal(testData.number).divide(new BigDecimal(batchSize), 0, BigDecimal.ROUND_DOWN).intValue();
         for (int pageIndex = 0; pageIndex < itc; pageIndex++) {
             testData.getBatchData(pageIndex, batchSize, input, label);
@@ -564,7 +564,7 @@ public abstract class Optimizer {
             if (loss.isHasGPU()) {
                 vailLoss += MatrixOperation.sum(loss.syncHost());
             } else {
-                vailLoss += MatrixOperation.sum(loss.data);
+                vailLoss += MatrixOperation.sum(loss.getData());
             }
             output.syncHost();
             int currentError = this.accuracyTrueCount(output, label, testData.labelSet);
@@ -597,7 +597,7 @@ public abstract class Optimizer {
             if (loss.isHasGPU()) {
                 vailLoss += MatrixOperation.sum(loss.syncHost());
             } else {
-                vailLoss += MatrixOperation.sum(loss.data);
+                vailLoss += MatrixOperation.sum(loss.getData());
             }
             output.syncHost();
             accuracy += check.check(output, label, testData.labelSet, true);
@@ -626,7 +626,7 @@ public abstract class Optimizer {
             if (loss.isHasGPU()) {
                 vailLoss += MatrixOperation.sum(loss.syncHost());
             } else {
-                vailLoss += MatrixOperation.sum(loss.data);
+                vailLoss += MatrixOperation.sum(loss.getData());
             }
         }
         vailLoss = vailLoss / itc / batchSize;
@@ -653,7 +653,7 @@ public abstract class Optimizer {
             if (loss.isHasGPU()) {
                 vailLoss += MatrixOperation.sum(loss.syncHost());
             } else {
-                vailLoss += MatrixOperation.sum(loss.data);
+                vailLoss += MatrixOperation.sum(loss.getData());
             }
         }
         vailLoss = vailLoss / itc / batchSize;
@@ -678,7 +678,7 @@ public abstract class Optimizer {
             if (loss.isHasGPU()) {
                 vailLoss += MatrixOperation.sum(loss.syncHost());
             } else {
-                vailLoss += MatrixOperation.sum(loss.data);
+                vailLoss += MatrixOperation.sum(loss.getData());
             }
         }
         vailLoss = vailLoss / itc / batchSize;
@@ -801,14 +801,14 @@ public abstract class Optimizer {
             Tensor[] output = net.predicts(input);
             for (int l = 0; l < net.outputLayers.size(); l++) {
                 YoloLayer layer = (YoloLayer) net.outputLayers.get(l);
-                for (int b = 0; b < output[l].number; b++) {
-                    for (int i = 0; i < output[l].height * output[l].width; i++) {
-                        int row = i / output[l].width;
-                        int col = i % output[l].width;
+                for (int b = 0; b < output[l].getShape()[0]; b++) {
+                    for (int i = 0; i < output[l].getShape()[2] * output[l].getShape()[3]; i++) {
+                        int row = i / output[l].getShape()[3];
+                        int col = i % output[l].getShape()[3];
                         for (int n = 0; n < layer.bbox_num; n++) {
-                            int n_index = n * output[l].width * output[l].height + row * output[l].width + col;
-                            int obj_index = entryIndex(b, output[l].width, output[l].height, n_index, 4, layer.outputs, layer.class_number);
-                            float objectness = output[l].data[obj_index];
+                            int n_index = n * output[l].getShape()[3] * output[l].getShape()[2] + row * output[l].getShape()[3] + col;
+                            int obj_index = entryIndex(b, output[l].getShape()[3], output[l].getShape()[2], n_index, 4, layer.outputs, layer.class_number);
+                            float objectness = output[l].getData()[obj_index];
                             if (objectness > 0.1f) {
                                 System.out.println(objectness);
                             }
@@ -852,7 +852,7 @@ public abstract class Optimizer {
             testData.getBatchData(pageIndex, batchSize, input);
             input.hostToDevice();
             Tensor[] output = net.predicts(input);
-            YoloBox[] boxs = new YoloBox[input.number];
+            YoloBox[] boxs = new YoloBox[input.getShape()[0]];
             for (int i = 0; i < net.outputLayers.size(); i++) {
                 YoloLayer layer = (YoloLayer) net.outputLayers.get(i);
                 YoloDetection[][] dets = YoloUtils.getYoloDetections(output[i], layer.anchors, layer.mask, layer.bbox_num, layer.outputs, layer.class_number, testData.width, testData.height, 0.5f);
@@ -880,7 +880,7 @@ public abstract class Optimizer {
         for (int pageIndex = 0; pageIndex < itc; pageIndex++) {
             testData.loadData(pageIndex, batchSize, input);
             Tensor[] output = net.predicts(input);
-            YoloBox[] boxs = new YoloBox[input.number];
+            YoloBox[] boxs = new YoloBox[input.getShape()[0]];
             for (int i = 0; i < net.outputLayers.size(); i++) {
                 YoloLayer layer = (YoloLayer) net.outputLayers.get(i);
                 YoloDetection[][] dets = YoloUtils.getYoloDetections(output[i], layer.anchors, layer.mask, layer.bbox_num, layer.outputs, layer.class_number, this.network.getHeight(), this.network.getWidth(), 0.5f);
@@ -913,7 +913,7 @@ public abstract class Optimizer {
         for (int pageIndex = 0; pageIndex < itc; pageIndex++) {
             testData.loadData(pageIndex, batchSize, input);
             Tensor[] output = net.predicts(input);
-            YoloBox[] boxs = new YoloBox[input.number];
+            YoloBox[] boxs = new YoloBox[input.getShape()[0]];
             for (int i = 0; i < net.outputLayers.size(); i++) {
                 YoloLayer layer = (YoloLayer) net.outputLayers.get(i);
                 YoloDetection[][] dets = YoloUtils.getYoloDetectionsV7(output[i], layer.anchors, layer.mask, layer.bbox_num, layer.outputs, layer.class_number, this.network.getHeight(), this.network.getWidth(), 0.5f);
@@ -1046,14 +1046,14 @@ public abstract class Optimizer {
     public float accuracy(Tensor output, Tensor labelData, String[] labelSet) {
         float error = 0.0f;
         float trueCount = 0;
-        for (int n = 0; n < output.number; n++) {
+        for (int n = 0; n < output.getShape()[0]; n++) {
             String label = LabelUtils.vectorTolabel(labelData.getByNumber(n), labelSet);
             String predictLabel = LabelUtils.vectorTolabel(output.getByNumber(n), labelSet);
             if (label.equals(predictLabel)) {
                 trueCount++;
             }
         }
-        error = trueCount / output.number * 100;
+        error = trueCount / output.getShape()[0] * 100;
         return error;
     }
 
@@ -1061,7 +1061,7 @@ public abstract class Optimizer {
         float error = 0.0f;
         float trueCount = 0;
         //		System.out.println(JsonUtils.toJson(output.getByNumber(0)));
-        for (int n = 0; n < output.number; n++) {
+        for (int n = 0; n < output.getShape()[0]; n++) {
             int labelIndex = MatrixOperation.maxIndex(labelData.getByNumber(n));
             int predictIndex = MatrixOperation.maxIndex(output.getByNumber(n));
             //			System.out.println(JsonUtils.toJson(output.getByNumber(n)));
@@ -1070,7 +1070,7 @@ public abstract class Optimizer {
                 trueCount++;
             }
         }
-        error = trueCount / output.number * 100;
+        error = trueCount / output.getShape()[0] * 100;
         return error;
     }
 
@@ -1126,7 +1126,7 @@ public abstract class Optimizer {
         for (int t = 0; t < time; t++) {
             int predictIndex = MatrixOperation.maxIndex(output.getByNumber(max_index * time + t));
             int labelIndex = MatrixOperation.maxIndex(labelData.getByNumber(max_index * time + t));
-            int inputIndex = (int) input.data[max_index * time + t];
+            int inputIndex = (int) input.getData()[max_index * time + t];
             max_ptxt += vocab[predictIndex];
             max_ltxt += vocab[labelIndex];
             max_itxt += vocab[inputIndex];
@@ -1246,7 +1246,7 @@ public abstract class Optimizer {
             for (int t = 0; t < time; t++) {
                 int predictIndex = MatrixOperation.maxIndex(output.getByNumber(n * time + t));
                 //					int labelIndex = MatrixOperation.maxIndex(labelData.getByNumber(n * time + t));
-                int labelIndex = (int) label.data[n * time + t];
+                int labelIndex = (int) label.getData()[n * time + t];
                 if (labelIndex != igonre && labelIndex != predictIndex) {
                     allRight = false;
                     score--;
@@ -1263,8 +1263,8 @@ public abstract class Optimizer {
         for (int t = 0; t < time; t++) {
             int predictIndex = MatrixOperation.maxIndex(output.getByNumber(max_index * time + t));
             //			int labelIndex = MatrixOperation.maxIndex(labelData.getByNumber(n * time + t));
-            int labelIndex = (int) label.data[max_index * time + t];
-            int inputIndex = (int) input.data[max_index * time + t];
+            int labelIndex = (int) label.getData()[max_index * time + t];
+            int inputIndex = (int) input.getData()[max_index * time + t];
             itxt[t] = inputIndex;
             ptxt[t] = predictIndex;
             ltxt[t] = labelIndex;
@@ -1292,7 +1292,7 @@ public abstract class Optimizer {
             for (int t = 0; t < time; t++) {
                 int predictIndex = MatrixOperation.maxIndex(output.getByNumber(n * time + t));
                 //					int labelIndex = MatrixOperation.maxIndex(labelData.getByNumber(n * time + t));
-                int labelIndex = (int) label.data[n * time + t];
+                int labelIndex = (int) label.getData()[n * time + t];
                 if (labelIndex != igonre && labelIndex != predictIndex) {
                     allRight = false;
                     score--;
@@ -1308,7 +1308,7 @@ public abstract class Optimizer {
         }
         for (int t = 0; t < time; t++) {
             int predictIndex = MatrixOperation.maxIndex(output.getByNumber(max_index * time + t));
-            int labelIndex = (int) label.data[max_index * time + t];
+            int labelIndex = (int) label.getData()[max_index * time + t];
             ptxt[t] = predictIndex;
             ltxt[t] = labelIndex;
         }
@@ -1394,8 +1394,8 @@ public abstract class Optimizer {
         for (int t = 0; t < time; t++) {
             int predictIndex = MatrixOperation.maxIndex(output.getByNumber(max_index * time + t));
             //			int labelIndex = MatrixOperation.maxIndex(labelData.getByNumber(n * time + t));
-            int labelIndex = (int) labelData.data[max_index * time + t];
-            int inputIndex = (int) input.data[max_index * time + t];
+            int labelIndex = (int) labelData.getData()[max_index * time + t];
+            int inputIndex = (int) input.getData()[max_index * time + t];
             itxt[t] = inputIndex;
             ptxt[t] = predictIndex;
             ltxt[t] = labelIndex;
@@ -1422,7 +1422,7 @@ public abstract class Optimizer {
             for (int t = 0; t < time; t++) {
                 int predictIndex = MatrixOperation.maxIndex(output.getByNumber(n * time + t));
                 //				int labelIndex = MatrixOperation.maxIndex(labelData.getByNumber(n * time + t));
-                int labelIndex = (int) labelData.data[n * time + t];
+                int labelIndex = (int) labelData.getData()[n * time + t];
                 if (labelIndex != igonre && labelIndex != predictIndex) {
                     allRight = false;
                     score--;
@@ -1439,8 +1439,8 @@ public abstract class Optimizer {
         for (int t = 0; t < time; t++) {
             int predictIndex = MatrixOperation.maxIndex(output.getByNumber(max_index * time + t));
             //			int labelIndex = MatrixOperation.maxIndex(labelData.getByNumber(n * time + t));
-            int labelIndex = (int) labelData.data[max_index * time + t];
-            int inputIndex = (int) input.data[max_index * time + t];
+            int labelIndex = (int) labelData.getData()[max_index * time + t];
+            int inputIndex = (int) input.getData()[max_index * time + t];
             itxt[t] = inputIndex;
             ptxt[t] = predictIndex;
             ltxt[t] = labelIndex;
@@ -1469,7 +1469,7 @@ public abstract class Optimizer {
             for (int t = 0; t < time; t++) {
                 int predictIndex = MatrixOperation.maxIndex(output.getByNumber(n * time + t));
                 int labelIndex = MatrixOperation.maxIndex(labelData.getByNumber(n * time + t));
-                int inputIndex = (int) input.data[n * time + t];
+                int inputIndex = (int) input.getData()[n * time + t];
                 i_ids.add(inputIndex);
                 p_ids.add(predictIndex);
                 l_ids.add(labelIndex);
@@ -1515,7 +1515,7 @@ public abstract class Optimizer {
             for (int t = 0; t < time; t++) {
                 int predictIndex = MatrixOperation.maxIndex(output.getByNumber(n * time + t));
                 int labelIndex = MatrixOperation.maxIndex(labelData.getByNumber(n * time + t));
-                int inputIndex = (int) input.data[n * time + t];
+                int inputIndex = (int) input.getData()[n * time + t];
                 ptxt += vocab[predictIndex];
                 ltxt += vocab[labelIndex];
                 itxt += vocab[inputIndex];
@@ -1555,7 +1555,7 @@ public abstract class Optimizer {
             int score = time;
             for (int t = 0; t < time; t++) {
                 int predictIndex = MatrixOperation.maxIndex(output.getByNumber(n * time + t));
-                int labelIndex = (int) labelData.data[n * time + t];
+                int labelIndex = (int) labelData.getData()[n * time + t];
                 if (labelIndex != predictIndex) {
                     allRight = false;
                     score--;
@@ -1571,8 +1571,8 @@ public abstract class Optimizer {
         }
         for (int t = 0; t < time; t++) {
             int predictIndex = MatrixOperation.maxIndex(output.getByNumber(max_index * time + t));
-            int labelIndex = (int) labelData.data[max_index * time + t];
-            int inputIndex = (int) input.data[max_index * time + t];
+            int labelIndex = (int) labelData.getData()[max_index * time + t];
+            int inputIndex = (int) input.getData()[max_index * time + t];
             max_ptxt += vocab[predictIndex];
             max_ltxt += vocab[labelIndex];
             max_itxt += vocab[inputIndex];
@@ -1595,7 +1595,7 @@ public abstract class Optimizer {
             int score = time;
             for (int t = 0; t < time; t++) {
                 int predictIndex = MatrixOperation.maxIndex(output.getByNumber(n * time + t));
-                int labelIndex = (int) labelData.data[n * time + t];
+                int labelIndex = (int) labelData.getData()[n * time + t];
                 if (labelIndex != igonre && labelIndex != predictIndex) {
                     allRight = false;
                     score--;
@@ -1614,8 +1614,8 @@ public abstract class Optimizer {
         String max_ltxt = "";
         for (int t = 0; t < time; t++) {
             int predictIndex = MatrixOperation.maxIndex(output.getByNumber(max_index * time + t));
-            int labelIndex = (int) labelData.data[max_index * time + t];
-            int inputIndex = (int) input.data[max_index * time + t];
+            int labelIndex = (int) labelData.getData()[max_index * time + t];
+            int inputIndex = (int) input.getData()[max_index * time + t];
             max_ptxt += vocab[predictIndex];
             max_ltxt += vocab[labelIndex];
             max_itxt += vocab[inputIndex];
@@ -1629,9 +1629,9 @@ public abstract class Optimizer {
     }
 
     public float testLoss(Tensor output, Tensor labelData) {
-        float[] data = new float[output.number];
+        float[] data = new float[output.getShape()[0]];
         float loss = 0.0f;
-        for (int n = 0; n < output.number; n++) {
+        for (int n = 0; n < output.getShape()[0]; n++) {
             float onceLoss = testLoss(output.getByNumber(n), labelData.getByNumber(n));
             loss += onceLoss;
             data[n] = onceLoss;
@@ -1642,7 +1642,7 @@ public abstract class Optimizer {
 
     public int accuracyTrueCount(Tensor output, Tensor labelData, String[] labelSet) {
         int trueCount = 0;
-        for (int n = 0; n < output.number; n++) {
+        for (int n = 0; n < output.getShape()[0]; n++) {
             String label = LabelUtils.vectorTolabel(labelData.getByNumber(n), labelSet);
             String predictLabel = LabelUtils.vectorTolabel(output.getByNumber(n), labelSet);
             //			System.out.println(label+":"+predictLabel);

@@ -1,9 +1,10 @@
 package com.omega.engine.gpu.cudnn;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.nn.layer.gpu.ConvBaseKernel;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.jcudnn.*;
 import jcuda.runtime.JCuda;
@@ -114,7 +115,7 @@ public class ConvTransposeCudnnKernel extends ConvBaseKernel {
     }
 
     public void convTranspose(Tensor input, Tensor kernel, Tensor output) {
-        this.init(input.number);
+        this.init(input.getShape()[0]);
         handle(JCudnn.cudnnConvolutionBackwardData(CudnnHandleManager.getHandle(), alpha_P, kernelDesc, kernel.getGpuData(), xDesc, input.getGpuData(), convDesc, bkd_algo, this.network.workspace, this.network.workspaceSize, beta_P, yDesc, output.getGpuData()));
     }
 

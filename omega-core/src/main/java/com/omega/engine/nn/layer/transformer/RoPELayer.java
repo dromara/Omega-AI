@@ -1,10 +1,10 @@
 package com.omega.engine.nn.layer.transformer;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.gpu.RoPEKernel;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * RoPE Layer
@@ -58,23 +58,23 @@ public class RoPELayer extends Layer {
 
     public void init(Tensor input) {
         // TODO Auto-generated method stub
-        this.channel = input.channel;
-        this.height = input.height;
-        this.width = input.width;
+        this.channel = input.getShape()[1];
+        this.height = input.getShape()[2];
+        this.width = input.getShape()[3];
         this.oChannel = this.channel;
         this.oHeight = this.height;
         this.oWidth = this.width;
         if (kernel == null) {
             kernel = new RoPEKernel(cuda());
         }
-        this.number = input.number;
+        this.number = input.getShape()[0];
         initParam();
     }
 
     @Override
     public void initParam() {
         // TODO Auto-generated method stub
-        if (this.output == null || this.number != this.output.number) {
+        if (this.output == null || this.number != this.output.getShape()[0]) {
             this.output = Tensor.createTensor(this.output, number, oChannel, oHeight, oWidth, true);
         }
     }
@@ -82,7 +82,7 @@ public class RoPELayer extends Layer {
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
-        if (this.diff == null || this.number != this.diff.number) {
+        if (this.diff == null || this.number != this.diff.getShape()[0]) {
             this.diff = Tensor.createTensor(this.diff, number, channel, height, width, true);
         }
     }

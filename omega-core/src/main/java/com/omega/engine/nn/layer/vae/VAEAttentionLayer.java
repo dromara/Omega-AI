@@ -1,6 +1,5 @@
 package com.omega.engine.nn.layer.vae;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.nn.layer.DropoutLayer;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
@@ -10,6 +9,7 @@ import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.GNLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;
@@ -167,9 +167,9 @@ public class VAEAttentionLayer extends Layer {
 
     public void init(Tensor input) {
         // TODO Auto-generated method stub
-        this.number = input.number;
+        this.number = input.getShape()[0];
         this.batchSize = this.number;
-        if (this.qt == null || this.qt.number != this.batchSize || this.qt.height != this.time) {
+        if (this.qt == null || this.qt.getShape()[0] != this.batchSize || this.qt.getShape()[2] != this.time) {
             // [batch_size，time，head_num，d_k]
             this.xt = Tensor.createGPUTensor(this.xt, batchSize, time, 1, channel, true);
             this.qt = Tensor.createGPUTensor(this.qt, batchSize, headNum, time, dk, true);

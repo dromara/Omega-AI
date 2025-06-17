@@ -1,8 +1,9 @@
 package com.omega.engine.nn.network.vae;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUfunction;
@@ -122,9 +123,9 @@ public class VAEKernel extends BaseKernel {
              * float *mu,float *logvar,float *eps, float *output, int n
 
              */
-            forwardKernelParameters = Pointer.to(Pointer.to(mu.getGpuData()), Pointer.to(logvar.getGpuData()), Pointer.to(eps.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{output.dataLength}));
-            this.N = output.number;
-            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(output.dataLength), 1, 1,      // Grid dimension
+            forwardKernelParameters = Pointer.to(Pointer.to(mu.getGpuData()), Pointer.to(logvar.getGpuData()), Pointer.to(eps.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{output.getDataLength()}));
+            this.N = output.getShape()[0];
+            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(output.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     forwardKernelParameters, null // Kernel- and extra parameters
@@ -142,8 +143,8 @@ public class VAEKernel extends BaseKernel {
              * float *dmu,float *dlogvar,float *eps,float *logvar, float *delta, int n
 
              */
-            backwardKernelParameters = Pointer.to(Pointer.to(dmu.getGpuData()), Pointer.to(dlogvar.getGpuData()), Pointer.to(eps.getGpuData()), Pointer.to(logvar.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(new int[]{delta.dataLength}));
-            cuLaunchKernel(function_back, this.CAFFE_GET_BLOCKS(delta.dataLength), 1, 1,      // Grid dimension
+            backwardKernelParameters = Pointer.to(Pointer.to(dmu.getGpuData()), Pointer.to(dlogvar.getGpuData()), Pointer.to(eps.getGpuData()), Pointer.to(logvar.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(new int[]{delta.getDataLength()}));
+            cuLaunchKernel(function_back, this.CAFFE_GET_BLOCKS(delta.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     backwardKernelParameters, null // Kernel- and extra parameters
@@ -161,9 +162,9 @@ public class VAEKernel extends BaseKernel {
              * float *mu,float *logvar,float kl_weight, float *klLoss, int n
 
              */
-            forwardKernelParameters = Pointer.to(Pointer.to(mu.getGpuData()), Pointer.to(logvar.getGpuData()), Pointer.to(new float[]{kl_weight}), Pointer.to(output.getGpuData()), Pointer.to(new int[]{output.dataLength}));
-            this.N = output.number;
-            cuLaunchKernel(kl_loss_function, this.CAFFE_GET_BLOCKS(output.dataLength), 1, 1,      // Grid dimension
+            forwardKernelParameters = Pointer.to(Pointer.to(mu.getGpuData()), Pointer.to(logvar.getGpuData()), Pointer.to(new float[]{kl_weight}), Pointer.to(output.getGpuData()), Pointer.to(new int[]{output.getDataLength()}));
+            this.N = output.getShape()[0];
+            cuLaunchKernel(kl_loss_function, this.CAFFE_GET_BLOCKS(output.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     forwardKernelParameters, null // Kernel- and extra parameters
@@ -181,8 +182,8 @@ public class VAEKernel extends BaseKernel {
              * float *mu,float *logvar,float kl_weight, float *dmu, float * dlogvar,int batch, int n
 
              */
-            backwardKernelParameters = Pointer.to(Pointer.to(mu.getGpuData()), Pointer.to(logvar.getGpuData()), Pointer.to(new float[]{kl_weight}), Pointer.to(dmu.getGpuData()), Pointer.to(dlogvar.getGpuData()), Pointer.to(new int[]{mu.number}), Pointer.to(new int[]{mu.dataLength}));
-            cuLaunchKernel(kl_loss_function_back, this.CAFFE_GET_BLOCKS(mu.dataLength), 1, 1,      // Grid dimension
+            backwardKernelParameters = Pointer.to(Pointer.to(mu.getGpuData()), Pointer.to(logvar.getGpuData()), Pointer.to(new float[]{kl_weight}), Pointer.to(dmu.getGpuData()), Pointer.to(dlogvar.getGpuData()), Pointer.to(new int[]{mu.getShape()[0]}), Pointer.to(new int[]{mu.getDataLength()}));
+            cuLaunchKernel(kl_loss_function_back, this.CAFFE_GET_BLOCKS(mu.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     backwardKernelParameters, null // Kernel- and extra parameters
@@ -195,15 +196,15 @@ public class VAEKernel extends BaseKernel {
 
     public void cdistP(Tensor x, Tensor y, Tensor output, double p) {
         try {
-            int r_size = x.number * y.height;
-            int l1_size = x.number * x.width;
-            int l2_size = y.height * y.width;
+            int r_size = x.getShape()[0] * y.getShape()[2];
+            int l1_size = x.getShape()[0] * x.getShape()[3];
+            int l2_size = y.getShape()[2] * y.getShape()[3];
             /**
              * 设置入参
              * float *x1, float *x2, float *result, double p, const int64_t r2, const int64_t m, const int64_t r_size, const int64_t l1_size, const int64_t l2_size
 
              */
-            forwardKernelParameters = Pointer.to(Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new double[]{p}), Pointer.to(new int[]{y.height}), Pointer.to(new int[]{x.width}), Pointer.to(new int[]{r_size}), Pointer.to(new int[]{l1_size}), Pointer.to(new int[]{l2_size}));
+            forwardKernelParameters = Pointer.to(Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new double[]{p}), Pointer.to(new int[]{y.getShape()[2]}), Pointer.to(new int[]{x.getShape()[3]}), Pointer.to(new int[]{r_size}), Pointer.to(new int[]{l1_size}), Pointer.to(new int[]{l2_size}));
             cuLaunchKernel(cdist_function, output.getDataLength(), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
@@ -222,7 +223,7 @@ public class VAEKernel extends BaseKernel {
              * float* _res, const float * _A, const float * _B,uint _Arows, uint _Brows, uint _dim
 
              */
-            forwardKernelParameters = Pointer.to(Pointer.to(output.getGpuData()), Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(new int[]{x.number}), Pointer.to(new int[]{y.height}), Pointer.to(new int[]{x.width}));
+            forwardKernelParameters = Pointer.to(Pointer.to(output.getGpuData()), Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(new int[]{x.getShape()[0]}), Pointer.to(new int[]{y.getShape()[2]}), Pointer.to(new int[]{x.getShape()[3]}));
             int blockSize = 16;
             int shmSize = (blockSize * blockSize * 3) * Sizeof.FLOAT;
             cuLaunchKernel(cdist2_function, output.getDataLength(), 1, 1,      // Grid dimension
@@ -243,8 +244,8 @@ public class VAEKernel extends BaseKernel {
              * float *x,float *y,int batch, int n
 
              */
-            forwardKernelParameters = Pointer.to(Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(new int[]{x.number}), Pointer.to(new int[]{x.width}));
-            cuLaunchKernel(argmin_function, this.CAFFE_GET_BLOCKS(x.number), 1, 1,      // Grid dimension
+            forwardKernelParameters = Pointer.to(Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(new int[]{x.getShape()[0]}), Pointer.to(new int[]{x.getShape()[3]}));
+            cuLaunchKernel(argmin_function, this.CAFFE_GET_BLOCKS(x.getShape()[0]), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     forwardKernelParameters, null // Kernel- and extra parameters
@@ -262,8 +263,8 @@ public class VAEKernel extends BaseKernel {
              * float *x,float *y,int batch
 
              */
-            forwardKernelParameters = Pointer.to(Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(new int[]{x.number}));
-            cuLaunchKernel(mean_function, this.CAFFE_GET_BLOCKS(x.number), 1, 1,      // Grid dimension
+            forwardKernelParameters = Pointer.to(Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(new int[]{x.getShape()[0]}));
+            cuLaunchKernel(mean_function, this.CAFFE_GET_BLOCKS(x.getShape()[0]), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     forwardKernelParameters, null // Kernel- and extra parameters
@@ -281,8 +282,8 @@ public class VAEKernel extends BaseKernel {
              * const float* output, const float* target, float* loss, float beta, int num_elem
 
              */
-            forwardKernelParameters = Pointer.to(Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(loss.getGpuData()), Pointer.to(new float[]{beta}), Pointer.to(new int[]{x.dataLength}));
-            cuLaunchKernel(mse_loss_function, this.CAFFE_GET_BLOCKS(x.dataLength), 1, 1,      // Grid dimension
+            forwardKernelParameters = Pointer.to(Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(loss.getGpuData()), Pointer.to(new float[]{beta}), Pointer.to(new int[]{x.getDataLength()}));
+            cuLaunchKernel(mse_loss_function, this.CAFFE_GET_BLOCKS(x.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     forwardKernelParameters, null // Kernel- and extra parameters
@@ -300,8 +301,8 @@ public class VAEKernel extends BaseKernel {
              * const float* output, const float* target, float* loss, float beta, int num_elem
 
              */
-            forwardKernelParameters = Pointer.to(Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(loss.getGpuData()), Pointer.to(new float[]{beta}), Pointer.to(new int[]{x.dataLength}));
-            cuLaunchKernel(mse_loss_only_c_function, this.CAFFE_GET_BLOCKS(x.dataLength), 1, 1,      // Grid dimension
+            forwardKernelParameters = Pointer.to(Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(loss.getGpuData()), Pointer.to(new float[]{beta}), Pointer.to(new int[]{x.getDataLength()}));
+            cuLaunchKernel(mse_loss_only_c_function, this.CAFFE_GET_BLOCKS(x.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     forwardKernelParameters, null // Kernel- and extra parameters
@@ -319,8 +320,8 @@ public class VAEKernel extends BaseKernel {
              * float *x, float *y, float beta, float *diffX,float *diffY, int n, int batch
 
              */
-            backwardKernelParameters = Pointer.to(Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(new float[]{beta}), Pointer.to(diffX.getGpuData()), Pointer.to(diffY.getGpuData()), Pointer.to(new int[]{x.dataLength}));
-            cuLaunchKernel(mse_loss_back_function, this.CAFFE_GET_BLOCKS(x.dataLength), 1, 1,      // Grid dimension
+            backwardKernelParameters = Pointer.to(Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(new float[]{beta}), Pointer.to(diffX.getGpuData()), Pointer.to(diffY.getGpuData()), Pointer.to(new int[]{x.getDataLength()}));
+            cuLaunchKernel(mse_loss_back_function, this.CAFFE_GET_BLOCKS(x.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     backwardKernelParameters, null // Kernel- and extra parameters
@@ -338,8 +339,8 @@ public class VAEKernel extends BaseKernel {
              * const float* output, const float* target, float* loss, float beta, int num_elem
 
              */
-            forwardKernelParameters = Pointer.to(Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(loss.getGpuData()), Pointer.to(new float[]{beta}), Pointer.to(new int[]{x.dataLength}));
-            cuLaunchKernel(mse_sum_loss_function, this.CAFFE_GET_BLOCKS(x.dataLength), 1, 1,      // Grid dimension
+            forwardKernelParameters = Pointer.to(Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(loss.getGpuData()), Pointer.to(new float[]{beta}), Pointer.to(new int[]{x.getDataLength()}));
+            cuLaunchKernel(mse_sum_loss_function, this.CAFFE_GET_BLOCKS(x.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     forwardKernelParameters, null // Kernel- and extra parameters
@@ -357,8 +358,8 @@ public class VAEKernel extends BaseKernel {
              * const float* output, const float* target, float* loss, float beta, int num_elem
 
              */
-            forwardKernelParameters = Pointer.to(Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(loss.getGpuData()), Pointer.to(new float[]{beta}), Pointer.to(new int[]{x.dataLength}));
-            cuLaunchKernel(mse_sum_c_loss_function, this.CAFFE_GET_BLOCKS(x.dataLength), 1, 1,      // Grid dimension
+            forwardKernelParameters = Pointer.to(Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(loss.getGpuData()), Pointer.to(new float[]{beta}), Pointer.to(new int[]{x.getDataLength()}));
+            cuLaunchKernel(mse_sum_c_loss_function, this.CAFFE_GET_BLOCKS(x.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     forwardKernelParameters, null // Kernel- and extra parameters
@@ -376,8 +377,8 @@ public class VAEKernel extends BaseKernel {
              * float *x, float *y, float beta, float *diffX,float *diffY, int n, int batch
 
              */
-            backwardKernelParameters = Pointer.to(Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(new float[]{beta}), Pointer.to(diffX.getGpuData()), Pointer.to(diffY.getGpuData()), Pointer.to(new int[]{x.dataLength}));
-            cuLaunchKernel(mse_sum_loss_back_function, this.CAFFE_GET_BLOCKS(x.dataLength), 1, 1,      // Grid dimension
+            backwardKernelParameters = Pointer.to(Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(new float[]{beta}), Pointer.to(diffX.getGpuData()), Pointer.to(diffY.getGpuData()), Pointer.to(new int[]{x.getDataLength()}));
+            cuLaunchKernel(mse_sum_loss_back_function, this.CAFFE_GET_BLOCKS(x.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     backwardKernelParameters, null // Kernel- and extra parameters
@@ -395,8 +396,8 @@ public class VAEKernel extends BaseKernel {
              * float *x, float *y, float beta,float *diffY, int n, int batch
 
              */
-            backwardKernelParameters = Pointer.to(Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(new float[]{beta}), Pointer.to(diffY.getGpuData()), Pointer.to(new int[]{x.dataLength}));
-            cuLaunchKernel(mse_sum_c_loss_back_function, this.CAFFE_GET_BLOCKS(x.dataLength), 1, 1,      // Grid dimension
+            backwardKernelParameters = Pointer.to(Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(new float[]{beta}), Pointer.to(diffY.getGpuData()), Pointer.to(new int[]{x.getDataLength()}));
+            cuLaunchKernel(mse_sum_c_loss_back_function, this.CAFFE_GET_BLOCKS(x.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     backwardKernelParameters, null // Kernel- and extra parameters
@@ -414,7 +415,7 @@ public class VAEKernel extends BaseKernel {
              * int n,float *x, float *y
 
              */
-            forwardKernelParameters = Pointer.to(Pointer.to(new int[]{x.dataLength}), Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()));
+            forwardKernelParameters = Pointer.to(Pointer.to(new int[]{x.getDataLength()}), Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()));
             cuLaunchKernel(ema_count_function, 1, 1, 1,      // Grid dimension
                     1, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
@@ -433,8 +434,8 @@ public class VAEKernel extends BaseKernel {
              * float *x,float *y, float decay, int n
 
              */
-            forwardKernelParameters = Pointer.to(Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(new float[]{decay}), Pointer.to(new int[]{x.dataLength}));
-            cuLaunchKernel(move_ema_count_function, this.CAFFE_GET_BLOCKS(x.dataLength), 1, 1,      // Grid dimension
+            forwardKernelParameters = Pointer.to(Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(new float[]{decay}), Pointer.to(new int[]{x.getDataLength()}));
+            cuLaunchKernel(move_ema_count_function, this.CAFFE_GET_BLOCKS(x.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     forwardKernelParameters, null // Kernel- and extra parameters
@@ -452,8 +453,8 @@ public class VAEKernel extends BaseKernel {
              * float *x, float *sumec,float eps, int D, int n
 
              */
-            forwardKernelParameters = Pointer.to(Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(new float[]{eps}), Pointer.to(new int[]{D}), Pointer.to(new int[]{x.dataLength}));
-            cuLaunchKernel(move_ema_count2_function, this.CAFFE_GET_BLOCKS(x.dataLength), 1, 1,      // Grid dimension
+            forwardKernelParameters = Pointer.to(Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(new float[]{eps}), Pointer.to(new int[]{D}), Pointer.to(new int[]{x.getDataLength()}));
+            cuLaunchKernel(move_ema_count2_function, this.CAFFE_GET_BLOCKS(x.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     forwardKernelParameters, null // Kernel- and extra parameters
@@ -471,8 +472,8 @@ public class VAEKernel extends BaseKernel {
              * float *dw,float *weight, float *emb_weight,float *ema_count, float decay,int batch, int n
 
              */
-            forwardKernelParameters = Pointer.to(Pointer.to(dw.getGpuData()), Pointer.to(weight.getGpuData()), Pointer.to(emb_weight.getGpuData()), Pointer.to(ema_count.getGpuData()), Pointer.to(new float[]{decay}), Pointer.to(new int[]{dw.height}), Pointer.to(new int[]{dw.width}));
-            cuLaunchKernel(update_emb_weight_function, this.CAFFE_GET_BLOCKS(dw.height), 1, 1,      // Grid dimension
+            forwardKernelParameters = Pointer.to(Pointer.to(dw.getGpuData()), Pointer.to(weight.getGpuData()), Pointer.to(emb_weight.getGpuData()), Pointer.to(ema_count.getGpuData()), Pointer.to(new float[]{decay}), Pointer.to(new int[]{dw.getShape()[2]}), Pointer.to(new int[]{dw.getShape()[3]}));
+            cuLaunchKernel(update_emb_weight_function, this.CAFFE_GET_BLOCKS(dw.getShape()[2]), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     forwardKernelParameters, null // Kernel- and extra parameters

@@ -3,10 +3,10 @@ package com.omega.engine.loss;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.YoloLayer;
 import com.omega.engine.nn.network.Network;
-import com.omega.utils.loss.YoloLoss;
-import com.omega.utils.loss.YoloLoss2;
-import com.omega.utils.loss.YoloLoss3;
-import com.omega.utils.loss.YoloLoss7;
+import com.omega.example.yolo.loss.YoloLoss;
+import com.omega.example.yolo.loss.YoloLoss2;
+import com.omega.example.yolo.loss.YoloLoss3;
+import com.omega.example.yolo.loss.YoloLoss7;
 
 import java.util.List;
 

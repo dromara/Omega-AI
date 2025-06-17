@@ -1,6 +1,5 @@
 package com.omega.engine.nn.layer.vae;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -11,6 +10,7 @@ import com.omega.engine.nn.layer.gpu.BasicBlockKernel;
 import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.GNLayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 /**
@@ -70,14 +70,14 @@ public class VAEResnetBlock extends Layer {
     @Override
     public void init() {
         this.number = this.network.number;
-        if (this.output == null || this.output.number != this.network.number) {
+        if (this.output == null || this.output.getShape()[0] != this.network.number) {
             this.output = Tensor.createGPUTensor(this.output, number, oChannel, oHeight, oWidth, true);
         }
     }
 
     @Override
     public void initBack() {
-        if (this.diff == null || norm1.number != norm1.diff.number) {
+        if (this.diff == null || norm1.number != norm1.diff.getShape()[0]) {
             //			norm1.initBack();
             //			this.diff = conv1.diff;
             this.cache_delta = Tensor.createGPUTensor(this.cache_delta, number, oChannel, oHeight, oWidth, true);

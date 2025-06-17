@@ -1,9 +1,9 @@
 package com.omega.engine.nn.layer;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.layer.gpu.EmbeddingKernel;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 import jcuda.jcublas.cublasOperation;
 
@@ -47,7 +47,7 @@ public class EmbeddingLayer extends Layer {
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
-        if (this.diff == null || this.number != this.diff.number) {
+        if (this.diff == null || this.number != this.diff.getShape()[0]) {
             this.diff = new Tensor(number, channel, height, width, true);
         }
     }
@@ -56,15 +56,15 @@ public class EmbeddingLayer extends Layer {
     public void init() {
         // TODO Auto-generated method stub
         this.number = this.network.number;
-        if (this.output == null || this.number != this.output.number) {
+        if (this.output == null || this.number != this.output.getShape()[0]) {
             this.output = Tensor.createTensor(this.output, number, oChannel, oHeight, oWidth, true);
         }
     }
 
     public void init(Tensor input) {
         // TODO Auto-generated method stub
-        this.number = input.number;
-        if (this.output == null || this.number != this.output.number) {
+        this.number = input.getShape()[0];
+        if (this.output == null || this.number != this.output.getShape()[0]) {
             this.output = Tensor.createTensor(this.output, number, oChannel, oHeight, oWidth, true);
         }
     }
@@ -162,7 +162,7 @@ public class EmbeddingLayer extends Layer {
                 this.updater.update(this);
             } else {
                 for (int i = 0; i < this.weight.getDataLength(); i++) {
-                    this.weight.data[i] -= this.learnRate * this.diffW.data[i];
+                    this.weight.getData()[i] -= this.learnRate * this.diffW.getData()[i];
                 }
             }
             this.clearAccGrad();
@@ -175,7 +175,7 @@ public class EmbeddingLayer extends Layer {
         if (accDW == null) {
             accDW = diffW.copyGPU();
         } else {
-            kernel.axpy_gpu(diffW, accDW, accDW.dataLength, scale, 1, 1);
+            kernel.axpy_gpu(diffW, accDW, accDW.getDataLength(), scale, 1, 1);
         }
     }
 

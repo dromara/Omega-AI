@@ -1,8 +1,9 @@
 package com.omega.engine.loss.gpu;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
 import jcuda.runtime.cudaError;
@@ -52,9 +53,9 @@ public class MSESumLossKernel extends BaseKernel {
          * float *input, float *label, float *output, int batch, int n
 
          */
-        loss_kernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(currentLabel.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{input.number}), Pointer.to(new int[]{input.channel * input.height * input.width}));
-        this.N = output.number;
-        cuLaunchKernel(loss_function, input.number, 1, 1,      // Grid dimension
+        loss_kernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(currentLabel.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{input.getShape()[0]}), Pointer.to(new int[]{input.getShape()[1] * input.getShape()[2] * input.getShape()[3]}));
+        this.N = output.getShape()[0];
+        cuLaunchKernel(loss_function, input.getShape()[0], 1, 1,      // Grid dimension
                 CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                 0, null,               // Shared memory size and stream
                 loss_kernelParameters, null // Kernel- and extra parameters
@@ -68,7 +69,7 @@ public class MSESumLossKernel extends BaseKernel {
 
          */
         backKernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(currentLabel.getGpuData()), Pointer.to(diff.getGpuData()));
-        cuLaunchKernel(loss_backward_function, this.CAFFE_GET_BLOCKS(diff.number * diff.channel * diff.height * diff.width), 1, 1,      // Grid dimension
+        cuLaunchKernel(loss_backward_function, this.CAFFE_GET_BLOCKS(diff.getShape()[0] * diff.getShape()[1] * diff.getShape()[2] * diff.getShape()[3]), 1, 1,      // Grid dimension
                 CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                 0, null,               // Shared memory size and stream
                 backKernelParameters, null // Kernel- and extra parameters

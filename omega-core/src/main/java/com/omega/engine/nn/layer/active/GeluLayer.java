@@ -1,12 +1,12 @@
 package com.omega.engine.nn.layer.active;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.common.task.Task;
 import com.omega.common.task.TaskEngine;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.active.gpu.GeluKernel;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 
 import java.util.Vector;
 

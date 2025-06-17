@@ -1,7 +1,7 @@
 package com.omega.engine.nn.grad;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixOperation;
+import com.omega.common.utils.MatrixOperation;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * 梯度裁剪
@@ -12,10 +12,10 @@ public class GradClipping {
     public static Tensor gradClipping(Tensor grad, float theta) {
         if (grad.isHasGPU()) {
             grad.syncHost();
-            grad_clipping_cpu(grad.data, theta);
+            grad_clipping_cpu(grad.getData(), theta);
             grad.hostToDevice();
         } else {
-            grad_clipping_cpu(grad.data, theta);
+            grad_clipping_cpu(grad.getData(), theta);
         }
         return grad;
     }

@@ -1,6 +1,5 @@
 package com.omega.engine.nn.layer.unet;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -8,6 +7,7 @@ import com.omega.engine.nn.layer.active.GeluLayer;
 import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * UNetFFNBlockLayer
@@ -51,8 +51,8 @@ public class UNetFFNBlockLayer extends Layer {
 
     public void init(Tensor input) {
         // TODO Auto-generated method stub
-        this.number = input.number;
-        if (this.output == null || this.output.number != this.number) {
+        this.number = input.getShape()[0];
+        if (this.output == null || this.output.getShape()[0] != this.number) {
             this.output = Tensor.createGPUTensor(this.output, number, oChannel, oHeight, oWidth, true);
         }
     }

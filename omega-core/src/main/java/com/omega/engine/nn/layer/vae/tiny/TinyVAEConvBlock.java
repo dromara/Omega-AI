@@ -1,6 +1,5 @@
 package com.omega.engine.nn.layer.vae.tiny;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -9,6 +8,7 @@ import com.omega.engine.nn.layer.active.ActiveFunctionLayer;
 import com.omega.engine.nn.layer.active.LeakyReluLayer;
 import com.omega.engine.nn.layer.normalization.BNLayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;
@@ -48,7 +48,7 @@ public class TinyVAEConvBlock extends Layer {
     @Override
     public void init() {
         this.number = this.network.number;
-        if (this.output == null || this.output.number != this.network.number) {
+        if (this.output == null || this.output.getShape()[0] != this.network.number) {
             this.output = Tensor.createGPUTensor(this.output, number, oChannel, oHeight, oWidth, true);
         }
     }

@@ -1,8 +1,8 @@
 package com.omega.engine.nn.layer.gpu;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
+import com.omega.engine.tensor.Tensor;
 
 public abstract class PoolingBaseKernel extends BaseKernel {
     public PoolingBaseKernel(CUDAManager cudaManager) {

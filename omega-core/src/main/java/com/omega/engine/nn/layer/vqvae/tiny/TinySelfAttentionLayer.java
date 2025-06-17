@@ -1,8 +1,7 @@
 package com.omega.engine.nn.layer.vqvae.tiny;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixUtils;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.MatrixUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.gpu.cudnn.SoftmaxCudnnKernel;
 import com.omega.engine.nn.layer.FullyLayer;
@@ -12,6 +11,7 @@ import com.omega.engine.nn.layer.gpu.AttentionKernel;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.nn.network.Transformer;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;
@@ -97,14 +97,11 @@ public class TinySelfAttentionLayer extends Layer {
         Tensor delta = new Tensor(batchSize * time, 1, 1, embedDim, delta_data, true);
         TinySelfAttentionLayer mal = new TinySelfAttentionLayer(embedDim, headNum, time, false, tf);
         for (int i = 0; i < 10; i++) {
-            //			input.showDM();
             mal.forward(input);
             mal.getOutput().showShape();
             mal.getOutput().showDM();
             mal.back(delta);
-            //			delta.showDM();
             mal.diff.showDM();
-            //			delta.copyData(tmp);
         }
     }
 
@@ -142,7 +139,7 @@ public class TinySelfAttentionLayer extends Layer {
 
     public void init(Tensor input) {
         // TODO Auto-generated method stub
-        this.number = input.number;
+        this.number = input.getShape()[0];
         this.batchSize = this.number / time;
         if (this.qt != null) {
             this.qt.viewOrg();
@@ -166,7 +163,7 @@ public class TinySelfAttentionLayer extends Layer {
             // [batch_size, len_q, n_heads * dim_v]
             this.oi = CUDAMemoryManager.getCache("attn-oi", batchSize * time, 1, 1, embedDim);
         } else {
-            if (this.qt == null || this.qt.number != this.batchSize) {
+            if (this.qt == null || this.qt.getShape()[0] != this.batchSize) {
                 // [batch_size，time，head_num，d_k]
                 this.qt = Tensor.createGPUTensor(this.qt, batchSize, headNum, time, dk, true);
                 this.kt = Tensor.createGPUTensor(this.kt, batchSize, headNum, time, dk, true);
@@ -189,8 +186,15 @@ public class TinySelfAttentionLayer extends Layer {
     public void initBack() {
         // TODO Auto-generated method stub
         if (this.dattn == null) {
-            this.dqkvt = Tensor.createGPUTensor(this.dqkvt, batchSize, headNum, time, dk, true);
-            this.dattn = Tensor.createGPUTensor(this.dattn, batchSize, headNum, time, time, true);
+        	if (network.gradCacheMode) {
+        		if(this.dqkvt == null || !this.dqkvt.checkShape(qt)) {
+        			this.dqkvt = network.cudaManager.getMemoryManager().getPrivateCaches("attn-dqkvt", batchSize, headNum, time, dk);
+                    this.dattn = network.cudaManager.getMemoryManager().getPrivateCaches("attn-dattn", batchSize, headNum, time, time);
+        		}
+        	}else {
+        		this.dqkvt = Tensor.createGPUTensor(this.dqkvt, batchSize, headNum, time, dk, true);
+                this.dattn = Tensor.createGPUTensor(this.dattn, batchSize, headNum, time, time, true);
+        	}
         }
     }
 
@@ -302,22 +306,25 @@ public class TinySelfAttentionLayer extends Layer {
         vt.view(batchSize, time, headNum, dk);
         Tensor_OP().permute(dqkvt, vt, new int[]{0, 2, 1, 3});
         Tensor vDelta = vt.view(batchSize * time, 1, 1, headNum * dk);
-        this.vLinerLayer.back(vDelta);
+        this.vLinerLayer.back(vDelta, input);
+        Tensor_OP().add(input, 0, delta);
         // backward into q
         GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_N, dk, time, time, 1.0f, kt.getGpuData(), dk, time * dk, dpreatt.getGpuData(), time, time * time, 0.0f, dqkvt.getGpuData(), dk, time * dk, batchSize * headNum);
         qt.view(batchSize, time, headNum, dk);
         Tensor_OP().permute(dqkvt, qt, new int[]{0, 2, 1, 3});
         Tensor qDelta = qt.view(batchSize * time, 1, 1, headNum * dk);
-        this.qLinerLayer.back(qDelta);
+        this.qLinerLayer.back(qDelta, input);
+        Tensor_OP().add(delta, input, delta);
         // backward into k
         GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_T, dk, time, time, 1.0f, qt.getGpuData(), dk, time * dk, dpreatt.getGpuData(), time, time * time, 0.0f, dqkvt.getGpuData(), dk, time * dk, batchSize * headNum);
         kt.view(batchSize, time, headNum, dk);
         Tensor_OP().permute(dqkvt, kt, new int[]{0, 2, 1, 3});
         Tensor kDelta = kt.view(batchSize * time, 1, 1, headNum * dk);
-        this.kLinerLayer.back(kDelta);
-        Tensor_OP().add(this.qLinerLayer.diff, this.kLinerLayer.diff, this.qLinerLayer.diff);
-        Tensor_OP().add(this.qLinerLayer.diff, this.vLinerLayer.diff, this.qLinerLayer.diff);
-        this.diff = this.qLinerLayer.diff;
+        this.kLinerLayer.back(kDelta, input);
+        Tensor_OP().add(delta, input, delta);
+//        Tensor_OP().add(this.qLinerLayer.diff, this.kLinerLayer.diff, this.qLinerLayer.diff);
+//        Tensor_OP().add(this.qLinerLayer.diff, this.vLinerLayer.diff, this.qLinerLayer.diff);
+        this.diff = delta;
     }
 
     @Override

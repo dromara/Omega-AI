@@ -1,10 +1,11 @@
 package com.omega.engine.parallel.ddp.distributed;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.JsonUtils;
-import com.omega.utils.MatrixUtils;
+import com.omega.common.utils.JsonUtils;
+import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.nn.network.NetworkType;
 import com.omega.engine.parallel.params.Llama3Parameters;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.runtime.JCuda;
@@ -47,7 +48,7 @@ public class ClientCommandController {
         Command command = new Command("shareGPUPointer", tmp.getShareGPU().getHexString());
         System.out.println("org:" + tmp.getShareGPU());
         float[] data2 = new float[16];
-        JCuda.cudaMemcpy(Pointer.to(data2), tmp.getShareGPU(), tmp.dataLength * (long) Sizeof.FLOAT, cudaMemcpyKind.cudaMemcpyDeviceToHost);
+        JCuda.cudaMemcpy(Pointer.to(data2), tmp.getShareGPU(), tmp.getDataLength() * (long) Sizeof.FLOAT, cudaMemcpyKind.cudaMemcpyDeviceToHost);
         JCuda.cudaDeviceSynchronize();
         System.out.println(JsonUtils.toJson(data2));
         client.send(command);

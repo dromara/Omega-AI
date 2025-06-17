@@ -1,9 +1,10 @@
 package com.omega.engine.updater.gpu;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
 
@@ -63,8 +64,8 @@ public class SGDKernel extends BaseKernel {
              * float *diffW, float *v,float *weight,float momentum,float weight_decay,float learnRate, int n, int batch
 
              */
-            kernelParameters = Pointer.to(Pointer.to(diffW.getGpuData()), Pointer.to(vw.getGpuData()), Pointer.to(weight.getGpuData()), Pointer.to(new float[]{momentum}), Pointer.to(new float[]{weight_decay}), Pointer.to(new float[]{lr}), Pointer.to(new int[]{diffW.dataLength}), Pointer.to(new int[]{net.number}), Pointer.to(new int[]{net.train_time}));
-            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(diffW.dataLength), 1, 1,      // Grid dimension
+            kernelParameters = Pointer.to(Pointer.to(diffW.getGpuData()), Pointer.to(vw.getGpuData()), Pointer.to(weight.getGpuData()), Pointer.to(new float[]{momentum}), Pointer.to(new float[]{weight_decay}), Pointer.to(new float[]{lr}), Pointer.to(new int[]{diffW.getDataLength()}), Pointer.to(new int[]{net.number}), Pointer.to(new int[]{net.train_time}));
+            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(diffW.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameters, null // Kernel- and extra parameters
@@ -82,8 +83,8 @@ public class SGDKernel extends BaseKernel {
              * float *diffW, float *v,float *weight,float momentum,float weight_decay,float learnRate, int n, int batch
 
              */
-            kernelParameters = Pointer.to(Pointer.to(diffW.getGpuData()), Pointer.to(vw.getGpuData()), Pointer.to(weight.getGpuData()), Pointer.to(new float[]{momentum}), Pointer.to(new float[]{weight_decay}), Pointer.to(new float[]{lr}), Pointer.to(new int[]{diffW.dataLength}), Pointer.to(new int[]{batchSize}), Pointer.to(new int[]{net.train_time}));
-            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(diffW.dataLength), 1, 1,      // Grid dimension
+            kernelParameters = Pointer.to(Pointer.to(diffW.getGpuData()), Pointer.to(vw.getGpuData()), Pointer.to(weight.getGpuData()), Pointer.to(new float[]{momentum}), Pointer.to(new float[]{weight_decay}), Pointer.to(new float[]{lr}), Pointer.to(new int[]{diffW.getDataLength()}), Pointer.to(new int[]{batchSize}), Pointer.to(new int[]{net.train_time}));
+            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(diffW.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameters, null // Kernel- and extra parameters
@@ -101,8 +102,8 @@ public class SGDKernel extends BaseKernel {
              * float *diffW, float *v,float *weight,float momentum,float weight_decay,float learnRate, int n, int batch
 
              */
-            kernelParameters = Pointer.to(Pointer.to(diffB.getGpuData()), Pointer.to(vb.getGpuData()), Pointer.to(bias.getGpuData()), Pointer.to(new float[]{momentum}), Pointer.to(new float[]{0.0f}), Pointer.to(new float[]{lr}), Pointer.to(new int[]{diffB.dataLength}), Pointer.to(new int[]{net.number}), Pointer.to(new int[]{net.train_time}));
-            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(diffB.dataLength), 1, 1,      // Grid dimension
+            kernelParameters = Pointer.to(Pointer.to(diffB.getGpuData()), Pointer.to(vb.getGpuData()), Pointer.to(bias.getGpuData()), Pointer.to(new float[]{momentum}), Pointer.to(new float[]{0.0f}), Pointer.to(new float[]{lr}), Pointer.to(new int[]{diffB.getDataLength()}), Pointer.to(new int[]{net.number}), Pointer.to(new int[]{net.train_time}));
+            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(diffB.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameters, null // Kernel- and extra parameters
@@ -120,8 +121,8 @@ public class SGDKernel extends BaseKernel {
              * float *diffW, float *v,float *weight,float momentum,float weight_decay,float learnRate, int n, int batch
 
              */
-            kernelParameters = Pointer.to(Pointer.to(diffB.getGpuData()), Pointer.to(vb.getGpuData()), Pointer.to(bias.getGpuData()), Pointer.to(new float[]{momentum}), Pointer.to(new float[]{0.0f}), Pointer.to(new float[]{lr}), Pointer.to(new int[]{diffB.dataLength}), Pointer.to(new int[]{batchSize}), Pointer.to(new int[]{net.train_time}));
-            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(diffB.dataLength), 1, 1,      // Grid dimension
+            kernelParameters = Pointer.to(Pointer.to(diffB.getGpuData()), Pointer.to(vb.getGpuData()), Pointer.to(bias.getGpuData()), Pointer.to(new float[]{momentum}), Pointer.to(new float[]{0.0f}), Pointer.to(new float[]{lr}), Pointer.to(new int[]{diffB.getDataLength()}), Pointer.to(new int[]{batchSize}), Pointer.to(new int[]{net.train_time}));
+            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(diffB.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameters, null // Kernel- and extra parameters

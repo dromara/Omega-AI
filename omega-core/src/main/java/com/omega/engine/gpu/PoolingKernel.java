@@ -1,7 +1,7 @@
 package com.omega.engine.gpu;
 
-import com.omega.utils.JsonUtils;
-import com.omega.utils.MatrixUtils;
+import com.omega.common.utils.JsonUtils;
+import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.pooling.PoolingType;
 import jcuda.Pointer;
 import jcuda.Sizeof;

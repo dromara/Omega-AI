@@ -1,8 +1,7 @@
 package com.omega.engine.nn.layer.diffusion.unet;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixUtils;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.MatrixUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.GPUOP;
 import com.omega.engine.gpu.cudnn.SoftmaxCudnnKernel;
 import com.omega.engine.nn.layer.DropoutLayer;
@@ -13,10 +12,11 @@ import com.omega.engine.nn.layer.gpu.AttentionKernel;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.nn.network.Transformer;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 import com.omega.engine.updater.UpdaterType;
-import com.omega.utils.clip.ClipModelUtils;
-import com.omega.models.transformer.LagJsonReader;
+import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.transformer.utils.LagJsonReader;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -191,7 +191,7 @@ public class UNetCrossAttentionLayer extends Layer {
 
     public void init(Tensor input) {
         // TODO Auto-generated method stub
-        this.number = input.number;
+        this.number = input.getShape()[0];
         this.batchSize = this.number / time;
         if (this.qt != null) {
             this.qt.viewOrg();
@@ -203,7 +203,7 @@ public class UNetCrossAttentionLayer extends Layer {
             this.vLinerLayer.getOutput().viewOrg();
             this.oLinerLayer.getOutput().viewOrg();
         }
-        if (this.qt == null || this.qt.number != this.batchSize) {
+        if (this.qt == null || this.qt.getShape()[0] != this.batchSize) {
             // [batch_size，time，head_num，d_k]
             this.qt = Tensor.createGPUTensor(this.qt, batchSize, headNum, time, dk, true);
             this.kt = Tensor.createGPUTensor(this.kt, batchSize, headNum, kvTime, dk, true);
@@ -386,8 +386,8 @@ public class UNetCrossAttentionLayer extends Layer {
         Tensor_OP().permute(dkt, kt, new int[]{0, 2, 1, 3});
         Tensor_OP().permute(dvt, vt, new int[]{0, 2, 1, 3});
         Tensor queryDelta = qt.view(batchSize * time, 1, 1, headNum * dk);
-        Tensor keyDelta = kt.view(batchSize * time, 1, 1, headNum * dk);
-        Tensor valueDelta = vt.view(batchSize * time, 1, 1, headNum * dk);
+        Tensor keyDelta = kt.view(batchSize * kvTime, 1, 1, headNum * dk);
+        Tensor valueDelta = vt.view(batchSize * kvTime, 1, 1, headNum * dk);
         this.qLinerLayer.back(queryDelta);
         this.kLinerLayer.back(keyDelta);
         this.vLinerLayer.back(valueDelta);

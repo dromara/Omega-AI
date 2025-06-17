@@ -1,9 +1,10 @@
 package com.omega.engine.gpu.cudnn;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.nn.layer.gpu.ConvBaseKernel;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.jcudnn.*;
 import jcuda.runtime.JCuda;
@@ -106,7 +107,7 @@ public class FullyCudnnKernel extends ConvBaseKernel {
     }
 
     public void conv(Tensor input, Tensor kernel, Tensor output) {
-        this.init(input.number);
+        this.init(input.getShape()[0]);
         //		JCudnn.cudnnDropoutForward(handle, dropoutDesc, xdesc, x, ydesc, y, reserveSpace, reserveSpaceSizeInBytes)
         handle(JCudnn.cudnnConvolutionForward(CudnnHandleManager.getHandle(), alpha_P, xDesc, input.getGpuData(), kernelDesc, kernel.getGpuData(), convDesc, fw_algo, this.network.workspace, this.network.workspaceSize, beta_P, yDesc, output.getGpuData()));
     }

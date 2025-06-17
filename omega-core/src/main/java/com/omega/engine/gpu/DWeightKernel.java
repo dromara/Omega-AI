@@ -1,6 +1,6 @@
 package com.omega.engine.gpu;
 
-import com.omega.utils.JsonUtils;
+import com.omega.common.utils.JsonUtils;
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUfunction;

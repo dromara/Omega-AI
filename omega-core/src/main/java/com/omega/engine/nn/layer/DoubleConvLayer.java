@@ -1,10 +1,10 @@
 package com.omega.engine.nn.layer;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.active.ActiveType;
 import com.omega.engine.nn.layer.active.*;
 import com.omega.engine.nn.layer.normalization.BNLayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 /**

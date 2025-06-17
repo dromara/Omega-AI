@@ -1,11 +1,11 @@
 package com.omega.engine.nn.layer;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.active.ActiveType;
 import com.omega.engine.nn.layer.active.*;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RNN;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * Recurrent Layer
@@ -89,7 +89,7 @@ public class RNNLayer extends Layer {
         this.number = this.network.number;
         RNN network = (RNN) this.network;
         this.time = network.time;
-        if (this.h == null || this.h.number != this.number) {
+        if (this.h == null || this.h.getShape()[0] != this.number) {
             this.h = Tensor.createTensor(this.h, this.number, 1, 1, hiddenSize, true);
         }
     }
@@ -98,7 +98,7 @@ public class RNNLayer extends Layer {
         // TODO Auto-generated method stub
         this.number = number;
         this.time = time;
-        if (this.h == null || this.h.number != this.number) {
+        if (this.h == null || this.h.getShape()[0] != this.number) {
             this.h = Tensor.createTensor(this.h, this.number, 1, 1, hiddenSize, true);
         }
     }
@@ -259,7 +259,7 @@ public class RNNLayer extends Layer {
          * 参数初始化
 
          */
-        this.init(time, input.number);
+        this.init(time, input.getShape()[0]);
         /**
          * 设置输入
 

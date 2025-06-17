@@ -1,6 +1,5 @@
 package com.omega.engine.nn.layer.vqvae.tiny;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -8,6 +7,7 @@ import com.omega.engine.nn.layer.active.SiLULayer;
 import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.GNLayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -136,7 +136,12 @@ public class TinyVQVAEEncoder2 extends Layer {
         Tensor d = convNormOut.diff;
         for (int i = down.size() - 1; i >= 0; i--) {
             Layer l = down.get(i);
-            l.back(d);
+            if(l instanceof ConvolutionLayer) {
+            	ConvolutionLayer conv = (ConvolutionLayer) l;
+            	conv.back(d, conv.input);
+            }else {
+            	l.back(d);
+            }
             d = l.diff;
         }
         //		d.showDM("d");

@@ -1,17 +1,17 @@
 package com.omega.engine.nn.layer.unet;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixUtils;
+import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.nn.layer.*;
 import com.omega.engine.nn.layer.active.SiLULayer;
 import com.omega.engine.nn.layer.diffusion.TinyTimeEmbeddingLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.nn.network.Transformer;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 import com.omega.engine.updater.UpdaterType;
-import com.omega.utils.clip.ClipModelUtils;
-import com.omega.models.transformer.LagJsonReader;
+import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.transformer.utils.LagJsonReader;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -489,7 +489,7 @@ public class TinyUNetCond extends Layer {
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
-        if (tDiff == null || tDiff.number != this.number) {
+        if (tDiff == null || tDiff.getShape()[0] != this.number) {
             tDiff = Tensor.createGPUTensor(tDiff, this.number, 1, 1, tEmbDim, true);
         } else {
             tDiff.clearGPU();

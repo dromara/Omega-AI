@@ -1,8 +1,8 @@
 package com.omega.engine.nn.layer;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.nn.layer.gpu.UpSampleKernel2;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * 上采用层
@@ -12,6 +12,7 @@ import com.omega.engine.nn.network.Network;
 public class UPSampleLayer2 extends Layer {
     private int scale = 2;
     private int ndim = 3;
+    
     private UpSampleKernel2 kernel;
 
     public UPSampleLayer2(int channel, int height, int width, int scale) {
@@ -45,7 +46,18 @@ public class UPSampleLayer2 extends Layer {
     public void init() {
         // TODO Auto-generated method stub
         this.number = this.network.number;
-        if (this.output == null || this.output.number != number) {
+        if (this.output == null || this.output.getShape()[0] != number) {
+            this.output = Tensor.createTensor(this.output, number, oChannel, oHeight, oWidth, true);
+        }
+        if (kernel == null) {
+            kernel = new UpSampleKernel2(this.scale, ndim, cuda());
+        }
+    }
+    
+    public void init(Tensor input) {
+        // TODO Auto-generated method stub
+        this.number = input.getShape()[0];
+        if (this.output == null || this.output.getShape()[0] != number) {
             this.output = Tensor.createTensor(this.output, number, oChannel, oHeight, oWidth, true);
         }
         if (kernel == null) {
@@ -56,9 +68,14 @@ public class UPSampleLayer2 extends Layer {
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
-        if (this.diff == null || this.diff.number != number) {
+        if (this.diff == null || this.diff.getShape()[0] != number) {
             this.diff = new Tensor(number, channel, height, width, true);
         }
+    }
+    
+    public void initBack(Tensor diff) {
+        // TODO Auto-generated method stub
+    	this.diff = diff;
     }
 
     @Override
@@ -124,18 +141,17 @@ public class UPSampleLayer2 extends Layer {
     }
 
     @Override
-    public void forward(Tensor inpnut) {
+    public void forward(Tensor input) {
         // TODO Auto-generated method stub
         /**
          * 参数初始化
-
          */
-        this.init();
+        this.init(input);
         /**
          * 设置输入
 
          */
-        this.setInput(inpnut);
+        this.setInput(input);
         /**
          * 计算输出
 
@@ -147,6 +163,24 @@ public class UPSampleLayer2 extends Layer {
     public void back(Tensor delta) {
         // TODO Auto-generated method stub
         this.initBack();
+        /**
+         * 设置梯度
+
+         */
+        this.setDelta(delta);
+        /**
+         * 计算梯度
+
+         */
+        this.diff();
+        if (this.network.GRADIENT_CHECK) {
+            this.gradientCheck();
+        }
+    }
+    
+    public void back(Tensor delta,Tensor diff) {
+        // TODO Auto-generated method stub
+        this.initBack(diff);
         /**
          * 设置梯度
 

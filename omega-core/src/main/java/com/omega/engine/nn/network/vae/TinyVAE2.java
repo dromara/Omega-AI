@@ -1,7 +1,6 @@
 package com.omega.engine.nn.network.vae;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixOperation;
+import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.gpu.GPUOP;
 import com.omega.engine.loss.LossFactory;
 import com.omega.engine.loss.LossType;
@@ -12,6 +11,7 @@ import com.omega.engine.nn.layer.tae.TAEEncoder;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.NetworkType;
 import com.omega.engine.nn.network.RunModel;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 
 import java.io.IOException;
@@ -139,27 +139,27 @@ public class TinyVAE2 extends Network {
     }
 
     public void reparameterize(Tensor encode) {
-        if (this.z == null || this.z.number != encode.number) {
-            this.z = Tensor.createGPUTensor(this.z, encode.number, this.latendDim, encode.height, encode.width, true);
-            this.eps = Tensor.createGPUTensor(this.eps, encode.number, this.latendDim, encode.height, encode.width, true);
-            this.mu = Tensor.createGPUTensor(this.mu, encode.number, this.latendDim, encode.height, encode.width, true);
-            this.logvar = Tensor.createGPUTensor(this.logvar, encode.number, this.latendDim, encode.height, encode.width, true);
+        if (this.z == null || this.z.getShape()[0] != encode.getShape()[0]) {
+            this.z = Tensor.createGPUTensor(this.z, encode.getShape()[0], this.latendDim, encode.getShape()[2], encode.getShape()[3], true);
+            this.eps = Tensor.createGPUTensor(this.eps, encode.getShape()[0], this.latendDim, encode.getShape()[2], encode.getShape()[3], true);
+            this.mu = Tensor.createGPUTensor(this.mu, encode.getShape()[0], this.latendDim, encode.getShape()[2], encode.getShape()[3], true);
+            this.logvar = Tensor.createGPUTensor(this.logvar, encode.getShape()[0], this.latendDim, encode.getShape()[2], encode.getShape()[3], true);
         }
         GPUOP.getInstance().cudaRandn(this.eps);
-        vaeKernel.concat_channel_backward(encode, mu, logvar, encode.number, this.latendDim, this.latendDim, encode.height, encode.width);
+        vaeKernel.concat_channel_backward(encode, mu, logvar, encode.getShape()[0], this.latendDim, this.latendDim, encode.getShape()[2], encode.getShape()[3]);
         vaeKernel.forward(mu, logvar, eps, z);
     }
 
     public void reparameterize_back(Tensor delta) {
         vaeKernel.backward(delta, eps, logvar, dmu, dlogvar);
-        vaeKernel.concat_channel_forward(dmu, dlogvar, encoderDelta, dmu.number, this.latendDim, this.latendDim, dmu.height, dmu.width);
+        vaeKernel.concat_channel_forward(dmu, dlogvar, encoderDelta, dmu.getShape()[0], this.latendDim, this.latendDim, dmu.getShape()[2], dmu.getShape()[3]);
     }
 
     public void initBack() {
-        if (this.dlogvar == null || this.dlogvar.number != logvar.number) {
-            this.dlogvar = Tensor.createGPUTensor(this.dlogvar, logvar.number, this.latendDim, logvar.height, logvar.width, true);
-            this.dmu = Tensor.createGPUTensor(this.dmu, mu.number, this.latendDim, mu.height, mu.width, true);
-            this.encoderDelta = Tensor.createGPUTensor(this.encoderDelta, mu.number, this.latendDim * 2, mu.height, mu.width, true);
+        if (this.dlogvar == null || this.dlogvar.getShape()[0] != logvar.getShape()[0]) {
+            this.dlogvar = Tensor.createGPUTensor(this.dlogvar, logvar.getShape()[0], this.latendDim, logvar.getShape()[2], logvar.getShape()[3], true);
+            this.dmu = Tensor.createGPUTensor(this.dmu, mu.getShape()[0], this.latendDim, mu.getShape()[2], mu.getShape()[3], true);
+            this.encoderDelta = Tensor.createGPUTensor(this.encoderDelta, mu.getShape()[0], this.latendDim * 2, mu.getShape()[2], mu.getShape()[3], true);
         } else {
             dmu.clearGPU();
             dlogvar.clearGPU();
@@ -173,7 +173,6 @@ public class TinyVAE2 extends Network {
         /**
          * 设置误差
          * 将误差值输入到最后一层
-
          */
         this.setLossDiff(lossDiff);  //only decoder delta
         initBack();
@@ -191,12 +190,12 @@ public class TinyVAE2 extends Network {
     }
 
     public float totalLoss(Tensor output, Tensor label) {
-        if (klLoss == null || klLoss.number != mu.number) {
-            this.klLoss = Tensor.createTensor(this.klLoss, mu.number, mu.channel, mu.height, mu.width, true);
+        if (klLoss == null || klLoss.getShape()[0] != mu.getShape()[0]) {
+            this.klLoss = Tensor.createTensor(this.klLoss, mu.getShape()[0], mu.getShape()[1], mu.getShape()[2], mu.getShape()[3], true);
         }
         Tensor decoerLoss = this.lossFunction.loss(output, label);
         vaeKernel.kl(mu, logvar, kl_weight, klLoss);
-        return (MatrixOperation.sum(decoerLoss.syncHost()) + MatrixOperation.sum(klLoss.syncHost())) / input.number;
+        return (MatrixOperation.sum(decoerLoss.syncHost()) + MatrixOperation.sum(klLoss.syncHost())) / input.getShape()[0];
     }
 
     @Override

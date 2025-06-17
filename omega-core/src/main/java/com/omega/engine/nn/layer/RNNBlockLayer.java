@@ -1,10 +1,11 @@
 package com.omega.engine.nn.layer;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.gpu.cudnn.RNNCudnnKernelV8;
 import com.omega.engine.nn.layer.gpu.RNNBaseKernel;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RNN;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Sizeof;
 
 /**
@@ -95,19 +96,19 @@ public class RNNBlockLayer extends BaseRNNLayer {
         }
         //h,c * layernum
         hidden_len = number / time * layerNum;
-        if (this.getHx() == null || this.getHx().number != hidden_len) {
+        if (this.getHx() == null || this.getHx().getShape()[0] != hidden_len) {
             this.setHx(Tensor.createTensor(this.getHx(), hidden_len, 1, 1, hiddenSize, true));
         }
-        if (this.getCx() == null || this.getCx().number != hidden_len) {
+        if (this.getCx() == null || this.getCx().getShape()[0] != hidden_len) {
             this.setCx(Tensor.createTensor(this.getCx(), hidden_len, 1, 1, hiddenSize, true));
         }
-        if (this.getHy() == null || this.getHy().number != hidden_len) {
+        if (this.getHy() == null || this.getHy().getShape()[0] != hidden_len) {
             this.setHy(Tensor.createTensor(this.getHy(), hidden_len, 1, 1, hiddenSize, true));
         }
-        if (this.getCy() == null || this.getCy().number != hidden_len) {
+        if (this.getCy() == null || this.getCy().getShape()[0] != hidden_len) {
             this.setCy(Tensor.createTensor(this.getCy(), hidden_len, 1, 1, hiddenSize, true));
         }
-        if (this.output == null || this.number != this.output.number) {
+        if (this.output == null || this.number != this.output.getShape()[0]) {
             this.output = Tensor.createTensor(this.output, number, 1, 1, hiddenSize, true);
         }
     }
@@ -120,19 +121,19 @@ public class RNNBlockLayer extends BaseRNNLayer {
             kernel.seqLength = this.time;
         }
         hidden_len = number / time * layerNum;
-        if (this.getHx() == null || this.getHx().number != hidden_len) {
+        if (this.getHx() == null || this.getHx().getShape()[0] != hidden_len) {
             this.setHx(Tensor.createTensor(this.getHx(), hidden_len, 1, 1, hiddenSize, true));
         }
-        if (this.getCx() == null || this.getCx().number != hidden_len) {
+        if (this.getCx() == null || this.getCx().getShape()[0] != hidden_len) {
             this.setCx(Tensor.createTensor(this.getCx(), hidden_len, 1, 1, hiddenSize, true));
         }
-        if (this.getHy() == null || this.getHy().number != hidden_len) {
+        if (this.getHy() == null || this.getHy().getShape()[0] != hidden_len) {
             this.setHy(Tensor.createTensor(this.getHy(), hidden_len, 1, 1, hiddenSize, true));
         }
-        if (this.getCy() == null || this.getCy().number != hidden_len) {
+        if (this.getCy() == null || this.getCy().getShape()[0] != hidden_len) {
             this.setCy(Tensor.createTensor(this.getCy(), hidden_len, 1, 1, hiddenSize, true));
         }
-        if (this.output == null || this.number != this.output.number) {
+        if (this.output == null || this.number != this.output.getShape()[0]) {
             this.output = Tensor.createTensor(this.output, number, 1, 1, hiddenSize, true);
         }
     }
@@ -140,19 +141,19 @@ public class RNNBlockLayer extends BaseRNNLayer {
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
-        if (this.dhx == null || this.dhx.number != hidden_len) {
+        if (this.dhx == null || this.dhx.getShape()[0] != hidden_len) {
             this.dhx = Tensor.createTensor(this.dhx, hidden_len, 1, 1, hiddenSize, true);
         }
-        if (this.dhy == null || this.dhy.number != hidden_len) {
+        if (this.dhy == null || this.dhy.getShape()[0] != hidden_len) {
             this.dhy = Tensor.createTensor(this.dhy, hidden_len, 1, 1, hiddenSize, true);
         }
-        if (this.dcx == null || this.dcx.number != hidden_len) {
+        if (this.dcx == null || this.dcx.getShape()[0] != hidden_len) {
             this.dcx = Tensor.createTensor(this.dcx, hidden_len, 1, 1, hiddenSize, true);
         }
-        if (this.dcy == null || this.dcy.number != hidden_len) {
+        if (this.dcy == null || this.dcy.getShape()[0] != hidden_len) {
             this.dcy = Tensor.createTensor(this.dcy, hidden_len, 1, 1, hiddenSize, true);
         }
-        if (this.diff == null || this.number != this.diff.number) {
+        if (this.diff == null || this.number != this.diff.getShape()[0]) {
             this.diff = new Tensor(number, 1, 1, inputSize, true);
         }
     }
@@ -174,14 +175,14 @@ public class RNNBlockLayer extends BaseRNNLayer {
     @Override
     public void output() {
         // TODO Auto-generated method stub
-        kernel.init(input.number, time);
+        kernel.init(input.getShape()[0], time);
         initParam();
         kernel.forward(this.network.RUN_MODEL, input, getHx(), getCx(), weight, output, getHy(), getCy());
     }
 
     public void output(Tensor hx, Tensor cx) {
         // TODO Auto-generated method stub
-        kernel.init(input.number, time);
+        kernel.init(input.getShape()[0], time);
         initParam();
         kernel.forward(this.network.RUN_MODEL, input, hx, cx, weight, output, getHy(), getCy());
     }
@@ -313,11 +314,11 @@ public class RNNBlockLayer extends BaseRNNLayer {
                 this.updater.update(this);
             } else {
                 for (int i = 0; i < this.weight.getDataLength(); i++) {
-                    this.weight.data[i] -= this.learnRate * this.diffW.data[i];
+                    this.weight.getData()[i] -= this.learnRate * this.diffW.getData()[i];
                 }
                 if (hasBias) {
                     for (int i = 0; i < this.bias.getDataLength(); i++) {
-                        this.bias.data[i] -= this.learnRate * this.diffB.data[i];
+                        this.bias.getData()[i] -= this.learnRate * this.diffB.getData()[i];
                     }
                 }
             }
@@ -378,7 +379,7 @@ public class RNNBlockLayer extends BaseRNNLayer {
          * 参数初始化
 
          */
-        this.init(time, input.number);
+        this.init(time, input.getShape()[0]);
         /**
          * 设置输入
 

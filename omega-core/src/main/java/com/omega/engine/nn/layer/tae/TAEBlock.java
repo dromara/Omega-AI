@@ -1,6 +1,5 @@
 package com.omega.engine.nn.layer.tae;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -9,6 +8,7 @@ import com.omega.engine.nn.layer.active.ActiveFunctionLayer;
 import com.omega.engine.nn.layer.active.ReluLayer;
 import com.omega.engine.nn.layer.gpu.BasicBlockKernel;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 /**
@@ -69,14 +69,14 @@ public class TAEBlock extends Layer {
     @Override
     public void init() {
         this.number = this.network.number;
-        if (this.tmp == null || this.output.number != this.network.number) {
+        if (this.tmp == null || this.output.getShape()[0] != this.network.number) {
             this.tmp = Tensor.createGPUTensor(this.tmp, number, oChannel, oHeight, oWidth, true);
         }
     }
 
     @Override
     public void initBack() {
-        if (this.diff == null || conv1.number != conv1.diff.number) {
+        if (this.diff == null || conv1.number != conv1.diff.getShape()[0]) {
             conv1.initBack();
             this.diff = conv1.diff;
             this.cache_delta = Tensor.createGPUTensor(this.cache_delta, number, oChannel, oHeight, oWidth, true);

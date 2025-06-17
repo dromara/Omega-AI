@@ -1,6 +1,5 @@
 package com.omega.engine.nn.layer.unet;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.gpu.cudnn.SoftmaxCudnnKernel;
 import com.omega.engine.nn.layer.DropoutLayer;
 import com.omega.engine.nn.layer.FullyLayer;
@@ -10,6 +9,7 @@ import com.omega.engine.nn.layer.gpu.AttentionKernel;
 import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;
@@ -217,7 +217,7 @@ public class UNetAttentionLayer2 extends Layer {
 
     public void init(Tensor input) {
         // TODO Auto-generated method stub
-        this.number = input.number;
+        this.number = input.getShape()[0];
         this.batchSize = this.number;
         if (this.qt != null) {
             //			JCuda.cudaDeviceSynchronize();
@@ -228,7 +228,7 @@ public class UNetAttentionLayer2 extends Layer {
             this.oi.viewOrg();
             temp.clearGPU();
         }
-        if (this.qt == null || this.qt.number != this.batchSize || this.qt.height != this.time) {
+        if (this.qt == null || this.qt.getShape()[0] != this.batchSize || this.qt.getShape()[2] != this.time) {
             // [batch_size，time，head_num，d_k]
             this.qt = Tensor.createGPUTensor(this.qt, batchSize, headNum, time, dk, true);
             this.kt = Tensor.createGPUTensor(this.kt, batchSize, headNum, kvTime, dk, true);
@@ -243,7 +243,7 @@ public class UNetAttentionLayer2 extends Layer {
             this.attn = Tensor.createGPUTensor(this.attn, batchSize, headNum, time, kvTime, true);
             // [batch_size, len_q, n_heads * dim_v]
             this.oi = Tensor.createGPUTensor(this.oi, batchSize * time, 1, 1, embedDim, true);
-            this.output = Tensor.createGPUTensor(this.output, input.number, input.channel, input.height, input.width, true);
+            this.output = Tensor.createGPUTensor(this.output, input.getShape()[0], input.getShape()[1], input.getShape()[2], input.getShape()[3], true);
             //			this.output.showShape("output");
         }
         if (this.getqLinerLayer().getOutput() != null) {
@@ -615,6 +615,7 @@ public class UNetAttentionLayer2 extends Layer {
     }
 
     public void saveModel(RandomAccessFile outputStream) throws IOException {
+    	norm.saveModel(outputStream);
         getqLinerLayer().saveModel(outputStream);
         getkLinerLayer().saveModel(outputStream);
         getvLinerLayer().saveModel(outputStream);
@@ -622,6 +623,7 @@ public class UNetAttentionLayer2 extends Layer {
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
+    	norm.loadModel(inputStream);
         getqLinerLayer().loadModel(inputStream);
         getkLinerLayer().loadModel(inputStream);
         getvLinerLayer().loadModel(inputStream);

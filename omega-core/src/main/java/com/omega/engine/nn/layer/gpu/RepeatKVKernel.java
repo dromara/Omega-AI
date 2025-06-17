@@ -1,11 +1,12 @@
 package com.omega.engine.nn.layer.gpu;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.JsonUtils;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.JsonUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUdeviceptr;
@@ -109,14 +110,14 @@ public class RepeatKVKernel extends BaseKernel {
              * float *k_out, float *v_out, const float *k, const float *v,int B, int T, int num_kv_heads, int num_queries_per_kv, int head_dim
 
              */
-            forwardParameters = Pointer.to(Pointer.to(output.getGpuData()), Pointer.to(input.getGpuData()), Pointer.to(new int[]{input.number}), //batchSize
-                    Pointer.to(new int[]{input.channel}),  //Time
-                    Pointer.to(new int[]{input.height}),  //kv_head_num
+            forwardParameters = Pointer.to(Pointer.to(output.getGpuData()), Pointer.to(input.getGpuData()), Pointer.to(new int[]{input.getShape()[0]}), //batchSize
+                    Pointer.to(new int[]{input.getShape()[1]}),  //Time
+                    Pointer.to(new int[]{input.getShape()[2]}),  //kv_head_num
                     Pointer.to(new int[]{nRep}),  //query_per_kv_head = q_head_num / kv_head_num
-                    Pointer.to(new int[]{input.width}) //head_dim
+                    Pointer.to(new int[]{input.getShape()[3]}) //head_dim
             );
-            int[] block_nums = new int[]{input.number, input.channel, input.height};
-            int[] block_dims = new int[]{input.width, 1, 1};
+            int[] block_nums = new int[]{input.getShape()[0], input.getShape()[1], input.getShape()[2]};
+            int[] block_dims = new int[]{input.getShape()[3], 1, 1};
             checkCUDA(cuLaunchKernel(forward_once_function, block_nums[0], block_nums[1], block_nums[2],      // Grid dimension
                     block_dims[0], block_dims[1], block_dims[2],      // Block dimension
                     0, null,               // Shared memory size and stream
@@ -134,14 +135,14 @@ public class RepeatKVKernel extends BaseKernel {
              * float *k_out, float *v_out, const float *k, const float *v,int B, int T, int num_kv_heads, int num_queries_per_kv, int head_dim
 
              */
-            forwardParameters = Pointer.to(Pointer.to(ok.getGpuData()), Pointer.to(ov.getGpuData()), Pointer.to(k.getGpuData()), Pointer.to(v.getGpuData()), Pointer.to(new int[]{k.number}), //batchSize
-                    Pointer.to(new int[]{k.channel}),  //Time
-                    Pointer.to(new int[]{k.height}),  //kv_head_num
+            forwardParameters = Pointer.to(Pointer.to(ok.getGpuData()), Pointer.to(ov.getGpuData()), Pointer.to(k.getGpuData()), Pointer.to(v.getGpuData()), Pointer.to(new int[]{k.getShape()[0]}), //batchSize
+                    Pointer.to(new int[]{k.getShape()[1]}),  //Time
+                    Pointer.to(new int[]{k.getShape()[2]}),  //kv_head_num
                     Pointer.to(new int[]{nRep}),  //query_per_kv_head = q_head_num / kv_head_num
-                    Pointer.to(new int[]{k.width}) //head_dim
+                    Pointer.to(new int[]{k.getShape()[3]}) //head_dim
             );
-            int[] block_nums = new int[]{k.number, k.channel, k.height};
-            int[] block_dims = new int[]{k.width, 1, 1};
+            int[] block_nums = new int[]{k.getShape()[0], k.getShape()[1], k.getShape()[2]};
+            int[] block_dims = new int[]{k.getShape()[3], 1, 1};
             checkCUDA(cuLaunchKernel(forward_function, block_nums[0], block_nums[1], block_nums[2],      // Grid dimension
                     block_dims[0], block_dims[1], block_dims[2],      // Block dimension
                     0, null,               // Shared memory size and stream
@@ -159,14 +160,14 @@ public class RepeatKVKernel extends BaseKernel {
              * float *dk, float *dv, const float *dk_rep, const float *dv_rep,int B, int T, int num_kv_heads, int num_queries_per_kv, int head_dim
 
              */
-            backwardParameters = Pointer.to(Pointer.to(diff.getGpuData()), Pointer.to(detla.getGpuData()), Pointer.to(new int[]{diff.number}), //batchSize
-                    Pointer.to(new int[]{diff.channel}),  //Time
-                    Pointer.to(new int[]{diff.height}),  //kv_head_num
+            backwardParameters = Pointer.to(Pointer.to(diff.getGpuData()), Pointer.to(detla.getGpuData()), Pointer.to(new int[]{diff.getShape()[0]}), //batchSize
+                    Pointer.to(new int[]{diff.getShape()[1]}),  //Time
+                    Pointer.to(new int[]{diff.getShape()[2]}),  //kv_head_num
                     Pointer.to(new int[]{nRep}),  //query_per_kv_head = q_head_num / kv_head_num
-                    Pointer.to(new int[]{diff.width}) //head_dim
+                    Pointer.to(new int[]{diff.getShape()[3]}) //head_dim
             );
-            int[] block_nums = new int[]{diff.number, diff.channel, diff.height};
-            int[] block_dims = new int[]{diff.width, 1, 1};
+            int[] block_nums = new int[]{diff.getShape()[0], diff.getShape()[1], diff.getShape()[2]};
+            int[] block_dims = new int[]{diff.getShape()[3], 1, 1};
             checkCUDA(cuLaunchKernel(backward_once_function, block_nums[0], block_nums[1], block_nums[2],      // Grid dimension
                     block_dims[0], block_dims[1], block_dims[2],      // Block dimension
                     0, null,               // Shared memory size and stream
@@ -184,14 +185,14 @@ public class RepeatKVKernel extends BaseKernel {
              * float *dk, float *dv, const float *dk_rep, const float *dv_rep,int B, int T, int num_kv_heads, int num_queries_per_kv, int head_dim
 
              */
-            backwardParameters = Pointer.to(Pointer.to(diffK.getGpuData()), Pointer.to(diffV.getGpuData()), Pointer.to(dRepK.getGpuData()), Pointer.to(dRepV.getGpuData()), Pointer.to(new int[]{diffK.number}), //batchSize
-                    Pointer.to(new int[]{diffK.channel}),  //Time
-                    Pointer.to(new int[]{diffK.height}),  //kv_head_num
+            backwardParameters = Pointer.to(Pointer.to(diffK.getGpuData()), Pointer.to(diffV.getGpuData()), Pointer.to(dRepK.getGpuData()), Pointer.to(dRepV.getGpuData()), Pointer.to(new int[]{diffK.getShape()[0]}), //batchSize
+                    Pointer.to(new int[]{diffK.getShape()[1]}),  //Time
+                    Pointer.to(new int[]{diffK.getShape()[2]}),  //kv_head_num
                     Pointer.to(new int[]{nRep}),  //query_per_kv_head = q_head_num / kv_head_num
-                    Pointer.to(new int[]{diffK.width}) //head_dim
+                    Pointer.to(new int[]{diffK.getShape()[3]}) //head_dim
             );
-            int[] block_nums = new int[]{diffK.number, diffK.channel, diffK.height};
-            int[] block_dims = new int[]{diffK.width, 1, 1};
+            int[] block_nums = new int[]{diffK.getShape()[0], diffK.getShape()[1], diffK.getShape()[2]};
+            int[] block_dims = new int[]{diffK.getShape()[3], 1, 1};
             checkCUDA(cuLaunchKernel(backward_function, block_nums[0], block_nums[1], block_nums[2],      // Grid dimension
                     block_dims[0], block_dims[1], block_dims[2],      // Block dimension
                     0, null,               // Shared memory size and stream

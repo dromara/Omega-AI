@@ -1,8 +1,8 @@
 package com.omega.engine.nn.layer.unet;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.nn.layer.*;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.util.ArrayList;
@@ -131,7 +131,7 @@ public class UNetUpBlockLayer extends Layer {
     public void init() {
         // TODO Auto-generated method stub
         this.number = this.network.number;
-        if (res_out == null || res_out[0].number != this.number) {
+        if (res_out == null || res_out[0].getShape()[0] != this.number) {
             if (res_out == null) {
                 res_out = new Tensor[numLayers];
             }
@@ -139,7 +139,7 @@ public class UNetUpBlockLayer extends Layer {
                 res_out[i] = Tensor.createGPUTensor(res_out[i], this.number, oChannel, oHeight, oWidth, true);
             }
         }
-        if (tEmbDim > 0 && (t_out == null || t_out[0].number != this.number)) {
+        if (tEmbDim > 0 && (t_out == null || t_out[0].getShape()[0] != this.number)) {
             if (t_out == null) {
                 t_out = new Tensor[numLayers];
             }
@@ -151,8 +151,8 @@ public class UNetUpBlockLayer extends Layer {
 
     public void init(Tensor input) {
         // TODO Auto-generated method stub
-        this.number = input.number;
-        if (res_out == null || res_out[0].number != this.number) {
+        this.number = input.getShape()[0];
+        if (res_out == null || res_out[0].getShape()[0] != this.number) {
             if (res_out == null) {
                 res_out = new Tensor[numLayers];
             }
@@ -160,7 +160,7 @@ public class UNetUpBlockLayer extends Layer {
                 res_out[i] = Tensor.createGPUTensor(res_out[i], this.number, oChannel, oHeight, oWidth, true);
             }
         }
-        if (tEmbDim > 0 && (t_out == null || t_out[0].number != this.number)) {
+        if (tEmbDim > 0 && (t_out == null || t_out[0].getShape()[0] != this.number)) {
             if (t_out == null) {
                 t_out = new Tensor[numLayers];
             }
@@ -173,10 +173,10 @@ public class UNetUpBlockLayer extends Layer {
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
-        if (crossAttn && (kvDiff == null || kvDiff.number * maxContextLen != this.number * maxContextLen)) {
+        if (crossAttn && (kvDiff == null || kvDiff.getShape()[0] * maxContextLen != this.number * maxContextLen)) {
             kvDiff = Tensor.createGPUTensor(kvDiff, this.number * maxContextLen, 1, 1, oChannel, true);
         }
-        if (dt == null || dt.number != this.number) {
+        if (dt == null || dt.getShape()[0] != this.number) {
             dt = Tensor.createGPUTensor(dt, this.number, 1, 1, oChannel, true);
         }
     }
@@ -231,7 +231,7 @@ public class UNetUpBlockLayer extends Layer {
             //			r1.showDMByOffset(0, 100, "r1");
             tEmbLayers.get(i).forward(tembd);
             //			tEmbLayers.get(i).getOutput().showDMByOffset(0, 100, "temb");
-            Tensor_OP().add(r1, tEmbLayers.get(i).getOutput(), t_out[i], r1.height * r1.width);
+            Tensor_OP().add(r1, tEmbLayers.get(i).getOutput(), t_out[i], r1.getShape()[2] * r1.getShape()[3]);
             //			t_out[i].showDMByOffset(0, 100, "t_out[i]");
             resnetSecond.get(i).forward(t_out[i]);
             residualInputs.get(i).forward(res_i);
@@ -268,7 +268,7 @@ public class UNetUpBlockLayer extends Layer {
             //			r1.showDMByOffset(0, 100, "r1");
             tEmbLayers.get(i).forward(tembd);
             //			tEmbLayers.get(i).getOutput().showDMByOffset(0, 100, "temb");
-            Tensor_OP().add(r1, tEmbLayers.get(i).getOutput(), t_out[i], r1.height * r1.width);
+            Tensor_OP().add(r1, tEmbLayers.get(i).getOutput(), t_out[i], r1.getShape()[2] * r1.getShape()[3]);
             //			t_out[i].showDMByOffset(0, 100, "t_out[i]");
             resnetSecond.get(i).forward(t_out[i]);
             residualInputs.get(i).forward(res_i);

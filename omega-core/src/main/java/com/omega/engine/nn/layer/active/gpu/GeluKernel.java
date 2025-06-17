@@ -1,9 +1,10 @@
 package com.omega.engine.nn.layer.active.gpu;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUfunction;
@@ -89,10 +90,10 @@ public class GeluKernel extends BaseKernel {
              * float *x, float *output, int N
 
              */
-            forwardKernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{output.dataLength}));
-            this.N = output.number;
+            forwardKernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{output.getDataLength()}));
+            this.N = output.getShape()[0];
             //			}
-            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(input.dataLength), 1, 1,      // Grid dimension
+            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(input.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     forwardKernelParameters, null // Kernel- and extra parameters
@@ -111,9 +112,9 @@ public class GeluKernel extends BaseKernel {
              * float *x, float *out, int N
 
              */
-            forwardKernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{output.dataLength}));
-            this.N = output.number;
-            cuLaunchKernel(oldFunction, this.CAFFE_GET_BLOCKS(input.dataLength), 1, 1,      // Grid dimension
+            forwardKernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{output.getDataLength()}));
+            this.N = output.getShape()[0];
+            cuLaunchKernel(oldFunction, this.CAFFE_GET_BLOCKS(input.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     forwardKernelParameters, null // Kernel- and extra parameters
@@ -131,9 +132,9 @@ public class GeluKernel extends BaseKernel {
              * float *x, float *out, int N
 
              */
-            forwardKernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{input.dataLength}));
-            this.N = output.number;
-            cuLaunchKernel(oldHalfFunction, this.CAFFE_GET_BLOCKS(input.dataLength), 1, 1,      // Grid dimension
+            forwardKernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{input.getDataLength()}));
+            this.N = output.getShape()[0];
+            cuLaunchKernel(oldHalfFunction, this.CAFFE_GET_BLOCKS(input.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     forwardKernelParameters, null // Kernel- and extra parameters
@@ -152,10 +153,10 @@ public class GeluKernel extends BaseKernel {
              * float *x, float *output, int N
 
              */
-            forwardKernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{output.dataLength}));
-            this.N = output.number;
+            forwardKernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{output.getDataLength()}));
+            this.N = output.getShape()[0];
             //			}
-            cuLaunchKernel(fast_function, this.CAFFE_GET_BLOCKS(input.dataLength), 1, 1,      // Grid dimension
+            cuLaunchKernel(fast_function, this.CAFFE_GET_BLOCKS(input.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     forwardKernelParameters, null // Kernel- and extra parameters
@@ -213,9 +214,9 @@ public class GeluKernel extends BaseKernel {
              * float* dinp, const float* inp, const float* dout, int N
 
              */
-            backwardKernelParameters = Pointer.to(Pointer.to(diff.getGpuData()), Pointer.to(input.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(new int[]{input.dataLength}));
+            backwardKernelParameters = Pointer.to(Pointer.to(diff.getGpuData()), Pointer.to(input.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(new int[]{input.getDataLength()}));
             //			}
-            cuLaunchKernel(function_back, this.CAFFE_GET_BLOCKS(input.dataLength), 1, 1,      // Grid dimension
+            cuLaunchKernel(function_back, this.CAFFE_GET_BLOCKS(input.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     backwardKernelParameters, null // Kernel- and extra parameters
@@ -235,9 +236,9 @@ public class GeluKernel extends BaseKernel {
              * float* dinp, const float* inp, const float* dout, int N
 
              */
-            backwardKernelParameters = Pointer.to(Pointer.to(diff.getGpuData()), Pointer.to(input.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(new int[]{input.dataLength}));
+            backwardKernelParameters = Pointer.to(Pointer.to(diff.getGpuData()), Pointer.to(input.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(new int[]{input.getDataLength()}));
             //			}
-            cuLaunchKernel(fast_function_back, this.CAFFE_GET_BLOCKS(input.dataLength), 1, 1,      // Grid dimension
+            cuLaunchKernel(fast_function_back, this.CAFFE_GET_BLOCKS(input.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     backwardKernelParameters, null // Kernel- and extra parameters

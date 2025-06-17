@@ -1,10 +1,11 @@
 package com.omega.engine.gpu.cudnn;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.nn.layer.gpu.BNBaseKernel;
 import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.network.RunModel;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUfunction;
@@ -76,8 +77,8 @@ public class BNCudnnKernel extends BNBaseKernel {
     }
 
     public void initForward(Tensor input) {
-        if (input.number != this.N) {
-            this.N = input.number;
+        if (input.getShape()[0] != this.N) {
+            this.N = input.getShape()[0];
             CudnnHandleManager.handle(JCudnn.cudnnDestroyTensorDescriptor(dstTensorDesc));
             CudnnHandleManager.handle(JCudnn.cudnnCreateTensorDescriptor(dstTensorDesc));
             if (bnType == BNType.fully_bn) {

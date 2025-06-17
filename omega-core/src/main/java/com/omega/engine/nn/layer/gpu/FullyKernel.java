@@ -1,11 +1,12 @@
 package com.omega.engine.nn.layer.gpu;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.JsonUtils;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.JsonUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUfunction;
@@ -61,20 +62,20 @@ public class FullyKernel extends BaseKernel {
         CUDAMemoryManager.free();
         for (int n = 0; n < N; n++) {
             for (int ow = 0; ow < W; ow++) {
-                output2.data[n * W + ow] += bias.data[ow];
+                output2.getData()[n * W + ow] += bias.getData()[ow];
             }
         }
         //			diffB.showDM();
-        System.out.println(JsonUtils.toJson(output2.data));
+        System.out.println(JsonUtils.toJson(output2.getData()));
         k.backwardBias(diffB, delta);
         for (int ow = 0; ow < W; ow++) {
-            diffB2.data[ow] = 0.0f;
+            diffB2.getData()[ow] = 0.0f;
             for (int n = 0; n < N; n++) {
-                diffB2.data[ow] += delta.data[n * W + ow];
+                diffB2.getData()[ow] += delta.getData()[n * W + ow];
             }
         }
         diffB.showDM();
-        System.out.println(JsonUtils.toJson(diffB2.data));
+        System.out.println(JsonUtils.toJson(diffB2.getData()));
     }
 
     public void init() {
@@ -108,16 +109,16 @@ public class FullyKernel extends BaseKernel {
 
     public void addBias(Tensor output, Tensor bias) {
         try {
-            if (kernelParameters == null || output.number != this.N) {
+            if (kernelParameters == null || output.getShape()[0] != this.N) {
                 /**
                  * 设置入参
                  * float* output, float* biases, int batch, int n, int size
 
                  */
                 kernelParameters = Pointer.to(Pointer.to(output.getGpuData()), Pointer.to(bias.getGpuData()), Pointer.to(new int[]{output.getNumber()}), Pointer.to(new int[]{output.getWidth()}), Pointer.to(new int[]{1}));
-                this.N = output.number;
+                this.N = output.getShape()[0];
             }
-            checkCUDA(cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(output.dataLength), 1, 1,      // Grid dimension
+            checkCUDA(cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(output.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameters, null // Kernel- and extra parameters
@@ -183,7 +184,6 @@ public class FullyKernel extends BaseKernel {
                 /**
                  * 设置入参
                  * float* data_im,float* data_col,int n,int height,int width,int kh,int kw,int s,int p,int oh,int ow
-
                  */
                 kernelBackParameters = Pointer.to(Pointer.to(diffB.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(new int[]{delta.getNumber()}), Pointer.to(new int[]{delta.getWidth()}));
             }

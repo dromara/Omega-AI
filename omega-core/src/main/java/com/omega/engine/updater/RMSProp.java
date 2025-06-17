@@ -29,9 +29,9 @@ public class RMSProp extends Updater {
          */
         if (kernel == null) {
             if (layer.hasBias) {
-                kernel = new RMSPropKernel(layer.weight.dataLength, layer.bias.dataLength, net.cudaManager);
+                kernel = new RMSPropKernel(layer.weight.getDataLength(), layer.bias.getDataLength(), net.cudaManager);
             } else {
-                kernel = new RMSPropKernel(layer.weight.dataLength, net.cudaManager);
+                kernel = new RMSPropKernel(layer.weight.getDataLength(), net.cudaManager);
             }
         }
         kernel.updateW(layer.diffW, layer.weight, layer.network, layer.learnRate);
@@ -57,7 +57,7 @@ public class RMSProp extends Updater {
 
          */
         if (kernel == null) {
-            kernel = new RMSPropKernel(layer.gamma.dataLength, layer.beta.dataLength, net.cudaManager);
+            kernel = new RMSPropKernel(layer.gamma.getDataLength(), layer.beta.getDataLength(), net.cudaManager);
         }
         kernel.updateW(layer.diffGamma, layer.gamma, layer.network, layer.learnRate);
         kernel.updateB(layer.diffBeta, layer.beta, layer.network, layer.learnRate);
@@ -78,9 +78,9 @@ public class RMSProp extends Updater {
          */
         if (kernel == null) {
             if (layer.hasBias) {
-                kernel = new RMSPropKernel(layer.weight.dataLength, layer.bias.dataLength, net.cudaManager);
+                kernel = new RMSPropKernel(layer.weight.getDataLength(), layer.bias.getDataLength(), net.cudaManager);
             } else {
-                kernel = new RMSPropKernel(layer.weight.dataLength, net.cudaManager);
+                kernel = new RMSPropKernel(layer.weight.getDataLength(), net.cudaManager);
             }
         }
         kernel.updateW(layer.diffW, layer.weight, layer.network, layer.learnRate, batchSize);

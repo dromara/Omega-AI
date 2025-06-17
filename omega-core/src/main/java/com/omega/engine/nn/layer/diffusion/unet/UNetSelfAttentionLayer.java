@@ -1,8 +1,7 @@
 package com.omega.engine.nn.layer.diffusion.unet;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixUtils;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.MatrixUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.GPUOP;
 import com.omega.engine.gpu.cudnn.SoftmaxCudnnKernel;
 import com.omega.engine.nn.layer.DropoutLayer;
@@ -12,6 +11,7 @@ import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.gpu.AttentionKernel;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.Transformer;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;
@@ -149,7 +149,7 @@ public class UNetSelfAttentionLayer extends Layer {
 
     public void init(Tensor input) {
         // TODO Auto-generated method stub
-        this.number = input.number;
+        this.number = input.getShape()[0];
         this.batchSize = this.number / time;
         if (this.qt != null) {
             this.qt.viewOrg();
@@ -157,7 +157,7 @@ public class UNetSelfAttentionLayer extends Layer {
             this.vt.viewOrg();
             this.oi.viewOrg();
         }
-        if (this.qt == null || this.qt.number != this.batchSize) {
+        if (this.qt == null || this.qt.getShape()[0] != this.batchSize) {
             // [batch_size，time，head_num，d_k]
             this.qt = Tensor.createGPUTensor(this.qt, batchSize, headNum, time, dk, true);
             this.kt = Tensor.createGPUTensor(this.kt, batchSize, headNum, time, dk, true);

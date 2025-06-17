@@ -1,8 +1,7 @@
 package com.omega.engine.nn.layer;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixUtils;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.MatrixUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.active.ActiveType;
 import com.omega.engine.gpu.cudnn.ConvCudnnKernel;
 import com.omega.engine.nn.layer.gpu.BiasKernel;
@@ -13,6 +12,7 @@ import com.omega.engine.nn.model.LayerInit;
 import com.omega.engine.nn.network.CNN;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.utils.ModelUtils;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;
@@ -112,7 +112,7 @@ public class ConvolutionLayer extends Layer {
         this.stride = stride;
         this.hasBias = hasBias;
         this.network = network;
-        //		network.paramLayers.add(this);
+        this.network.paramLayers.add(this);
         this.setUpdater(UpdaterFactory.create(this.network));
         this.hasParams = true;
         this.initParam();
@@ -144,7 +144,7 @@ public class ConvolutionLayer extends Layer {
         this.hasBias = hasBias;
         this.network = network;
         this.freeze = freeze;
-        //		network.paramLayers.add(this);
+        this.network.paramLayers.add(this);
         this.setUpdater(UpdaterFactory.create(this.network));
         this.hasParams = true;
         this.initParam();
@@ -176,7 +176,7 @@ public class ConvolutionLayer extends Layer {
         this.stride = stride;
         this.hasBias = hasBias;
         this.network = network;
-        //		network.paramLayers.add(this);
+        this.network.paramLayers.add(this);
         this.hasParams = true;
         this.paramsInit = paramsInit;
         this.initParam();
@@ -193,7 +193,7 @@ public class ConvolutionLayer extends Layer {
         this.stride = stride;
         this.hasBias = hasBias;
         this.network = network;
-        //		network.paramLayers.add(this);
+        this.network.paramLayers.add(this);
         this.hasParams = true;
         switch (activeType) {
             case sigmoid:
@@ -277,7 +277,7 @@ public class ConvolutionLayer extends Layer {
     public void init() {
         // TODO Auto-generated method stub
         this.number = this.network.number;
-        if (this.output == null || this.number != this.output.number) {
+        if (this.output == null || this.number != this.output.getShape()[0]) {
             //			this.output = new Tensor(number, oChannel, oHeight, oWidth, true);
             this.output = Tensor.createTensor(this.output, number, oChannel, oHeight, oWidth, true);
         }
@@ -295,8 +295,8 @@ public class ConvolutionLayer extends Layer {
 
     public void init(Tensor input) {
         // TODO Auto-generated method stub
-        this.number = input.number;
-        if (this.output == null || this.number != this.output.number) {
+        this.number = input.getShape()[0];
+        if (this.output == null || this.number != this.output.getShape()[0]) {
             this.output = Tensor.createTensor(this.output, number, oChannel, oHeight, oWidth, true);
         }
         if (kernel == null) {
@@ -314,15 +314,28 @@ public class ConvolutionLayer extends Layer {
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
-        if (this.diff == null || this.number != this.diff.number) {
+        if (this.diff == null || this.number != this.diff.getShape()[0]) {
             this.diff = new Tensor(number, channel, height, width, true);
-            if (this.diffW == null) {
-                if (!freeze) {
-                    if (this.hasBias) {
-                        this.diffB = new Tensor(1, 1, 1, kernelNum, true);
-                    }
-                    this.diffW = new Tensor(this.kernelNum, this.channel, this.kHeight, this.kWidth, true);
+        }
+        if (this.diffW == null) {
+            if (!freeze) {
+                if (this.hasBias) {
+                    this.diffB = new Tensor(1, 1, 1, kernelNum, true);
                 }
+                this.diffW = new Tensor(this.kernelNum, this.channel, this.kHeight, this.kWidth, true);
+            }
+        }
+    }
+    
+    public void initBack(Tensor diff) {
+        // TODO Auto-generated method stub
+    	this.diff = diff;
+        if (this.diffW == null) {
+            if (!freeze) {
+                if (this.hasBias) {
+                    this.diffB = new Tensor(1, 1, 1, kernelNum, true);
+                }
+                this.diffW = new Tensor(this.kernelNum, this.channel, this.kHeight, this.kWidth, true);
             }
         }
     }
@@ -492,10 +505,10 @@ public class ConvolutionLayer extends Layer {
                 this.updater.update(this);
             } else {
                 for (int i = 0; i < this.weight.getDataLength(); i++) {
-                    this.weight.data[i] -= this.learnRate * this.diffW.data[i];
+                    this.weight.getData()[i] -= this.learnRate * this.diffW.getData()[i];
                 }
                 for (int i = 0; i < this.bias.getDataLength(); i++) {
-                    this.bias.data[i] -= this.learnRate * this.diffB.data[i];
+                    this.bias.getData()[i] -= this.learnRate * this.diffB.getData()[i];
                 }
             }
             this.clearAccGrad();
@@ -598,7 +611,7 @@ public class ConvolutionLayer extends Layer {
 
     public void back(Tensor delta, Tensor diff) {
         // TODO Auto-generated method stub
-        this.initBack();
+        this.initBack(diff);
         /**
          * 设置梯度
 
@@ -639,13 +652,13 @@ public class ConvolutionLayer extends Layer {
         if (accDW == null) {
             accDW = diffW.copyGPU();
         } else {
-            kernel.axpy_gpu(diffW, accDW, accDW.dataLength, scale, 1, 1);
+            kernel.axpy_gpu(diffW, accDW, accDW.getDataLength(), scale, 1, 1);
         }
         if (hasBias) {
             if (accDB == null) {
                 accDB = diffB.copyGPU();
             } else {
-                kernel.axpy_gpu(diffB, accDB, accDB.dataLength, scale, 1, 1);
+                kernel.axpy_gpu(diffB, accDB, accDB.getDataLength(), scale, 1, 1);
             }
         }
     }

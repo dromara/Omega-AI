@@ -1,7 +1,6 @@
 package com.omega.engine.nn.layer.unet;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixUtils;
+import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.gpu.cudnn.SoftmaxCudnnKernel;
 import com.omega.engine.nn.layer.DropoutLayer;
 import com.omega.engine.nn.layer.FullyLayer;
@@ -11,6 +10,7 @@ import com.omega.engine.nn.layer.gpu.AttentionKernel;
 import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.Transformer;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;
@@ -254,7 +254,7 @@ public class UNetAttentionLayer extends Layer {
 
     public void init(Tensor input) {
         // TODO Auto-generated method stub
-        this.number = input.number;
+        this.number = input.getShape()[0];
         this.batchSize = this.number;
         if (this.qt != null) {
             //			JCuda.cudaDeviceSynchronize();
@@ -266,7 +266,7 @@ public class UNetAttentionLayer extends Layer {
             this.oi.viewOrg();
             temp.clearGPU();
         }
-        if (this.qt == null || this.qt.number != this.batchSize || this.qt.height != this.time) {
+        if (this.qt == null || this.qt.getShape()[0] != this.batchSize || this.qt.getShape()[2] != this.time) {
             // [batch_size，time，head_num，d_k]
             this.xt = Tensor.createGPUTensor(this.xt, batchSize, time, 1, channel, true);
             this.qt = Tensor.createGPUTensor(this.qt, batchSize, headNum, time, dk, true);
@@ -770,6 +770,9 @@ public class UNetAttentionLayer extends Layer {
     }
 
     public void saveModel(RandomAccessFile outputStream) throws IOException {
+    	if (gn != null) {
+            gn.saveModel(outputStream);
+        }
         getqLinerLayer().saveModel(outputStream);
         getkLinerLayer().saveModel(outputStream);
         getvLinerLayer().saveModel(outputStream);
@@ -777,6 +780,9 @@ public class UNetAttentionLayer extends Layer {
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
+    	if (gn != null) {
+            gn.loadModel(inputStream);
+        }
         getqLinerLayer().loadModel(inputStream);
         getkLinerLayer().loadModel(inputStream);
         getvLinerLayer().loadModel(inputStream);
@@ -818,6 +824,9 @@ public class UNetAttentionLayer extends Layer {
     @Override
     public void accGrad(float scale) {
         // TODO Auto-generated method stub
+    	if (gn != null) {
+            gn.accGrad(scale);
+        }
         qLinerLayer.accGrad(scale);
         kLinerLayer.accGrad(scale);
         vLinerLayer.accGrad(scale);

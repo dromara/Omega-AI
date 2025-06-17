@@ -1,11 +1,11 @@
 package com.omega.engine.nn.layer.llava;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.layer.*;
 import com.omega.engine.nn.layer.llama.LlamaTransformerBlock;
 import com.omega.engine.nn.layer.normalization.RMSLayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;
@@ -132,10 +132,10 @@ public class LlavaTransformerDecoder extends Layer {
     @Override
     public void init() {
         // TODO Auto-generated method stub
-        this.number = this.input.number;
+        this.number = this.input.getShape()[0];
         this.time = this.network.time;
         this.batchSize = this.number / this.time;
-        if (tiTokens == null || tiTokens.number != this.number) {
+        if (tiTokens == null || tiTokens.getShape()[0] != this.number) {
             tiTokens = Tensor.createGPUTensor(tiTokens, this.number, 1, 1, embedDim, true);
         }
     }
@@ -143,7 +143,7 @@ public class LlavaTransformerDecoder extends Layer {
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
-        if (versionProjDelta == null || versionProjDelta.number != this.batchSize) {
+        if (versionProjDelta == null || versionProjDelta.getShape()[0] != this.batchSize) {
             versionProjDelta = Tensor.createGPUTensor(versionProjDelta, this.batchSize * imageTime, 1, 1, embedDim, true);
         }
     }

@@ -1,7 +1,8 @@
 package com.omega.engine.gpu;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.JsonUtils;
+import com.omega.common.utils.JsonUtils;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUfunction;
@@ -29,7 +30,7 @@ public class GlobalNormKernel extends CUDAKernel {
              * const float* a, float* result, int n
 
              */
-            Pointer kernelParameter = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{input.dataLength}));
+            Pointer kernelParameter = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{input.getDataLength()}));
             checkCUDA(cuLaunchKernel(globalNorm_gpu_function, CAFFE_GET_BLOCKS(input.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1, 0, null,               // Shared memory size and stream
                     kernelParameter, null // Kernel- and extra parameters
@@ -47,7 +48,7 @@ public class GlobalNormKernel extends CUDAKernel {
              * const float* a, float* result, int n
 
              */
-            Pointer kernelParameter = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{input.dataLength}));
+            Pointer kernelParameter = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{input.getDataLength()}));
             checkCUDA(cuLaunchKernel(globalNorm_gpu_function2, CAFFE_GET_BLOCKS(input.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1, 0, null,               // Shared memory size and stream
                     kernelParameter, null // Kernel- and extra parameters

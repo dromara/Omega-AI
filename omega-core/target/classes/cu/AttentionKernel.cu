@@ -19,11 +19,8 @@ extern "C"
 __global__ void permute_kernel(float* q, float* k, float* v,
                                const float* inp,
                                int B, int N, int NH, int d) {
-    // okay so now, this kernel wants Q,K,V to all be of shape (B, NH, N, d)
-    // but instead, we have a single tensor QKV (inp) of shape (B, N, 3, NH, d)
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
-    // Q[b][nh_][n][d_] = inp[b][n][0][nh_][d_]
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (idx < B * NH * N * d) {
         int b = idx / (NH * N * d);
@@ -68,10 +65,9 @@ __global__ void permute_kernel_backward(float* dinp,
 
 extern "C"
 __global__ void unpermute_kernel(const float* inp, float *out, int B, int N, int NH, int d) {
-   // out has shape (B, nh, N, d) but we need to unpermute it to (B, N, nh, d)
+   
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
-    // out[b][n][nh_][d_] <- inp[b][nh_][n][d_]
     if (idx < B * NH * N * d) {
         int b = idx / (NH * N * d);
         int rest = idx % (NH * N * d);
@@ -103,10 +99,7 @@ __global__ void unpermute_kernel_backward(float* dinp, const float *dout, int B,
 
 extern "C"
 __global__ void softmax_forward_kernel(float* out, float inv_temperature, const float* inp, int N, int T) {
-    // inp, out shape: (N, T, T), where N = B * NH
-    // fuses the multiplication by scale inside attention
-    // directly autoregressive, so we only compute the lower triangular part
-    // uses the online softmax algorithm
+    
     assert(T % 4  == 0);
     namespace cg = cooperative_groups;
     cg::thread_block block = cg::this_thread_block();
@@ -118,10 +111,8 @@ __global__ void softmax_forward_kernel(float* out, float inv_temperature, const 
     int own_pos = idx % T;
     int pos_by_4 = own_pos / 4;
 
-    // one row of inp, i.e. inp[idx, :] of shape (T,)
     const float* x = inp + idx * T;
 
-    // not INF, so we don't get NaNs accidentally when subtracting two values.
     float maxval = -FLT_MAX;
     float sumval = 0.0f;
 
@@ -182,22 +173,9 @@ __global__ void softmax_autoregressive_backward_kernel(float* __restrict__ dprea
 
         float att_at_t3[UNROLL];
         for(int k = 0; k < UNROLL; ++k) {
-            // if t < t3+k, we're out of bounds.
-            // in that case, we don't care what we read, because later on,
-            // we won't write the corresponding result. So just clip to
-            // make sure this is a valid (in-bounds) memory access.
             att_at_t3[k] = att_bth[min(t, t3 + k)];
         }
 
-        // the code below is actually just a for loop; except,
-        // we have to do something special in one iteration in
-        // the middle, and an if turned out to have significant
-        // performance impact.
-        // so we split the loop in three parts. Ugly, but effective.
-
-        // the beginning/end loop does the same thing, so we write the code
-        // just once in a lambda. In this step, we're guaranteed that
-        // indicator == 0
         auto loop_step = [&](int t2){
             float p = att_bth[t2] * datt_bth[t2];
             for (int k = 0; k < UNROLL; ++k) {
@@ -205,20 +183,14 @@ __global__ void softmax_autoregressive_backward_kernel(float* __restrict__ dprea
             }
         };
 
-        // Now the actual loop.
         {
-            // declare the loop iterator. Needs to be kept across the
-            // three different parts, so it's not a local variable in
-            // the for loop.
+           
             int t2 = warp.thread_rank();
 
-            // first part, as long as t2 < t3, indicator == 0
             for (; t2 < t3; t2 += warp.size()) {
                 loop_step(t2);
             }
 
-            // because k <= warp.size() (==32), the event that t3+k == t2
-            // has to happen at this particular step.
             static_assert(UNROLL <= 32, "UNROLL is too large, this won't produce correct results.");
             if (t2 <= t) {
                 float att_t2 = att_bth[t2];
@@ -241,15 +213,12 @@ __global__ void softmax_autoregressive_backward_kernel(float* __restrict__ dprea
             result[k] = cg::reduce(warp, result[k], cg::plus<float>());
         }
 
-        // when storing, we need to check that this is actually a valid result.
-        // here, warp.thread_rank() corresponds to `k` in the previous loops.
         if (warp.thread_rank() < UNROLL && t >= t3 + warp.thread_rank()) {
             dpreatt_bth[t3 + warp.thread_rank()] = scale * result[warp.thread_rank()];
         }
     }
 }
 
-// warp-level reduction for finding the maximum value
 __device__ float warpReduceMax(float val) {
     for (int offset = 16; offset > 0; offset /= 2) {
         val = fmaxf(val, __shfl_down_sync(0xFFFFFFFF, val, offset));
@@ -257,7 +226,6 @@ __device__ float warpReduceMax(float val) {
     return val;
 }
 
-// warp-level reduction for summing values
 __device__ float warpReduceSum(float val) {
     for (int offset = 16; offset > 0; offset /= 2) {
         val += __shfl_down_sync(0xFFFFFFFF, val, offset);
@@ -267,65 +235,47 @@ __device__ float warpReduceSum(float val) {
 
 extern "C"
 __global__ void softmax_forward_kernel4(float* out, const float* inp, int N, int C) {
-    // out is (N, C) just like inp. Each row of inp will get softmaxed.
-    // same as kernel3, but can handle any block size (multiple of 32)
-    // each row of C elements is handled by block_size threads
-    // furthermore, each block_size threads get executed in warps of 32 threads
-
-    // special reduction operations warpReduceMax/warpReduceSum are used for intra-warp reductions
-    // shared memory is used for inter-warp reduction
+   
     extern __shared__ float shared[];
     int idx = blockIdx.x;
     int tid = threadIdx.x;
     int warpId = threadIdx.x / 32; // warp index within a block
     int laneId = threadIdx.x % 32; // thread index within a warp
 
-    // the number of warps per block. recall that blockDim.x is block_size
     int warpsPerBlock = blockDim.x / 32;
 
-    // shared[] must be allocated to have 2 * warpsPerBlock elements
-    // first half for max values, the second half for sum values
     float* maxvals = shared;
     float* sumvals = &shared[warpsPerBlock];
 
-    // one row of inp, i.e. inp[idx, :] of shape (C,)
     const float* x = inp + idx * C;
 
-    // first, thread coarsening by directly accessing global memory in series
     float maxval = -INFINITY;
     for (int i = tid; i < C; i += blockDim.x) {
         maxval = fmaxf(maxval, x[i]);
     }
-    // now within-warp reductions for maxval
+
     maxval = warpReduceMax(maxval);
 
-    // the 0th thread of each warp writes the maxval of that warp to shared memory
     if (laneId == 0) maxvals[warpId] = maxval;
     __syncthreads();
 
-    // now the 0th thread reduces the maxvals in shared memory, i.e. across warps
     if (tid == 0) {
         float val = maxvals[tid];
         for (int i = 1; i < warpsPerBlock; i++) {
             val = fmaxf(val, maxvals[i]);
         }
-        // store the final max in the first position
+
         maxvals[0] = val;
     }
     __syncthreads();
-    // broadcast the max to all threads
+
     float offset = maxvals[0];
 
-    // compute expf and write the result to global memory
     for (int i = tid; i < C; i += blockDim.x) {
         // subtract max for numerical stability
         out[idx * C + i] = expf(x[i] - offset);
     }
 
-    // okay now we calculated exp(x - max(x))
-    // step 2: sum all the values and divide by the sum
-
-    // thread coarsening for sum
     x = out + idx * C;
     float sumval = 0.0f;
     for (int i = tid; i < C; i += blockDim.x) {
@@ -358,24 +308,15 @@ __global__ void softmax_forward_kernel4(float* out, const float* inp, int N, int
 
 extern "C"
 __global__ void softmax_scale_forward_kernel4(float* out, const float* inp, int N, int C,float scale) {
-    // out is (N, C) just like inp. Each row of inp will get softmaxed.
-    // same as kernel3, but can handle any block size (multiple of 32)
-    // each row of C elements is handled by block_size threads
-    // furthermore, each block_size threads get executed in warps of 32 threads
-
-    // special reduction operations warpReduceMax/warpReduceSum are used for intra-warp reductions
-    // shared memory is used for inter-warp reduction
+    
     extern __shared__ float shared[];
     int idx = blockIdx.x;
     int tid = threadIdx.x;
     int warpId = threadIdx.x / 32; // warp index within a block
     int laneId = threadIdx.x % 32; // thread index within a warp
 
-    // the number of warps per block. recall that blockDim.x is block_size
     int warpsPerBlock = blockDim.x / 32;
 
-    // shared[] must be allocated to have 2 * warpsPerBlock elements
-    // first half for max values, the second half for sum values
     float* maxvals = shared;
     float* sumvals = &shared[warpsPerBlock];
 
@@ -449,13 +390,7 @@ __global__ void softmax_scale_forward_kernel4(float* out, const float* inp, int 
 
 extern "C"
 __global__ void softmax_unmask_forward_kernel4(float* out, const float* inp, int N, int C,float scale) {
-    // out is (N, C) just like inp. Each row of inp will get softmaxed.
-    // same as kernel3, but can handle any block size (multiple of 32)
-    // each row of C elements is handled by block_size threads
-    // furthermore, each block_size threads get executed in warps of 32 threads
-
-    // special reduction operations warpReduceMax/warpReduceSum are used for intra-warp reductions
-    // shared memory is used for inter-warp reduction
+   
     extern __shared__ float shared[];
     int idx = blockIdx.x;
     int tid = threadIdx.x;
@@ -465,8 +400,6 @@ __global__ void softmax_unmask_forward_kernel4(float* out, const float* inp, int
     // the number of warps per block. recall that blockDim.x is block_size
     int warpsPerBlock = blockDim.x / 32;
 
-    // shared[] must be allocated to have 2 * warpsPerBlock elements
-    // first half for max values, the second half for sum values
     float* maxvals = shared;
     float* sumvals = &shared[warpsPerBlock];
 
@@ -504,10 +437,6 @@ __global__ void softmax_unmask_forward_kernel4(float* out, const float* inp, int
         out[idx * C + i] = expf(x[i] * scale - offset);
     }
 
-    // okay now we calculated exp(x - max(x))
-    // step 2: sum all the values and divide by the sum
-
-    // thread coarsening for sum
     x = out + idx * C;
     float sumval = 0.0f;
     for (int i = tid; i < C; i += blockDim.x) {
@@ -554,15 +483,6 @@ __global__ void softmax_autoregressive_backward_kernel4(float* __restrict__ dpre
     int hs = C / NH; // head size
     float scale = 1.0f / sqrtf(hs);
 
-    // the innermost loop combines different values of t2 with different values of t.
-    // by handling [t3, t3 + UNROLL) in one thread, we get much better memory reuse:
-    // any t3/t-dependent value can be loaded once before the t2 loop.
-    // within the t2 loop, we can combine each loaded value with each of the UNROLL
-    // pre-loaded values, thus cutting memory ready by a factor of ~UNROLL.
-
-    // one iteration of this loop has to handle the cases
-    // this may lead to some invalid indices; therefore, we have several
-    // early-outs in the iteration over k below.
     for (int t = t3; t < T; t++) {
         float result[UNROLL] = {};
         const float* att_bth = att + idx + t * T;
@@ -597,8 +517,7 @@ __global__ void softmax_autoregressive_backward_kernel4(float* __restrict__ dpre
 
 extern "C"
 __global__ void scale_kernel(float* inp, float scale, int B, int NH, int T) {
-    // scales the pre-softmax attention scores by scale
-    // and sets the autoregressive locations to -INFINITY
+  
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < B * NH * T * T) {
         int rest = idx % (NH * T * T);
@@ -613,8 +532,6 @@ __global__ void scale_kernel(float* inp, float scale, int B, int NH, int T) {
     }
 }
 
-
-// parallelize across t,b,h
 extern "C"
 __global__ void softmax_autoregressive_backward_kernel2(float* dpreatt, const float* datt, const float* att,
                                                      int B, int T, int C, int NH) {
@@ -642,11 +559,7 @@ __global__ void softmax_autoregressive_backward_kernel2(float* dpreatt, const fl
 
 extern "C"
 __global__ void softmax_forward_kernel5(float* out, float inv_temperature, const float* inp, int N, int T) {
-    // inp, out shape: (N, T, T), where N = B * NH
-    // fuses the multiplication by scale inside attention
-    // directly autoregressive, so we only compute the lower triangular part
-    // uses the online softmax algorithm
-    //assert(T % 4  == 0);
+   
     namespace cg = cooperative_groups;
     cg::thread_block block = cg::this_thread_block();
     cg::thread_block_tile<32> warp = cg::tiled_partition<32>(block);
@@ -700,11 +613,7 @@ __global__ void softmax_forward_kernel5(float* out, float inv_temperature, const
 
 extern "C"
 __global__ void softmax_forward_kernel5_no_mask(float* out, float inv_temperature, const float* inp, int N, int T) {
-    // inp, out shape: (N, T, T), where N = B * NH
-    // fuses the multiplication by scale inside attention
-    // directly autoregressive, so we only compute the lower triangular part
-    // uses the online softmax algorithm
-    //assert(T % 4  == 0);
+    
     namespace cg = cooperative_groups;
     cg::thread_block block = cg::this_thread_block();
     cg::thread_block_tile<32> warp = cg::tiled_partition<32>(block);
@@ -715,10 +624,8 @@ __global__ void softmax_forward_kernel5_no_mask(float* out, float inv_temperatur
     int own_pos = T;
     int pos_by_4 = own_pos / 4;
 
-    // one row of inp, i.e. inp[idx, :] of shape (T,)
     const float* x = inp + idx * T;
 
-    // not INF, so we don't get NaNs accidentally when subtracting two values.
     float maxval = -FLT_MAX;
     float sumval = 0.0f;
 
@@ -832,8 +739,6 @@ __global__ void softmax_autoregressive_backward_kernel8(float* dpreatt, const fl
         local_sum = cg::reduce(warp, block_acc[warp.thread_rank()], cg::plus<float>{});
 
         for (int t3 = block.thread_rank(); t3 <= t; t3 += BlockSize32) {
-            // don't touch the cache. Some parts will still be here from the previous loop, and
-            // we want to exploit those.
             float acc = __ldcs(att_bth + t3) * (__ldcs(datt_bth + t3) - local_sum);
             __stcs(dpreatt_bth + t3, scale * acc);
         }
@@ -850,7 +755,7 @@ __global__ void softmax_autoregressive_nomask_backward_kernel8(float* dpreatt, c
     __shared__ float block_acc[32];
 
     int idx = blockIdx.y;
-    // go through blocks in reverse order, so the slowest block starts first
+
     int t0 = T - 1 - T_per_block*blockIdx.x;
 
     att += idx * T * T;
@@ -878,8 +783,7 @@ __global__ void softmax_autoregressive_nomask_backward_kernel8(float* dpreatt, c
         local_sum = cg::reduce(warp, block_acc[warp.thread_rank()], cg::plus<float>{});
 
         for (int t3 = block.thread_rank(); t3 < T; t3 += BlockSize32) {
-            // don't touch the cache. Some parts will still be here from the previous loop, and
-            // we want to exploit those.
+
             float acc = __ldcs(att_bth + t3) * (__ldcs(datt_bth + t3) - local_sum);
             __stcs(dpreatt_bth + t3, scale * acc);
         }
@@ -888,20 +792,11 @@ __global__ void softmax_autoregressive_nomask_backward_kernel8(float* dpreatt, c
 
 extern "C"
 __global__ void softmax_forward_kernel52(float* out, float inv_temperature, const float* inp, int N, int T) {
-    // inp, out shape: (N, T, T), where N = B * NH
-    // fuses the multiplication by scale inside attention
-    // directly autoregressive, so we only compute the lower triangular part
-    // uses the online softmax algorithm
-    // assert(T % 4  == 0);
+    
     int lane_id = threadIdx.x % WARP_SIZE;
     int warp_id = threadIdx.x / WARP_SIZE;
     int num_warps = blockDim.x / WARP_SIZE;
 
-    // micro-optimization: we iterate backwards so that
-    // after the softmax backward operation completes, the cache retains the
-    // part of the matrix close to the upper left corner, which benefits the
-    // matmul operation that immediately follows.
-    // int idx = blockIdx.x * warp.meta_group_size() + warp.meta_group_rank(); // forward order
     int idx = (gridDim.x - blockIdx.x - 1) * num_warps + warp_id; // backward order
     if(idx >= N * T) {
         return;
@@ -912,7 +807,6 @@ __global__ void softmax_forward_kernel52(float* out, float inv_temperature, cons
     // one row of inp, i.e. inp[idx, :] of shape (T,)
     const float* x = inp + idx * T;
 
-    // not INF, so we don't get NaNs accidentally when subtracting two values.
     const float flt_max = 340282346638528859811704183484516925440.0f; // to avoid including float.h
     float maxval = -flt_max;
     float sumval = 0.0f;
@@ -962,8 +856,7 @@ __device__ float warpReduceSum2(float val) {
 }
 
 __device__ inline float blockReduceSum(float val, bool final_sync, float out_of_bounds) {
-    // two reductions of up to 1024 threads:
-    // 1) inside warp (shuffle), 2) cross-warp (shared memory), 3) inside warp (shuffle)
+
     __shared__ float shared_val[WARP_SIZE];
     const int lane_id = threadIdx.x % WARP_SIZE;
     const int warp_id = threadIdx.x / WARP_SIZE;

@@ -1,8 +1,9 @@
 package com.omega.engine.gpu.cudnn;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.jcudnn.JCudnn;
 import jcuda.jcudnn.cudnnTensorDescriptor;
@@ -66,7 +67,7 @@ public class SoftmaxCudnnKernel extends BaseKernel {
     }
 
     public void softmax(Tensor input, Tensor output) {
-        init(input.number);
+        init(input.getShape()[0]);
         handle(JCudnn.cudnnSoftmaxForward(CudnnHandleManager.getHandle(), CUDNN_SOFTMAX_ACCURATE, CUDNN_SOFTMAX_MODE_CHANNEL, alpha_P, xDesc, input.getGpuData(), beta_P, yDesc, output.getGpuData()));
     }
 

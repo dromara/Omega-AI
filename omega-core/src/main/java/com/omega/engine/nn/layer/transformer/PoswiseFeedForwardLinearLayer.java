@@ -1,12 +1,12 @@
 package com.omega.engine.nn.layer.transformer;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.active.GeluLayer;
 import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;
@@ -69,8 +69,8 @@ public class PoswiseFeedForwardLinearLayer extends Layer {
     @Override
     public void init() {
         // TODO Auto-generated method stub
-        this.number = this.input.number;
-        if (this.ro == null || this.ro.number != this.number) {
+        this.number = this.input.getShape()[0];
+        if (this.ro == null || this.ro.getShape()[0] != this.number) {
             this.ro = Tensor.createTensor(this.ro, number, 1, 1, embedDim, true);
         }
         //		resize();

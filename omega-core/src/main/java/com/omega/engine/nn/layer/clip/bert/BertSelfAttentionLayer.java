@@ -1,8 +1,7 @@
 package com.omega.engine.nn.layer.clip.bert;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixUtils;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.MatrixUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.gpu.GPUOP;
 import com.omega.engine.gpu.cudnn.SoftmaxCudnnKernel;
@@ -13,6 +12,7 @@ import com.omega.engine.nn.layer.gpu.AttentionKernel;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.nn.network.Transformer;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;
@@ -85,7 +85,7 @@ public class BertSelfAttentionLayer extends Layer {
 
     public static void makeMask(Tensor mask, int idsLen) {
         for (int i = 0; i < idsLen; i++) {
-            mask.data[i] = 0;
+            mask.getData()[i] = 0;
         }
         mask.hostToDevice();
     }
@@ -147,11 +147,11 @@ public class BertSelfAttentionLayer extends Layer {
         if (network.CUDNN && softmaxKernel == null) {
             softmaxKernel = new SoftmaxCudnnKernel(time, 1, 1, network.cudaManager);
         }
-        this.number = input.number;
+        this.number = input.getShape()[0];
         this.time = this.network.time;
         this.batchSize = this.number / this.time;
         if (network.RUN_MODEL == RunModel.EVAL) {
-            if (this.qt == null || this.qt.number != this.batchSize || this.qt.height != this.time) {
+            if (this.qt == null || this.qt.getShape()[0] != this.batchSize || this.qt.getShape()[2] != this.time) {
                 // [batch_size，time，head_num，d_k]
                 this.qt = CUDAMemoryManager.getCache("clip-attn-qt", batchSize, headNum, time, dk);
                 this.kt = CUDAMemoryManager.getCache("clip-attn-kt", batchSize, headNum, time, dk);
@@ -168,7 +168,7 @@ public class BertSelfAttentionLayer extends Layer {
                 this.oi = CUDAMemoryManager.getCache("clip-attn-oi", batchSize * time, 1, 1, embedDim);
             }
         } else {
-            if (this.qt == null || this.qt.number != this.batchSize || this.qt.height != this.time) {
+            if (this.qt == null || this.qt.getShape()[0] != this.batchSize || this.qt.getShape()[2] != this.time) {
                 // [batch_size，time，head_num，d_k]
                 this.qt = Tensor.createGPUTensor(this.qt, batchSize, headNum, time, dk, true);
                 this.kt = Tensor.createGPUTensor(this.kt, batchSize, headNum, time, dk, true);

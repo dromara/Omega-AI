@@ -1,6 +1,5 @@
 package com.omega.engine.nn.network.vqgan;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.loss.LossFactory;
 import com.omega.engine.loss.LossType;
 import com.omega.engine.loss.gpu.HingeLossKernel;
@@ -10,6 +9,7 @@ import com.omega.engine.nn.layer.patchgan.PatchGANDiscriminatorBlock;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.NetworkType;
 import com.omega.engine.nn.network.RunModel;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 
 import java.io.IOException;
@@ -122,6 +122,7 @@ public class PatchGANDiscriminator extends Network {
 
     public void hingeGLoss(Tensor output, Tensor loss) {
         tensorOP.mean(output, 0, loss);
+        tensorOP.mul(loss, -1, loss);;
     }
 
     public void hingeDLoss(Tensor real, Tensor fake, Tensor loss) {

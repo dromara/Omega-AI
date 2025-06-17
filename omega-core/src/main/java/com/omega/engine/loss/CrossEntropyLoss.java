@@ -1,9 +1,9 @@
 package com.omega.engine.loss;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.common.tensor.Tensors;
-import com.omega.utils.JsonUtils;
+import com.omega.common.utils.JsonUtils;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
+import com.omega.engine.tensor.Tensors;
 
 /**
  * Cross Entropy loss function
@@ -49,13 +49,13 @@ public class CrossEntropyLoss extends LossFunction {
     @Override
     public Tensor loss(Tensor x, Tensor label) {
         // TODO Auto-generated method stub
-        Tensor temp = Tensors.tensor(x.number, x.channel, x.height, x.width);
-        System.out.println(JsonUtils.toJson(label.data));
+        Tensor temp = Tensors.tensor(x.getShape()[0], x.getShape()[1], x.getShape()[2], x.getShape()[3]);
+        System.out.println(JsonUtils.toJson(label.getData()));
         for (int i = 0; i < x.getDataLength(); i++) {
-            if (x.data[i] == 0) {
-                temp.data[i] = (float) (label.data[i] * Math.log(eta) + (1.0d - label.data[i]) * Math.log(1.0d - eta));
+            if (x.getData()[i] == 0) {
+                temp.getData()[i] = (float) (label.getData()[i] * Math.log(eta) + (1.0d - label.getData()[i]) * Math.log(1.0d - eta));
             } else {
-                temp.data[i] = (float) (label.data[i] * Math.log(x.data[i]) + (1.0d - label.data[i]) * Math.log(1.0d - x.data[i]));
+                temp.getData()[i] = (float) (label.getData()[i] * Math.log(x.getData()[i]) + (1.0d - label.getData()[i]) * Math.log(1.0d - x.getData()[i]));
             }
         }
         //		System.out.println(JsonUtils.toJson(temp.maxtir));
@@ -65,9 +65,9 @@ public class CrossEntropyLoss extends LossFunction {
     @Override
     public Tensor diff(Tensor x, Tensor label) {
         // TODO Auto-generated method stub
-        Tensor temp = Tensors.tensor(x.number, x.channel, x.height, x.width);
+        Tensor temp = Tensors.tensor(x.getShape()[0], x.getShape()[1], x.getShape()[2], x.getShape()[3]);
         for (int i = 0; i < x.getDataLength(); i++) {
-            temp.data[i] = label.data[i] / x.data[i] - (1.0f - label.data[i]) / (1.0f - x.data[i]);
+            temp.getData()[i] = label.getData()[i] / x.getData()[i] - (1.0f - label.getData()[i]) / (1.0f - x.getData()[i]);
         }
         return temp;
     }

@@ -1,7 +1,6 @@
 package com.omega.engine.nn.network.vae;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixOperation;
+import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.gpu.GPUOP;
 import com.omega.engine.loss.LossFactory;
 import com.omega.engine.loss.LossType;
@@ -14,6 +13,7 @@ import com.omega.engine.nn.layer.vae.tiny.TinyVAEEncoder;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.NetworkType;
 import com.omega.engine.nn.network.RunModel;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 import com.omega.engine.updater.UpdaterType;
 
@@ -140,9 +140,9 @@ public class TinyVAE extends Network {
     }
 
     public void reparameterize(Tensor encode) {
-        if (this.z == null || this.z.number != encode.number) {
-            this.z = Tensor.createGPUTensor(this.z, encode.number, this.latendDim, encode.height, encode.width, true);
-            this.eps = Tensor.createGPUTensor(this.eps, encode.number, this.latendDim, encode.height, encode.width, true);
+        if (this.z == null || this.z.getShape()[0] != encode.getShape()[0]) {
+            this.z = Tensor.createGPUTensor(this.z, encode.getShape()[0], this.latendDim, encode.getShape()[2], encode.getShape()[3], true);
+            this.eps = Tensor.createGPUTensor(this.eps, encode.getShape()[0], this.latendDim, encode.getShape()[2], encode.getShape()[3], true);
         }
         GPUOP.getInstance().cudaRandn(this.eps);
         conv_mu.forward(encode);
@@ -164,9 +164,9 @@ public class TinyVAE extends Network {
     }
 
     public void initBack() {
-        if (this.dlogvar == null || this.dlogvar.number != logvar.number) {
-            this.dlogvar = Tensor.createGPUTensor(this.dlogvar, logvar.number, this.latendDim, logvar.height, logvar.width, true);
-            this.dmu = Tensor.createGPUTensor(this.dmu, mu.number, this.latendDim, mu.height, mu.width, true);
+        if (this.dlogvar == null || this.dlogvar.getShape()[0] != logvar.getShape()[0]) {
+            this.dlogvar = Tensor.createGPUTensor(this.dlogvar, logvar.getShape()[0], this.latendDim, logvar.getShape()[2], logvar.getShape()[3], true);
+            this.dmu = Tensor.createGPUTensor(this.dmu, mu.getShape()[0], this.latendDim, mu.getShape()[2], mu.getShape()[3], true);
         }
     }
 
@@ -196,12 +196,12 @@ public class TinyVAE extends Network {
     }
 
     public float totalLoss(Tensor output, Tensor label) {
-        if (klLoss == null || klLoss.number != mu.number) {
-            this.klLoss = Tensor.createTensor(this.klLoss, mu.number, mu.channel, mu.height, mu.width, true);
+        if (klLoss == null || klLoss.getShape()[0] != mu.getShape()[0]) {
+            this.klLoss = Tensor.createTensor(this.klLoss, mu.getShape()[0], mu.getShape()[1], mu.getShape()[2], mu.getShape()[3], true);
         }
         Tensor decoerLoss = this.lossFunction.loss(output, label);
         vaeKernel.kl(mu, logvar, kl_weight, klLoss);
-        return (MatrixOperation.sum(decoerLoss.syncHost()) + MatrixOperation.sum(klLoss.syncHost())) / input.number;
+        return (MatrixOperation.sum(decoerLoss.syncHost()) + MatrixOperation.sum(klLoss.syncHost())) / input.getShape()[0];
     }
 
     @Override

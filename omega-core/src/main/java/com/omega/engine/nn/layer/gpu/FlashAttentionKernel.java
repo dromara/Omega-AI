@@ -1,11 +1,12 @@
 package com.omega.engine.nn.layer.gpu;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.JsonUtils;
-import com.omega.utils.MatrixUtils;
+import com.omega.common.utils.JsonUtils;
+import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAModules;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUfunction;
@@ -137,14 +138,14 @@ public class FlashAttentionKernel extends BaseKernel {
     }
 
     private void initKernel(Tensor input, int headNum, int time) {
-        if (input.number != N) {
-            N = input.number;
+        if (input.getShape()[0] != N) {
+            N = input.getShape()[0];
             /**
              * 申请向前传播参数显存
 
              */
-            this.d_m = new Tensor(input.number, headNum, time, 1, MatrixUtils.val(input.number * headNum * time, Float.NEGATIVE_INFINITY), true);
-            this.d_l = new Tensor(input.number, headNum, time, 1, true);
+            this.d_m = new Tensor(input.getShape()[0], headNum, time, 1, MatrixUtils.val(input.getShape()[0] * headNum * time, Float.NEGATIVE_INFINITY), true);
+            this.d_l = new Tensor(input.getShape()[0], headNum, time, 1, true);
         }
     }
 
@@ -172,7 +173,7 @@ public class FlashAttentionKernel extends BaseKernel {
     public void forward(Tensor Q, Tensor K, Tensor V, Tensor output) {
         try {
             initKernel(Q, headNum, time);
-            int B = Q.number;
+            int B = Q.getShape()[0];
             int nh = headNum;
             int N = time;
             int d = headDim;
@@ -217,10 +218,10 @@ public class FlashAttentionKernel extends BaseKernel {
             initKernel(Q, headNum, time);
             int Bc = 32;
             int Br = 32;
-            int B = Q.number;
-            int nh = Q.channel;
-            int N = Q.height;
-            int d = Q.width;
+            int B = Q.getShape()[0];
+            int nh = Q.getShape()[1];
+            int N = Q.getShape()[2];
+            int d = Q.getShape()[3];
             int Tc = (int) Math.ceil((float) N / Bc);
             int Tr = (int) Math.ceil((float) N / Br);
             float softmax_scale = (float) (1.0f / Math.sqrt(d));
@@ -254,7 +255,7 @@ public class FlashAttentionKernel extends BaseKernel {
     public void backward(Tensor Q, Tensor K, Tensor V, Tensor O, Tensor delta, Tensor dQ, Tensor dK, Tensor dV) {
         try {
             //			initKernel(Q, headNum, time);
-            int B = Q.number;
+            int B = Q.getShape()[0];
             int nh = headNum;
             int N = time;
             int d = headDim;

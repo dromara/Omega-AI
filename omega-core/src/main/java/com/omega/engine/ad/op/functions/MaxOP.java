@@ -1,9 +1,9 @@
 package com.omega.engine.ad.op.functions;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.ad.Tape;
 import com.omega.engine.ad.op.FunctionOP;
 import com.omega.engine.ad.op.OPType;
+import com.omega.engine.tensor.Tensor;
 
 public class MaxOP extends FunctionOP {
     public static final OPType opt = OPType.max;

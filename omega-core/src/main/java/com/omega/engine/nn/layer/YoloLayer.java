@@ -1,7 +1,7 @@
 package com.omega.engine.nn.layer;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.nn.layer.active.gpu.SigmodKernel;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * yolo layer
@@ -71,7 +71,7 @@ public class YoloLayer extends Layer {
                 kernel = new SigmodKernel(cuda());
             }
         }
-        if (output == null || number != output.number) {
+        if (output == null || number != output.getShape()[0]) {
             //			output = new Tensor(number, oChannel, oHeight, oWidth, true);
             this.output = Tensor.createTensor(this.output, number, oChannel, oHeight, oWidth, true);
         }
@@ -97,16 +97,16 @@ public class YoloLayer extends Layer {
     @Override
     public void output() {
         // TODO Auto-generated method stub
-        baseKernel().copy_gpu(input, output, input.dataLength, 1, 1);
-        for (int b = 0; b < this.input.number; b++) {
+        baseKernel().copy_gpu(input, output, input.getDataLength(), 1, 1);
+        for (int b = 0; b < this.input.getShape()[0]; b++) {
             for (int n = 0; n < bbox_num; n++) {
                 int index = entryIndex(b, n * width * height, 0);
                 if (this.active == 1) {
-                    kernel.forward(input, output, index, 2 * input.width * input.height);
+                    kernel.forward(input, output, index, 2 * input.getShape()[3] * input.getShape()[2]);
                     int index2 = entryIndex(b, n * width * height, 4);
-                    kernel.forward(input, output, index2, (1 + class_number) * input.width * input.height);
+                    kernel.forward(input, output, index2, (1 + class_number) * input.getShape()[3] * input.getShape()[2]);
                 }
-                baseKernel().scal_add_gpu(output, 2 * input.width * input.height, scaleXY, -0.5f * (scaleXY - 1), index, 1);
+                baseKernel().scal_add_gpu(output, 2 * input.getShape()[3] * input.getShape()[2], scaleXY, -0.5f * (scaleXY - 1), index, 1);
             }
         }
     }

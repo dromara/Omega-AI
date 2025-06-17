@@ -1,10 +1,10 @@
 package com.omega.engine.nn.network;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.active.ActiveType;
 import com.omega.engine.loss.LossFactory;
 import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.layer.*;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 
 /**
@@ -97,7 +97,7 @@ public class Seq2SeqRNN extends Network {
 
     public void initHidden(int number, int hiddenSize) {
         int batch = number / en_time;
-        if (this.c == null || this.c.number != batch) {
+        if (this.c == null || this.c.getShape()[0] != batch) {
             this.c = Tensor.createTensor(this.c, batch, 1, 1, hiddenSize, true);
         }
         baseKernel.copy_gpu(en_rnnLayer.getOutput(), this.c, this.c.getDataLength(), (en_time - 1) * this.c.getDataLength(), 1, 0, 1);
@@ -105,15 +105,15 @@ public class Seq2SeqRNN extends Network {
 
     public void initHidden(Tensor h, int number, int hiddenSize) {
         int batch = number / en_time;
-        if (this.c == null || this.c.number != batch) {
+        if (this.c == null || this.c.getShape()[0] != batch) {
             this.c = Tensor.createTensor(this.c, batch, 1, 1, hiddenSize, true);
         }
         baseKernel.copy_gpu(h, this.c, this.c.getDataLength(), (en_time - 1) * this.c.getDataLength(), 1, 0, 1);
     }
 
     public void initEnRNNLayerDelta(Tensor delta) {
-        if (this.en_delta == null || this.en_delta.number != this.en_rnnLayer.getOutput().number) {
-            this.en_delta = Tensor.createTensor(this.en_delta, this.en_rnnLayer.getOutput().number, this.en_rnnLayer.getOutput().channel, this.en_rnnLayer.getOutput().height, this.en_rnnLayer.getOutput().width, true);
+        if (this.en_delta == null || this.en_delta.getShape()[0] != this.en_rnnLayer.getOutput().getShape()[0]) {
+            this.en_delta = Tensor.createTensor(this.en_delta, this.en_rnnLayer.getOutput().getShape()[0], this.en_rnnLayer.getOutput().getShape()[1], this.en_rnnLayer.getOutput().getShape()[2], this.en_rnnLayer.getOutput().getShape()[3], true);
         }
         this.en_delta.clearGPU();
         //		en_delta.showShape();
@@ -134,13 +134,13 @@ public class Seq2SeqRNN extends Network {
          */
         this.inputLayer.forward();
         this.en_emLayer.forward();
-        this.en_rnnLayer.forward(en_time, this.en_emLayer.output.number);
+        this.en_rnnLayer.forward(en_time, this.en_emLayer.output.getShape()[0]);
         /**
          * 解码器
 
          */
         this.de_emLayer.forward(de_input);
-        this.initHidden(en_rnnLayer.getOutput().number, en_rnnLayer.getOutput().width);
+        this.initHidden(en_rnnLayer.getOutput().getShape()[0], en_rnnLayer.getOutput().getShape()[3]);
         this.de_rnnLayer.forward(this.de_emLayer.getOutput(), this.c, de_time);
         this.fullyLayer.forward(this.de_rnnLayer.getOutput());
         return this.getOutput();
@@ -221,7 +221,7 @@ public class Seq2SeqRNN extends Network {
          */
         this.inputLayer.forward();
         this.en_emLayer.forward();
-        this.en_rnnLayer.forward(en_time, this.en_emLayer.getOutput().number);
+        this.en_rnnLayer.forward(en_time, this.en_emLayer.getOutput().getShape()[0]);
         return en_rnnLayer.getOutput();
     }
 

@@ -21,9 +21,9 @@ public class SGDM extends Updater {
          */
         if (kernel == null) {
             if (layer.hasBias) {
-                kernel = new SGDKernel(layer.weight.dataLength, layer.bias.dataLength, net.cudaManager);
+                kernel = new SGDKernel(layer.weight.getDataLength(), layer.bias.getDataLength(), net.cudaManager);
             } else {
-                kernel = new SGDKernel(layer.weight.dataLength, net.cudaManager);
+                kernel = new SGDKernel(layer.weight.getDataLength(), net.cudaManager);
             }
         }
         kernel.updateW(layer.diffW, layer.weight, layer.network, layer.learnRate);
@@ -45,7 +45,7 @@ public class SGDM extends Updater {
 
          */
         if (kernel == null) {
-            kernel = new SGDKernel(layer.gamma.dataLength, layer.beta.dataLength, net.cudaManager);
+            kernel = new SGDKernel(layer.gamma.getDataLength(), layer.beta.getDataLength(), net.cudaManager);
             //kernel.weight_decay = 0.0f;
         }
         kernel.updateW(layer.diffGamma, layer.gamma, layer.network, layer.learnRate);
@@ -67,9 +67,9 @@ public class SGDM extends Updater {
          */
         if (kernel == null) {
             if (layer.hasBias) {
-                kernel = new SGDKernel(layer.weight.dataLength, layer.bias.dataLength, net.cudaManager);
+                kernel = new SGDKernel(layer.weight.getDataLength(), layer.bias.getDataLength(), net.cudaManager);
             } else {
-                kernel = new SGDKernel(layer.weight.dataLength, net.cudaManager);
+                kernel = new SGDKernel(layer.weight.getDataLength(), net.cudaManager);
             }
         }
         kernel.updateW(layer.diffW, layer.weight, layer.network, layer.learnRate, batchSize);

@@ -1,6 +1,5 @@
 package com.omega.engine.nn.network;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.active.ActiveType;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.loss.LossFactory;
@@ -8,6 +7,7 @@ import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.layer.*;
 import com.omega.engine.nn.layer.active.SigmodLayer;
 import com.omega.engine.pooling.PoolingType;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 import jcuda.Sizeof;
 import jcuda.runtime.JCuda;

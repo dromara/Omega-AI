@@ -1,10 +1,10 @@
 package com.omega.engine.ad.op.data;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixOperation;
+import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.ad.Tape;
 import com.omega.engine.ad.op.OP;
 import com.omega.engine.ad.op.OPType;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * 获取指定向量数据
@@ -65,7 +65,7 @@ public class GetOP extends OP {
             int c = a.getChannel();
             int h = a.getHeight();
             int w = a.getWidth();
-            MatrixOperation.add(a.data, b.data, n, c, h, w, position);
+            MatrixOperation.add(a.getData(), b.getData(), n, c, h, w, position);
         }
     }
 
@@ -90,7 +90,7 @@ public class GetOP extends OP {
         if (org.isHasGPU()) {
             tape.getTensorOP().op.copy_number_gpu(org, target, start * count, 0);
         } else {
-            System.arraycopy(org.data, start * count * org.channel * org.height * org.width, target.data, 0, target.dataLength);
+            System.arraycopy(org.getData(), start * count * org.getShape()[1] * org.getShape()[2] * org.getShape()[3], target.getData(), 0, target.getDataLength());
         }
     }
 
@@ -99,10 +99,10 @@ public class GetOP extends OP {
         if (org.isHasGPU()) {
             tape.getTensorOP().op.copy_channel_gpu(org, target, start, 0);
         } else {
-            int size = org.height * org.width;
-            for (int n = 0; n < org.number; n++) {
-                int startIndex = n * org.channel * size + start * size;
-                System.arraycopy(org.data, startIndex, target.data, n * count * size, count * size);
+            int size = org.getShape()[2] * org.getShape()[3];
+            for (int n = 0; n < org.getShape()[0]; n++) {
+                int startIndex = n * org.getShape()[1] * size + start * size;
+                System.arraycopy(org.getData(), startIndex, target.getData(), n * count * size, count * size);
             }
         }
     }

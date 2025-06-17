@@ -1,10 +1,9 @@
 package com.omega.engine.ad;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.JsonUtils;
-import com.omega.utils.MatrixUtils;
-import com.omega.utils.PrintUtils;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.JsonUtils;
+import com.omega.common.utils.MatrixUtils;
+import com.omega.common.utils.PrintUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.ad.op.OP;
 import com.omega.engine.ad.op.OPType;
 import com.omega.engine.ad.op.TensorOP;
@@ -15,6 +14,7 @@ import com.omega.engine.ad.op.sign.*;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.gpu.CUDAModules;
+import com.omega.engine.tensor.Tensor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -98,16 +98,16 @@ public class Graph {
         int count = 2;
         int start = 1;
         Tensor x = new Tensor(n, c, h, w, MatrixUtils.order(length, 0, 1));
-        Tensor y = new Tensor(x.number, count, x.height, x.width, x.isHasGPU());
-        for (int i = 0; i < y.dataLength; i++) {
-            int bc = y.dataLength / n / h / w;
+        Tensor y = new Tensor(x.getShape()[0], count, x.getShape()[2], x.getShape()[3], x.isHasGPU());
+        for (int i = 0; i < y.getDataLength(); i++) {
+            int bc = y.getDataLength() / n / h / w;
             int size = bc * h * w;
             int tn = i / size;
             int tc = (i / h / w) % bc + start;
             int th = (i / w) % h;
             int tw = i % h;
             int index = tn * c * h * w + tc * h * w + th * w + tw;
-            y.data[i] = x.data[index];
+            y.getData()[i] = x.getData()[index];
         }
         PrintUtils.printImage(y);
     }
@@ -139,7 +139,7 @@ public class Graph {
         //		Graph.showGraph();
         graph.backward();
         z.syncHost();
-        System.out.println("z:" + JsonUtils.toJson(z.data));
+        System.out.println("z:" + JsonUtils.toJson(z.getData()));
         x.getGrad().syncHost();
         System.out.println("dx:" + JsonUtils.toJson(x.getGrad()));
         System.out.println(((System.nanoTime() - start) / 1e6) + "ms.");
@@ -193,11 +193,11 @@ public class Graph {
             Tensor x0 = sigmoid(x).log();
             Tensor x1 = sigmoid(x.mul(-1.0f)).log().mul(y.scalarSub(1.0f));
             Tensor loss = y.mul(x0).add(x1).mul(-1.0f);
-            loss = loss.sum(1).div(C).sum(0).div(x.number);
+            loss = loss.sum(1).div(C).sum(0).div(x.getShape()[0]);
             graph.clearGrad();
             graph.backward();
             loss.syncHost();
-            System.out.println("loss:" + JsonUtils.toJson(loss.data));
+            System.out.println("loss:" + JsonUtils.toJson(loss.getData()));
             x.getGrad().syncHost();
             System.out.println("dx:" + JsonUtils.toJson(x.getGrad()));
             System.out.println(((System.nanoTime() - start) / 1e6) + "ms.");
@@ -231,7 +231,7 @@ public class Graph {
             Tensor x0 = sigmoid(x).log();
             Tensor x1 = sigmoid(x.mul(-1.0f)).log().mul(y.scalarSub(1.0f));
             Tensor loss = y.mul(x0).add(x1).mul(-1.0f);
-            loss = loss.sum(1).div(C).sum(0).div(x.number);
+            loss = loss.sum(1).div(C).sum(0).div(x.getShape()[0]);
             graph.lock = true;
             graph.clearGrad();
             graph.backward();
@@ -259,8 +259,8 @@ public class Graph {
         Tensor x = new Tensor(number, channel, height, width, cpx, true);
         Tensor y = new Tensor(number, channel, height, width, cpy, true);
         for (int i = 0; i < 20; i++) {
-            x.data = RandomUtils.gaussianRandom(length, 0.1f);
-            y.data = RandomUtils.gaussianRandom(length, 0.1f);
+            x.setData(RandomUtils.gaussianRandom(length, 0.1f));
+            y.setData(RandomUtils.gaussianRandom(length, 0.1f));
             sq_back_cpu(x, y);
             x.setRequiresGrad(true);
             x.hostToDevice();
@@ -269,16 +269,16 @@ public class Graph {
             graph.clearGrad();
             graph.backward();
             x.getGrad().syncHost();
-            System.out.println("dx_gpu:" + JsonUtils.toJson(x.getGrad().data));
+            System.out.println("dx_gpu:" + JsonUtils.toJson(x.getGrad().getData()));
         }
     }
 
     public static void sq_back_cpu(Tensor x, Tensor y) {
-        Tensor temp = new Tensor(x.number, x.channel, x.height, x.width, true);
+        Tensor temp = new Tensor(x.getShape()[0], x.getShape()[1], x.getShape()[2], x.getShape()[3], true);
         for (int i = 0; i < x.getDataLength(); i++) {
-            temp.data[i] = x.data[i] - y.data[i];
+            temp.getData()[i] = x.getData()[i] - y.getData()[i];
         }
-        System.out.println("dx_cpu:" + JsonUtils.toJson(temp.data));
+        System.out.println("dx_cpu:" + JsonUtils.toJson(temp.getData()));
     }
 
     public static void sum() {
@@ -295,7 +295,7 @@ public class Graph {
         Tensor z = x.sum(1);
         graph.backward();
         z.syncHost();
-        System.out.println("z:" + JsonUtils.toJson(z.data));
+        System.out.println("z:" + JsonUtils.toJson(z.getData()));
         x.getGrad().syncHost();
         System.out.println("dx:" + JsonUtils.toJson(x.getGrad()));
         PrintUtils.printImage(x.getGrad());
@@ -941,7 +941,7 @@ public class Graph {
             Tensor v5 = x.log().add(x.mul(y)).sub(y.sin());
             this.backward();
             //			System.out.println(JsonUtils.toJson(Graph.tapes));
-            System.out.println("z:" + JsonUtils.toJson(v5.data));
+            System.out.println("z:" + JsonUtils.toJson(v5.getData()));
             System.out.println("dx:" + JsonUtils.toJson(x.getGrad()));
             System.out.println("dy:" + JsonUtils.toJson(y.getGrad()));
         }

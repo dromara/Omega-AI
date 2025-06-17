@@ -1,8 +1,7 @@
 package com.omega.engine.nn.layer.normalization.gpu;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.JsonUtils;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.JsonUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
@@ -10,6 +9,8 @@ import com.omega.engine.gpu.GPUOP;
 import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.network.Transformer;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUdeviceptr;
@@ -56,6 +57,8 @@ public class LNKernel extends BaseKernel {
     private CUfunction ln_backward_function;
     private CUfunction forward_llm_function;
     private CUfunction backward_llm_function;
+    
+    private CUfunction forward_llmc_function;
     /**
      * 反向传播方法
      */
@@ -213,7 +216,7 @@ public class LNKernel extends BaseKernel {
         tf.number = N * T;
         LNLayer ln = new LNLayer(tf, true);
         for (int i = 0; i < 10; i++) {
-            ln.forward(input);
+            ln.forward_llmc(input);
             ln.getOutput().showDM();
             //    		ln.forward(input2);
             //        	ln.getOutput().showDM();
@@ -347,6 +350,9 @@ public class LNKernel extends BaseKernel {
             if (backward_llm_function == null) {
                 backward_llm_function = getCudaManager().getLocalFunctionByModule("LNKernel.cu", "layernorm_backward_kernel7");
             }
+            if(forward_llmc_function == null) {
+            	forward_llmc_function = getCudaManager().getLocalFunctionByModule("LNKernel.cu", "layernorm_forward_kernel3_llm");
+            }
         } catch (Exception e) {
             // TODO: handle exception
             e.printStackTrace();
@@ -365,10 +371,10 @@ public class LNKernel extends BaseKernel {
         int batchSize = 0;
         switch (bnType) {
             case fully_bn:
-                batchSize = input.number * input.channel * input.height;
+                batchSize = input.getShape()[0] * input.getShape()[1] * input.getShape()[2];
                 break;
             case conv_bn:
-                batchSize = input.number * input.channel;
+                batchSize = input.getShape()[0] * input.getShape()[1];
                 break;
         }
         if (B != batchSize) {
@@ -450,6 +456,10 @@ public class LNKernel extends BaseKernel {
 
     public int CAFFE_GET_BLOCKS(int N) {
         return (N + CAFFE_CUDA_NUM_THREADS - 1) / CAFFE_CUDA_NUM_THREADS;
+    }
+    
+    public int ceilDiv(int N,int block) {
+        return (N + block - 1) / block;
     }
 
     public void forward(Tensor gamma, Tensor beta, Tensor input, Tensor output) {
@@ -651,15 +661,38 @@ public class LNKernel extends BaseKernel {
             }
             /**
              * float* __restrict__ out, float* __restrict__ mean, float* __restrict__ rstd,
-
              const float*  __restrict__ inp, const float*  __restrict__ weight,
-
              const float* __restrict__ bias, int N, int C
-
              */
             forwardLLMParameters = Pointer.to(Pointer.to(output.getGpuData()), Pointer.to(aten_mean), Pointer.to(aten_var), Pointer.to(input.getGpuData()), Pointer.to(gamma.getGpuData()), Pointer.to(beta.getGpuData()), Pointer.to(new int[]{B}), Pointer.to(new int[]{W}));
             checkCUDA(cuLaunchKernel(forward_llm_function, B, 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    forwardLLMParameters, null // Kernel- and extra parameters
+            ));
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void forward_llmc(Tensor gamma, Tensor beta, Tensor input, Tensor output) {
+        try {
+            boolean check = checkBatch(input);
+            if (!check) {
+                initKernel();
+            }
+            /**
+             * float* __restrict__ out, float* __restrict__ mean, float* __restrict__ rstd,
+               const float*  __restrict__ inp, const float*  __restrict__ weight,
+               const float* __restrict__ bias, int N, int C
+             */
+            int block_size = 256;
+            int WARP_SIZE = 32;
+            int grid_size = ceilDiv(B * WARP_SIZE, block_size);
+            forwardLLMParameters = Pointer.to(Pointer.to(output.getGpuData()), Pointer.to(aten_mean), Pointer.to(aten_var), Pointer.to(input.getGpuData()), Pointer.to(gamma.getGpuData()), Pointer.to(beta.getGpuData()), Pointer.to(new int[]{B}), Pointer.to(new int[]{W}));
+            checkCUDA(cuLaunchKernel(forward_llmc_function, grid_size, 1, 1,      // Grid dimension
+            		block_size, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     forwardLLMParameters, null // Kernel- and extra parameters
             ));

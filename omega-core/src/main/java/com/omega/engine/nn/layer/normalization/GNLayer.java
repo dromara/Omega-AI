@@ -1,13 +1,13 @@
 package com.omega.engine.nn.layer.normalization;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixUtils;
+import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.normalization.gpu.GNKernel;
 import com.omega.engine.nn.model.LayerInit;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.utils.ModelUtils;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;
@@ -61,10 +61,10 @@ public class GNLayer extends NormalizationLayer {
         this.hasParams = false;
         this.setUpdater(UpdaterFactory.create(this.network));
     }
-
-    public GNLayer(int groupNum, int channel, int height, int width, BNType bnType, Layer preLayer) {
-        this.preLayer = preLayer;
-        this.network = preLayer.network;
+    
+    public GNLayer(int groupNum, int channel, int height, int width, BNType bnType, Network network) {
+    	this.network = network;
+		this.setUpdater(UpdaterFactory.create(this.network));
         this.channel = channel;
         this.height = height;
         this.width = width;
@@ -79,7 +79,28 @@ public class GNLayer extends NormalizationLayer {
         } else {
             this.numChannel = this.height * this.width;
         }
-        this.setUpdater(UpdaterFactory.create(this.network));
+    }
+    
+    public GNLayer(int groupNum, int channel, int height, int width, BNType bnType, Layer preLayer) {
+    	if(preLayer != null) {
+    		 this.preLayer = preLayer;
+    		 this.network = preLayer.network;
+    		 this.setUpdater(UpdaterFactory.create(this.network));
+    	}
+        this.channel = channel;
+        this.height = height;
+        this.width = width;
+        this.oChannel = this.channel;
+        this.oHeight = this.height;
+        this.oWidth = this.width;
+        this.bnType = bnType;
+        this.groupNum = groupNum;
+        this.hasParams = false;
+        if (bnType == BNType.conv_bn) {
+            this.numChannel = this.channel;
+        } else {
+            this.numChannel = this.height * this.width;
+        }
     }
 
     public GNLayer(int groupNum, Layer preLayer, boolean hasBias) {
@@ -159,30 +180,30 @@ public class GNLayer extends NormalizationLayer {
         if (this.beta == null) {
             this.beta = new Tensor(1, 1, 1, numChannel, MatrixUtils.zero(this.numChannel), true);
         }
-        if (this.output == null || this.number != this.output.number) {
+        if (this.output == null || this.number != this.output.getShape()[0]) {
             this.output = Tensor.createGPUTensor(this.output, number, oChannel, oHeight, oWidth, true);
         }
     }
 
     public void init(Tensor input) {
-        this.number = input.number;
-        if (this.bnType == null) {
-            this.channel = input.channel;
-            this.height = input.height;
-            this.width = input.width;
+        this.number = input.getShape()[0];
+        if (this.output == null && this.bnType == null) {
+            this.channel = input.getShape()[1];
+            this.height = input.getShape()[2];
+            this.width = input.getShape()[3];
             this.oChannel = this.channel;
             this.oHeight = this.height;
             this.oWidth = this.width;
             this.setBnType(BNType.fully_bn);
             this.numChannel = this.height * this.width;
-        } else {
-            this.channel = input.channel;
-            this.height = input.height;
-            this.width = input.width;
+        } else if(this.output == null){
+            this.channel = input.getShape()[1];
+            this.height = input.getShape()[2];
+            this.width = input.getShape()[3];
             this.oChannel = this.channel;
             this.oHeight = this.height;
             this.oWidth = this.width;
-            this.setBnType(BNType.conv_bn);
+            this.setBnType(bnType);
             this.numChannel = this.channel;
         }
         if (kernel == null) {
@@ -194,7 +215,7 @@ public class GNLayer extends NormalizationLayer {
         if (this.beta == null) {
             this.beta = new Tensor(1, 1, 1, numChannel, MatrixUtils.zero(this.numChannel), true);
         }
-        if (this.output == null || this.number != this.output.number) {
+        if (this.output == null || this.number != this.output.getShape()[0]) {
             this.output = Tensor.createGPUTensor(this.output, number, oChannel, oHeight, oWidth, true);
         }
     }
@@ -207,7 +228,7 @@ public class GNLayer extends NormalizationLayer {
     @Override
     public void initBack() {
         if (this.diff == null) {
-            this.diff = new Tensor(input.number, input.channel, input.height, input.width, true, true);
+            this.diff = new Tensor(input.getShape()[0], input.getShape()[1], input.getShape()[2], input.getShape()[3], true, true);
             this.diffGamma = new Tensor(1, 1, 1, numChannel, true);
             this.diffBeta = new Tensor(1, 1, 1, numChannel, true);
         }
@@ -217,7 +238,7 @@ public class GNLayer extends NormalizationLayer {
         //		this.diff = diff;
         //		diff.showDMByOffset(0, 100);
         if (this.diff == null) {
-            this.diff = new Tensor(diff.number, diff.channel, diff.height, diff.width, true, true);
+            this.diff = new Tensor(diff.getShape()[0], diff.getShape()[1], diff.getShape()[2], diff.getShape()[3], true, true);
         }
         if (this.diffGamma == null) {
             this.diffGamma = new Tensor(1, 1, 1, numChannel, true);
@@ -323,11 +344,11 @@ public class GNLayer extends NormalizationLayer {
             if (this.updater != null) {
                 this.updater.updateForBN(this);
             } else {
-                for (int i = 0; i < this.gamma.dataLength; i++) {
-                    this.gamma.data[i] -= this.learnRate * this.diffGamma.data[i];
+                for (int i = 0; i < this.gamma.getDataLength(); i++) {
+                    this.gamma.getData()[i] -= this.learnRate * this.diffGamma.getData()[i];
                 }
-                for (int i = 0; i < this.beta.dataLength; i++) {
-                    this.beta.data[i] -= this.learnRate * this.diffBeta.data[i];
+                for (int i = 0; i < this.beta.getDataLength(); i++) {
+                    this.beta.getData()[i] -= this.learnRate * this.diffBeta.getData()[i];
                 }
             }
             this.clearAccGrad();
@@ -456,13 +477,13 @@ public class GNLayer extends NormalizationLayer {
         if (accDW == null) {
             accDW = diffGamma.copyGPU();
         } else {
-            kernel.axpy_gpu(diffGamma, accDW, accDW.dataLength, scale, 1, 1);
+            kernel.axpy_gpu(diffGamma, accDW, accDW.getDataLength(), scale, 1, 1);
         }
         if (hasBias) {
             if (accDB == null) {
                 accDB = diffBeta.copyGPU();
             } else {
-                kernel.axpy_gpu(diffBeta, accDB, accDB.dataLength, scale, 1, 1);
+                kernel.axpy_gpu(diffBeta, accDB, accDB.getDataLength(), scale, 1, 1);
             }
         }
     }

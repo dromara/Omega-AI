@@ -1,8 +1,7 @@
 package com.omega.engine.nn.layer.clip;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixUtils;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.MatrixUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.gpu.GPUOP;
 import com.omega.engine.gpu.cudnn.SoftmaxCudnnKernel;
@@ -15,6 +14,7 @@ import com.omega.engine.nn.layer.gpu.RoPEKernel;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.nn.network.Transformer;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;
@@ -194,7 +194,7 @@ public class CLIPAttentionLayer extends Layer {
 
     public void init(Tensor input) {
         // TODO Auto-generated method stub
-        this.number = input.number;
+        this.number = input.getShape()[0];
         this.batchSize = this.number / this.time;
         if (network.CUDNN && softmaxKernel == null) {
             softmaxKernel = new SoftmaxCudnnKernel(time, 1, 1, network.cudaManager);
@@ -219,7 +219,7 @@ public class CLIPAttentionLayer extends Layer {
             // [batch_size, len_q, n_heads * dim_v]
             this.oi = CUDAMemoryManager.getCache("clip-attn-oi", batchSize * time, 1, 1, embedDim);
         } else {
-            if (this.qt == null || this.qt.number != this.batchSize) {
+            if (this.qt == null || this.qt.getShape()[0] != this.batchSize) {
                 // [batch_size，time，head_num，d_k]
                 this.qt = Tensor.createGPUTensor(this.qt, batchSize, headNum, time, dk, true);
                 this.kt = Tensor.createGPUTensor(this.kt, batchSize, headNum, time, dk, true);
@@ -241,7 +241,7 @@ public class CLIPAttentionLayer extends Layer {
             this.getkLinerLayer().getOutput().viewOrg();
             this.getvLinerLayer().getOutput().viewOrg();
         }
-        if (mask && (attnMask == null || attnMask.number != batchSize)) {
+        if (mask && (attnMask == null || attnMask.getShape()[0] != batchSize)) {
             if (network.RUN_MODEL == RunModel.EVAL) {
                 this.attnMask = CUDAMemoryManager.getCache("clip-attn-mask", batchSize, headNum, time, time);
             } else {
@@ -253,15 +253,15 @@ public class CLIPAttentionLayer extends Layer {
 
     public void createMask() {
         float max = -3.40282347e+38f;
-        attnMask.data = new float[attnMask.getDataLength()];
+        attnMask.setData( new float[attnMask.getDataLength()]);
         for (int b = 0; b < batchSize; b++) {
             for (int h = 0; h < headNum; h++) {
                 for (int t1 = 0; t1 < time; t1++) {
                     for (int t2 = 0; t2 < time; t2++) {
                         if (t2 <= t1) {
-                            attnMask.data[b * headNum * time * time + h * time * time + t1 * time + t2] = 0;
+                            attnMask.getData()[b * headNum * time * time + h * time * time + t1 * time + t2] = 0;
                         } else {
-                            attnMask.data[b * headNum * time * time + h * time * time + t1 * time + t2] = max;
+                            attnMask.getData()[b * headNum * time * time + h * time * time + t1 * time + t2] = max;
                         }
                     }
                 }

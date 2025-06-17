@@ -1,11 +1,12 @@
 package com.omega.engine.nn.layer.gpu;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixUtils;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.MatrixUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.pooling.PoolingType;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUfunction;
@@ -180,13 +181,13 @@ public class PoolingKernel extends PoolingBaseKernel {
     public void maxpooling(Tensor input, Tensor output) {
         try {
             //			long start1 = System.nanoTime();
-            if (this.dm == null || input.number != this.N) {
+            if (this.dm == null || input.getShape()[0] != this.N) {
                 /**
                  * 申请显存
 
                  */
-                this.dm = CUDAMemoryManager.getPointer(input.number * C * oHeight * oWidth, Sizeof.INT);
-                this.N = input.number;
+                this.dm = CUDAMemoryManager.getPointer(input.getShape()[0] * C * oHeight * oWidth, Sizeof.INT);
+                this.N = input.getShape()[0];
                 this.max_f_n = oHeight * oWidth * C * N;
                 /**
                  * 设置入参
@@ -215,8 +216,8 @@ public class PoolingKernel extends PoolingBaseKernel {
     public void meanpooling(Tensor input, Tensor output) {
         try {
             //			long start1 = System.nanoTime();
-            if (input.number != this.N) {
-                this.N = input.number;
+            if (input.getShape()[0] != this.N) {
+                this.N = input.getShape()[0];
                 this.max_f_n = oHeight * oWidth * C * N;
                 /**
                  * 设置入参
@@ -240,9 +241,9 @@ public class PoolingKernel extends PoolingBaseKernel {
     public void avgpooling(Tensor input, Tensor output) {
         try {
             //			long start1 = System.nanoTime();
-            if (input.number != this.N) {
-                this.N = input.number;
-                this.numKernels = this.N * input.channel;
+            if (input.getShape()[0] != this.N) {
+                this.N = input.getShape()[0];
+                this.numKernels = this.N * input.getShape()[1];
                 /**
                  * 设置入参
                  * int n, int w, int h, int c, float *input, float *output

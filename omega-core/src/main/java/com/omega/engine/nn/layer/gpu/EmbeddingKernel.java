@@ -1,10 +1,10 @@
 package com.omega.engine.nn.layer.gpu;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixUtils;
+import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
-import com.omega.models.transformer.bpe.BPETokenizerEN;
+import com.omega.engine.tensor.Tensor;
+import com.omega.example.transformer.utils.bpe.BPETokenizerEN;
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
 import jcuda.runtime.cudaError;
@@ -41,9 +41,9 @@ public class EmbeddingKernel extends BaseKernel {
             int[] ids = bpe.encodeInt(txt, 77);
             for (int j = 0; j < 77; j++) {
                 if (j < ids.length) {
-                    label.data[j] = ids[j];
+                    label.getData()[j] = ids[j];
                 } else {
-                    label.data[j] = 0;
+                    label.getData()[j] = 0;
                 }
             }
             label.hostToDevice();
@@ -109,9 +109,9 @@ public class EmbeddingKernel extends BaseKernel {
              const int D
 
              */
-            Pointer kernelParameters = Pointer.to(Pointer.to(output.getGpuData()), Pointer.to(weight.getGpuData()), Pointer.to(input.getGpuData()), Pointer.to(new int[]{weight.height}), Pointer.to(new int[]{input.getDataLength()}), Pointer.to(new int[]{weight.width}));
+            Pointer kernelParameters = Pointer.to(Pointer.to(output.getGpuData()), Pointer.to(weight.getGpuData()), Pointer.to(input.getGpuData()), Pointer.to(new int[]{weight.getShape()[2]}), Pointer.to(new int[]{input.getDataLength()}), Pointer.to(new int[]{weight.getShape()[3]}));
             //			weight.showShape("weight");
-            this.N = input.number;
+            this.N = input.getShape()[0];
             int gridx = 2 * getCudaManager().props.multiProcessorCount;
             int[] threads = new int[]{256, 4, 1};
             int[] grids = new int[]{gridx, 1, 1};
@@ -144,9 +144,9 @@ public class EmbeddingKernel extends BaseKernel {
              float* __restrict__ output
 
              */
-            Pointer kernelParameters = Pointer.to(Pointer.to(new int[]{input.getDataLength()}), Pointer.to(new int[]{weight.height}), Pointer.to(new int[]{weight.width}), Pointer.to(weight.getGpuData()), Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()));
+            Pointer kernelParameters = Pointer.to(Pointer.to(new int[]{input.getDataLength()}), Pointer.to(new int[]{weight.getShape()[2]}), Pointer.to(new int[]{weight.getShape()[3]}), Pointer.to(weight.getGpuData()), Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()));
             //			weight.showShape("weight");
-            this.N = input.number;
+            this.N = input.getShape()[0];
             checkCUDA(cuLaunchKernel(function2, this.CAFFE_GET_BLOCKS(input.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1, 0, null,               // Shared memory size and stream
                     kernelParameters, null // Kernel- and extra parameters
@@ -160,7 +160,7 @@ public class EmbeddingKernel extends BaseKernel {
     public void backward(Tensor delta, Tensor dw, Tensor input) {
         try {
             //			dw.valueGPU(0);
-            if (kernelBackParameters == null || delta.number != this.N) {
+            if (kernelBackParameters == null || delta.getShape()[0] != this.N) {
                 /**
                  * 设置入参
                  * float* table,
@@ -176,8 +176,8 @@ public class EmbeddingKernel extends BaseKernel {
                  const int D
 
                  */
-                kernelBackParameters = Pointer.to(Pointer.to(dw.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(input.getGpuData()), Pointer.to(new int[]{dw.height}), Pointer.to(new int[]{input.dataLength}), Pointer.to(new int[]{dw.width}));
-                this.N = delta.number;
+                kernelBackParameters = Pointer.to(Pointer.to(dw.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(input.getGpuData()), Pointer.to(new int[]{dw.getShape()[2]}), Pointer.to(new int[]{input.getDataLength()}), Pointer.to(new int[]{dw.getShape()[3]}));
+                this.N = delta.getShape()[0];
             }
             int gridx = 2 * getCudaManager().props.multiProcessorCount;
             int[] threads = new int[]{128, 8, 1};
@@ -199,10 +199,9 @@ public class EmbeddingKernel extends BaseKernel {
             /**
              * 设置入参
              *  float* input, float* factor, float* output, int N,int dim
-
              */
-            kernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(factor.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{input.number * dim}), Pointer.to(new int[]{dim}));
-            this.N = input.number;
+            kernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(factor.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{input.getShape()[0] * dim}), Pointer.to(new int[]{dim}));
+            this.N = input.getShape()[0];
             checkCUDA(cuLaunchKernel(get_time_embedding_function, this.get_number_of_blocks(input.getDataLength(), BLOCK), 1, 1,      // Grid dimension
                     BLOCK, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream

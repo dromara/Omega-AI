@@ -1,12 +1,13 @@
 package com.omega.engine.nn.layer.normalization.gpu;
 
-import com.omega.common.tensor.Tensor;
+import com.omega.common.utils.*;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.nn.layer.gpu.BNBaseKernel;
 import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.network.RunModel;
-import com.omega.utils.*;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUdeviceptr;
@@ -145,7 +146,7 @@ public class BNKernel extends BNBaseKernel {
         }
         output.syncHost();
         diff.syncHost();
-        PrintUtils.printImage(input.data);
+        PrintUtils.printImage(input.getData());
         System.out.println("");
         float[][][][] x_cpu = MatrixUtils.transform(x, N, C, H, W);
         float[][][][] d_cpu = MatrixUtils.transform(d, N, C, H, W);
@@ -153,21 +154,21 @@ public class BNKernel extends BNBaseKernel {
         float[][][][] diff_cpu = new float[N][C][H][W];
         float[] dgama_cpu = new float[C];
         float[] dbeta_cpu = new float[C];
-        kernel.foward_cpu(x_cpu, out_cpu, d_cpu, diff_cpu, gama.data, beta.data, dgama_cpu, dbeta_cpu, 1);
+        kernel.foward_cpu(x_cpu, out_cpu, d_cpu, diff_cpu, gama.getData(), beta.getData(), dgama_cpu, dbeta_cpu, 1);
         System.out.println("=======output==============");
-        PrintUtils.printImage(output.data);
+        PrintUtils.printImage(output.getData());
         System.out.println("");
         System.out.println("=======output-cpu==============");
         System.out.println(JsonUtils.toJson(MatrixUtils.transform(out_cpu)));
         System.out.println("==========diff-cpu===========");
         System.out.println(JsonUtils.toJson(MatrixUtils.transform(diff_cpu)));
         System.out.println("=======diff==============");
-        PrintUtils.printImage(diff.data);
+        PrintUtils.printImage(diff.getData());
         System.out.println("==========gd===========");
         PrintUtils.printImage(dgama_cpu);
         System.out.println("");
-        System.out.println("output-error:" + CheckArrayUtils.check(output.data, MatrixUtils.transform(out_cpu)));
-        System.out.println("diff-error:" + CheckArrayUtils.check(diff.data, MatrixUtils.transform(diff_cpu)));
+        System.out.println("output-error:" + CheckArrayUtils.check(output.getData(), MatrixUtils.transform(out_cpu)));
+        System.out.println("diff-error:" + CheckArrayUtils.check(diff.getData(), MatrixUtils.transform(diff_cpu)));
     }
 
     public static void test1d() {
@@ -203,18 +204,18 @@ public class BNKernel extends BNBaseKernel {
         float[][][][] diff_cpu = new float[N][C][H][W];
         float[] dgama_cpu = new float[W];
         float[] dbeta_cpu = new float[W];
-        kernel.foward_cpu(x_cpu, out_cpu, d_cpu, diff_cpu, gama.data, beta.data, dgama_cpu, dbeta_cpu, 0);
+        kernel.foward_cpu(x_cpu, out_cpu, d_cpu, diff_cpu, gama.getData(), beta.getData(), dgama_cpu, dbeta_cpu, 0);
         System.out.println("output-gpu:");
-        System.out.println(JsonUtils.toJson(output.data));
+        System.out.println(JsonUtils.toJson(output.getData()));
         System.out.println("output-cpu:");
         System.out.println(JsonUtils.toJson(MatrixUtils.transform(out_cpu)));
         System.out.println("=======diff-gpu==============");
-        System.out.println(JsonUtils.toJson(diff.data));
+        System.out.println(JsonUtils.toJson(diff.getData()));
         System.out.println("=======diff-cpu==============");
         System.out.println(JsonUtils.toJson(MatrixUtils.transform(diff_cpu)));
-        System.out.println(JsonUtils.toJson(dgama.data));
-        System.out.println("output-error:" + CheckArrayUtils.check(output.data, MatrixUtils.transform(out_cpu)));
-        System.out.println("diff-error:" + CheckArrayUtils.check(diff.data, MatrixUtils.transform(diff_cpu)));
+        System.out.println(JsonUtils.toJson(dgama.getData()));
+        System.out.println("output-error:" + CheckArrayUtils.check(output.getData(), MatrixUtils.transform(out_cpu)));
+        System.out.println("diff-error:" + CheckArrayUtils.check(diff.getData(), MatrixUtils.transform(diff_cpu)));
     }
 
     public static float gradientCheck() {
@@ -249,14 +250,14 @@ public class BNKernel extends BNBaseKernel {
         kernel1.forward(RunModel.TRAIN, gama, beta, input2, output2);
         output1.syncHost();
         output2.syncHost();
-        float[] diff_check = MatrixOperation.division(MatrixOperation.subtraction(output1.data, output2.data), 2 * eta);
+        float[] diff_check = MatrixOperation.division(MatrixOperation.subtraction(output1.getData(), output2.getData()), 2 * eta);
         System.out.println(JsonUtils.toJson(diff_check));
         BNKernel kernel2 = new BNKernel(BNType.fully_bn, C, H, W, cudaManager);
         kernel2.forward(RunModel.TRAIN, gama, beta, input, output);
         kernel2.backward(input, delta, diff, gama, dgama, dbeta);
         diff.syncHost();
-        System.out.println(JsonUtils.toJson(diff.data));
-        return CheckArrayUtils.check(diff.data, diff_check);
+        System.out.println(JsonUtils.toJson(diff.getData()));
+        return CheckArrayUtils.check(diff.getData(), diff_check);
     }
 
     public void initFunction() {
@@ -374,8 +375,8 @@ public class BNKernel extends BNBaseKernel {
     }
 
     public void initForward(RunModel RUN_MODEL, Tensor input, Tensor gama, Tensor beta, Tensor output) {
-        if (input.number != this.N) {
-            this.N = input.number;
+        if (input.getShape()[0] != this.N) {
+            this.N = input.getShape()[0];
             if (bnType == BNType.fully_bn) {
                 /**
                  * float* x,float* mean,int number,int width

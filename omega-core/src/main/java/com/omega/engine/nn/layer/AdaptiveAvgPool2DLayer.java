@@ -1,8 +1,8 @@
 package com.omega.engine.nn.layer;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.nn.layer.gpu.AdaptiveAvgPool2DKernel;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 
 public class AdaptiveAvgPool2DLayer extends Layer {
     private AdaptiveAvgPool2DKernel kernel;
@@ -30,7 +30,7 @@ public class AdaptiveAvgPool2DLayer extends Layer {
     public void init() {
         // TODO Auto-generated method stub
         this.number = this.network.number;
-        if (this.output == null || this.output.number != number) {
+        if (this.output == null || this.output.getShape()[0] != number) {
             this.output = Tensor.createTensor(this.output, number, oChannel, oHeight, oWidth, true);
             //			this.output = new Tensor(number, oChannel, oHeight, oWidth, true);
         }
@@ -42,7 +42,7 @@ public class AdaptiveAvgPool2DLayer extends Layer {
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
-        if (diff == null || this.diff.number != number) {
+        if (diff == null || this.diff.getShape()[0] != number) {
             this.diff = new Tensor(number, channel, height, width, true);
         }
     }

@@ -1,10 +1,11 @@
 package com.omega.engine.nn.layer.gpu;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixUtils;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.MatrixUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
 import jcuda.runtime.cudaError;
@@ -100,8 +101,8 @@ public class AVGPoolingKernel extends BaseKernel {
     public void pooling(Tensor input, Tensor output) {
         try {
             //			long start1 = System.nanoTime();
-            if (input.number != this.N) {
-                this.N = input.number;
+            if (input.getShape()[0] != this.N) {
+                this.N = input.getShape()[0];
                 /**
                  * 设置入参
                  * int n, int w, int h, int c, float *input, float *output

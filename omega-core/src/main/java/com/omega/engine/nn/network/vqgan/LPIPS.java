@@ -1,6 +1,8 @@
 package com.omega.engine.nn.network.vqgan;
 
-import com.omega.common.tensor.Tensor;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+
 import com.omega.engine.loss.LossFactory;
 import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.layer.InputLayer;
@@ -9,10 +11,8 @@ import com.omega.engine.nn.layer.lpips.LPIPSBlock;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.NetworkType;
 import com.omega.engine.nn.network.RunModel;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
-
-import java.io.IOException;
-import java.io.RandomAccessFile;
 
 /**
  * LPIPS
@@ -36,7 +36,7 @@ public class LPIPS extends Network {
 
     public void initLayers() {
         this.inputLayer = new InputLayer(3, imageSize, imageSize);
-        this.lpips = new LPIPSBlock(3, imageSize, imageSize, false, cfg, 1000, featuresIndex, this);
+        this.lpips = new LPIPSBlock(3, imageSize, imageSize, false, cfg, 1000, featuresIndex, true, this);
         this.addLayer(inputLayer);
         this.addLayer(lpips);
     }
@@ -110,7 +110,6 @@ public class LPIPS extends Network {
         /**
          * 设置误差
          * 将误差值输入到最后一层
-
          */
         this.setLossDiff(lossDiff);  //only decoder delta
         initBack();

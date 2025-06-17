@@ -1,10 +1,10 @@
 package com.omega.engine.nn.layer.clip;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;
@@ -74,7 +74,7 @@ public class CLIPEncoderLayer extends Layer {
         // TODO Auto-generated method stub
         this.number = this.network.number;
         this.time = this.network.time;
-        if (this.tmp1 == null || this.tmp1.number != this.number) {
+        if (this.tmp1 == null || this.tmp1.getShape()[0] != this.number) {
             this.tmp1 = Tensor.createGPUTensor(this.tmp1, number, 1, 1, embedDim, true);
             this.tmp2 = Tensor.createGPUTensor(this.tmp2, number, 1, 1, embedDim, true);
         }
@@ -82,9 +82,9 @@ public class CLIPEncoderLayer extends Layer {
 
     public void init(Tensor input) {
         // TODO Auto-generated method stub
-        this.number = input.number;
+        this.number = input.getShape()[0];
         this.time = this.network.time;
-        if (this.tmp1 == null || this.tmp1.number != this.number) {
+        if (this.tmp1 == null || this.tmp1.getShape()[0] != this.number) {
             this.tmp1 = Tensor.createGPUTensor(this.tmp1, number, 1, 1, embedDim, true);
             this.tmp2 = Tensor.createGPUTensor(this.tmp2, number, 1, 1, embedDim, true);
         }

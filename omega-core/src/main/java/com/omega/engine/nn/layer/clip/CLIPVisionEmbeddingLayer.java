@@ -1,7 +1,6 @@
 package com.omega.engine.nn.layer.clip;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.EmbeddingIDLayer;
@@ -9,6 +8,7 @@ import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.Transformer;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;
@@ -66,7 +66,7 @@ public class CLIPVisionEmbeddingLayer extends Layer {
     public void init() {
         // TODO Auto-generated method stub
         this.number = network.number;
-        if (patchEmbedsT == null || patchEmbedsT.number != this.number) {
+        if (patchEmbedsT == null || patchEmbedsT.getShape()[0] != this.number) {
             int pChannel = this.getPatchEmbedding().oHeight * this.getPatchEmbedding().oWidth;
             patchEmbedsT = Tensor.createGPUTensor(patchEmbedsT, this.number, pChannel, 1, embedDim, true);
             embeddings = Tensor.createGPUTensor(embeddings, this.number, pChannel + 1, 1, embedDim, true);
@@ -76,8 +76,8 @@ public class CLIPVisionEmbeddingLayer extends Layer {
 
     public void init(Tensor input) {
         // TODO Auto-generated method stub
-        this.number = input.number;
-        if (patchEmbedsT == null || patchEmbedsT.number != this.number) {
+        this.number = input.getShape()[0];
+        if (patchEmbedsT == null || patchEmbedsT.getShape()[0] != this.number) {
             int pChannel = this.getPatchEmbedding().oHeight * this.getPatchEmbedding().oWidth;
             patchEmbedsT = Tensor.createGPUTensor(patchEmbedsT, this.number, pChannel, 1, embedDim, true);
             embeddings = Tensor.createGPUTensor(embeddings, this.number, pChannel + 1, 1, embedDim, true);
@@ -116,13 +116,13 @@ public class CLIPVisionEmbeddingLayer extends Layer {
     public void output() {
         // TODO Auto-generated method stub
         getPatchEmbedding().forward(this.input);
-        Tensor_OP().permute(getPatchEmbedding().getOutput().view(this.number, getPatchEmbedding().getOutput().channel, 1, getPatchEmbedding().getOutput().height * getPatchEmbedding().getOutput().width), patchEmbedsT, new int[]{0, 3, 2, 1});
+        Tensor_OP().permute(getPatchEmbedding().getOutput().view(this.number, getPatchEmbedding().getOutput().getShape()[1], 1, getPatchEmbedding().getOutput().getShape()[2] * getPatchEmbedding().getOutput().getShape()[3]), patchEmbedsT, new int[]{0, 3, 2, 1});
         /**
          * embeddings = torch.cat([class_embeds, patch_embeds], dim=1)
 
          */
         Tensor_OP().expand(getClassEmbedding(), classEmbeddingEx, getClassEmbedding().getDataLength());
-        kernel.concat_channel_forward(classEmbeddingEx, patchEmbedsT, embeddings, patchEmbedsT.number, classEmbeddingEx.channel, patchEmbedsT.channel, patchEmbedsT.height, patchEmbedsT.width);
+        kernel.concat_channel_forward(classEmbeddingEx, patchEmbedsT, embeddings, patchEmbedsT.getShape()[0], classEmbeddingEx.getShape()[1], patchEmbedsT.getShape()[1], patchEmbedsT.getShape()[2], patchEmbedsT.getShape()[3]);
         /**
          * embeddings = embeddings + self.position_embedding(self.position_ids)
 

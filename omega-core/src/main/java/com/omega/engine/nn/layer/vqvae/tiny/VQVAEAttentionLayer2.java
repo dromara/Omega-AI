@@ -1,7 +1,6 @@
 package com.omega.engine.nn.layer.vqvae.tiny;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixUtils;
+import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -10,6 +9,7 @@ import com.omega.engine.nn.layer.normalization.GNLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.nn.network.Transformer;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;
@@ -107,7 +107,7 @@ public class VQVAEAttentionLayer2 extends Layer {
 
     public void init(Tensor input) {
         // TODO Auto-generated method stub
-        this.number = input.number;
+        this.number = input.getShape()[0];
         this.batchSize = this.number;
         if (xt != null) {
             xt.viewOrg();
@@ -116,11 +116,11 @@ public class VQVAEAttentionLayer2 extends Layer {
         if (network.RUN_MODEL == RunModel.EVAL) {
             // [batch_size，time，head_num，d_k]
             this.xt = CUDAMemoryManager.getCache("attn-xt", batchSize, time, 1, channel);
-            if (this.output == null || output.number != batchSize) {
+            if (this.output == null || output.getShape()[0] != batchSize) {
                 this.output = Tensor.createGPUTensor(this.output, batchSize, channel, height, width, true);
             }
         } else {
-            if (this.xt == null || this.xt.number != this.batchSize) {
+            if (this.xt == null || this.xt.getShape()[0] != this.batchSize) {
                 this.xt = Tensor.createGPUTensor(this.xt, batchSize, time, 1, channel, true);
                 this.output = Tensor.createGPUTensor(this.output, batchSize, channel, height, width, true);
             }

@@ -1,7 +1,7 @@
 package com.omega.engine.nn.model;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.nn.layer.Layer;
+import com.omega.engine.tensor.Tensor;
 
 import java.io.Serializable;
 

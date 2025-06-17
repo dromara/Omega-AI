@@ -1,13 +1,13 @@
 package com.omega.engine.gpu;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.common.task.Task;
 import com.omega.common.task.TaskEngine;
-import com.omega.utils.CheckArrayUtils;
-import com.omega.utils.JsonUtils;
-import com.omega.utils.MatrixOperation;
+import com.omega.common.utils.CheckArrayUtils;
+import com.omega.common.utils.JsonUtils;
+import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.network.RunModel;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.MWAUtils;
 import jcuda.Pointer;
 import jcuda.Sizeof;
@@ -364,7 +364,7 @@ public class BNKernel extends CUDAKernel {
          * 拷贝数据到显存
 
          */
-        JCudaDriver.cuMemcpyHtoD(d_x, Pointer.to(x.data), x.data.length * Sizeof.FLOAT);
+        JCudaDriver.cuMemcpyHtoD(d_x, Pointer.to(x.getData()), x.getData().length * Sizeof.FLOAT);
     }
 
     public void setDelta(Tensor delta) {
@@ -373,7 +373,7 @@ public class BNKernel extends CUDAKernel {
          * 拷贝数据到显存
 
          */
-        JCudaDriver.cuMemcpyHtoD(d_delta, Pointer.to(delta.data), delta.data.length * Sizeof.FLOAT);
+        JCudaDriver.cuMemcpyHtoD(d_delta, Pointer.to(delta.getData()), delta.getData().length * Sizeof.FLOAT);
     }
 
     public void setGama(float[] gama, float[] beta) {
@@ -493,7 +493,7 @@ public class BNKernel extends CUDAKernel {
                     0, null,               // Shared memory size and stream
                     normalizeParameters, null // Kernel- and extra parameters
             );
-            JCudaDriver.cuMemcpyDtoH(Pointer.to(out.data), d_out, out.data.length * Sizeof.FLOAT);
+            JCudaDriver.cuMemcpyDtoH(Pointer.to(out.getData()), d_out, out.getData().length * Sizeof.FLOAT);
         } catch (Exception e) {
             // TODO: handle exception
             e.printStackTrace();
@@ -656,7 +656,7 @@ public class BNKernel extends CUDAKernel {
                 0, null,               // Shared memory size and stream
                 dxParameters, null // Kernel- and extra parameters
         );
-        JCudaDriver.cuMemcpyDtoH(Pointer.to(diff.data), d_diff, diff.data.length * Sizeof.FLOAT);
+        JCudaDriver.cuMemcpyDtoH(Pointer.to(diff.getData()), d_diff, diff.getData().length * Sizeof.FLOAT);
     }
 
     private void computeDx_full() {
@@ -671,7 +671,7 @@ public class BNKernel extends CUDAKernel {
                 0, null,               // Shared memory size and stream
                 dx_fullParameters, null // Kernel- and extra parameters
         );
-        JCudaDriver.cuMemcpyDtoH(Pointer.to(diff.data), d_diff, diff.data.length * Sizeof.FLOAT);
+        JCudaDriver.cuMemcpyDtoH(Pointer.to(diff.getData()), d_diff, diff.getData().length * Sizeof.FLOAT);
     }
 
     public void free() {

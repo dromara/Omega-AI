@@ -1,7 +1,6 @@
 package com.omega.engine.nn.layer.normalization;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixUtils;
+import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.gpu.cudnn.BNCudnnKernel;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -10,6 +9,7 @@ import com.omega.engine.nn.layer.normalization.gpu.BNKernel3;
 import com.omega.engine.nn.model.LayerInit;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.utils.ModelUtils;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;
@@ -104,7 +104,7 @@ public class BNLayer extends NormalizationLayer {
             this.runingMean = new Tensor(1, 1, 1, this.meanNum, true);
             this.runingVar = new Tensor(1, 1, 1, this.meanNum, true);
         }
-        if (this.output == null || this.number != this.output.number) {
+        if (this.output == null || this.number != this.output.getShape()[0]) {
             this.output = Tensor.createTensor(this.output, number, oChannel, oHeight, oWidth, true);
         }
         if (kernel == null) {
@@ -126,9 +126,9 @@ public class BNLayer extends NormalizationLayer {
             preLayer = this.network.getPreLayer(this.index);
         }
         if (this.bnType == null) {
-            this.channel = input.channel;
-            this.height = input.height;
-            this.width = input.width;
+            this.channel = input.getShape()[1];
+            this.height = input.getShape()[2];
+            this.width = input.getShape()[3];
             this.oChannel = this.channel;
             this.oHeight = this.height;
             this.oWidth = this.width;
@@ -143,9 +143,9 @@ public class BNLayer extends NormalizationLayer {
                 this.meanNum = this.channel;
             }
         } else {
-            this.channel = input.channel;
-            this.height = input.height;
-            this.width = input.width;
+            this.channel = input.getShape()[1];
+            this.height = input.getShape()[2];
+            this.width = input.getShape()[3];
             this.oChannel = this.channel;
             this.oHeight = this.height;
             this.oWidth = this.width;
@@ -168,7 +168,7 @@ public class BNLayer extends NormalizationLayer {
             this.runingMean = new Tensor(1, 1, 1, this.meanNum, true);
             this.runingVar = new Tensor(1, 1, 1, this.meanNum, true);
         }
-        if (this.output == null || this.number != this.output.number) {
+        if (this.output == null || this.number != this.output.getShape()[0]) {
             this.output = Tensor.createTensor(this.output, number, oChannel, oHeight, oWidth, true);
         }
         if (kernel == null) {
@@ -199,8 +199,8 @@ public class BNLayer extends NormalizationLayer {
     public void initBack(Tensor diff) {
         this.diff = diff;
         if (this.diffGamma == null && !this.freeze) {
-            this.diffGamma = new Tensor(1, 1, 1, gamma.width, true);
-            this.diffBeta = new Tensor(1, 1, 1, beta.width, true);
+            this.diffGamma = new Tensor(1, 1, 1, gamma.getShape()[3], true);
+            this.diffBeta = new Tensor(1, 1, 1, beta.getShape()[3], true);
         }
     }
 
@@ -302,11 +302,11 @@ public class BNLayer extends NormalizationLayer {
             if (this.updater != null) {
                 this.updater.updateForBN(this);
             } else {
-                for (int i = 0; i < this.gamma.dataLength; i++) {
-                    this.gamma.data[i] -= this.learnRate * this.diffGamma.data[i];
+                for (int i = 0; i < this.gamma.getDataLength(); i++) {
+                    this.gamma.getData()[i] -= this.learnRate * this.diffGamma.getData()[i];
                 }
-                for (int i = 0; i < this.beta.dataLength; i++) {
-                    this.beta.data[i] -= this.learnRate * this.diffBeta.data[i];
+                for (int i = 0; i < this.beta.getDataLength(); i++) {
+                    this.beta.getData()[i] -= this.learnRate * this.diffBeta.getData()[i];
                 }
             }
             this.clearAccGrad();
@@ -414,13 +414,13 @@ public class BNLayer extends NormalizationLayer {
         if (accDW == null) {
             accDW = diffGamma.copyGPU();
         } else {
-            kernel.axpy_gpu(diffGamma, accDW, accDW.dataLength, scale, 1, 1);
+            kernel.axpy_gpu(diffGamma, accDW, accDW.getDataLength(), scale, 1, 1);
         }
         if (hasBias) {
             if (accDB == null) {
                 accDB = diffBeta.copyGPU();
             } else {
-                kernel.axpy_gpu(diffBeta, accDB, accDB.dataLength, scale, 1, 1);
+                kernel.axpy_gpu(diffBeta, accDB, accDB.getDataLength(), scale, 1, 1);
             }
         }
     }

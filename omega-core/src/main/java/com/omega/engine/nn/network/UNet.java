@@ -1,12 +1,12 @@
 package com.omega.engine.nn.network;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.active.ActiveType;
 import com.omega.engine.loss.LossFactory;
 import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.layer.*;
 import com.omega.engine.nn.layer.unet.UNetDownLayer;
 import com.omega.engine.nn.layer.unet.UNetUPLayer;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 
 /**

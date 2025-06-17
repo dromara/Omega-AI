@@ -1,12 +1,13 @@
 package com.omega.engine.nn.layer.gpu;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.JsonUtils;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.JsonUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.gpu.CUDAModules;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
 
@@ -106,15 +107,15 @@ public class ShotcutKernel extends BaseKernel {
 
     public void shortcut(Tensor input, Tensor output) {
         try {
-            if (kernelParameters == null || input.number != this.N) {
-                this.size = input.number * minw * minh * minc;
+            if (kernelParameters == null || input.getShape()[0] != this.N) {
+                this.size = input.getShape()[0] * minw * minh * minc;
                 /**
                  * 设置入参
                  * int size, int minw, int minh, int minc, int stride, int sample, int batch, int w1, int h1, int c1, float *add, int w2, int h2, int c2, float s1, float s2, float *out
 
                  */
-                kernelParameters = Pointer.to(Pointer.to(new int[]{size}), Pointer.to(new int[]{minw}), Pointer.to(new int[]{minh}), Pointer.to(new int[]{minc}), Pointer.to(new int[]{stride}), Pointer.to(new int[]{sample}), Pointer.to(new int[]{input.number}), Pointer.to(new int[]{w1}), Pointer.to(new int[]{h1}), Pointer.to(new int[]{c1}), Pointer.to(input.getGpuData()), Pointer.to(new int[]{w2}), Pointer.to(new int[]{h2}), Pointer.to(new int[]{c2}), Pointer.to(new float[]{s1}), Pointer.to(new float[]{s2}), Pointer.to(output.getGpuData()));
-                this.N = output.number;
+                kernelParameters = Pointer.to(Pointer.to(new int[]{size}), Pointer.to(new int[]{minw}), Pointer.to(new int[]{minh}), Pointer.to(new int[]{minc}), Pointer.to(new int[]{stride}), Pointer.to(new int[]{sample}), Pointer.to(new int[]{input.getShape()[0]}), Pointer.to(new int[]{w1}), Pointer.to(new int[]{h1}), Pointer.to(new int[]{c1}), Pointer.to(input.getGpuData()), Pointer.to(new int[]{w2}), Pointer.to(new int[]{h2}), Pointer.to(new int[]{c2}), Pointer.to(new float[]{s1}), Pointer.to(new float[]{s2}), Pointer.to(output.getGpuData()));
+                this.N = output.getShape()[0];
             }
             cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(size), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
@@ -129,28 +130,28 @@ public class ShotcutKernel extends BaseKernel {
     }
 
     public void shortcut_cpu(Tensor input, Tensor output) {
-        int stride = input.width / output.width;
-        int sample = output.width / input.width;
+        int stride = input.getShape()[3] / output.getShape()[3];
+        int sample = output.getShape()[3] / input.getShape()[3];
         if (stride < 1)
             stride = 1;
         if (sample < 1)
             sample = 1;
-        int minw = (input.width < output.width) ? input.width : output.width;
-        int minh = (input.height < output.height) ? input.height : output.height;
-        int minc = (input.channel < output.channel) ? input.channel : output.channel;
+        int minw = (input.getShape()[3] < output.getShape()[3]) ? input.getShape()[3] : output.getShape()[3];
+        int minh = (input.getShape()[2] < output.getShape()[2]) ? input.getShape()[2] : output.getShape()[2];
+        int minc = (input.getShape()[1] < output.getShape()[1]) ? input.getShape()[1] : output.getShape()[1];
         int i, j, k, b;
-        for (b = 0; b < input.number; ++b) {
+        for (b = 0; b < input.getShape()[0]; ++b) {
             for (k = 0; k < minc; ++k) {
                 for (j = 0; j < minh; ++j) {
                     for (i = 0; i < minw; ++i) {
-                        int out_index = i * sample + output.width * (j * sample + output.height * (k + output.channel * b));
-                        int add_index = i * stride + input.width * (j * stride + input.height * (k + input.channel * b));
-                        output.data[out_index] = s1 * output.data[out_index] + s2 * input.data[add_index];
+                        int out_index = i * sample + output.getShape()[3] * (j * sample + output.getShape()[2] * (k + output.getShape()[1] * b));
+                        int add_index = i * stride + input.getShape()[3] * (j * stride + input.getShape()[2] * (k + input.getShape()[1] * b));
+                        output.getData()[out_index] = s1 * output.getData()[out_index] + s2 * input.getData()[add_index];
                     }
                 }
             }
         }
-        System.out.println(JsonUtils.toJson(output.data));
+        System.out.println(JsonUtils.toJson(output.getData()));
     }
 }
 

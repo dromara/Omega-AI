@@ -1,10 +1,10 @@
 package com.omega.engine.nn.network;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.loss.LossFactory;
 import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.layer.*;
 import com.omega.engine.nn.model.RNNCellType;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 
 /**
@@ -121,7 +121,7 @@ public class Seq2Seq extends Network {
          */
         this.inputLayer.forward();
         this.en_emLayer.forward();
-        this.en_rnnLayer.forward(this.en_time, this.en_emLayer.output.number);
+        this.en_rnnLayer.forward(this.en_time, this.en_emLayer.output.getShape()[0]);
         //		this.en_rnnLayer.getOutput().showDMByNumber((en_time - 1) * en_rnnLayer.getOutput().number / en_time);
         //		this.en_rnnLayer.getHy().showDMByNumber(0);
         /**
@@ -135,8 +135,8 @@ public class Seq2Seq extends Network {
     }
 
     public void initEnRNNLayerDelta(Tensor delta) {
-        if (this.en_delta == null || this.en_delta.number != this.en_rnnLayer.getOutput().number) {
-            this.en_delta = Tensor.createTensor(this.en_delta, this.en_rnnLayer.getOutput().number, this.en_rnnLayer.getOutput().channel, this.en_rnnLayer.getOutput().height, this.en_rnnLayer.getOutput().width, true);
+        if (this.en_delta == null || this.en_delta.getShape()[0] != this.en_rnnLayer.getOutput().getShape()[0]) {
+            this.en_delta = Tensor.createTensor(this.en_delta, this.en_rnnLayer.getOutput().getShape()[0], this.en_rnnLayer.getOutput().getShape()[1], this.en_rnnLayer.getOutput().getShape()[2], this.en_rnnLayer.getOutput().getShape()[3], true);
         }
         this.en_delta.clearGPU();
         //		en_delta.showShape();
@@ -222,7 +222,7 @@ public class Seq2Seq extends Network {
          */
         this.inputLayer.forward();
         this.en_emLayer.forward();
-        this.en_rnnLayer.forward(this.en_time, this.en_emLayer.getOutput().number);
+        this.en_rnnLayer.forward(this.en_time, this.en_emLayer.getOutput().getShape()[0]);
         outputs[0] = en_rnnLayer.getOutput();
         outputs[1] = en_rnnLayer.getHy();
         outputs[2] = en_rnnLayer.getCy();

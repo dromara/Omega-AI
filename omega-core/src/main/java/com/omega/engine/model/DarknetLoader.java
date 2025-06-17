@@ -1,11 +1,12 @@
 package com.omega.engine.model;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.nn.layer.CBLLayer;
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.normalization.BNLayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Sizeof;
 
 import java.io.IOException;
@@ -235,8 +236,8 @@ public class DarknetLoader {
     }
 
     public static void readFloat(RandomAccessFile inputStream, Tensor data) throws IOException {
-        for (int i = 0; i < data.data.length; i++) {
-            data.data[i] = readFloat(inputStream);
+        for (int i = 0; i < data.getData().length; i++) {
+            data.getData()[i] = readFloat(inputStream);
         }
         if (data.isHasGPU()) {
             data.hostToDevice();

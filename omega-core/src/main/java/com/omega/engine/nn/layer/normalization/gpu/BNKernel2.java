@@ -1,12 +1,13 @@
 package com.omega.engine.nn.layer.normalization.gpu;
 
-import com.omega.common.tensor.Tensor;
+import com.omega.common.utils.*;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.nn.layer.gpu.BNBaseKernel;
 import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.network.RunModel;
-import com.omega.utils.*;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUdeviceptr;
@@ -154,20 +155,20 @@ public class BNKernel2 extends BNBaseKernel {
         }
         output.syncHost();
         diff.syncHost();
-        PrintUtils.printImage(input.data);
+        PrintUtils.printImage(input.getData());
         System.out.println("");
         System.out.println("=======output==============");
-        PrintUtils.printImage(output.data);
+        PrintUtils.printImage(output.getData());
         System.out.println("");
         System.out.println("=======diff==============");
-        PrintUtils.printImage(diff.data);
+        PrintUtils.printImage(diff.getData());
         float[][][][] x_cpu = MatrixUtils.transform(x, N, C, H, W);
         float[][][][] d_cpu = MatrixUtils.transform(d, N, C, H, W);
         float[][][][] out_cpu = new float[N][C][H][W];
         float[][][][] diff_cpu = new float[N][C][H][W];
         float[] dgama_cpu = new float[C];
         float[] dbeta_cpu = new float[C];
-        kernel.foward_cpu(x_cpu, out_cpu, d_cpu, diff_cpu, gama.data, beta.data, dgama_cpu, dbeta_cpu, 1);
+        kernel.foward_cpu(x_cpu, out_cpu, d_cpu, diff_cpu, gama.getData(), beta.getData(), dgama_cpu, dbeta_cpu, 1);
         //    	System.out.println("");
         //    	PrintUtils.printImage(MatrixUtils.transform(out_cpu));
         //
@@ -211,10 +212,10 @@ public class BNKernel2 extends BNBaseKernel {
         }
         output.syncHost();
         diff.syncHost();
-        PrintUtils.printImage(output.data);
+        PrintUtils.printImage(output.getData());
         System.out.println("");
         System.out.println("=======diff==============");
-        PrintUtils.printImage(diff.data);
+        PrintUtils.printImage(diff.getData());
         //    	float eta = 0.000001f;
         //
         //    	Tensor input1 = new Tensor(N, C, H, W, MatrixOperation.add(x, eta), true);
@@ -232,7 +233,7 @@ public class BNKernel2 extends BNBaseKernel {
         float[][][][] diff_cpu = new float[N][C][H][W];
         float[] dgama_cpu = new float[W];
         float[] dbeta_cpu = new float[W];
-        kernel.foward_cpu(x_cpu, out_cpu, d_cpu, diff_cpu, gama.data, beta.data, dgama_cpu, dbeta_cpu, 0);
+        kernel.foward_cpu(x_cpu, out_cpu, d_cpu, diff_cpu, gama.getData(), beta.getData(), dgama_cpu, dbeta_cpu, 0);
         PrintUtils.printImage(out_cpu);
         System.out.println("=====================");
         PrintUtils.printImage(diff_cpu);
@@ -335,8 +336,8 @@ public class BNKernel2 extends BNBaseKernel {
     }
 
     public void initForward(RunModel RUN_MODEL, Tensor input, Tensor gama, Tensor beta, Tensor output) {
-        if (input.number != this.N) {
-            this.N = input.number;
+        if (input.getShape()[0] != this.N) {
+            this.N = input.getShape()[0];
             if (bnType == BNType.fully_bn) {
                 /**
                  * float* x,float* mean,int number,int width

@@ -1,9 +1,9 @@
 package com.omega.engine.nn.layer.tae;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.nn.layer.*;
 import com.omega.engine.nn.layer.active.ReluLayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.util.ArrayList;

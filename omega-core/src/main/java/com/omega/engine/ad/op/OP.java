@@ -1,7 +1,7 @@
 package com.omega.engine.ad.op;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.ad.Tape;
+import com.omega.engine.tensor.Tensor;
 
 import java.io.Serializable;
 

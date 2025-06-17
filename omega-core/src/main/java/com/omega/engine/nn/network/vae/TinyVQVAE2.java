@@ -1,8 +1,7 @@
 package com.omega.engine.nn.network.vae;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixOperation;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.MatrixOperation;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.GPUOP;
 import com.omega.engine.loss.LossFactory;
 import com.omega.engine.loss.LossType;
@@ -12,6 +11,7 @@ import com.omega.engine.nn.layer.vqvae.tiny.TinyVQVAEEncoder;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.NetworkType;
 import com.omega.engine.nn.network.RunModel;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 import com.omega.engine.updater.UpdaterType;
 import jcuda.jcublas.cublasOperation;
@@ -184,10 +184,10 @@ public class TinyVQVAE2 extends Network {
     }
 
     public void quantizer(Tensor ze) {
-        if (this.z_flattened == null || this.z_flattened.number != ze.number) {
-            this.z_flattened = Tensor.createGPUTensor(this.z_flattened, ze.number, ze.height, ze.width, this.latendDim, true);
-            this.idx = Tensor.createGPUTensor(this.idx, ze.number * ze.height * ze.width, 1, 1, 1, true);
-            this.zq = Tensor.createGPUTensor(this.zq, ze.number, ze.channel, ze.height, ze.width, true);
+        if (this.z_flattened == null || this.z_flattened.getShape()[0] != ze.getShape()[0]) {
+            this.z_flattened = Tensor.createGPUTensor(this.z_flattened, ze.getShape()[0], ze.getShape()[2], ze.getShape()[3], this.latendDim, true);
+            this.idx = Tensor.createGPUTensor(this.idx, ze.getShape()[0] * ze.getShape()[2] * ze.getShape()[3], 1, 1, 1, true);
+            this.zq = Tensor.createGPUTensor(this.zq, ze.getShape()[0], ze.getShape()[1], ze.getShape()[2], ze.getShape()[3], true);
             if (this.RUN_MODEL == RunModel.TRAIN) {
                 this.avg_probs = Tensor.createGPUTensor(this.avg_probs, 1, 1, 1, num_vq_embeddings, true);
                 this.avg_probs_log = Tensor.createGPUTensor(this.avg_probs_log, 1, 1, 1, num_vq_embeddings, true);
@@ -199,7 +199,7 @@ public class TinyVQVAE2 extends Network {
             }
         }
         tensorOP.permute(ze, z_flattened, new int[]{0, 2, 3, 1});  //B,C,H,W ==> B,H,W,C
-        z_flattened = z_flattened.view(ze.number * ze.height * ze.width, 1, 1, this.latendDim);
+        z_flattened = z_flattened.view(ze.getShape()[0] * ze.getShape()[2] * ze.getShape()[3], 1, 1, this.latendDim);
         cdist();
         //		System.err.println("ie:");
         //		ie.showDMByOffset(0, num_vq_embeddings);
@@ -209,7 +209,7 @@ public class TinyVQVAE2 extends Network {
         }
         //		embedding.weight.showDM();
         embedding.forward(idx);
-        Tensor emo = embedding.getOutput().view(new int[]{ze.number, ze.height, ze.width, ze.channel});
+        Tensor emo = embedding.getOutput().view(new int[]{ze.getShape()[0], ze.getShape()[2], ze.getShape()[3], ze.getShape()[1]});
         tensorOP.permute(emo, zq, new int[]{0, 3, 1, 2}); //B*H*W*C ==> B*C*H*W
         //		if(this.RUN_MODEL == RunModel.TRAIN) {
         //			vaeKernel.mean(idx, avg_probs);
@@ -227,10 +227,10 @@ public class TinyVQVAE2 extends Network {
      * @return
      */
     public void cdist() {
-        if (zc == null || z_flattened.number != zc.number) {
-            zc = Tensor.createGPUTensor(this.zc, z_flattened.number, 1, 1, 1, true);
+        if (zc == null || z_flattened.getShape()[0] != zc.getShape()[0]) {
+            zc = Tensor.createGPUTensor(this.zc, z_flattened.getShape()[0], 1, 1, 1, true);
             ec = Tensor.createGPUTensor(this.ec, num_vq_embeddings, 1, 1, 1, true);
-            ie = Tensor.createGPUTensor(this.ie, z_flattened.number, 1, 1, num_vq_embeddings, true);
+            ie = Tensor.createGPUTensor(this.ie, z_flattened.getShape()[0], 1, 1, num_vq_embeddings, true);
         } else {
             ie.clearGPU();
             zc.clearGPU();
@@ -241,7 +241,7 @@ public class TinyVQVAE2 extends Network {
         tensorOP.sum_pow(embedding.weight.view(num_vq_embeddings, 1, 1, latendDim), ec, 2, 1);
         tensorOP.broadcast(zc, ie, 1);
         tensorOP.broadcast_row(ec, ie);
-        GPUOP.getInstance().multiplyFloat(z_flattened.number, embedding.weight.number, embedding.weight.width, z_flattened.getGpuData(), embedding.weight.getGpuData(), ie.getGpuData(), cublasOperation.CUBLAS_OP_N, cublasOperation.CUBLAS_OP_T, -2.0f, 1.0f);
+        GPUOP.getInstance().multiplyFloat(z_flattened.getShape()[0], embedding.weight.getShape()[0], embedding.weight.getShape()[3], z_flattened.getGpuData(), embedding.weight.getGpuData(), ie.getGpuData(), cublasOperation.CUBLAS_OP_N, cublasOperation.CUBLAS_OP_T, -2.0f, 1.0f);
         embedding.weight.viewOrg();
     }
 
@@ -270,7 +270,7 @@ public class TinyVQVAE2 extends Network {
             sum_encodings = Tensor.createGPUTensor(sum_encodings, 1, 1, 1, num_vq_embeddings, true);
             ema_count = Tensor.createGPUTensor(ema_count, 1, 1, 1, num_vq_embeddings, true);
             ema_count_n = Tensor.createGPUTensor(ema_count_n, 1, 1, 1, 1, true);
-            onehot = Tensor.createGPUTensor(onehot, z_flattened.number, 1, 1, num_vq_embeddings, true);
+            onehot = Tensor.createGPUTensor(onehot, z_flattened.getShape()[0], 1, 1, num_vq_embeddings, true);
             ema_weight = Tensor.createGPUTensor(ema_weight, 1, 1, num_vq_embeddings, latendDim, true);
             vaeKernel.copy_gpu(embedding.weight, this.ema_weight, ema_weight.getDataLength(), 1, 1);
             dw = Tensor.createGPUTensor(dw, 1, 1, num_vq_embeddings, latendDim, true);
@@ -284,7 +284,7 @@ public class TinyVQVAE2 extends Network {
         vaeKernel.move_ema_count(sum_encodings, ema_count, decay);
         tensorOP.sum(ema_count, ema_count_n, 0);
         vaeKernel.move_ema_count2(ema_count, ema_count_n, 1e-5f, num_vq_embeddings);
-        GPUOP.getInstance().multiplyFloat(onehot.width, z_flattened.width, onehot.number, onehot.getGpuData(), z_flattened.getGpuData(), dw.getGpuData(), cublasOperation.CUBLAS_OP_T, cublasOperation.CUBLAS_OP_N, 1.0f, 0.0f);
+        GPUOP.getInstance().multiplyFloat(onehot.getShape()[3], z_flattened.getShape()[3], onehot.getShape()[0], onehot.getGpuData(), z_flattened.getGpuData(), dw.getGpuData(), cublasOperation.CUBLAS_OP_T, cublasOperation.CUBLAS_OP_N, 1.0f, 0.0f);
         vaeKernel.update_emb_weight(dw, embedding.weight, ema_weight, ema_count, decay);
     }
 
@@ -346,10 +346,10 @@ public class TinyVQVAE2 extends Network {
     //
     //	}
     public void initBack() {
-        if (this.dzqT == null || this.dzqT.number != zq.number) {
-            this.dzqT = Tensor.createGPUTensor(this.dzqT, zq.number, zq.height, zq.width, zq.channel, true);
-            this.dze = Tensor.createGPUTensor(this.dze, ze.number, ze.channel, ze.height, ze.width, true);
-            this.dzeT = Tensor.createGPUTensor(this.dzeT, zq.number, zq.height, zq.width, zq.channel, true);
+        if (this.dzqT == null || this.dzqT.getShape()[0] != zq.getShape()[0]) {
+            this.dzqT = Tensor.createGPUTensor(this.dzqT, zq.getShape()[0], zq.getShape()[2], zq.getShape()[3], zq.getShape()[1], true);
+            this.dze = Tensor.createGPUTensor(this.dze, ze.getShape()[0], ze.getShape()[1], ze.getShape()[2], ze.getShape()[3], true);
+            this.dzeT = Tensor.createGPUTensor(this.dzeT, zq.getShape()[0], zq.getShape()[2], zq.getShape()[3], zq.getShape()[1], true);
         }
     }
 
@@ -388,14 +388,14 @@ public class TinyVQVAE2 extends Network {
         }
         //		output.showDMByOffset(0, 10, "out");
         Tensor decoerLoss = this.lossFunction.loss(output, label);
-        System.out.println("decoderLoss:" + MatrixOperation.sum(decoerLoss.syncHost()) / output.number);
+        System.out.println("decoderLoss:" + MatrixOperation.sum(decoerLoss.syncHost()) / output.getShape()[0]);
         embedding.getOutput().viewOrg();
         //		embedding.getOutput().showDMByOffset(0, 10, "embedding");
         //		z_flattened.showDMByOffset(0, 10, "z_flattened");
         vaeKernel.MSE_C(embedding.getOutput(), z_flattened, vqLoss, beta);
         //		vaeKernel.MSE_C_SUM(embedding.getOutput(), z_flattened, vqLoss, beta);
         vqLoss.showDM(0, "vqLoss");
-        return (MatrixOperation.sum(decoerLoss.syncHost()) / output.number + MatrixOperation.sum(vqLoss.syncHost()));
+        return (MatrixOperation.sum(decoerLoss.syncHost()) / output.getShape()[0] + MatrixOperation.sum(vqLoss.syncHost()));
     }
 
     @Override

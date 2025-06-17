@@ -1,13 +1,14 @@
 package com.omega.engine.nn.layer.normalization.gpu;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.JsonUtils;
-import com.omega.utils.MatrixUtils;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.JsonUtils;
+import com.omega.common.utils.MatrixUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.nn.layer.normalization.BNType;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUdeviceptr;
@@ -79,15 +80,15 @@ public class GNKernel extends BaseKernel {
 
     public static void forwardCPU(int G, Tensor x, Tensor gamma, Tensor beta, Tensor output, float[] mean, float[] var) {
         System.err.println(G);
-        int groupSize = x.channel / G;
-        int imgSize = x.height * x.width;
+        int groupSize = x.getShape()[1] / G;
+        int imgSize = x.getShape()[2] * x.getShape()[3];
         int once = groupSize * imgSize;
-        for (int b = 0; b < x.number; b++) {
+        for (int b = 0; b < x.getShape()[0]; b++) {
             for (int g = 0; g < G; g++) {
                 float sum = 0.0f;
                 float sum2 = 0.0f;
                 for (int gs = 0; gs < once; gs++) {
-                    float val = x.data[b * G * once + g * once + gs];
+                    float val = x.getData()[b * G * once + g * once + gs];
                     sum += val;
                     sum2 += val * val;
                 }
@@ -96,13 +97,13 @@ public class GNKernel extends BaseKernel {
                 mean[b * G + g] = mean_val;
                 var[b * G + g] = var_val;
                 for (int gs = 0; gs < groupSize * imgSize; gs++) {
-                    output.data[b * G * once + g * once + gs] = (float) ((x.data[b * G * once + g * once + gs] - mean_val) / Math.sqrt(var_val + 1e-6f));
+                    output.getData()[b * G * once + g * once + gs] = (float) ((x.getData()[b * G * once + g * once + gs] - mean_val) / Math.sqrt(var_val + 1e-6f));
                 }
             }
-            for (int c = 0; c < x.channel; c++) {
+            for (int c = 0; c < x.getShape()[1]; c++) {
                 for (int i = 0; i < imgSize; i++) {
-                    float x_norm = output.data[b * x.channel * imgSize + c * imgSize + i];
-                    output.data[b * x.channel * imgSize + c * imgSize + i] = gamma.data[c] * x_norm + beta.data[c];
+                    float x_norm = output.getData()[b * x.getShape()[1] * imgSize + c * imgSize + i];
+                    output.getData()[b * x.getShape()[1] * imgSize + c * imgSize + i] = gamma.getData()[c] * x_norm + beta.getData()[c];
                 }
             }
         }
@@ -111,22 +112,22 @@ public class GNKernel extends BaseKernel {
     }
 
     public static void backwardCPU(int G, float[] mean, float[] var, Tensor delta, Tensor x, Tensor gamma, Tensor dgamma, Tensor dbeta, Tensor diff) {
-        int groupSize = x.channel / G;
-        int imgSize = x.height * x.width;
+        int groupSize = x.getShape()[1] / G;
+        int imgSize = x.getShape()[2] * x.getShape()[3];
         int once = groupSize * imgSize;
-        for (int b = 0; b < x.number; b++) {
+        for (int b = 0; b < x.getShape()[0]; b++) {
             for (int g = 0; g < G; g++) {
                 float mean_val = mean[b * G + g];
                 float var_val = var[b * G + g];
                 for (int gs = 0; gs < groupSize * imgSize; gs++) {
-                    diff.data[b * G * once + g * once + gs] = (float) ((x.data[b * G * once + g * once + gs] - mean_val) / Math.sqrt(var_val + 1e-6f));
+                    diff.getData()[b * G * once + g * once + gs] = (float) ((x.getData()[b * G * once + g * once + gs] - mean_val) / Math.sqrt(var_val + 1e-6f));
                 }
             }
-            for (int c = 0; c < x.channel; c++) {
+            for (int c = 0; c < x.getShape()[1]; c++) {
                 for (int i = 0; i < imgSize; i++) {
-                    dbeta.data[c] += delta.data[b * x.channel * imgSize + c * imgSize + i];
-                    dgamma.data[c] += delta.data[b * x.channel * imgSize + c * imgSize + i] * diff.data[b * x.channel * imgSize + c * imgSize + i];
-                    diff.data[b * x.channel * imgSize + c * imgSize + i] = delta.data[b * x.channel * imgSize + c * imgSize + i] * gamma.data[c];
+                    dbeta.getData()[c] += delta.getData()[b * x.getShape()[1] * imgSize + c * imgSize + i];
+                    dgamma.getData()[c] += delta.getData()[b * x.getShape()[1] * imgSize + c * imgSize + i] * diff.getData()[b * x.getShape()[1] * imgSize + c * imgSize + i];
+                    diff.getData()[b * x.getShape()[1] * imgSize + c * imgSize + i] = delta.getData()[b * x.getShape()[1] * imgSize + c * imgSize + i] * gamma.getData()[c];
                 }
             }
             for (int g = 0; g < G; g++) {
@@ -134,18 +135,18 @@ public class GNKernel extends BaseKernel {
                 float var_val = var[b * G + g];
                 for (int gs = 0; gs < groupSize * imgSize; gs++) {
                     float sqrt = (float) Math.sqrt(var_val + 1e-6f);
-                    float p1 = (float) (diff.data[b * G * once + g * once + gs] / sqrt);
+                    float p1 = (float) (diff.getData()[b * G * once + g * once + gs] / sqrt);
                     //-delta * a / b^2
-                    float p2 = -diff.data[b * G * once + g * once + gs] * (x.data[b * G * once + g * once + gs] - mean_val) / (sqrt * sqrt);
+                    float p2 = -diff.getData()[b * G * once + g * once + gs] * (x.getData()[b * G * once + g * once + gs] - mean_val) / (sqrt * sqrt);
                     float x1 = p1;
                     float dmean = p1;
-                    diff.data[b * G * once + g * once + gs] = (float) ((x.data[b * G * once + g * once + gs] - mean_val) / Math.sqrt(var_val + 1e-5f));
+                    diff.getData()[b * G * once + g * once + gs] = (float) ((x.getData()[b * G * once + g * once + gs] - mean_val) / Math.sqrt(var_val + 1e-5f));
                 }
             }
         }
-        System.out.println(JsonUtils.toJson(diff.data));
-        System.out.println(JsonUtils.toJson(dbeta.data));
-        System.out.println(JsonUtils.toJson(dgamma.data));
+        System.out.println(JsonUtils.toJson(diff.getData()));
+        System.out.println(JsonUtils.toJson(dbeta.getData()));
+        System.out.println(JsonUtils.toJson(dgamma.getData()));
     }
 
     public static void main(String[] args) {
@@ -311,8 +312,8 @@ public class GNKernel extends BaseKernel {
     }
 
     public boolean checkBatch(Tensor input) {
-        int batchSize = input.number;
-        C = input.channel;
+        int batchSize = input.getShape()[0];
+        C = input.getShape()[1];
         if (B != batchSize) {
             this.B = batchSize;
             return false;
@@ -326,9 +327,9 @@ public class GNKernel extends BaseKernel {
     public void forward(Tensor gamma, Tensor beta, Tensor input, Tensor output) {
         try {
             boolean check = checkBatch(input);
-            int img_size = input.height * input.width;
-            int group_size = input.channel / G;
-            int n_blocks = input.number * G;
+            int img_size = input.getShape()[2] * input.getShape()[3];
+            int group_size = input.getShape()[1] / G;
+            int n_blocks = input.getShape()[0] * G;
             int block_size = Math.max(Math.min(512, img_size * group_size), 32);
             if (!check) {
                 initKernel();
@@ -342,7 +343,7 @@ public class GNKernel extends BaseKernel {
 
              */
             //			input.showDM();
-            forwardParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(gamma.getGpuData()), Pointer.to(beta.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(d_mean), Pointer.to(d_var), Pointer.to(new int[]{input.number}), Pointer.to(new int[]{input.channel}), Pointer.to(new int[]{img_size}), Pointer.to(new int[]{group_size}), Pointer.to(new int[]{G}));
+            forwardParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(gamma.getGpuData()), Pointer.to(beta.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(d_mean), Pointer.to(d_var), Pointer.to(new int[]{input.getShape()[0]}), Pointer.to(new int[]{input.getShape()[1]}), Pointer.to(new int[]{img_size}), Pointer.to(new int[]{group_size}), Pointer.to(new int[]{G}));
             cuLaunchKernel(forward_function, n_blocks, 1, 1,      // Grid dimension
                     block_size, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
@@ -362,8 +363,8 @@ public class GNKernel extends BaseKernel {
     public void forward2(Tensor gamma, Tensor beta, Tensor input, Tensor output) {
         try {
             boolean check = checkBatch(input);
-            int img_size = input.height * input.width;
-            int group_size = input.channel / G;
+            int img_size = input.getShape()[2] * input.getShape()[3];
+            int group_size = input.getShape()[1] / G;
             //			System.err.println(group_size);
             //			if(!check) {
             initKernel();
@@ -375,9 +376,9 @@ public class GNKernel extends BaseKernel {
              int B, int C, int img_size, int group_size, int n_groups
 
              */
-            forwardParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(gamma.getGpuData()), Pointer.to(beta.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(d_mean), Pointer.to(d_var), Pointer.to(new int[]{input.number}), Pointer.to(new int[]{input.channel}), Pointer.to(new int[]{img_size}), Pointer.to(new int[]{group_size}), Pointer.to(new int[]{G}));
+            forwardParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(gamma.getGpuData()), Pointer.to(beta.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(d_mean), Pointer.to(d_var), Pointer.to(new int[]{input.getShape()[0]}), Pointer.to(new int[]{input.getShape()[1]}), Pointer.to(new int[]{img_size}), Pointer.to(new int[]{group_size}), Pointer.to(new int[]{G}));
             //			}
-            cuLaunchKernel(forward2_function, input.number, 1, 1,      // Grid dimension
+            cuLaunchKernel(forward2_function, input.getShape()[0], 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     forwardParameters, null // Kernel- and extra parameters
@@ -405,8 +406,8 @@ public class GNKernel extends BaseKernel {
              float *mean_addr, float *rstd_addr
 
              */
-            int HXW = input.height * input.width;
-            int N = input.number;
+            int HXW = input.getShape()[2] * input.getShape()[3];
+            int N = input.getShape()[0];
             int row_dim = N * G;
             int col_dim = C * HXW / G;
             int thread_per_block = 256;
@@ -431,9 +432,9 @@ public class GNKernel extends BaseKernel {
 
     public void backward(Tensor input, Tensor delta, Tensor diff, Tensor gamma, Tensor dgamma, Tensor dbeta) {
         try {
-            int img_size = input.height * input.width;
-            int group_size = input.channel / G;
-            int n_blocks = input.number * G;
+            int img_size = input.getShape()[2] * input.getShape()[3];
+            int group_size = input.getShape()[1] / G;
+            int n_blocks = input.getShape()[0] * G;
             int block_size = Math.max(Math.min(512, img_size * group_size), 32 * group_size);
             /**
              *   const float* dout, const float* x, const float* mean, const float* rstd, const float* weight,
@@ -443,7 +444,7 @@ public class GNKernel extends BaseKernel {
              int B, int C, int img_size, int group_size, int n_groups
 
              */
-            backwardParameters = Pointer.to(Pointer.to(delta.getGpuData()), Pointer.to(input.getGpuData()), Pointer.to(d_mean), Pointer.to(d_var), Pointer.to(gamma.getGpuData()), Pointer.to(diff.getGpuData()), Pointer.to(dgamma.getGpuData()), Pointer.to(dbeta.getGpuData()), Pointer.to(new int[]{input.number}), Pointer.to(new int[]{input.channel}), Pointer.to(new int[]{img_size}), Pointer.to(new int[]{group_size}), Pointer.to(new int[]{G}));
+            backwardParameters = Pointer.to(Pointer.to(delta.getGpuData()), Pointer.to(input.getGpuData()), Pointer.to(d_mean), Pointer.to(d_var), Pointer.to(gamma.getGpuData()), Pointer.to(diff.getGpuData()), Pointer.to(dgamma.getGpuData()), Pointer.to(dbeta.getGpuData()), Pointer.to(new int[]{input.getShape()[0]}), Pointer.to(new int[]{input.getShape()[1]}), Pointer.to(new int[]{img_size}), Pointer.to(new int[]{group_size}), Pointer.to(new int[]{G}));
             cuLaunchKernel(backward_function, n_blocks, 1, 1,      // Grid dimension
                     block_size, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
@@ -457,9 +458,9 @@ public class GNKernel extends BaseKernel {
 
     public void backward3(Tensor input, Tensor delta, Tensor diff, Tensor gamma, Tensor dgamma, Tensor dbeta) {
         try {
-            int HxW = input.height * input.width;
-            int N = input.number;
-            C = input.channel;
+            int HxW = input.getShape()[2] * input.getShape()[3];
+            int N = input.getShape()[0];
+            C = input.getShape()[1];
             int WARP_SIZE = 32;
             int thread_per_block = 256;
             int share_mem_size = thread_per_block / WARP_SIZE * 3 * Sizeof.FLOAT;

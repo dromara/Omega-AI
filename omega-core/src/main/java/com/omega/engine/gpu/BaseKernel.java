@@ -1,7 +1,8 @@
 package com.omega.engine.gpu;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.JsonUtils;
+import com.omega.common.utils.JsonUtils;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUfunction;
@@ -74,7 +75,6 @@ public class BaseKernel {
             }
             /**
              *   const float* dout, float* dx1, float* dx2,int B, int C1, int C2, int H, int W
-
              */
             Pointer kernelParameter = Pointer.to(Pointer.to(diff.getGpuData()), Pointer.to(dx1.getGpuData()), Pointer.to(dx2.getGpuData()), Pointer.to(new int[]{B}), Pointer.to(new int[]{C1}), Pointer.to(new int[]{C2}), Pointer.to(new int[]{H}), Pointer.to(new int[]{W}));
             int N = B * (int) Math.max(C1, C2) * H * W;
@@ -96,9 +96,8 @@ public class BaseKernel {
             }
             /**
              *   const float* out,float* x1, float* x2,int B, int C, int H, int W,int N, int* indices,int size
-
              */
-            Pointer kernelParameter = Pointer.to(Pointer.to(output.getGpuData()), Pointer.to(x1.getGpuData()), Pointer.to(x2.getGpuData()), Pointer.to(new int[]{x1.number}), Pointer.to(new int[]{x1.channel}), Pointer.to(new int[]{x1.height}), Pointer.to(new int[]{x1.width}), Pointer.to(new int[]{x1.getDataLength()}), Pointer.to(indices.getGpuData()), Pointer.to(new int[]{size}));
+            Pointer kernelParameter = Pointer.to(Pointer.to(output.getGpuData()), Pointer.to(x1.getGpuData()), Pointer.to(x2.getGpuData()), Pointer.to(new int[]{x1.getShape()[0]}), Pointer.to(new int[]{x1.getShape()[1]}), Pointer.to(new int[]{x1.getShape()[2]}), Pointer.to(new int[]{x1.getShape()[3]}), Pointer.to(new int[]{x1.getDataLength()}), Pointer.to(indices.getGpuData()), Pointer.to(new int[]{size}));
             checkCUDA(cuLaunchKernel(replace_channel_forward_function, CAFFE_GET_BLOCKS(x1.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
@@ -140,7 +139,7 @@ public class BaseKernel {
              *   const float* diff,float* dx,int B, int C, int H, int W,int N, int* indices,int size
 
              */
-            Pointer kernelParameter = Pointer.to(Pointer.to(diff.getGpuData()), Pointer.to(dx.getGpuData()), Pointer.to(new int[]{diff.number}), Pointer.to(new int[]{diff.channel}), Pointer.to(new int[]{diff.height}), Pointer.to(new int[]{diff.width}), Pointer.to(new int[]{diff.getDataLength()}), Pointer.to(indices.getGpuData()), Pointer.to(new int[]{size}));
+            Pointer kernelParameter = Pointer.to(Pointer.to(diff.getGpuData()), Pointer.to(dx.getGpuData()), Pointer.to(new int[]{diff.getShape()[0]}), Pointer.to(new int[]{diff.getShape()[1]}), Pointer.to(new int[]{diff.getShape()[2]}), Pointer.to(new int[]{diff.getShape()[3]}), Pointer.to(new int[]{diff.getDataLength()}), Pointer.to(indices.getGpuData()), Pointer.to(new int[]{size}));
             checkCUDA(cuLaunchKernel(replace_channel_backward_function, CAFFE_GET_BLOCKS(diff.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
@@ -339,8 +338,8 @@ public class BaseKernel {
              * float* input,float* noise,float* a,float* b,int N, int W
 
              */
-            Pointer kernelParameter = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(noise.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(a.getGpuData()), Pointer.to(b.getGpuData()), Pointer.to(new int[]{input.dataLength}), Pointer.to(new int[]{input.getOnceSize()}));
-            cuLaunchKernel(addMul_function, CAFFE_GET_BLOCKS(input.dataLength), 1, 1,      // Grid dimension
+            Pointer kernelParameter = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(noise.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(a.getGpuData()), Pointer.to(b.getGpuData()), Pointer.to(new int[]{input.getDataLength()}), Pointer.to(new int[]{input.getOnceSize()}));
+            cuLaunchKernel(addMul_function, CAFFE_GET_BLOCKS(input.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameter, null // Kernel- and extra parameters
@@ -360,8 +359,8 @@ public class BaseKernel {
              * float* input,float* noise,float* a,float* b,int N, int W
 
              */
-            Pointer kernelParameter = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(noise.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(a.getGpuData()), Pointer.to(b.getGpuData()), Pointer.to(new int[]{input.dataLength}), Pointer.to(new int[]{input.getOnceSize()}));
-            cuLaunchKernel(unMul_function, CAFFE_GET_BLOCKS(input.dataLength), 1, 1,      // Grid dimension
+            Pointer kernelParameter = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(noise.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(a.getGpuData()), Pointer.to(b.getGpuData()), Pointer.to(new int[]{input.getDataLength()}), Pointer.to(new int[]{input.getOnceSize()}));
+            cuLaunchKernel(unMul_function, CAFFE_GET_BLOCKS(input.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameter, null // Kernel- and extra parameters
@@ -381,8 +380,8 @@ public class BaseKernel {
              * float* input,float* noise,float* a,float* b,int N, int W
 
              */
-            Pointer kernelParameter = Pointer.to(Pointer.to(delta.getGpuData()), Pointer.to(noise.getGpuData()), Pointer.to(diff.getGpuData()), Pointer.to(a.getGpuData()), Pointer.to(b.getGpuData()), Pointer.to(new int[]{delta.dataLength}), Pointer.to(new int[]{delta.getOnceSize()}));
-            cuLaunchKernel(unMul_grad_function, CAFFE_GET_BLOCKS(delta.dataLength), 1, 1,      // Grid dimension
+            Pointer kernelParameter = Pointer.to(Pointer.to(delta.getGpuData()), Pointer.to(noise.getGpuData()), Pointer.to(diff.getGpuData()), Pointer.to(a.getGpuData()), Pointer.to(b.getGpuData()), Pointer.to(new int[]{delta.getDataLength()}), Pointer.to(new int[]{delta.getOnceSize()}));
+            cuLaunchKernel(unMul_grad_function, CAFFE_GET_BLOCKS(delta.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameter, null // Kernel- and extra parameters

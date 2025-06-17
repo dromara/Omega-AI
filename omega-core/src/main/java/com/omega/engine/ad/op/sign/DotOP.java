@@ -1,9 +1,9 @@
 package com.omega.engine.ad.op.sign;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.ad.Tape;
 import com.omega.engine.ad.op.OPType;
 import com.omega.engine.ad.op.SignOP;
+import com.omega.engine.tensor.Tensor;
 
 public class DotOP extends SignOP {
     public static final OPType opt = OPType.dot;

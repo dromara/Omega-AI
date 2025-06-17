@@ -1,12 +1,12 @@
 package com.omega.engine.nn.layer;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.GPUOP;
 import com.omega.engine.nn.layer.gpu.DropoutKernel;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * Dropout Layer
@@ -93,16 +93,16 @@ public class DropoutLayer extends Layer {
 
     public void init(Tensor input) {
         // TODO Auto-generated method stub
-        this.channel = input.channel;
-        this.height = input.height;
-        this.width = input.width;
+        this.channel = input.getShape()[1];
+        this.height = input.getShape()[2];
+        this.width = input.getShape()[3];
         this.oChannel = this.channel;
         this.oHeight = this.height;
         this.oWidth = this.width;
         if (kernel == null) {
             kernel = new DropoutKernel(this.probability, this.scale, cuda());
         }
-        this.number = input.number;
+        this.number = input.getShape()[0];
         initParam();
     }
 
@@ -114,7 +114,7 @@ public class DropoutLayer extends Layer {
 
          */
         if (this.network.RUN_MODEL == RunModel.TRAIN) {
-            if (this.mask == null || this.mask.number != this.number) {
+            if (this.mask == null || this.mask.getShape()[0] != this.number) {
                 this.mask = Tensor.createGPUTensor(this.mask, number, oChannel, oHeight, oWidth, true);
             }
             //			JCuda.cudaDeviceSynchronize();
@@ -122,7 +122,7 @@ public class DropoutLayer extends Layer {
             //			this.mask.uniform(0.0f, 1.0f);
             //			this.mask.showDMByNumber(0);
         }
-        if (this.output == null || this.number != this.output.number) {
+        if (this.output == null || this.number != this.output.getShape()[0]) {
             this.output = Tensor.createGPUTensor(this.output, number, oChannel, oHeight, oWidth, true);
         }
     }
@@ -130,7 +130,7 @@ public class DropoutLayer extends Layer {
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
-        if (this.diff == null || this.number != this.diff.number) {
+        if (this.diff == null || this.number != this.diff.getShape()[0]) {
             this.diff = Tensor.createGPUTensor(this.diff, number, channel, height, width, true);
         }
     }

@@ -1,10 +1,10 @@
 package com.omega.engine.nn.layer.unet;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * UNetFFNBlockLayer
@@ -53,13 +53,13 @@ public class UNetSpatialTransformerLayer extends Layer {
 
     public void init(Tensor input) {
         // TODO Auto-generated method stub
-        this.number = input.number;
-        if (this.xt == null || this.xt.number != this.number) {
+        this.number = input.getShape()[0];
+        if (this.xt == null || this.xt.getShape()[0] != this.number) {
             this.xt = Tensor.createGPUTensor(this.xt, number, height, width, channel, true);
         } else {
             xt.viewOrg();
         }
-        if (this.output == null || this.output.number != this.number) {
+        if (this.output == null || this.output.getShape()[0] != this.number) {
             this.output = Tensor.createGPUTensor(this.output, number, oChannel, oHeight, oWidth, true);
         }
     }
@@ -67,7 +67,7 @@ public class UNetSpatialTransformerLayer extends Layer {
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
-        if (kvDiff == null || kvDiff.number * kvTime != this.number * kvTime) {
+        if (kvDiff == null || kvDiff.getShape()[0] * kvTime != this.number * kvTime) {
             kvDiff = Tensor.createGPUTensor(kvDiff, this.number * kvTime, 1, 1, channel, true);
         }
     }

@@ -1,12 +1,12 @@
 package com.omega.engine.nn.network;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.loss.LossFactory;
 import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.layer.InputLayer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.SoftmaxWithCrossEntropyLayer;
 import com.omega.engine.nn.layer.clip.bert.Bert;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 
 import java.io.IOException;
@@ -93,11 +93,11 @@ public class ClipText extends Network {
          */
         this.setInputData(input);
         inputLayer.forward();
-        if (tokenIds == null || tokenIds.number != this.number) {
-            tokenIds = Tensor.createGPUTensor(tokenIds, number, input.channel, input.height, input.width, true);
+        if (tokenIds == null || tokenIds.getShape()[0] != this.number) {
+            tokenIds = Tensor.createGPUTensor(tokenIds, number, input.getShape()[1], input.getShape()[2], input.getShape()[3], true);
         }
         bert.forward(input, tokenIds, null);
-        if (output == null || output.number != this.number) {
+        if (output == null || output.getShape()[0] != this.number) {
             output = Tensor.createGPUTensor(output, number, 1, 1, embedDim, true);
         }
         tensorOP.dot(bert.getOutput(), textProjection, output);
@@ -112,11 +112,11 @@ public class ClipText extends Network {
          */
         this.setInputData(input);
         inputLayer.forward();
-        if (tokenIds == null || tokenIds.number != this.number) {
-            tokenIds = Tensor.createGPUTensor(tokenIds, number, input.channel, input.height, input.width, true);
+        if (tokenIds == null || tokenIds.getShape()[0] != this.number) {
+            tokenIds = Tensor.createGPUTensor(tokenIds, number, input.getShape()[1], input.getShape()[2], input.getShape()[3], true);
         }
         bert.forward(input, tokenIds, mask);
-        if (output == null || output.number != this.number) {
+        if (output == null || output.getShape()[0] != this.number) {
             output = Tensor.createGPUTensor(output, number, 1, 1, embedDim, true);
         }
         tensorOP.dot(bert.getOutput(), textProjection, output);

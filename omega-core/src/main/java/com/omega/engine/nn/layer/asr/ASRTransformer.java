@@ -1,12 +1,12 @@
 package com.omega.engine.nn.layer.asr;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.gpu.MaskKernel;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
-import com.omega.models.transformer.ENTokenizer;
+import com.omega.example.transformer.utils.ENTokenizer;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -76,8 +76,8 @@ public class ASRTransformer extends Layer {
     @Override
     public void init() {
         // TODO Auto-generated method stub
-        this.number = this.input.number / wavTime;
-        if (wavMask == null || wavMask.number != number) {
+        this.number = this.input.getShape()[0] / wavTime;
+        if (wavMask == null || wavMask.getShape()[0] != number) {
             wavMask = maskKernel.createOutput(number, wavTime, headNum);
             encoder_positions = createPositions(number, wavTime);
             decoder_positions = createPositions(number, vocTime);

@@ -1,17 +1,17 @@
 package com.omega.engine.nn.layer;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixOperation;
-import com.omega.utils.MatrixUtils;
-import com.omega.utils.PrintUtils;
-import com.omega.utils.RandomUtils;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+
+import com.omega.common.utils.MatrixOperation;
+import com.omega.common.utils.MatrixUtils;
+import com.omega.common.utils.PrintUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.layer.gpu.EmbeddingKernel;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.utils.ModelUtils;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
-
-import java.io.IOException;
-import java.io.RandomAccessFile;
 
 /**
  * FullyLayer
@@ -20,7 +20,7 @@ import java.io.RandomAccessFile;
  */
 public class EmbeddingIDLayer extends Layer {
     private EmbeddingKernel kernel;
-    private Tensor factor;
+    public Tensor factor;
 
     public EmbeddingIDLayer(int num_embeddings, int embedding_dim) {
         this.channel = 1;
@@ -96,6 +96,17 @@ public class EmbeddingIDLayer extends Layer {
         }
         return o;
     }
+    
+    public static float[] cat(float[] a, float[] b,int dims) {
+        float[] o = new float[a.length + b.length];
+        for (int i = 0; i < a.length; i++) {
+        	int n = i / dims;
+        	int w = i % dims;
+            o[n * 2 * dims + 0 * dims + w] = a[i];
+            o[n * 2 * dims + 1 * dims + w] = b[i];
+        }
+        return o;
+    }
 
     public static void main(String[] args) {
         int T = 1000;
@@ -118,7 +129,7 @@ public class EmbeddingIDLayer extends Layer {
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
-        if (this.diff == null || this.number != this.diff.number) {
+        if (this.diff == null || this.number != this.diff.getShape()[0]) {
             this.diff = new Tensor(number, channel, height, width, true, true);
             this.diffW = new Tensor(1, 1, width, oWidth, true, true);
         }
@@ -128,15 +139,15 @@ public class EmbeddingIDLayer extends Layer {
     public void init() {
         // TODO Auto-generated method stub
         this.number = this.network.number;
-        if (this.output == null || this.number != this.output.number) {
+        if (this.output == null || this.number != this.output.getShape()[0]) {
             this.output = Tensor.createGPUTensor(this.output, number, oChannel, oHeight, oWidth, true);
         }
     }
 
     public void init(Tensor input) {
         // TODO Auto-generated method stub
-        this.number = input.number;
-        if (this.output == null || this.number != this.output.number) {
+        this.number = input.getShape()[0];
+        if (this.output == null || this.number != this.output.getShape()[0]) {
             this.output = Tensor.createGPUTensor(this.output, number, oChannel, oHeight, oWidth, true);
         }
     }
@@ -223,7 +234,7 @@ public class EmbeddingIDLayer extends Layer {
                 this.updater.update(this);
             } else {
                 for (int i = 0; i < this.weight.getDataLength(); i++) {
-                    this.weight.data[i] -= this.learnRate * this.diffW.data[i];
+                    this.weight.getData()[i] -= this.learnRate * this.diffW.getData()[i];
                 }
             }
             this.clearAccGrad();
@@ -236,7 +247,7 @@ public class EmbeddingIDLayer extends Layer {
         if (accDW == null) {
             accDW = diffW.copyGPU();
         } else {
-            kernel.axpy_gpu(diffW, accDW, accDW.dataLength, scale, 1, 1);
+            kernel.axpy_gpu(diffW, accDW, accDW.getDataLength(), scale, 1, 1);
         }
     }
 
@@ -360,6 +371,18 @@ public class EmbeddingIDLayer extends Layer {
         Tensor weight = new Tensor(1, 1, T, d_model, wd, true);
         return weight;
     }
+    
+    public Tensor createTimeEMBCosSin(int T, int d_model) {
+        float[] emb = MatrixUtils.order(d_model / 2, 0, (float) (-2.0f / d_model * Math.log(10000)));
+        emb = MatrixOperation.exp(emb);
+        float[] pos = MatrixUtils.order(T, 0, 1);
+        float[] o = outer(pos, emb);
+        float[] cos = MatrixOperation.cos(o);
+        float[] sin = MatrixOperation.sin(o);
+        float[] wd = cat(cos, sin, d_model / 2);
+        Tensor weight = new Tensor(1, 1, T, d_model, wd, true);
+        return weight;
+    }
 
     public void initFactor(int T, int d_model) {
         float[] emb = MatrixUtils.order(d_model / 2, 0, 1.0f / (d_model / 2));
@@ -375,6 +398,22 @@ public class EmbeddingIDLayer extends Layer {
         //		System.err.println(JsonUtils.toJson(emb));
         for (int i = 0; i < emb.length; i++) {
             emb[i] = (float) Math.pow(10000, emb[i]);
+        }
+        //		System.err.println(JsonUtils.toJson(emb));
+        float[] pos = MatrixUtils.order(T, 0, 1);
+        float[] o = outer(pos, emb);
+        float[] cos = MatrixOperation.cos(o);
+        float[] sin = MatrixOperation.sin(o);
+        float[] wd = cat(sin, cos);
+        Tensor weight = new Tensor(1, 1, T, d_model, wd, true);
+        return weight;
+    }
+    
+    public Tensor getTimeEMB2(int T, int d_model) {
+        float[] emb = MatrixUtils.order(d_model / 2, 0, 1.0f / (d_model / 2));
+        //		System.err.println(JsonUtils.toJson(emb));
+        for (int i = 0; i < emb.length; i++) {
+            emb[i] = (float) Math.exp(-Math.log(10000) * emb[i] / (d_model/2));;
         }
         //		System.err.println(JsonUtils.toJson(emb));
         float[] pos = MatrixUtils.order(T, 0, 1);

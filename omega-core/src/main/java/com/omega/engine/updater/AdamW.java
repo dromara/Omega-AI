@@ -21,6 +21,7 @@ public class AdamW extends Updater {
 
     public AdamW(Network network) {
         this.net = network;
+        this.weight_decay = this.net.weight_decay;
         this.params = network.updaterParams;
     }
 
@@ -30,13 +31,12 @@ public class AdamW extends Updater {
         layer.learnRate = layer.network.learnRate;
         /**
          * init
-
          */
         if (kernel == null) {
             if (layer.hasBias) {
-                kernel = new AdamWKernel(layer.weight.dataLength, layer.bias.dataLength, weight_decay, net.cudaManager);
+                kernel = new AdamWKernel(layer.weight.getDataLength(), layer.bias.getDataLength(), weight_decay, net.cudaManager);
             } else {
-                kernel = new AdamWKernel(layer.weight.dataLength, weight_decay, net.cudaManager);
+                kernel = new AdamWKernel(layer.weight.getDataLength(), weight_decay, net.cudaManager);
             }
             streamt = new cudaStream_t();
             JCuda.cudaStreamCreate(streamt);
@@ -65,9 +65,9 @@ public class AdamW extends Updater {
          */
         if (kernel == null) {
             if (layer.beta != null) {
-                kernel = new AdamWKernel(layer.gamma.dataLength, layer.beta.dataLength, weight_decay, net.cudaManager);
+                kernel = new AdamWKernel(layer.gamma.getDataLength(), layer.beta.getDataLength(), weight_decay, net.cudaManager);
             } else {
-                kernel = new AdamWKernel(layer.gamma.dataLength, 0, weight_decay, net.cudaManager);
+                kernel = new AdamWKernel(layer.gamma.getDataLength(), 0, weight_decay, net.cudaManager);
             }
             streamt = new cudaStream_t();
             JCuda.cudaStreamCreate(streamt);
@@ -98,9 +98,9 @@ public class AdamW extends Updater {
          */
         if (kernel == null) {
             if (layer.hasBias) {
-                kernel = new AdamWKernel(layer.weight.dataLength, layer.bias.dataLength, weight_decay, net.cudaManager);
+                kernel = new AdamWKernel(layer.weight.getDataLength(), layer.bias.getDataLength(), weight_decay, net.cudaManager);
             } else {
-                kernel = new AdamWKernel(layer.weight.dataLength, weight_decay, net.cudaManager);
+                kernel = new AdamWKernel(layer.weight.getDataLength(), weight_decay, net.cudaManager);
             }
             kernel.setParams(params);
         }

@@ -1,9 +1,9 @@
 package com.omega.engine.nn.network;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.SoftmaxWithCrossEntropyLayer;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * Recurrent Neural Networks

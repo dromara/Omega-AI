@@ -1,8 +1,7 @@
 package com.omega.engine.nn.layer.diffusion.unet;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixUtils;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.MatrixUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -14,9 +13,10 @@ import com.omega.engine.nn.layer.normalization.GNLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.nn.network.Transformer;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
-import com.omega.utils.clip.ClipModelUtils;
-import com.omega.models.transformer.LagJsonReader;
+import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.transformer.utils.LagJsonReader;
 import jcuda.runtime.JCuda;
 
 import java.io.IOException;
@@ -50,6 +50,7 @@ public class UNetCond2 extends Layer {
     private int headNum;
     private int groupNum = 32;
     private int[] downChannels;
+    private boolean learSigma = false;
     private RouteLayer cat_res;
     private List<RouteLayer> cats;
     private RouteLayer cat_out;
@@ -61,7 +62,6 @@ public class UNetCond2 extends Layer {
         this.nTime = nTime;
         this.groupNum = groupNum;
         this.channel = channel;
-        this.oChannel = channel;
         this.height = height;
         this.width = width;
         this.oHeight = height;
@@ -76,7 +76,28 @@ public class UNetCond2 extends Layer {
         this.groupNum = groupNum;
         initLayers();
     }
-
+    
+    public UNetCond2(int channel, int height, int width, int[] downChannels, int headNum, int nTime, int timeSteps, int contextTime, int contextDim, int numLayer, int groupNum, boolean learSigma, Network network) {
+        this.network = network;
+        this.nTime = nTime;
+        this.groupNum = groupNum;
+        this.channel = channel;
+        this.height = height;
+        this.width = width;
+        this.oHeight = height;
+        this.oWidth = width;
+        this.downChannels = downChannels;
+        this.headNum = headNum;
+        this.nTime = nTime;
+        this.timeSteps = timeSteps;
+        this.contextTime = contextTime;
+        this.contextDim = contextDim;
+        this.numLayer = numLayer;
+        this.groupNum = groupNum;
+        this.learSigma = learSigma;
+        initLayers();
+    }
+    
     public static void loadWeight(Map<String, Object> weightMap, UNetCond2 network, boolean showLayers) {
         if (showLayers) {
             for (String key : weightMap.keySet()) {
@@ -368,7 +389,12 @@ public class UNetCond2 extends Layer {
         conv_out.setName("conv_out");
         norm = new GNLayer(groupNum, conv_out, BNType.conv_bn);
         act = new SiLULayer(norm);
-        conv_final = new ConvolutionLayer(downChannels[0], channel, width, height, 3, 3, 1, 1, true, network);
+        if(learSigma) {
+        	conv_final = new ConvolutionLayer(downChannels[0], channel * 2, width, height, 3, 3, 1, 1, true, network);
+        }else {
+        	conv_final = new ConvolutionLayer(downChannels[0], channel, width, height, 3, 3, 1, 1, true, network);
+        }
+        this.oChannel = conv_final.channel;
     }
 
     @Override
@@ -379,13 +405,13 @@ public class UNetCond2 extends Layer {
 
     public void init(Tensor input) {
         // TODO Auto-generated method stub
-        this.number = input.number;
+        this.number = input.getShape()[0];
     }
 
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
-        if (tDiff == null || tDiff.number != this.number) {
+        if (tDiff == null || tDiff.getShape()[0] != this.number) {
             tDiff = Tensor.createGPUTensor(tDiff, this.number, 1, 1, nTime, true);
         } else {
             tDiff.clearGPU();

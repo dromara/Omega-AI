@@ -1,11 +1,11 @@
 package com.omega.engine.nn.layer;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.active.ActiveType;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.active.*;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RNN;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * LSTM
@@ -151,7 +151,7 @@ public class LSTMLayer extends Layer {
         this.number = this.network.number;
         RNN network = (RNN) this.network;
         this.time = network.time;
-        if (this.h == null || this.h.number != this.number) {
+        if (this.h == null || this.h.getShape()[0] != this.number) {
             this.f = Tensor.createTensor(this.f, number, 1, 1, hiddenSize, true);
             this.i = Tensor.createTensor(this.i, number, 1, 1, hiddenSize, true);
             this.g = Tensor.createTensor(this.g, number, 1, 1, hiddenSize, true);
@@ -166,15 +166,15 @@ public class LSTMLayer extends Layer {
     public void initBack() {
         // TODO Auto-generated method stub
         int batch = this.number / this.time;
-        if (this.detlaXo == null || this.detlaXo.number != batch) {
+        if (this.detlaXo == null || this.detlaXo.getShape()[0] != batch) {
             this.detlaXo = Tensor.createTensor(this.detlaXo, batch, 1, 1, hiddenSize, true);
             this.d_tanhc = Tensor.createTensor(this.d_tanhc, batch, 1, 1, hiddenSize, true);
         }
-        if (this.h_diff == null || this.h_diff.number != this.number) {
+        if (this.h_diff == null || this.h_diff.getShape()[0] != this.number) {
             this.h_diff = Tensor.createTensor(this.h_diff, this.number, 1, 1, hiddenSize, true);
             this.c_diff = Tensor.createTensor(this.c_diff, this.number, 1, 1, hiddenSize, true);
         }
-        if (this.diff == null || this.diff.number != this.number) {
+        if (this.diff == null || this.diff.getShape()[0] != this.number) {
             this.diff = Tensor.createTensor(this.diff, this.number, 1, 1, inputSize, true);
         }
     }

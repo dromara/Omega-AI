@@ -1,8 +1,7 @@
 package com.omega.engine.nn.layer.transformer;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixUtils;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.MatrixUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -10,6 +9,7 @@ import com.omega.engine.nn.layer.active.ReluLayer;
 import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.network.CNN;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * PoswiseFeedForward Layer
@@ -90,8 +90,8 @@ public class PoswiseFeedForwardLayer extends Layer {
     @Override
     public void init() {
         // TODO Auto-generated method stub
-        this.number = this.input.number;
-        if (this.ro == null || this.ro.number != this.number) {
+        this.number = this.input.getShape()[0];
+        if (this.ro == null || this.ro.getShape()[0] != this.number) {
             //			System.out.println(number);
             this.it = Tensor.createTensor(this.it, number, embedDim, 1, time, true);
             this.ro = Tensor.createTensor(this.ro, number, time, 1, embedDim, true);

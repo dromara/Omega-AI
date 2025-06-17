@@ -1,11 +1,12 @@
 package com.omega.engine.nn.layer.gpu;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.JsonUtils;
-import com.omega.utils.MatrixUtils;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.JsonUtils;
+import com.omega.common.utils.MatrixUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
 import jcuda.runtime.cudaError;
@@ -50,10 +51,10 @@ public class UpSampleKernel extends BaseKernel {
         float[] d = RandomUtils.order(N * C * oHeight * oWidth, 0.1f, 0.1f);
         Tensor input = new Tensor(N, C, H, W, x, true);
         Tensor output = new Tensor(N, C, oHeight, oWidth, true);
-        float[] output_cpu = new float[output.dataLength];
+        float[] output_cpu = new float[output.getDataLength()];
         Tensor delta = new Tensor(N, C, oHeight, oWidth, d, true);
         Tensor diff = new Tensor(N, C, H, W, true);
-        float[] diff_cpu = new float[diff.dataLength];
+        float[] diff_cpu = new float[diff.getDataLength()];
         CUDAManager cudaManager = new CUDAManager(0);
         UpSampleKernel pooling = new UpSampleKernel(stride, scale, cudaManager);
         long start = System.nanoTime();
@@ -63,12 +64,12 @@ public class UpSampleKernel extends BaseKernel {
         System.out.println((System.nanoTime() - start) / 1e6 + "ms.");
         input.showDM();
         output.showDM();
-        upsample_cpu(input.data, W, H, C, N, stride, 1, scale, output_cpu);
+        upsample_cpu(input.getData(), W, H, C, N, stride, 1, scale, output_cpu);
         System.out.println(JsonUtils.toJson(output_cpu));
         pooling.backward(delta, diff);
         delta.showDM();
         diff.showDM();
-        upsample_cpu(diff_cpu, W, H, C, N, stride, 0, scale, delta.data);
+        upsample_cpu(diff_cpu, W, H, C, N, stride, 0, scale, delta.getData());
         System.out.println(JsonUtils.toJson(diff_cpu));
         //    	System.out.println(JsonUtils.toJson(out));
         //    	System.out.println(JsonUtils.toJson(mask));
@@ -139,15 +140,15 @@ public class UpSampleKernel extends BaseKernel {
     public void upsample(Tensor input, Tensor output, int forward) {
         try {
             //			long start1 = System.nanoTime();
-            int size = input.channel * input.number * input.width * input.height * stride * stride;
-            if (input.number != this.N) {
-                this.N = input.number;
+            int size = input.getShape()[1] * input.getShape()[0] * input.getShape()[3] * input.getShape()[2] * stride * stride;
+            if (input.getShape()[0] != this.N) {
+                this.N = input.getShape()[0];
                 /**
                  * 设置入参
                  * int N, float *x, int w, int h, int c, int batch, int stride, int forward, float scale, float *out
 
                  */
-                forwardKernelParameters = Pointer.to(Pointer.to(new int[]{size}), Pointer.to(input.getGpuData()), Pointer.to(new int[]{input.width}), Pointer.to(new int[]{input.height}), Pointer.to(new int[]{input.channel}), Pointer.to(new int[]{input.number}), Pointer.to(new int[]{stride}), Pointer.to(new int[]{forward}), Pointer.to(new float[]{scale}), Pointer.to(output.getGpuData()));
+                forwardKernelParameters = Pointer.to(Pointer.to(new int[]{size}), Pointer.to(input.getGpuData()), Pointer.to(new int[]{input.getShape()[3]}), Pointer.to(new int[]{input.getShape()[2]}), Pointer.to(new int[]{input.getShape()[1]}), Pointer.to(new int[]{input.getShape()[0]}), Pointer.to(new int[]{stride}), Pointer.to(new int[]{forward}), Pointer.to(new float[]{scale}), Pointer.to(output.getGpuData()));
             }
             cuLaunchKernel(forward_function, this.CAFFE_GET_BLOCKS(size), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
@@ -162,14 +163,14 @@ public class UpSampleKernel extends BaseKernel {
 
     public void upsampleDelta(Tensor delta, Tensor diff, int forward) {
         try {
-            int size = delta.channel * delta.number * delta.width * delta.height * stride * stride;
+            int size = delta.getShape()[1] * delta.getShape()[0] * delta.getShape()[3] * delta.getShape()[2] * stride * stride;
             if (backwardKernelParameters == null) {
                 /**
                  * 设置入参
                  * int N, float *x, int w, int h, int c, int batch, int stride, int forward, float scale, float *out
 
                  */
-                backwardKernelParameters = Pointer.to(Pointer.to(new int[]{size}), Pointer.to(delta.getGpuData()), Pointer.to(new int[]{delta.width}), Pointer.to(new int[]{delta.height}), Pointer.to(new int[]{delta.channel}), Pointer.to(new int[]{delta.number}), Pointer.to(new int[]{stride}), Pointer.to(new int[]{forward}), Pointer.to(new float[]{scale}), Pointer.to(diff.getGpuData()));
+                backwardKernelParameters = Pointer.to(Pointer.to(new int[]{size}), Pointer.to(delta.getGpuData()), Pointer.to(new int[]{delta.getShape()[3]}), Pointer.to(new int[]{delta.getShape()[2]}), Pointer.to(new int[]{delta.getShape()[1]}), Pointer.to(new int[]{delta.getShape()[0]}), Pointer.to(new int[]{stride}), Pointer.to(new int[]{forward}), Pointer.to(new float[]{scale}), Pointer.to(diff.getGpuData()));
             }
             cuLaunchKernel(forward_function, this.CAFFE_GET_BLOCKS(size), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension

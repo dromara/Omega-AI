@@ -1,13 +1,13 @@
 package com.omega.engine.nn.layer.normalization;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixUtils;
+import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.normalization.gpu.RMSKernel;
 import com.omega.engine.nn.model.LayerInit;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.utils.ModelUtils;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;
@@ -118,17 +118,17 @@ public class RMSLayer extends NormalizationLayer {
             this.gamma = new Tensor(1, 1, 1, meanNum, MatrixUtils.one(this.meanNum), true);
             this.diffGamma = new Tensor(1, 1, 1, meanNum, true);
         }
-        if (this.output == null || this.number != this.output.number) {
+        if (this.output == null || this.number != this.output.getShape()[0]) {
             this.output = Tensor.createGPUTensor(this.output, number, oChannel, oHeight, oWidth, true);
         }
     }
 
     public void init(Tensor input) {
-        this.number = input.number;
+        this.number = input.getShape()[0];
         if (this.bnType == null) {
-            this.channel = input.channel;
-            this.height = input.height;
-            this.width = input.width;
+            this.channel = input.getShape()[1];
+            this.height = input.getShape()[2];
+            this.width = input.getShape()[3];
             this.oChannel = this.channel;
             this.oHeight = this.height;
             this.oWidth = this.width;
@@ -142,7 +142,7 @@ public class RMSLayer extends NormalizationLayer {
             this.gamma = new Tensor(1, 1, 1, meanNum, MatrixUtils.one(this.meanNum), true);
             this.diffGamma = new Tensor(1, 1, 1, meanNum, true);
         }
-        if (this.output == null || this.number != this.output.number) {
+        if (this.output == null || this.number != this.output.getShape()[0]) {
             this.output = Tensor.createGPUTensor(this.output, number, oChannel, oHeight, oWidth, true);
         }
     }
@@ -155,7 +155,7 @@ public class RMSLayer extends NormalizationLayer {
     @Override
     public void initBack() {
         if (this.diff == null) {
-            this.diff = new Tensor(input.number, input.channel, input.height, input.width, true, true);
+            this.diff = new Tensor(input.getShape()[0], input.getShape()[1], input.getShape()[2], input.getShape()[3], true, true);
         }
         if (this.diffGamma == null) {
             this.diffGamma = new Tensor(1, 1, 1, meanNum, true);
@@ -164,7 +164,7 @@ public class RMSLayer extends NormalizationLayer {
 
     public void initBack(Tensor diff) {
         if (this.diff == null) {
-            this.diff = new Tensor(diff.number, diff.channel, diff.height, diff.width, true, true);
+            this.diff = new Tensor(diff.getShape()[0], diff.getShape()[1], diff.getShape()[2], diff.getShape()[3], true, true);
         }
         if (this.diffGamma == null) {
             this.diffGamma = new Tensor(1, 1, 1, meanNum, true);
@@ -277,8 +277,8 @@ public class RMSLayer extends NormalizationLayer {
             if (this.updater != null) {
                 this.updater.updateForBN(this);
             } else {
-                for (int i = 0; i < this.gamma.dataLength; i++) {
-                    this.gamma.data[i] -= this.learnRate * this.diffGamma.data[i];
+                for (int i = 0; i < this.gamma.getDataLength(); i++) {
+                    this.gamma.getData()[i] -= this.learnRate * this.diffGamma.getData()[i];
                 }
             }
             this.clearAccGrad();
@@ -389,7 +389,7 @@ public class RMSLayer extends NormalizationLayer {
         if (accDW == null) {
             accDW = diffGamma.copyGPU();
         } else {
-            kernel.axpy_gpu(diffGamma, accDW, accDW.dataLength, scale, 1, 1);
+            kernel.axpy_gpu(diffGamma, accDW, accDW.getDataLength(), scale, 1, 1);
         }
     }
 }

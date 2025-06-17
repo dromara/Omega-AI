@@ -1,11 +1,11 @@
 package com.omega.engine.nn.layer.vqvae;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.vae.VAEAttentionLayer;
 import com.omega.engine.nn.layer.vae.VAEResnetBlock;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 
 import java.util.ArrayList;
 import java.util.List;

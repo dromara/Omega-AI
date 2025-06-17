@@ -1,6 +1,5 @@
 package com.omega.engine.nn.layer.unet;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -9,6 +8,7 @@ import com.omega.engine.nn.layer.active.SiLULayer;
 import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.GNLayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 /**
@@ -66,21 +66,21 @@ public class UNetResnetBlockLayer2 extends Layer {
     public void init() {
         // TODO Auto-generated method stub
         this.number = this.network.number;
-        if (tout == null || tout.number != this.number) {
+        if (tout == null || tout.getShape()[0] != this.number) {
             tout = Tensor.createGPUTensor(tout, number, oChannel, height, width, true);
         }
-        if (output == null || output.number != this.number) {
+        if (output == null || output.getShape()[0] != this.number) {
             output = Tensor.createGPUTensor(output, number, oChannel, oHeight, oWidth, true);
         }
     }
 
     public void init(Tensor input) {
         // TODO Auto-generated method stub
-        this.number = input.number;
-        if (tout == null || tout.number != this.number) {
+        this.number = input.getShape()[0];
+        if (tout == null || tout.getShape()[0] != this.number) {
             tout = Tensor.createGPUTensor(tout, number, oChannel, height, width, true);
         }
-        if (output == null || output.number != this.number) {
+        if (output == null || output.getShape()[0] != this.number) {
             output = Tensor.createGPUTensor(output, number, oChannel, oHeight, oWidth, true);
         }
     }
@@ -88,7 +88,7 @@ public class UNetResnetBlockLayer2 extends Layer {
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
-        if (dt == null || dt.number != this.number) {
+        if (dt == null || dt.getShape()[0] != this.number) {
             dt = Tensor.createGPUTensor(dt, this.number, 1, 1, oChannel, true);
         }
     }

@@ -1,13 +1,13 @@
 package com.omega.engine.nn.layer.transformer;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixUtils;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.MatrixUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.Transformer;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 /**
@@ -96,14 +96,14 @@ public class TransformerDecoderLayer extends Layer {
     @Override
     public void init() {
         // TODO Auto-generated method stub
-        this.number = this.input.number;
-        if (ln1i == null || this.number != ln1i.number) {
-            ln1i = Tensor.createTensor(ln1i, number, input.channel, input.height, input.width, true);
+        this.number = this.input.getShape()[0];
+        if (ln1i == null || this.number != ln1i.getShape()[0]) {
+            ln1i = Tensor.createTensor(ln1i, number, input.getShape()[1], input.getShape()[2], input.getShape()[3], true);
             //			System.out.println("-----------------");
             //			ln1i.showShape();
         }
-        if (ln2i == null || this.number != ln2i.number) {
-            ln2i = Tensor.createTensor(ln2i, number, input.channel, input.height, input.width, true);
+        if (ln2i == null || this.number != ln2i.getShape()[0]) {
+            ln2i = Tensor.createTensor(ln2i, number, input.getShape()[1], input.getShape()[2], input.getShape()[3], true);
         }
     }
 

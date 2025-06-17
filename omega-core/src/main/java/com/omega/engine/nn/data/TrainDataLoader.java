@@ -1,7 +1,7 @@
 package com.omega.engine.nn.data;
 
-import com.omega.utils.RandomUtils;
-import com.omega.utils.yolo.YoloDataLoader;
+import com.omega.common.utils.RandomUtils;
+import com.omega.example.yolo.utils.YoloDataLoader;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -31,7 +31,7 @@ public class TrainDataLoader {
         Collections.shuffle(trainDataIndex);
         int dw = (int) (orgW * jitter);
         int dh = (int) (orgH * jitter);
-        int channel = dataLoader.getImgSet().channel;
+        int channel = dataLoader.getImgSet().getShape()[1];
         for (int b = 0; b < n; b++) {
             int index = trainDataIndex.get(b);
             float[] orig = dataLoader.getImgSet().getByNumber(index);

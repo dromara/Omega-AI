@@ -1,8 +1,7 @@
 package com.omega.engine.nn.layer.transformer;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixUtils;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.MatrixUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.layer.DropoutLayer;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
@@ -11,6 +10,7 @@ import com.omega.engine.nn.layer.gpu.AttentionKernel;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.nn.network.Transformer;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;
@@ -187,7 +187,7 @@ public class FastCausalSelfAttentionLayer extends Layer {
         this.number = this.network.number;
         this.time = this.network.time;
         this.batchSize = number / time;
-        if (this.preatt == null || this.preatt.number != this.batchSize || this.preatt.width != this.time) {
+        if (this.preatt == null || this.preatt.getShape()[0] != this.batchSize || this.preatt.getShape()[3] != this.time) {
             // [batch_size，time，head_num，d_k]
             this.qt = Tensor.createTensor(this.qt, batchSize, headNum, time, dk, true);
             this.kt = Tensor.createTensor(this.kt, batchSize, headNum, time, dk, true);
@@ -205,10 +205,10 @@ public class FastCausalSelfAttentionLayer extends Layer {
 
     public void init(Tensor input) {
         // TODO Auto-generated method stub
-        this.number = input.number;
+        this.number = input.getShape()[0];
         this.time = this.network.time;
         this.batchSize = number / time;
-        if (this.preatt == null || this.preatt.number != this.batchSize || this.preatt.width != this.time) {
+        if (this.preatt == null || this.preatt.getShape()[0] != this.batchSize || this.preatt.getShape()[3] != this.time) {
             // [batch_size，time，head_num，d_k]
             this.qt = Tensor.createTensor(this.qt, batchSize, headNum, time, dk, true);
             this.kt = Tensor.createTensor(this.kt, batchSize, headNum, time, dk, true);

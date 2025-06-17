@@ -1,11 +1,11 @@
 package com.omega.engine.nn.layer.unet;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.active.SiLULayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;

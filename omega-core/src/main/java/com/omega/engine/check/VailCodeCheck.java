@@ -1,6 +1,6 @@
 package com.omega.engine.check;
 
-import com.omega.common.tensor.Tensor;
+import com.omega.engine.tensor.Tensor;
 
 public class VailCodeCheck extends BaseCheck {
     private static int labelClassLength = 4;
@@ -10,7 +10,7 @@ public class VailCodeCheck extends BaseCheck {
         // TODO Auto-generated method stub
         output.syncHost();
         float trueCount = 0;
-        for (int b = 0; b < output.number; b++) {
+        for (int b = 0; b < output.getShape()[0]; b++) {
             float[] preData = output.getByNumber(b);
             float[] trueData = label.getByNumber(b);
             //			System.out.println(JsonUtils.toJson(trueData));

@@ -1,8 +1,7 @@
 package com.omega.engine.nn.layer.llama;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixUtils;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.MatrixUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.layer.DropoutLayer;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.LayerType;
@@ -12,6 +11,7 @@ import com.omega.engine.nn.layer.gpu.RoPEKernel;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.nn.network.Transformer;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;
@@ -136,21 +136,7 @@ public class LlamaCausalSelfAttention2Layer extends LlamaAttentionLayer {
         tf.number = batchSize * time;
         tf.time = time;
         float[] data = RandomUtils.order(batchSize * time * embedDim, 0.1f, 0.1f);
-        //		int[] rts = new int[] {2, 3, 3};
-        //
-        //		for(int b = 0;b<batchSize;b++) {
-        //			int rt = rts[b];
-        //			for(int t = 0;t<time;t++) {
-        //				if(t > rt) {
-        //					for(int n = 0;n<embedDim;n++) {
-        //						data[b * time * embedDim + t * embedDim + n] = 0;
-        //					}
-        //				}
-        //			}
-        //		}
-        //		float[] maskData = new float[] {1,1,1,0,0,1,1,1,1,0,1,1,1,1,0};
-        //
-        //		Tensor mask = new Tensor(batchSize, 1, time, time, maskData, true);
+
         Tensor input = new Tensor(batchSize * time, 1, 1, embedDim, data, true);
         //		input.showDM();
         float[] delta_data = MatrixUtils.val(batchSize * time * embedDim, 1.0f);
@@ -235,10 +221,10 @@ public class LlamaCausalSelfAttention2Layer extends LlamaAttentionLayer {
 
     public void init(Tensor input) {
         // TODO Auto-generated method stub
-        this.number = input.number;
+        this.number = input.getShape()[0];
         this.time = this.network.time;
         this.batchSize = this.number / time;
-        if (this.qt == null || this.qt.number != this.batchSize || this.qt.height != this.time) {
+        if (this.qt == null || this.qt.getShape()[0] != this.batchSize || this.qt.getShape()[2] != this.time) {
             // [batch_size，time，head_num，d_k]
             this.rq = Tensor.createGPUTensor(this.rq, batchSize, time, headNum, dk, true);
             this.rk = Tensor.createGPUTensor(this.rk, batchSize, time, nKVHeads, dk, true);
@@ -271,21 +257,22 @@ public class LlamaCausalSelfAttention2Layer extends LlamaAttentionLayer {
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
-        if (this.dattn == null) {
-            if (network.gradCacheMode) {
-                this.dqt = network.cudaManager.getMemoryManager().getPrivateCaches("attn-dqt", batchSize, headNum, time, dk);
+    	if (network.gradCacheMode) {
+        	if(dqt == null || !dqt.checkShape(qt)) {
+        		this.dqt = network.cudaManager.getMemoryManager().getPrivateCaches("attn-dqt", batchSize, headNum, time, dk);
                 this.dkt = network.cudaManager.getMemoryManager().getPrivateCaches("attn-dkt", batchSize, headNum, time, dk);
                 this.dvt = network.cudaManager.getMemoryManager().getPrivateCaches("attn-dvt", batchSize, headNum, time, dk);
                 this.dattn = network.cudaManager.getMemoryManager().getPrivateCaches("attn-dattn", batchSize, headNum, time, time);
-            } else {
+        	}
+        } else {
+        	if (this.dattn == null) {
                 this.dqt = Tensor.createGPUTensor(this.dqt, batchSize, headNum, time, dk, true);
                 this.dkt = Tensor.createGPUTensor(this.dkt, batchSize, headNum, time, dk, true);
                 this.dvt = Tensor.createGPUTensor(this.dvt, batchSize, headNum, time, dk, true);
                 this.dattn = Tensor.createGPUTensor(this.dattn, batchSize, headNum, time, time, true);
-            }
-        } else {
-            //			this.dvaccum.clearGPU();
+        	}
         }
+
     }
 
     @Override
@@ -311,7 +298,6 @@ public class LlamaCausalSelfAttention2Layer extends LlamaAttentionLayer {
         //		query.showDM();
         /**
          * apply RoPE
-
          */
         ropeKernel.forward(cos, sin, query, rq);
         ropeKernel.forward(cos, sin, key, rk);
@@ -445,7 +431,6 @@ public class LlamaCausalSelfAttention2Layer extends LlamaAttentionLayer {
             Tensor_OP().permute(dvt, vt, new int[]{0, 2, 1, 3});
             /**
              * RoPE backward
-
              */
             ropeKernel.backward(cos, sin, qt, kt, rq, rk);
             queryDelta = rq;

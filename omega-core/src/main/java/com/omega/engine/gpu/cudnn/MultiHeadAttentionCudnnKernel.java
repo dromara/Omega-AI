@@ -1,6 +1,6 @@
 //package com.omega.engine.gpu.cudnn;
 //
-//import com.omega.common.tensor.Tensor;
+//import com.omega.common.data.Tensor;
 //import com.omega.common.utils.RandomUtils;
 //import com.omega.engine.gpu.BaseKernel;
 //

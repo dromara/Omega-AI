@@ -1,7 +1,7 @@
 package com.omega.engine.nn.data;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.RandomUtils;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * hsv utils
@@ -18,15 +18,15 @@ public class HsvUtils {
     }
 
     public static void rgb2hsv(Tensor input) {
-        int c = input.channel;
-        int oh = input.height;
-        int ow = input.width;
+        int c = input.getShape()[1];
+        int oh = input.getShape()[2];
+        int ow = input.getShape()[3];
         assert (c == 3);
-        float[] img = input.data;
+        float[] img = input.getData();
         int i, j;
         float r, g, b;
         float h, s, v;
-        for (int bs = 0; bs < input.number; bs++) {
+        for (int bs = 0; bs < input.getShape()[0]; bs++) {
             for (j = 0; j < oh; ++j) {
                 for (i = 0; i < ow; ++i) {
                     r = getPixel(img, c, ow, oh, bs, 0, i, j);
@@ -58,20 +58,20 @@ public class HsvUtils {
                 }
             }
         }
-        input.data = img;
+        input.setData(img);
     }
 
     public static void hsv2rgb(Tensor input) {
-        int c = input.channel;
-        int oh = input.height;
-        int ow = input.width;
+        int c = input.getShape()[1];
+        int oh = input.getShape()[2];
+        int ow = input.getShape()[3];
         assert (c == 3);
         int i, j;
         float r, g, b;
         float h, s, v;
         float f, p, q, t;
-        float[] img = input.data;
-        for (int bs = 0; bs < input.number; bs++) {
+        float[] img = input.getData();
+        for (int bs = 0; bs < input.getShape()[0]; bs++) {
             for (j = 0; j < oh; ++j) {
                 for (i = 0; i < ow; ++i) {
                     h = 6 * getPixel(img, c, ow, oh, bs, 0, i, j);
@@ -117,7 +117,7 @@ public class HsvUtils {
                 }
             }
         }
-        input.data = img;
+        input.setData(img);
     }
 
     public static void rgb2hsv(float[] img, int c, int ow, int oh) {
@@ -234,40 +234,40 @@ public class HsvUtils {
     }
 
     public static void scaleImageChannel(Tensor input, int ci, float v) {
-        float[] im = input.data;
+        float[] im = input.getData();
         int i, j;
-        for (int n = 0; n < input.number; n++) {
+        for (int n = 0; n < input.getShape()[0]; n++) {
             float val = RandomUtils.randomFloat(-v, v);
-            for (j = 0; j < input.height; ++j) {
-                for (i = 0; i < input.width; ++i) {
-                    float pix = getPixel(im, input.channel, input.width, input.height, n, ci, i, j);
+            for (j = 0; j < input.getShape()[2]; ++j) {
+                for (i = 0; i < input.getShape()[3]; ++i) {
+                    float pix = getPixel(im, input.getShape()[1], input.getShape()[3], input.getShape()[2], n, ci, i, j);
                     pix = pix * val;
-                    setPixel(im, input.channel, input.width, input.height, n, ci, i, j, pix);
+                    setPixel(im, input.getShape()[1], input.getShape()[3], input.getShape()[2], n, ci, i, j, pix);
                 }
             }
         }
-        input.data = im;
+        input.setData(im);
     }
 
     public static void addImageChannel(Tensor input, int ci, float v) {
-        float[] im = input.data;
+        float[] im = input.getData();
         int i, j;
-        for (int n = 0; n < input.number; n++) {
+        for (int n = 0; n < input.getShape()[0]; n++) {
             float val = RandomUtils.randomFloat(-v, v);
-            for (j = 0; j < input.height; ++j) {
-                for (i = 0; i < input.width; ++i) {
-                    float pix = getPixel(im, input.channel, input.width, input.height, n, ci, i, j);
+            for (j = 0; j < input.getShape()[2]; ++j) {
+                for (i = 0; i < input.getShape()[3]; ++i) {
+                    float pix = getPixel(im, input.getShape()[1], input.getShape()[3], input.getShape()[2], n, ci, i, j);
                     pix = pix + val;
                     if (pix > 1) {
                         pix -= 1;
                     } else if (pix < 0) {
                         pix += 1;
                     }
-                    setPixel(im, input.channel, input.width, input.height, n, ci, i, j, pix);
+                    setPixel(im, input.getShape()[1], input.getShape()[3], input.getShape()[2], n, ci, i, j, pix);
                 }
             }
         }
-        input.data = im;
+        input.setData(im);
     }
 }
 

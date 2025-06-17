@@ -24,11 +24,15 @@ __global__ void hinge_d_loss_back_kernel(float *real, float *fake,float *dreal,f
     if(id < N){
     	if(1 - real[id] > 0){
     		dreal[id] = -1 / N * 0.5f;
-    	}
+    	}else{
+			dreal[id] = 0;
+		}
     	
     	if(1 + fake[id] > 0){
     		dfake[id] = 1 / N * 0.5f;
-    	}
+    	}else{
+			dfake[id] = 0;
+		}
     }
 }
 

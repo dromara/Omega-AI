@@ -1,10 +1,11 @@
 package com.omega.engine.nn.layer.gpu;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixUtils;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.MatrixUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
 import jcuda.runtime.cudaError;
@@ -33,8 +34,8 @@ public class UpSampleKernel2 extends BaseKernel {
         try {
             int N = 2;
             int C = 3;
-            int H = 4;
-            int W = 4;
+            int H = 2;
+            int W = 2;
             int ndim = 4;
             int scale = 2;
             int oHeight = H * scale;
@@ -97,24 +98,24 @@ public class UpSampleKernel2 extends BaseKernel {
     public void upsample(Tensor input, Tensor output) {
         try {
             if (ndim == 3) {
-                d1 = output.number;
-                d2 = output.channel;
-                d3 = output.width;
+                d1 = output.getShape()[0];
+                d2 = output.getShape()[1];
+                d3 = output.getShape()[3];
             } else {
-                d1 = output.channel;
-                d2 = output.height;
-                d3 = output.width;
+                d1 = output.getShape()[1];
+                d2 = output.getShape()[2];
+                d3 = output.getShape()[3];
             }
-            this.N = input.number;
+            this.N = input.getShape()[0];
             /**
              * 设置入参
              * const float *input, float *output, int no_elements,int scale_factor, int d1, int d2, int d3
 
              */
-            forwardKernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{output.dataLength}), Pointer.to(new int[]{scale}), Pointer.to(new int[]{d1}), Pointer.to(new int[]{d2}), Pointer.to(new int[]{d3}));
+            forwardKernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{output.getDataLength()}), Pointer.to(new int[]{scale}), Pointer.to(new int[]{d1}), Pointer.to(new int[]{d2}), Pointer.to(new int[]{d3}));
             int nthreads = 256;
-            int n_xblocks = Math.min(Math.max((int) Math.ceil((float) output.dataLength / nthreads), 1), 65535);
-            int n_yblocks = (int) Math.ceil((float) output.dataLength / (float) (n_xblocks * nthreads));
+            int n_xblocks = Math.min(Math.max((int) Math.ceil((float) output.getDataLength() / nthreads), 1), 65535);
+            int n_yblocks = (int) Math.ceil((float) output.getDataLength() / (float) (n_xblocks * nthreads));
             int[] blocks = new int[]{n_xblocks, n_yblocks, 1};
             int[] threads = new int[]{nthreads, 1, 1};
             checkCUDA(cuLaunchKernel(forward_function, blocks[0], blocks[1], blocks[2],      // Grid dimension
@@ -132,23 +133,23 @@ public class UpSampleKernel2 extends BaseKernel {
         try {
             diff.clearGPU();
             if (ndim == 3) {
-                d1 = diff.number;
-                d2 = diff.channel;
-                d3 = diff.width;
+                d1 = diff.getShape()[0];
+                d2 = diff.getShape()[1];
+                d3 = diff.getShape()[3];
             } else {
-                d1 = diff.channel;
-                d2 = diff.height;
-                d3 = diff.width;
+                d1 = diff.getShape()[1];
+                d2 = diff.getShape()[2];
+                d3 = diff.getShape()[3];
             }
             /**
              * 设置入参
              * float *gradInput_data, const float *gradOutput_data, int no_elements, int scale_factor, int d1, int d2, int d3
 
              */
-            backwardKernelParameters = Pointer.to(Pointer.to(diff.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(new int[]{diff.dataLength}), Pointer.to(new int[]{scale}), Pointer.to(new int[]{d1}), Pointer.to(new int[]{d2}), Pointer.to(new int[]{d3}));
+            backwardKernelParameters = Pointer.to(Pointer.to(diff.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(new int[]{diff.getDataLength()}), Pointer.to(new int[]{scale}), Pointer.to(new int[]{d1}), Pointer.to(new int[]{d2}), Pointer.to(new int[]{d3}));
             int nthreads = 256;
-            int n_xblocks = Math.min(Math.max((int) Math.ceil((float) diff.dataLength / nthreads), 1), 65535);
-            int n_yblocks = (int) Math.ceil((float) diff.dataLength / (float) (n_xblocks * nthreads));
+            int n_xblocks = Math.min(Math.max((int) Math.ceil((float) diff.getDataLength() / nthreads), 1), 65535);
+            int n_yblocks = (int) Math.ceil((float) diff.getDataLength() / (float) (n_xblocks * nthreads));
             int[] blocks = new int[]{n_xblocks, n_yblocks, 1};
             int[] threads = new int[]{nthreads, 1, 1};
             checkCUDA(cuLaunchKernel(backward_function, blocks[0], blocks[1], blocks[2],      // Grid dimension

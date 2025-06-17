@@ -1,10 +1,11 @@
 package com.omega.engine.gpu.cudnn;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.JsonUtils;
-import com.omega.utils.MatrixUtils;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.JsonUtils;
+import com.omega.common.utils.MatrixUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.CUDAModules;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.jcudnn.*;
 import jcuda.runtime.JCuda;

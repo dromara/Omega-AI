@@ -1,10 +1,10 @@
 package com.omega.engine.loss;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.ad.Graph;
 import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 
 public class MultiLabelSoftMargin extends LossFunction {
     private static MultiLabelSoftMargin instance;
@@ -46,11 +46,11 @@ public class MultiLabelSoftMargin extends LossFunction {
         initGraph(x, label);
         x.getG().start();
         x.setRequiresGrad(true);
-        int C = x.channel * x.height * x.width;
+        int C = x.getShape()[1] * x.getShape()[2] * x.getShape()[3];
         Tensor x0 = sigmoid(x).log();
         Tensor x1 = sigmoid(x.mul(-1.0f)).log().mul(label.scalarSub(1.0f));
         Tensor loss = label.mul(x0).add(x1).mul(-1.0f);
-        loss = loss.sum(1).div(C).sum(0).div(x.number);
+        loss = loss.sum(1).div(C).sum(0).div(x.getShape()[0]);
         return loss;
     }
 
@@ -86,11 +86,11 @@ public class MultiLabelSoftMargin extends LossFunction {
         initGraph(x, label);
         x.getG().start();
         x.setRequiresGrad(true);
-        int C = x.channel * x.height * x.width;
+        int C = x.getShape()[1] * x.getShape()[2] * x.getShape()[3];
         Tensor x0 = sigmoid(x).log();
         Tensor x1 = sigmoid(x.mul(-1.0f)).log().mul(label.scalarSub(1.0f));
         loss = label.mul(x0).add(x1).mul(-1.0f);
-        loss = loss.sum(1).div(C).sum(0).div(x.number);
+        loss = loss.sum(1).div(C).sum(0).div(x.getShape()[0]);
         return loss;
     }
 

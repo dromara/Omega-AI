@@ -1,11 +1,12 @@
 package com.omega.engine.nn.layer.normalization.gpu;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.JsonUtils;
+import com.omega.common.utils.JsonUtils;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.nn.layer.gpu.BNBaseKernel;
 import com.omega.engine.nn.network.RunModel;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUdeviceptr;
@@ -171,8 +172,8 @@ public class BNKernel3 extends BNBaseKernel {
     }
 
     public void initForward(Tensor input, Tensor gama, Tensor beta, Tensor output) {
-        if (input.number != this.N) {
-            this.N = input.number;
+        if (input.getShape()[0] != this.N) {
+            this.N = input.getShape()[0];
             /**
              * float *x, int batch, int filters, int spatial, float *mean
 

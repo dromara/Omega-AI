@@ -1,8 +1,9 @@
 package com.omega.engine.gpu;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.PrintUtils;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.PrintUtils;
+import com.omega.common.utils.RandomUtils;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.CudaException;
 import jcuda.Pointer;
 import jcuda.Sizeof;
@@ -180,7 +181,7 @@ public class GPUOP {
     }
 
     public void init() {
-        checkCUBLASResult(cublasCreate(getHandle()));
+    	checkCUBLASResult(cublasCreate(getHandle()));
     }
 
     public void clear() {

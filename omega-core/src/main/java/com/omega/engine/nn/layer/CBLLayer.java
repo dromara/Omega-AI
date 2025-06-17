@@ -1,10 +1,10 @@
 package com.omega.engine.nn.layer;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.active.ActiveType;
 import com.omega.engine.nn.layer.active.*;
 import com.omega.engine.nn.layer.normalization.BNLayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 /**
@@ -92,8 +92,8 @@ public class CBLLayer extends Layer {
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
-        if (this.org_delta == null || output.number != org_delta.number) {
-            this.org_delta = Tensor.createTensor(org_delta, number, output.channel, output.height, output.width, true);
+        if (this.org_delta == null || output.getShape()[0] != org_delta.getShape()[0]) {
+            this.org_delta = Tensor.createTensor(org_delta, number, output.getShape()[1], output.getShape()[2], output.getShape()[3], true);
         }
     }
 

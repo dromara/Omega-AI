@@ -1,8 +1,8 @@
 package com.omega.engine.nn.layer.unet;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.nn.layer.*;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.util.ArrayList;
@@ -107,7 +107,7 @@ public class UNetMidBlockLayer extends Layer {
     public void init() {
         // TODO Auto-generated method stub
         this.number = this.network.number;
-        if (res_out == null || res_out[0].number != this.number) {
+        if (res_out == null || res_out[0].getShape()[0] != this.number) {
             if (res_out == null) {
                 res_out = new Tensor[numLayers + 1];
             }
@@ -115,7 +115,7 @@ public class UNetMidBlockLayer extends Layer {
                 res_out[i] = Tensor.createGPUTensor(res_out[i], this.number, oChannel, height, width, true);
             }
         }
-        if (tEmbDim > 0 && (t_out == null || t_out[0].number != this.number)) {
+        if (tEmbDim > 0 && (t_out == null || t_out[0].getShape()[0] != this.number)) {
             if (t_out == null) {
                 t_out = new Tensor[numLayers + 1];
             }
@@ -127,8 +127,8 @@ public class UNetMidBlockLayer extends Layer {
 
     public void init(Tensor input) {
         // TODO Auto-generated method stub
-        this.number = input.number;
-        if (res_out == null || res_out[0].number != this.number) {
+        this.number = input.getShape()[0];
+        if (res_out == null || res_out[0].getShape()[0] != this.number) {
             if (res_out == null) {
                 res_out = new Tensor[numLayers + 1];
             }
@@ -136,7 +136,7 @@ public class UNetMidBlockLayer extends Layer {
                 res_out[i] = Tensor.createGPUTensor(res_out[i], this.number, oChannel, height, width, true);
             }
         }
-        if (tEmbDim > 0 && (t_out == null || t_out[0].number != this.number)) {
+        if (tEmbDim > 0 && (t_out == null || t_out[0].getShape()[0] != this.number)) {
             if (t_out == null) {
                 t_out = new Tensor[numLayers + 1];
             }
@@ -149,10 +149,10 @@ public class UNetMidBlockLayer extends Layer {
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
-        if (crossAttn && (kvDiff == null || kvDiff.number * maxContextLen != this.number * maxContextLen)) {
+        if (crossAttn && (kvDiff == null || kvDiff.getShape()[0] * maxContextLen != this.number * maxContextLen)) {
             kvDiff = Tensor.createGPUTensor(kvDiff, this.number * maxContextLen, 1, 1, oChannel, true);
         }
-        if (dt == null || dt.number != this.number) {
+        if (dt == null || dt.getShape()[0] != this.number) {
             dt = Tensor.createGPUTensor(dt, this.number, 1, 1, oChannel, true);
         }
     }
@@ -189,7 +189,7 @@ public class UNetMidBlockLayer extends Layer {
         resnetFirst.get(0).forward(x);
         tEmbLayers.get(0).forward(tembd);
         Tensor r1 = resnetFirst.get(0).getOutput();
-        Tensor_OP().add(r1, tEmbLayers.get(0).getOutput(), t_out[0], r1.height * r1.width);
+        Tensor_OP().add(r1, tEmbLayers.get(0).getOutput(), t_out[0], r1.getShape()[2] * r1.getShape()[3]);
         resnetSecond.get(0).forward(t_out[0]);
         residualInputs.get(0).forward(x);
         Tensor_OP().add(resnetSecond.get(0).getOutput(), residualInputs.get(0).getOutput(), res_out[0]);
@@ -201,7 +201,7 @@ public class UNetMidBlockLayer extends Layer {
             resnetFirst.get(i + 1).forward(x);
             tEmbLayers.get(i + 1).forward(tembd);
             Tensor r = resnetFirst.get(i + 1).getOutput();
-            Tensor_OP().add(r, tEmbLayers.get(i + 1).getOutput(), t_out[i + 1], r.height * r.width);
+            Tensor_OP().add(r, tEmbLayers.get(i + 1).getOutput(), t_out[i + 1], r.getShape()[2] * r.getShape()[3]);
             resnetSecond.get(i + 1).forward(t_out[i + 1]);
             residualInputs.get(i + 1).forward(x);
             Tensor_OP().add(resnetSecond.get(i + 1).getOutput(), residualInputs.get(i + 1).getOutput(), res_out[i + 1]);
@@ -217,7 +217,7 @@ public class UNetMidBlockLayer extends Layer {
         resnetFirst.get(0).forward(x);
         tEmbLayers.get(0).forward(tembd);
         Tensor r1 = resnetFirst.get(0).getOutput();
-        Tensor_OP().add(r1, tEmbLayers.get(0).getOutput(), t_out[0], r1.height * r1.width);
+        Tensor_OP().add(r1, tEmbLayers.get(0).getOutput(), t_out[0], r1.getShape()[2] * r1.getShape()[3]);
         resnetSecond.get(0).forward(t_out[0]);
         residualInputs.get(0).forward(x);
         Tensor_OP().add(resnetSecond.get(0).getOutput(), residualInputs.get(0).getOutput(), res_out[0]);
@@ -235,7 +235,7 @@ public class UNetMidBlockLayer extends Layer {
             resnetFirst.get(i + 1).forward(x);
             tEmbLayers.get(i + 1).forward(tembd);
             Tensor r = resnetFirst.get(i + 1).getOutput();
-            Tensor_OP().add(r, tEmbLayers.get(i + 1).getOutput(), t_out[i + 1], r.height * r.width);
+            Tensor_OP().add(r, tEmbLayers.get(i + 1).getOutput(), t_out[i + 1], r.getShape()[2] * r.getShape()[3]);
             resnetSecond.get(i + 1).forward(t_out[i + 1]);
             residualInputs.get(i + 1).forward(x);
             Tensor_OP().add(resnetSecond.get(i + 1).getOutput(), residualInputs.get(i + 1).getOutput(), res_out[i + 1]);

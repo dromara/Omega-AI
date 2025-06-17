@@ -1,6 +1,6 @@
 package com.omega.engine.model;
 
-import com.omega.utils.JsonUtils;
+import com.omega.common.utils.JsonUtils;
 import com.omega.engine.nn.layer.*;
 import com.omega.engine.nn.layer.active.*;
 import com.omega.engine.nn.layer.normalization.BNLayer;

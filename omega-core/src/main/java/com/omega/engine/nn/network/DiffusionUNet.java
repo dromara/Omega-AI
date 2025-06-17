@@ -1,6 +1,5 @@
 package com.omega.engine.nn.network;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.loss.LossFactory;
 import com.omega.engine.loss.LossType;
@@ -11,6 +10,7 @@ import com.omega.engine.nn.layer.diffusion.TimeEmbeddingLayer;
 import com.omega.engine.nn.layer.diffusion.UpSampleLayer;
 import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.GNLayer;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 import jcuda.Sizeof;
 import jcuda.runtime.JCuda;
@@ -306,8 +306,8 @@ public class DiffusionUNet extends Network {
     }
 
     public void initBack() {
-        if (d_temb == null || d_temb.number != this.number) {
-            d_temb = Tensor.createGPUTensor(d_temb, this.number, getTemb().getOutput().channel, getTemb().getOutput().height, getTemb().getOutput().width, true);
+        if (d_temb == null || d_temb.getShape()[0] != this.number) {
+            d_temb = Tensor.createGPUTensor(d_temb, this.number, getTemb().getOutput().getShape()[1], getTemb().getOutput().getShape()[2], getTemb().getOutput().getShape()[3], true);
         }
     }
 

@@ -1,11 +1,11 @@
 package com.omega.engine.nn.layer.asr;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.nn.layer.EmbeddingIDLayer;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;
@@ -87,7 +87,7 @@ public class ASREncoder extends Layer {
     @Override
     public void init() {
         // TODO Auto-generated method stub
-        this.number = this.input.number;
+        this.number = this.input.getShape()[0];
     }
 
     @Override

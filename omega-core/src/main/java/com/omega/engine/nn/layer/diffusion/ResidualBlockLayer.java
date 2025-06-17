@@ -1,7 +1,6 @@
 package com.omega.engine.nn.layer.diffusion;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixUtils;
+import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.nn.layer.ConvolutionLayer;
@@ -13,6 +12,7 @@ import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.GNLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.Transformer;
+import com.omega.engine.tensor.Tensor;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -122,7 +122,7 @@ public class ResidualBlockLayer extends Layer {
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
-        if (dt == null || dt.number != this.number) {
+        if (dt == null || dt.getShape()[0] != this.number) {
             dt = Tensor.createGPUTensor(dt, this.number, 1, 1, oChannel, true);
         }
     }
@@ -130,7 +130,7 @@ public class ResidualBlockLayer extends Layer {
     @Override
     public void initParam() {
         // TODO Auto-generated method stub
-        if (h == null || h.number != this.number) {
+        if (h == null || h.getShape()[0] != this.number) {
             h = Tensor.createGPUTensor(h, this.number, oChannel, height, width, true);
             g = Tensor.createGPUTensor(g, this.number, oChannel, height, width, true);
         }
@@ -173,7 +173,7 @@ public class ResidualBlockLayer extends Layer {
          * block1 + temb_proj
 
          */
-        Tensor_OP().add(block1[2].getOutput(), temb_proj[1].getOutput(), h, block1[2].getOutput().height * block1[2].getOutput().width);
+        Tensor_OP().add(block1[2].getOutput(), temb_proj[1].getOutput(), h, block1[2].getOutput().getShape()[2] * block1[2].getOutput().getShape()[3]);
         //		System.err.println("h:");
         //		h.showDM();
         /**

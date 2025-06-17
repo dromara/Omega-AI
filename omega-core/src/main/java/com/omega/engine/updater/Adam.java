@@ -26,9 +26,9 @@ public class Adam extends Updater {
          */
         if (kernel == null) {
             if (layer.hasBias) {
-                kernel = new AdamKernel(layer.weight.dataLength, layer.bias.dataLength, net.cudaManager);
+                kernel = new AdamKernel(layer.weight.getDataLength(), layer.bias.getDataLength(), net.cudaManager);
             } else {
-                kernel = new AdamKernel(layer.weight.dataLength, net.cudaManager);
+                kernel = new AdamKernel(layer.weight.getDataLength(), net.cudaManager);
             }
         }
         kernel.updateW(layer.diffW, layer.weight, layer.network, layer.learnRate);
@@ -55,9 +55,9 @@ public class Adam extends Updater {
          */
         if (kernel == null) {
             if (layer.beta != null) {
-                kernel = new AdamKernel(layer.gamma.dataLength, layer.beta.dataLength, net.cudaManager);
+                kernel = new AdamKernel(layer.gamma.getDataLength(), layer.beta.getDataLength(), net.cudaManager);
             } else {
-                kernel = new AdamKernel(layer.gamma.dataLength, net.cudaManager);
+                kernel = new AdamKernel(layer.gamma.getDataLength(), net.cudaManager);
             }
         }
         kernel.updateGama(layer.diffGamma, layer.gamma, layer.network, layer.learnRate);
@@ -89,9 +89,9 @@ public class Adam extends Updater {
          */
         if (kernel == null) {
             if (layer.hasBias) {
-                kernel = new AdamKernel(layer.weight.dataLength, layer.bias.dataLength, net.cudaManager);
+                kernel = new AdamKernel(layer.weight.getDataLength(), layer.bias.getDataLength(), net.cudaManager);
             } else {
-                kernel = new AdamKernel(layer.weight.dataLength, net.cudaManager);
+                kernel = new AdamKernel(layer.weight.getDataLength(), net.cudaManager);
             }
         }
         kernel.updateW(layer.diffW, layer.weight, layer.network, layer.learnRate, batchSize);

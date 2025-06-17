@@ -1,11 +1,11 @@
 package com.omega.engine.nn.layer;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixUtils;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.MatrixUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.layer.gpu.FullyKernel;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.utils.ModelUtils;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 import jcuda.Sizeof;
 import jcuda.jcublas.cublasOperation;
@@ -108,7 +108,7 @@ public class FullyLayer extends Layer {
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
-        if (this.diff == null || this.number != this.diff.number) {
+        if (this.diff == null || this.number != this.diff.getShape()[0]) {
             this.diff = new Tensor(number, channel, height, width, true, true);
             if (this.diffW == null) {
                 this.diffW = new Tensor(1, 1, oWidth, width, true, true);
@@ -133,7 +133,7 @@ public class FullyLayer extends Layer {
         initKernel();
         // TODO Auto-generated method stub
         this.number = this.network.number;
-        if (this.output == null || this.number != this.output.number) {
+        if (this.output == null || this.number != this.output.getShape()[0]) {
             this.output = Tensor.createGPUTensor(this.output, number, oChannel, oHeight, oWidth, true);
         }
     }
@@ -141,8 +141,8 @@ public class FullyLayer extends Layer {
     public void init(Tensor input) {
         // TODO Auto-generated method stub
         initKernel();
-        this.number = input.number;
-        if (this.output == null || this.number != this.output.number) {
+        this.number = input.getShape()[0];
+        if (this.output == null || this.number != this.output.getShape()[0]) {
             this.output = Tensor.createGPUTensor(this.output, this.number, oChannel, oHeight, oWidth, true);
         }
     }
@@ -289,7 +289,6 @@ public class FullyLayer extends Layer {
          * number * w
          * number * ow
          * m = w,k = number,n = ow
-
          */
         //		GPUOP.checkCUBLASResult(JCublas2.cublasSetStream(GPU_OP().getHandle(), dwStream));
         GPU_OP().multiplyFloatEX(cublasOperation.CUBLAS_OP_T, cublasOperation.CUBLAS_OP_N, this.oWidth, this.width, this.number, 1, delta.getGpuData(), this.oWidth, input.getGpuData(), this.width, 0, diffW.getGpuData(), this.width);
@@ -300,7 +299,6 @@ public class FullyLayer extends Layer {
          * number * ow
          * w * ow
          * m = number,k = ow,n = w
-
          */
         //		GPUOP.checkCUBLASResult(JCublas2.cublasSetStream(GPU_OP().getHandle(), dxStream));
         GPU_OP().multiplyFloatEX(cublasOperation.CUBLAS_OP_N, cublasOperation.CUBLAS_OP_N, this.number, this.width, this.oWidth, 1, delta.getGpuData(), this.oWidth, weight.getGpuData(), this.width, 0, diff.getGpuData(), this.width);
@@ -514,10 +512,10 @@ public class FullyLayer extends Layer {
                 this.updater.update(this);
             } else {
                 for (int i = 0; i < this.weight.getDataLength(); i++) {
-                    this.weight.data[i] -= this.learnRate * this.diffW.data[i];
+                    this.weight.getData()[i] -= this.learnRate * this.diffW.getData()[i];
                 }
                 for (int i = 0; i < this.bias.getDataLength(); i++) {
-                    this.bias.data[i] -= this.learnRate * this.diffB.data[i];
+                    this.bias.getData()[i] -= this.learnRate * this.diffB.getData()[i];
                 }
             }
             this.clearAccGrad();
@@ -530,13 +528,13 @@ public class FullyLayer extends Layer {
         if (accDW == null) {
             accDW = diffW.copyGPU();
         } else {
-            kernel.axpy_gpu(diffW, accDW, accDW.dataLength, scale, 1, 1);
+            kernel.axpy_gpu(diffW, accDW, accDW.getDataLength(), scale, 1, 1);
         }
         if (hasBias) {
             if (accDB == null) {
                 accDB = diffB.copyGPU();
             } else {
-                kernel.axpy_gpu(diffB, accDB, accDB.dataLength, scale, 1, 1);
+                kernel.axpy_gpu(diffB, accDB, accDB.getDataLength(), scale, 1, 1);
             }
         }
     }
@@ -548,11 +546,11 @@ public class FullyLayer extends Layer {
                 this.updater.update(this, batchSize);
             } else {
                 for (int i = 0; i < this.weight.getDataLength(); i++) {
-                    this.weight.data[i] -= this.learnRate * this.diffW.data[i];
+                    this.weight.getData()[i] -= this.learnRate * this.diffW.getData()[i];
                 }
                 if (hasBias) {
                     for (int i = 0; i < this.bias.getDataLength(); i++) {
-                        this.bias.data[i] -= this.learnRate * this.diffB.data[i];
+                        this.bias.getData()[i] -= this.learnRate * this.diffB.getData()[i];
                     }
                 }
             }

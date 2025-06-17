@@ -1,8 +1,9 @@
 package com.omega.engine.loss.gpu;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
 import jcuda.runtime.cudaError;
@@ -53,9 +54,9 @@ public class BCEWithLogitsLossKernel extends BaseKernel {
          * float *input, float *label, float *output, int batch, int n, float eta
 
          */
-        loss_kernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(currentLabel.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{input.number * input.channel}), Pointer.to(new int[]{input.width * input.height}), Pointer.to(new float[]{eta}));
-        this.N = output.number;
-        cuLaunchKernel(loss_function, input.number * input.channel, 1, 1,    // Grid dimension
+        loss_kernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(currentLabel.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{input.getShape()[0] * input.getShape()[1]}), Pointer.to(new int[]{input.getShape()[3] * input.getShape()[2]}), Pointer.to(new float[]{eta}));
+        this.N = output.getShape()[0];
+        cuLaunchKernel(loss_function, input.getShape()[0] * input.getShape()[1], 1, 1,    // Grid dimension
                 CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                 0, null,               // Shared memory size and stream
                 loss_kernelParameters, null // Kernel- and extra parameters
@@ -68,8 +69,8 @@ public class BCEWithLogitsLossKernel extends BaseKernel {
          * float *output, float *currentLabel, float *diff, int n, int batch
 
          */
-        backKernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(currentLabel.getGpuData()), Pointer.to(diff.getGpuData()), Pointer.to(new int[]{input.number * input.channel}), Pointer.to(new int[]{input.width * input.height}));
-        cuLaunchKernel(loss_backward_function, input.number * input.channel, 1, 1,      // Grid dimension
+        backKernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(currentLabel.getGpuData()), Pointer.to(diff.getGpuData()), Pointer.to(new int[]{input.getShape()[0] * input.getShape()[1]}), Pointer.to(new int[]{input.getShape()[3] * input.getShape()[2]}));
+        cuLaunchKernel(loss_backward_function, input.getShape()[0] * input.getShape()[1], 1, 1,      // Grid dimension
                 CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                 0, null,               // Shared memory size and stream
                 backKernelParameters, null // Kernel- and extra parameters

@@ -1,13 +1,14 @@
 package com.omega.engine.updater.gpu;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.loss.SoftmaxWithCrossEntropyLoss;
 import com.omega.engine.nn.network.BPNetwork;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
 
@@ -96,8 +97,8 @@ public class AdamKernel extends BaseKernel {
              * float *diffW, float *weight,float *mw,float *vw,float beta1,float beta2,float learnRate, int n
 
              */
-            kernelParameters = Pointer.to(Pointer.to(diffW.getGpuData()), Pointer.to(weight.getGpuData()), Pointer.to(mw.getGpuData()), Pointer.to(vw.getGpuData()), Pointer.to(new float[]{beta1}), Pointer.to(new float[]{beta2}), Pointer.to(new float[]{lr}), Pointer.to(new int[]{diffW.dataLength}), Pointer.to(new int[]{net.number}), Pointer.to(new int[]{net.train_time}));
-            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(diffW.dataLength), 1, 1,      // Grid dimension
+            kernelParameters = Pointer.to(Pointer.to(diffW.getGpuData()), Pointer.to(weight.getGpuData()), Pointer.to(mw.getGpuData()), Pointer.to(vw.getGpuData()), Pointer.to(new float[]{beta1}), Pointer.to(new float[]{beta2}), Pointer.to(new float[]{lr}), Pointer.to(new int[]{diffW.getDataLength()}), Pointer.to(new int[]{net.number}), Pointer.to(new int[]{net.train_time}));
+            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(diffW.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameters, null // Kernel- and extra parameters
@@ -118,8 +119,8 @@ public class AdamKernel extends BaseKernel {
              * float *diffW, float *weight,float *mw,float *vw,float beta1,float beta2,float learnRate, int n
 
              */
-            kernelParameters = Pointer.to(Pointer.to(diffW.getGpuData()), Pointer.to(weight.getGpuData()), Pointer.to(mw.getGpuData()), Pointer.to(vw.getGpuData()), Pointer.to(new float[]{beta1}), Pointer.to(new float[]{beta2}), Pointer.to(new float[]{lr}), Pointer.to(new int[]{diffW.dataLength}), Pointer.to(new int[]{batchSize}), Pointer.to(new int[]{net.train_time}));
-            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(diffW.dataLength), 1, 1,      // Grid dimension
+            kernelParameters = Pointer.to(Pointer.to(diffW.getGpuData()), Pointer.to(weight.getGpuData()), Pointer.to(mw.getGpuData()), Pointer.to(vw.getGpuData()), Pointer.to(new float[]{beta1}), Pointer.to(new float[]{beta2}), Pointer.to(new float[]{lr}), Pointer.to(new int[]{diffW.getDataLength()}), Pointer.to(new int[]{batchSize}), Pointer.to(new int[]{net.train_time}));
+            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(diffW.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameters, null // Kernel- and extra parameters
@@ -140,8 +141,8 @@ public class AdamKernel extends BaseKernel {
              * float *diffW, float *weight,float *mw,float *vw,float beta1,float beta2,float learnRate, int n
 
              */
-            kernelParameters = Pointer.to(Pointer.to(diffW.getGpuData()), Pointer.to(weight.getGpuData()), Pointer.to(mw.getGpuData()), Pointer.to(vw.getGpuData()), Pointer.to(new float[]{beta1}), Pointer.to(new float[]{beta2}), Pointer.to(new float[]{lr}), Pointer.to(new int[]{diffW.dataLength}), Pointer.to(new int[]{net.number}), Pointer.to(new int[]{net.train_time}));
-            cuLaunchKernel(bn_function, this.CAFFE_GET_BLOCKS(diffW.dataLength), 1, 1,      // Grid dimension
+            kernelParameters = Pointer.to(Pointer.to(diffW.getGpuData()), Pointer.to(weight.getGpuData()), Pointer.to(mw.getGpuData()), Pointer.to(vw.getGpuData()), Pointer.to(new float[]{beta1}), Pointer.to(new float[]{beta2}), Pointer.to(new float[]{lr}), Pointer.to(new int[]{diffW.getDataLength()}), Pointer.to(new int[]{net.number}), Pointer.to(new int[]{net.train_time}));
+            cuLaunchKernel(bn_function, this.CAFFE_GET_BLOCKS(diffW.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameters, null // Kernel- and extra parameters
@@ -162,8 +163,8 @@ public class AdamKernel extends BaseKernel {
              * float *diffW, float *weight,float *mw,float *vw,float beta1,float beta2,float learnRate, int n
 
              */
-            kernelBiasParameters = Pointer.to(Pointer.to(diffB.getGpuData()), Pointer.to(bias.getGpuData()), Pointer.to(mb.getGpuData()), Pointer.to(vb.getGpuData()), Pointer.to(new float[]{beta1}), Pointer.to(new float[]{beta2}), Pointer.to(new float[]{lr}), Pointer.to(new int[]{diffB.dataLength}), Pointer.to(new int[]{net.number}), Pointer.to(new int[]{net.train_time}));
-            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(diffB.dataLength), 1, 1,      // Grid dimension
+            kernelBiasParameters = Pointer.to(Pointer.to(diffB.getGpuData()), Pointer.to(bias.getGpuData()), Pointer.to(mb.getGpuData()), Pointer.to(vb.getGpuData()), Pointer.to(new float[]{beta1}), Pointer.to(new float[]{beta2}), Pointer.to(new float[]{lr}), Pointer.to(new int[]{diffB.getDataLength()}), Pointer.to(new int[]{net.number}), Pointer.to(new int[]{net.train_time}));
+            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(diffB.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelBiasParameters, null // Kernel- and extra parameters
@@ -182,8 +183,8 @@ public class AdamKernel extends BaseKernel {
              * float *diffW, float *weight,float *mw,float *vw,float beta1,float beta2,float learnRate, int n
 
              */
-            kernelBiasParameters = Pointer.to(Pointer.to(diffB.getGpuData()), Pointer.to(bias.getGpuData()), Pointer.to(mb.getGpuData()), Pointer.to(vb.getGpuData()), Pointer.to(new float[]{beta1}), Pointer.to(new float[]{beta2}), Pointer.to(new float[]{lr}), Pointer.to(new int[]{diffB.dataLength}), Pointer.to(new int[]{batchSize}), Pointer.to(new int[]{net.train_time}));
-            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(diffB.dataLength), 1, 1,      // Grid dimension
+            kernelBiasParameters = Pointer.to(Pointer.to(diffB.getGpuData()), Pointer.to(bias.getGpuData()), Pointer.to(mb.getGpuData()), Pointer.to(vb.getGpuData()), Pointer.to(new float[]{beta1}), Pointer.to(new float[]{beta2}), Pointer.to(new float[]{lr}), Pointer.to(new int[]{diffB.getDataLength()}), Pointer.to(new int[]{batchSize}), Pointer.to(new int[]{net.train_time}));
+            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(diffB.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelBiasParameters, null // Kernel- and extra parameters
@@ -202,8 +203,8 @@ public class AdamKernel extends BaseKernel {
              * float *diffW, float *weight,float *mw,float *vw,float beta1,float beta2,float learnRate, int n
 
              */
-            kernelBiasParameters = Pointer.to(Pointer.to(diffB.getGpuData()), Pointer.to(bias.getGpuData()), Pointer.to(mb.getGpuData()), Pointer.to(vb.getGpuData()), Pointer.to(new float[]{beta1}), Pointer.to(new float[]{beta2}), Pointer.to(new float[]{lr}), Pointer.to(new int[]{diffB.dataLength}), Pointer.to(new int[]{net.number}), Pointer.to(new int[]{net.train_time}));
-            cuLaunchKernel(bn_function, this.CAFFE_GET_BLOCKS(diffB.dataLength), 1, 1,      // Grid dimension
+            kernelBiasParameters = Pointer.to(Pointer.to(diffB.getGpuData()), Pointer.to(bias.getGpuData()), Pointer.to(mb.getGpuData()), Pointer.to(vb.getGpuData()), Pointer.to(new float[]{beta1}), Pointer.to(new float[]{beta2}), Pointer.to(new float[]{lr}), Pointer.to(new int[]{diffB.getDataLength()}), Pointer.to(new int[]{net.number}), Pointer.to(new int[]{net.train_time}));
+            cuLaunchKernel(bn_function, this.CAFFE_GET_BLOCKS(diffB.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelBiasParameters, null // Kernel- and extra parameters

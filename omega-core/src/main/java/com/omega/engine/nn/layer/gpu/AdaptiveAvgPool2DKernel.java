@@ -1,9 +1,10 @@
 package com.omega.engine.nn.layer.gpu;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixUtils;
+import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
 import jcuda.runtime.cudaError;
@@ -71,8 +72,8 @@ public class AdaptiveAvgPool2DKernel extends BaseKernel {
 
     public void forward(Tensor input, Tensor output) {
         try {
-            if (input.number != this.N) {
-                this.N = input.number;
+            if (input.getShape()[0] != this.N) {
+                this.N = input.getShape()[0];
                 /**
                  * 设置入参
                  * const uint size, const uint input_height, const uint input_width,
@@ -80,9 +81,9 @@ public class AdaptiveAvgPool2DKernel extends BaseKernel {
                  const uint output_height, const uint output_width, float *input_data,float *output_data
 
                  */
-                forwardKernelParameters = Pointer.to(Pointer.to(new int[]{input.number * input.channel}), Pointer.to(new int[]{input.height}), Pointer.to(new int[]{input.width}), Pointer.to(new int[]{output.height}), Pointer.to(new int[]{output.width}), Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()));
+                forwardKernelParameters = Pointer.to(Pointer.to(new int[]{input.getShape()[0] * input.getShape()[1]}), Pointer.to(new int[]{input.getShape()[2]}), Pointer.to(new int[]{input.getShape()[3]}), Pointer.to(new int[]{output.getShape()[2]}), Pointer.to(new int[]{output.getShape()[3]}), Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()));
             }
-            cuLaunchKernel(forward_function, this.CAFFE_GET_BLOCKS(input.number * input.channel), 1, 1,      // Grid dimension
+            cuLaunchKernel(forward_function, this.CAFFE_GET_BLOCKS(input.getShape()[0] * input.getShape()[1]), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     forwardKernelParameters, null // Kernel- and extra parameters
@@ -95,8 +96,8 @@ public class AdaptiveAvgPool2DKernel extends BaseKernel {
 
     public void backward(Tensor delta, Tensor diff) {
         try {
-            if (delta.number != this.N) {
-                this.N = delta.number;
+            if (delta.getShape()[0] != this.N) {
+                this.N = delta.getShape()[0];
                 /**
                  * 设置入参
                  * const uint size, const uint input_height, const uint input_width,
@@ -104,9 +105,9 @@ public class AdaptiveAvgPool2DKernel extends BaseKernel {
                  const uint output_height, const uint output_width, float *input_data,float *output_data
 
                  */
-                backwardKernelParameters = Pointer.to(Pointer.to(new int[]{delta.number * diff.channel}), Pointer.to(new int[]{delta.height}), Pointer.to(new int[]{delta.width}), Pointer.to(new int[]{diff.height}), Pointer.to(new int[]{diff.width}), Pointer.to(delta.getGpuData()), Pointer.to(diff.getGpuData()));
+                backwardKernelParameters = Pointer.to(Pointer.to(new int[]{delta.getShape()[0] * diff.getShape()[1]}), Pointer.to(new int[]{delta.getShape()[2]}), Pointer.to(new int[]{delta.getShape()[3]}), Pointer.to(new int[]{diff.getShape()[2]}), Pointer.to(new int[]{diff.getShape()[3]}), Pointer.to(delta.getGpuData()), Pointer.to(diff.getGpuData()));
             }
-            cuLaunchKernel(backward_function, this.CAFFE_GET_BLOCKS(delta.number * delta.channel), 1, 1,      // Grid dimension
+            cuLaunchKernel(backward_function, this.CAFFE_GET_BLOCKS(delta.getShape()[0] * delta.getShape()[1]), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     backwardKernelParameters, null // Kernel- and extra parameters

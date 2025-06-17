@@ -1,10 +1,11 @@
 package com.omega.engine.nn.layer.gpu;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.JsonUtils;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.JsonUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUfunction;
@@ -88,13 +89,13 @@ public class ConvKernel extends ConvBaseKernel {
         ConvKernel k = new ConvKernel(C, H, W, ko, kh, kw, s, p, cudaManager);
         k.conv(input, kernel, output);
         output.syncHost();
-        System.out.println("output:" + JsonUtils.toJson(output.data));
+        System.out.println("output:" + JsonUtils.toJson(output.getData()));
         k.dw(input, delta, diffW);
         diffW.syncHost();
-        System.out.println("diffW:" + JsonUtils.toJson(diffW.data));
+        System.out.println("diffW:" + JsonUtils.toJson(diffW.getData()));
         k.dx(delta, kernel, diff);
         diff.syncHost();
-        System.out.println("diff:" + JsonUtils.toJson(diff.data));
+        System.out.println("diff:" + JsonUtils.toJson(diff.getData()));
     }
 
     public void init() {
@@ -130,7 +131,7 @@ public class ConvKernel extends ConvBaseKernel {
     }
 
     public void conv(Tensor input, Tensor kernel, Tensor output) {
-        for (int i = 0; i < input.number; i++) {
+        for (int i = 0; i < input.getShape()[0]; i++) {
             if (!is_1x1) {
                 im2col(input, i);
             } else {
@@ -142,7 +143,7 @@ public class ConvKernel extends ConvBaseKernel {
 
     public void dw(Tensor input, Tensor delta, Tensor diffW) {
         diffW.clearGPU();
-        for (int i = 0; i < input.number; i++) {
+        for (int i = 0; i < input.getShape()[0]; i++) {
             if (!is_1x1) {
                 im2col(input, i);
             } else {
@@ -153,7 +154,7 @@ public class ConvKernel extends ConvBaseKernel {
     }
 
     public void dx(Tensor delta, Tensor kernel, Tensor diff) {
-        for (int i = 0; i < delta.number; i++) {
+        for (int i = 0; i < delta.getShape()[0]; i++) {
             if (!is_1x1) {
                 sgemmDX(delta, kernel, dx_t, i);
                 col2im(diff, i);
@@ -228,16 +229,16 @@ public class ConvKernel extends ConvBaseKernel {
 
     public void addBias(Tensor output, Tensor bias) {
         try {
-            if (biasKernelParameters == null || output.number != this.N) {
+            if (biasKernelParameters == null || output.getShape()[0] != this.N) {
                 /**
                  * 设置入参
                  * float* output, float* biases, int batch, int n, int size
 
                  */
-                biasKernelParameters = Pointer.to(Pointer.to(output.getGpuData()), Pointer.to(bias.getGpuData()), Pointer.to(new int[]{output.getNumber()}), Pointer.to(new int[]{output.channel}), Pointer.to(new int[]{output.height * output.width}));
-                this.N = output.number;
+                biasKernelParameters = Pointer.to(Pointer.to(output.getGpuData()), Pointer.to(bias.getGpuData()), Pointer.to(new int[]{output.getNumber()}), Pointer.to(new int[]{output.getShape()[1]}), Pointer.to(new int[]{output.getShape()[2] * output.getShape()[3]}));
+                this.N = output.getShape()[0];
             }
-            cuLaunchKernel(bias_function, this.CAFFE_GET_BLOCKS(output.dataLength), 1, 1,      // Grid dimension
+            cuLaunchKernel(bias_function, this.CAFFE_GET_BLOCKS(output.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     biasKernelParameters, null // Kernel- and extra parameters
@@ -258,7 +259,7 @@ public class ConvKernel extends ConvBaseKernel {
                  * float *bias_updates, float *delta, int batch, int n, int size
 
                  */
-                biasBackKernelParameters = Pointer.to(Pointer.to(diffB.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(new int[]{delta.getNumber()}), Pointer.to(new int[]{delta.getChannel()}), Pointer.to(new int[]{delta.height * delta.width}));
+                biasBackKernelParameters = Pointer.to(Pointer.to(diffB.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(new int[]{delta.getNumber()}), Pointer.to(new int[]{delta.getChannel()}), Pointer.to(new int[]{delta.getShape()[2] * delta.getShape()[3]}));
             }
             cuLaunchKernel(back_back_function, delta.getChannel(), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension

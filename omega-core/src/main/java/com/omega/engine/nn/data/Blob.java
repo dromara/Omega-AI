@@ -1,6 +1,6 @@
 package com.omega.engine.nn.data;
 
-import com.omega.utils.MatrixUtils;
+import com.omega.common.utils.MatrixUtils;
 
 /**
  * Blob

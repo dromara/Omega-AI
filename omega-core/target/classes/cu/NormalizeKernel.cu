@@ -92,7 +92,7 @@ __global__ void l2norm_1dim_kernel(int N, float *x,float *out, int batch, int fi
         sum += v * v;
     }
     
-    float norm = rsqrtf(fmaxf(sum, eps));
+    float norm = 1.0 / (sqrtf(sum) + eps);
     
     for(f = 0; f < filters; ++f){
         int index = b*filters*spatial + f*spatial + i;
@@ -148,9 +148,42 @@ __global__ void l2norm_1dim_backward_kernel2(int N, float *x,float *delta, float
         sum += v * v;
         dsum += v * delta[index];
     }
-    float norm = 1.0 / sqrtf(max(sum, eps));
+    float norm = 1.0 / (sqrtf(sum) + eps);
     for(f = 0; f < filters; ++f){
         int index = offset + f*spatial;
         dx[index] = norm * delta[index] - norm * dsum / sum * x[index];
+    }
+}
+
+extern "C"
+__global__ void l2norm_1dim_backward_kernel3(int N, float *x,float *delta, float *dx, int batch, int filters, int spatial, float eps)
+{
+    int index = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (index >= N) return;
+    int b = index / spatial;
+    int i = index % spatial;
+    int f;
+    float sum = 0;
+    int offset = b*filters*spatial + i;
+    for(f = 0; f < filters; ++f){
+        int index = offset + f*spatial;
+        float v = x[index];
+        sum += powf(v, 2);
+    }
+    float sq = sqrtf(sum) + eps;
+
+    float dnorm = 0.0;
+    for(f = 0; f < filters; ++f){
+		int index = offset + f*spatial;
+		dnorm += -delta[index] * x[index] / sq / sq;
+	}
+	//printf("norm:%f", norm);
+	float dsq = powf(sum, -0.5) * dnorm;
+   // printf("dnorm:%f", dsq);
+    for(f = 0; f < filters; ++f){
+        int index = offset + f*spatial;
+        dx[index] = delta[index] / sq + dsq * x[index];
+        //printf("bx:%f", dsq * 2 * x[index]);
+        //printf("dx2:%f", dx2);
     }
 }

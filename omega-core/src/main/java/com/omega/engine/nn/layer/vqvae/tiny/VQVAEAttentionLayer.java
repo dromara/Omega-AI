@@ -1,7 +1,6 @@
 package com.omega.engine.nn.layer.vqvae.tiny;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixUtils;
+import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.gpu.cudnn.SoftmaxCudnnKernel;
 import com.omega.engine.nn.layer.FullyLayer;
@@ -13,6 +12,7 @@ import com.omega.engine.nn.layer.normalization.GNLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.nn.network.Transformer;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;
@@ -142,7 +142,7 @@ public class VQVAEAttentionLayer extends Layer {
 
     public void init(Tensor input) {
         // TODO Auto-generated method stub
-        this.number = input.number;
+        this.number = input.getShape()[0];
         this.batchSize = this.number;
         if (network.CUDNN && softmaxKernel == null) {
             softmaxKernel = new SoftmaxCudnnKernel(time, 1, 1, cuda());
@@ -171,7 +171,7 @@ public class VQVAEAttentionLayer extends Layer {
             // [batch_size, len_q, n_heads * dim_v]
             this.oi = CUDAMemoryManager.getCache("attn-oi", batchSize * time, 1, 1, embedDim);
         } else {
-            if (this.qt == null || this.qt.number != this.batchSize) {
+            if (this.qt == null || this.qt.getShape()[0] != this.batchSize) {
                 // [batch_size，time，head_num，d_k]
                 this.xt = Tensor.createGPUTensor(this.xt, batchSize, time, 1, channel, true);
                 this.qt = Tensor.createGPUTensor(this.qt, batchSize, headNum, time, dk, true);

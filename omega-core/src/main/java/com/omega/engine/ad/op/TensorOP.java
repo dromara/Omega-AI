@@ -1,12 +1,13 @@
 package com.omega.engine.ad.op;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.MatrixOperation;
-import com.omega.utils.MatrixUtils;
+import com.omega.common.utils.MatrixOperation;
+import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.ad.op.gpu.NormalizeKernel;
 import com.omega.engine.ad.op.gpu.OPKernel;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.GPUOP;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.driver.CUstream;
 import jcuda.jcublas.cublasOperation;
 
@@ -23,7 +24,7 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.add_gpu(a, b, c);
         } else {
-            c.data = MatrixOperation.add(a.data, b.data);
+            c.setData(MatrixOperation.add(a.getData(), b.getData()));
         }
     }
 
@@ -35,7 +36,7 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.add_gpu(a, b, c, axis);
         } else {
-            c.data = MatrixOperation.add(a.data, b.data);
+            c.setData(MatrixOperation.add(a.getData(), b.getData()));
         }
     }
 
@@ -43,7 +44,21 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.add_axis_gpu(a, b, c, axis);
         } else {
-            c.data = MatrixOperation.add(a.data, b.data);
+            c.setData(MatrixOperation.add(a.getData(), b.getData()));
+        }
+    }
+    
+    public void addAxis(Tensor a, Tensor b, Tensor c,int N, int C, int H, int W, int axis) {
+        if (c.isHasGPU()) {
+            op.add_axis_gpu(a, b, c, N, C, H, W, axis);
+        } else {
+            c.setData(MatrixOperation.add(a.getData(), b.getData()));
+        }
+    }
+    
+    public void addAxisBack(Tensor dx, Tensor dy,int N, int C, int H, int W, int axis) {
+        if (dx.isHasGPU()) {
+            op.add_axis_back_gpu(dx, dy, N, C, H, W, axis);
         }
     }
 
@@ -51,7 +66,7 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.add_gpu(a, b, c, offset, N);
         } else {
-            c.data = MatrixOperation.add(a.data, b.data);
+            c.setData(MatrixOperation.add(a.getData(), b.getData()));
         }
     }
 
@@ -59,7 +74,7 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.add_gpu(a, b, c, offsetA, offsetB, offsetC, N);
         } else {
-            c.data = MatrixOperation.add(a.data, b.data);
+            c.setData(MatrixOperation.add(a.getData(), b.getData()));
         }
     }
 
@@ -67,7 +82,7 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.add_scalar_gpu(a, b, c);
         } else {
-            c.data = MatrixOperation.add(a.data, b);
+            c.setData(MatrixOperation.add(a.getData(), b));
         }
     }
 
@@ -79,7 +94,7 @@ public class TensorOP {
             if (c.isHasGPU()) {
                 op.sub_gpu(a, b, c);
             } else {
-                c.data = MatrixOperation.subtraction(a.data, b.data);
+                c.setData(MatrixOperation.subtraction(a.getData(), b.getData()));
             }
         }
     }
@@ -95,7 +110,7 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.sub_gpu(a, b, c, axis);
         } else {
-            c.data = MatrixOperation.subtraction(a.data, b.data, axis);
+            c.setData(MatrixOperation.subtraction(a.getData(), b.getData(), axis));
         }
     }
 
@@ -103,7 +118,7 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.sub_gpu(a, b, c);
         } else {
-            c.data = MatrixOperation.subtraction(a.data, b.data);
+            c.setData(MatrixOperation.subtraction(a.getData(), b.getData()));
         }
     }
 
@@ -111,7 +126,7 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.sub_scalar_gpu(a, b, c);
         } else {
-            c.data = MatrixOperation.subtraction(a.data, b);
+            c.setData(MatrixOperation.subtraction(a.getData(), b));
         }
     }
 
@@ -119,7 +134,7 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.scalar_sub_gpu(a, b, c);
         } else {
-            c.data = MatrixOperation.subtraction(a, b.data);
+            c.setData(MatrixOperation.subtraction(a, b.getData()));
         }
     }
 
@@ -127,7 +142,7 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.scalar_sub_gpu(a, b, c, offset, N);
         } else {
-            c.data = MatrixOperation.subtraction(a, b.data);
+            c.setData(MatrixOperation.subtraction(a, b.getData()));
         }
     }
 
@@ -135,23 +150,49 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.mul_gpu(a, b, c);
         } else {
-            c.data = MatrixOperation.multiplication(a.data, b.data);
+            c.setData(MatrixOperation.multiplication(a.getData(), b.getData()));
         }
     }
-
+    
     public void bool(Tensor a, Tensor b, Tensor c, float val) {
         if (c.isHasGPU()) {
             op.bool_gpu(a, b, c, val);
         } else {
-            c.data = MatrixOperation.bool(a.data, b.data, val);
+            c.setData(MatrixOperation.bool(a.getData(), b.getData(), val));
         }
     }
-
+    
+    public void mask(Tensor a, Tensor b, Tensor c, float val) {
+        if (c.isHasGPU()) {
+            op.mask_gpu(a, b, c, val);
+        }else {
+        	
+        }
+    }
+    
     public void mul(Tensor a, Tensor b, Tensor c, int offset, int N) {
         if (c.isHasGPU()) {
             op.mul_gpu(a, b, c, offset, N);
         } else {
-            c.data = MatrixOperation.multiplication(a.data, b.data);
+            c.setData(MatrixOperation.multiplication(a.getData(), b.getData()));
+        }
+    }
+    
+    public void mul(Tensor a, Tensor b, Tensor c, int N, int C, int H, int W, int axis) {
+        if (c.isHasGPU()) {
+            op.mul_gpu(a, b, c, N, C, H, W, axis);
+        }
+    }
+    
+    public void mul_left_back(Tensor b, Tensor delta, Tensor da, int N, int C, int H, int W, int axis) {
+        if (da.isHasGPU()) {
+            op.mul_back_left_gpu(b, delta, da, N, C, H, W, axis);
+        }
+    }
+    
+    public void mul_right_back(Tensor a, Tensor delta, Tensor db, int N, int C, int H, int W, int axis) {
+        if (db.isHasGPU()) {
+            op.mul_back_right_gpu(a, delta, db, N, C, H, W, axis);
         }
     }
 
@@ -159,7 +200,7 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.mul_gpu(a, b, c, offsetA, offsetB, offsetY, N);
         } else {
-            c.data = MatrixOperation.multiplication(a.data, b.data);
+            c.setData(MatrixOperation.multiplication(a.getData(), b.getData()));
         }
     }
 
@@ -167,7 +208,7 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.mul_scalar_gpu(a, b, c);
         } else {
-            c.data = MatrixOperation.multiplication(a.data, b);
+            c.setData(MatrixOperation.multiplication(a.getData(), b));
         }
     }
 
@@ -175,7 +216,7 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.mul_plus_gpu(a, b, c);
         } else {
-            MatrixOperation.plus(c.data, MatrixOperation.multiplication(a.data, b.data));
+            MatrixOperation.plus(c.getData(), MatrixOperation.multiplication(a.getData(), b.getData()));
         }
     }
 
@@ -187,7 +228,7 @@ public class TensorOP {
             if (c.isHasGPU()) {
                 op.mul_plus_scalar_gpu(a, b, c);
             } else {
-                MatrixOperation.plus(c.data, MatrixOperation.multiplication(a.data, b));
+                MatrixOperation.plus(c.getData(), MatrixOperation.multiplication(a.getData(), b));
             }
         }
     }
@@ -196,7 +237,7 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.mul_plus_scalar_gpu(a, b, c, axis);
         } else {
-            MatrixOperation.plus(c.data, MatrixOperation.multiplication(a.data, b), axis);
+            MatrixOperation.plus(c.getData(), MatrixOperation.multiplication(a.getData(), b), axis);
         }
     }
 
@@ -208,7 +249,7 @@ public class TensorOP {
             if (c.isHasGPU()) {
                 op.div_gpu(a, b, c);
             } else {
-                c.data = MatrixOperation.division(a.data, b.data);
+                c.setData(MatrixOperation.division(a.getData(), b.getData()));
             }
         }
     }
@@ -221,7 +262,7 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.div_gpu(a, b, c, axis);
         } else {
-            c.data = MatrixOperation.division(a.data, b.data, axis);
+            c.setData(MatrixOperation.division(a.getData(), b.getData(), axis));
         }
     }
 
@@ -229,7 +270,7 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.div_scalar_gpu(a, b, c);
         } else {
-            c.data = MatrixOperation.division(a.data, b);
+            c.setData(MatrixOperation.division(a.getData(), b));
         }
     }
 
@@ -241,7 +282,7 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.scalar_div_gpu(b, a, c);
         } else {
-            c.data = MatrixOperation.division(a, b.data);
+            c.setData(MatrixOperation.division(a, b.getData()));
         }
     }
 
@@ -253,7 +294,7 @@ public class TensorOP {
             if (c.isHasGPU()) {
                 op.div_plus_gpu(a, b, c);
             } else {
-                MatrixOperation.plus(c.data, MatrixOperation.division(a.data, b.data));
+                MatrixOperation.plus(c.getData(), MatrixOperation.division(a.getData(), b.getData()));
             }
         }
     }
@@ -262,7 +303,7 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.div_plus_gpu(a, b, c, axis);
         } else {
-            MatrixOperation.plus(c.data, MatrixOperation.division(a.data, b.data, axis));
+            MatrixOperation.plus(c.getData(), MatrixOperation.division(a.getData(), b.getData(), axis));
         }
     }
 
@@ -270,7 +311,7 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.div_plus_scalar_gpu(a, b, c);
         } else {
-            MatrixOperation.plus(c.data, MatrixOperation.division(a.data, b));
+            MatrixOperation.plus(c.getData(), MatrixOperation.division(a.getData(), b));
         }
     }
 
@@ -278,7 +319,7 @@ public class TensorOP {
         if (b.isHasGPU()) {
             op.exp_gpu(a, b);
         } else {
-            b.data = MatrixOperation.exp(a.data);
+            b.setData(MatrixOperation.exp(a.getData()));
         }
     }
 
@@ -294,7 +335,7 @@ public class TensorOP {
         if (b.isHasGPU()) {
             op.sum_gpu(a, b, axis);
         } else {
-            b.data = MatrixOperation.sum(a.data, a.number, a.channel, a.height, a.width, axis);
+            b.setData(MatrixOperation.sum(a.getData(), a.getShape()[0], a.getShape()[1], a.getShape()[2], a.getShape()[3], axis));
         }
     }
 
@@ -308,7 +349,7 @@ public class TensorOP {
         if (b.isHasGPU()) {
             op.max_gpu(a, b, axis);
         } else {
-            b.data = MatrixOperation.max(a.data, a.number, a.channel, a.height, a.width, axis);
+            b.setData(MatrixOperation.max(a.getData(), a.getShape()[0], a.getShape()[1], a.getShape()[2], a.getShape()[3], axis));
         }
     }
 
@@ -316,7 +357,7 @@ public class TensorOP {
         if (b.isHasGPU()) {
             op.max_backward_gpu(d, a, b, axis);
         } else {
-            b.data = MatrixOperation.max(a.data, a.number, a.channel, a.height, a.width, axis);
+            b.setData(MatrixOperation.max(a.getData(), a.getShape()[0], a.getShape()[1], a.getShape()[2], a.getShape()[3], axis));
         }
     }
 
@@ -324,7 +365,7 @@ public class TensorOP {
         if (b.isHasGPU()) {
             op.log_gpu(a, b);
         } else {
-            b.data = MatrixOperation.log(a.data);
+            b.setData(MatrixOperation.log(a.getData()));
         }
     }
 
@@ -332,7 +373,7 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.pow_gpu(a, b, c);
         } else {
-            c.data = MatrixOperation.pow(a.data, b);
+            c.setData(MatrixOperation.pow(a.getData(), b));
         }
     }
 
@@ -340,7 +381,7 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.sqrt_gpu(a, c);
         } else {
-            c.data = MatrixOperation.sqrt(a.data);
+            c.setData(MatrixOperation.sqrt(a.getData()));
         }
     }
 
@@ -348,7 +389,7 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.sin_gpu(a, c);
         } else {
-            c.data = MatrixOperation.sin(a.data);
+            c.setData(MatrixOperation.sin(a.getData()));
         }
     }
 
@@ -356,7 +397,7 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.cos_gpu(a, c);
         } else {
-            c.data = MatrixOperation.cos(a.data);
+            c.setData(MatrixOperation.cos(a.getData()));
         }
     }
 
@@ -364,7 +405,7 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.tan_gpu(a, c);
         } else {
-            c.data = MatrixOperation.tan(a.data);
+            c.setData(MatrixOperation.tan(a.getData()));
         }
     }
 
@@ -372,7 +413,7 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.tan_back_gpu(a, c);
         } else {
-            c.data = MatrixOperation.tan_back(a.data);
+            c.setData(MatrixOperation.tan_back(a.getData()));
         }
     }
 
@@ -380,7 +421,7 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.atan_gpu(a, c);
         } else {
-            c.data = MatrixOperation.atan(a.data);
+            c.setData(MatrixOperation.atan(a.getData()));
         }
     }
 
@@ -388,7 +429,7 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.atan_back_gpu(a, c);
         } else {
-            c.data = MatrixOperation.atan_back(a.data);
+            c.setData(MatrixOperation.atan_back(a.getData()));
         }
     }
 
@@ -396,7 +437,7 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.broadcast_plus_gpu(a, c, axis);
         } else {
-            MatrixOperation.broadcast_plus(a.data, c.data, c.number, c.channel, c.height, c.width, axis);
+            MatrixOperation.broadcast_plus(a.getData(), c.getData(), c.getShape()[0], c.getShape()[1], c.getShape()[2], c.getShape()[3], axis);
         }
     }
 
@@ -410,7 +451,7 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.clamp_gpu(a, b1, b2, c);
         } else {
-            c.data = MatrixOperation.clamp(a.data, b1, b2);
+            c.setData(MatrixOperation.clamp(a.getData(), b1, b2));
         }
     }
 
@@ -418,7 +459,7 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.clamp_back_gpu(a, b1, b2, c);
         } else {
-            c.data = MatrixOperation.clamp_back(a.data, b1, b2);
+            c.setData(MatrixOperation.clamp_back(a.getData(), b1, b2));
         }
     }
 
@@ -426,7 +467,7 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.maximum_gpu(a, b, c);
         } else {
-            c.data = MatrixOperation.maximum(a.data, b.data);
+            c.setData(MatrixOperation.maximum(a.getData(), b.getData()));
         }
     }
 
@@ -434,7 +475,7 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.minimum_gpu(a, b, c);
         } else {
-            c.data = MatrixOperation.minimum(a.data, b.data);
+            c.setData(MatrixOperation.minimum(a.getData(), b.getData()));
         }
     }
 
@@ -442,7 +483,7 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.maximum_back_gpu(a, b, c);
         } else {
-            c.data = MatrixOperation.maximum_back(a.data, b.data);
+            c.setData(MatrixOperation.maximum_back(a.getData(), b.getData()));
         }
     }
 
@@ -450,7 +491,7 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.minimum_back_gpu(a, b, c);
         } else {
-            c.data = MatrixOperation.minimum_back(a.data, b.data);
+            c.setData(MatrixOperation.minimum_back(a.getData(), b.getData()));
         }
     }
 
@@ -458,7 +499,7 @@ public class TensorOP {
         if (c.isHasGPU()) {
             op.mean_gpu(a, dim, c);
         } else {
-            c.data = MatrixOperation.mean(a.data, a.number, a.channel, a.height, a.width, dim);
+            c.setData(MatrixOperation.mean(a.getData(), a.getShape()[0], a.getShape()[1], a.getShape()[2], a.getShape()[3], dim));
         }
     }
 
@@ -497,11 +538,11 @@ public class TensorOP {
             //			System.out.println(JsonUtils.toJson(b.shape()));
             //			a.showDM();
             //			b.showDM();
-            int k = b.number;
-            if (b.number == 1) {
-                k = b.height;
+            int k = b.getShape()[0];
+            if (b.getShape()[0] == 1) {
+                k = b.getShape()[2];
             }
-            GPUOP.getInstance().multiplyFloat(a.number, b.width, k, a.getGpuData(), b.getGpuData(), c.getGpuData(), cublasOperation.CUBLAS_OP_N, cublasOperation.CUBLAS_OP_N, 1.0f, 0.0f);
+            GPUOP.getInstance().multiplyFloat(a.getShape()[0], b.getShape()[3], k, a.getGpuData(), b.getGpuData(), c.getGpuData(), cublasOperation.CUBLAS_OP_N, cublasOperation.CUBLAS_OP_N, 1.0f, 0.0f);
             //			c.showDM();
             //			System.out.println("----------------------");
         } else {
@@ -519,11 +560,11 @@ public class TensorOP {
      * @param c
      */
     public void dotDX(Tensor a, Tensor b, Tensor c) {
-        int k = b.number;
-        if (b.number == 1) {
-            k = b.height;
+        int k = b.getShape()[0];
+        if (b.getShape()[0] == 1) {
+            k = b.getShape()[2];
         }
-        GPUOP.getInstance().multiplyFloat(a.number, k, b.width, a.getGpuData(), b.getGpuData(), c.getGpuData(), cublasOperation.CUBLAS_OP_N, cublasOperation.CUBLAS_OP_T, 1.0f, 1.0f);
+        GPUOP.getInstance().multiplyFloat(a.getShape()[0], k, b.getShape()[3], a.getGpuData(), b.getGpuData(), c.getGpuData(), cublasOperation.CUBLAS_OP_N, cublasOperation.CUBLAS_OP_T, 1.0f, 1.0f);
     }
 
     /**
@@ -536,7 +577,7 @@ public class TensorOP {
      * @param c
      */
     public void dotDW(Tensor a, Tensor b, Tensor c) {
-        GPUOP.getInstance().multiplyFloat(a.width, b.width, a.number, a.getGpuData(), b.getGpuData(), c.getGpuData(), cublasOperation.CUBLAS_OP_T, cublasOperation.CUBLAS_OP_N, 1.0f, 1.0f);
+        GPUOP.getInstance().multiplyFloat(a.getShape()[3], b.getShape()[3], a.getShape()[0], a.getGpuData(), b.getGpuData(), c.getGpuData(), cublasOperation.CUBLAS_OP_T, cublasOperation.CUBLAS_OP_N, 1.0f, 1.0f);
     }
 
     public void permute(Tensor a, Tensor b, int[] permutes) {
@@ -550,6 +591,14 @@ public class TensorOP {
     public void permuteAdd(Tensor a, Tensor b, int[] permutes) {
         if (a.isHasGPU()) {
             op.permute_add_gpu(a, b, permutes);
+        } else {
+            //			c.data = MatrixOperation.add(a.data, b.data);
+        }
+    }
+    
+    public void permute(Tensor a, Tensor b, int[] xShape, int[] yShape, int[] permutes) {
+        if (a.isHasGPU()) {
+            op.permute_gpu(a, b, xShape, yShape, permutes);
         } else {
             //			c.data = MatrixOperation.add(a.data, b.data);
         }
@@ -578,7 +627,23 @@ public class TensorOP {
             //			c.data = MatrixOperation.add(a.data, b.data);
         }
     }
+    
+    public void cat_width(Tensor a, Tensor b, Tensor c) {
+        if (a.isHasGPU()) {
+            op.cat_width_gpu(a, b, c);
+        } else {
+            //			c.data = MatrixOperation.add(a.data, b.data);
+        }
+    }
 
+    public void cat_width_back(Tensor c, Tensor a, Tensor b) {
+        if (a.isHasGPU()) {
+            op.cat_width_back_gpu(c, a, b);
+        } else {
+            //			c.data = MatrixOperation.add(a.data, b.data);
+        }
+    }
+    
     public void onehot(Tensor a, Tensor b) {
         if (a.isHasGPU()) {
             op.one_hot(a, b);
@@ -606,12 +671,20 @@ public class TensorOP {
     public void copyGPU(Tensor a, Tensor b) {
         op.copy_gpu(a, b);
     }
+    
+    public Tensor copyTensorGPU(Tensor a, Tensor b) {
+    	if(b == null) {
+    		b = a.createLike();
+    	}
+        op.copy_gpu(a, b);
+        return b;
+    }
 
     public void normalize(Tensor x, Tensor y, int dim) {
-        int N = x.number;
-        int C = x.channel;
-        int H = x.height;
-        int W = x.width;
+        int N = x.getShape()[0];
+        int C = x.getShape()[1];
+        int H = x.getShape()[2];
+        int W = x.getShape()[3];
         if (dim == 0) {
             x.view(N * C * H * W, 1, 1, 1);
             y.view(N * C * H * W, 1, 1, 1);
@@ -631,5 +704,64 @@ public class TensorOP {
         x.view(N, C, H, W);
         y.view(N, C, H, W);
     }
+    
+    /**
+     * cp = 0 [org->target]
+     * cp = 1 [target->org]
+     * @param org
+     * @param target
+     * @param position[dims, start, count]
+     * @param cp
+     */
+    public void getByPosition(Tensor org, Tensor target, int[] position, int cp) {
+        int dims = position[0];
+        int start = position[1];
+        int count = position[2];
+        switch (dims) {
+            case 0:
+                getByNumber(org, target, start, count);
+                break;
+            case 1:
+                getByChannel(org, target, start, count);
+                break;
+            default:
+                break;
+        }
+    }
+    
+    public void getByNumber(Tensor org, Tensor target, int start, int count) {
+        assert org.getNumber() >= (start + count - 1);
+        if (org.isHasGPU()) {
+            this.op.copy_number_gpu(org, target, start * count, 0);
+        } else {
+            System.arraycopy(org.getData(), start * count * org.getShape()[1] * org.getShape()[2] * org.getShape()[3], target.getData(), 0, target.getDataLength());
+        }
+    }
+
+    public void getByChannel(Tensor org, Tensor target, int start, int count) {
+        assert org.getChannel() >= (start + count - 1);
+        if (org.isHasGPU()) {
+            this.op.copy_channel_gpu(org, target, start, 0);
+        } else {
+            int size = org.getShape()[2] * org.getShape()[3];
+            for (int n = 0; n < org.getShape()[0]; n++) {
+                int startIndex = n * org.getShape()[1] * size + start * size;
+                System.arraycopy(org.getData(), startIndex, target.getData(), n * count * size, count * size);
+            }
+        }
+    }
+    
+    public void abs(Tensor x,Tensor y) {
+    	op.abs_gpu(x, y);
+    }
+    
+    public void abs_backward(Tensor x,Tensor dx,Tensor dy) {
+    	op.abs_backward_gpu(x, dx, dy);
+    }
+    
+    public void update_ema(Tensor ema,Tensor model,float decay) {
+    	op.update_ema_gpu(ema, model, decay);
+    }
+    
 }
 

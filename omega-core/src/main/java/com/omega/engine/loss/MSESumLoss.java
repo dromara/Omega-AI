@@ -1,11 +1,11 @@
 package com.omega.engine.loss;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.common.tensor.Tensors;
-import com.omega.utils.MatrixUtils;
+import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.loss.gpu.MSESumLossKernel;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
+import com.omega.engine.tensor.Tensors;
 
 /**
  * Square loss
@@ -58,10 +58,10 @@ public class MSESumLoss extends LossFunction {
     //		return instance;
     //	}
     public void init(Tensor input) {
-        if (loss == null || loss.number != input.number) {
-            this.loss = new Tensor(input.number, 1, 1, 1, true);
+        if (loss == null || loss.getShape()[0] != input.getShape()[0]) {
+            this.loss = new Tensor(input.getShape()[0], 1, 1, 1, true);
             //			this.output = new Tensor(input.number, input.channel, input.height, input.width, true);
-            this.diff = new Tensor(input.number, input.channel, input.height, input.width, true);
+            this.diff = new Tensor(input.getShape()[0], input.getShape()[1], input.getShape()[2], input.getShape()[3], true);
         }
     }
 

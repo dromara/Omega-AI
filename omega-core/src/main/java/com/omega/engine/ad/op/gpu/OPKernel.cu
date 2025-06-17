@@ -1,22 +1,30 @@
 #define BLOCK 1024
-
 #define FLT_MAX 3.402823466e+38F
 
 
-
 extern "C"
-
 __global__ void fill_kernel(int N, float ALPHA, float *X)
-
 {
-
     int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
-
     if(i < N) X[i] = ALPHA;
-
 }
 
+extern "C"
+__global__ void abs_kernel(int N, float* x, float *y)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if(i < N) y[i] = fabsf(x[i]);
+}
 
+extern "C"
+__global__ void abs_backward_kernel(int N, float* x, float* dx, float *dy)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if(i < N){
+		float dxv = x[i] == 0.0 ? 0.0 : copysignf(1.0, x[i]);
+		dx[i] = dxv * dy[i];
+	} 
+}
 
 extern "C"
 
@@ -293,9 +301,7 @@ __global__ void add_axis_kernel(int N, float *X, float *Y, float *R,int axis)
 }
 
 
-
 extern "C"
-
 __global__ void add_axis_kernel2(int N, float *X, float *Y, float *R,int axis)
 
 {
@@ -312,10 +318,119 @@ __global__ void add_axis_kernel2(int N, float *X, float *Y, float *R,int axis)
 
 }
 
+extern "C"
+__global__ void add_axis_kernel3(int N, float *X, float *Y, float *R, int B, int C, int H, int W, int axis)
+{
 
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+
+    if(i < N){
+
+    	int yi = 0;
+    	int len = C * H * W;
+    	
+    	if(axis == 0){
+			yi = i % len;
+		}else if(axis == 1){
+			int n = i / len;
+			yi = n * (H * W) + i % (H * W);
+		}
+
+    	R[i] = X[i] + Y[yi];
+
+    } 
+
+}
 
 extern "C"
+__global__ void add_axis_back_kernel(int N, float *dX, float *dY, int B, int C, int H, int W, int axis)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if(i < N){
+		float dy = 0;
+    	if(axis == 0){
+			for(int j = 0;j<B;j++){
+				dy += dY[j * C * H * W + i];
+			}
+		}else if(axis == 1){
+			int n = i / H / W;
+			int hw = i % (H * W);
+			for(int j = 0;j<C;j++){
+				dy += dY[n * C * H * W + j * H * W + hw];
+			}
+		}
+    	dX[i] = dy;
+    } 
+}
 
+extern "C"
+__global__ void mul_axis_kernel(int N, float *X, float *Y, float *R, int B, int C, int H, int W, int axis)
+{
+
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+
+    if(i < N){
+
+    	int yi = 0;
+    	int len = C * H * W;
+    	
+    	if(axis == 0){
+			yi = i % len;
+		}else if(axis == 1){
+			int n = i / len;
+			yi = n * (H * W) + i % (H * W);
+		}
+
+    	R[i] = X[i] * Y[yi];
+
+    } 
+
+}
+
+extern "C"
+__global__ void mul_axis_back_left_kernel(int N, float *Y, float *delta, float *dx, int B, int C, int H, int W, int axis)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+
+    if(i < N){
+
+    	int yi = 0;
+    	int len = C * H * W;
+    	
+    	if(axis == 0){
+			yi = i % len;
+		}else if(axis == 1){
+			int n = i / len;
+			yi = n * (H * W) + i % (H * W);
+		}
+
+    	dx[i] = delta[i] * Y[yi];
+
+    } 
+}
+
+extern "C"
+__global__ void mul_axis_back_right_kernel(int N, float *X, float *delta, float *dY, int B, int C, int H, int W, int axis)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if(i < N){
+		float dy = 0;
+    	if(axis == 0){
+			for(int j = 0;j<B;j++){
+				dy += delta[j * C * H * W + i] * X[j * C * H * W + i];
+			}
+		}else if(axis == 1){
+			int n = i / H / W;
+			int hw = i % (H * W);
+			for(int j = 0;j<C;j++){
+				dy += delta[n * C * H * W + j * H * W + hw] * X[n * C * H * W + j * H * W + hw];
+			}
+		}
+    	dY[i] = dy;
+    }
+}
+
+extern "C"
 __global__ void expand_kernel(int N, float *X, float *Y, int axis)
 
 {
@@ -356,10 +471,7 @@ __global__ void sum_kernel(int N, float *X, float *Y)
 
 }
 
-
-
 extern "C"
-
 __global__ void sum_channel_kernel(int N, float *X, float *Y,int C,int H,int W)
 
 {
@@ -378,14 +490,9 @@ __global__ void sum_channel_kernel(int N, float *X, float *Y,int C,int H,int W)
 
 }
 
-
-
 extern "C"
-
 __global__ void sum_height_kernel(int N, float *X, float *Y,int C,int H,int W)
-
 {
-
     int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
 
     if(i < N) {
@@ -739,7 +846,6 @@ __global__ void scalar_sub_kernel(int N, float ALPHA, float *X, float *R)
 
 
 extern "C"
-
 __global__ void bool_kernel(int N, float *X, float *Y, float *R,float val)
 
 {
@@ -762,10 +868,32 @@ __global__ void bool_kernel(int N, float *X, float *Y, float *R,float val)
 
 }
 
+extern "C"
+__global__ void mask_kernel(int N, float *X, float *Y, float *R, int onceSize,float val)
 
+{
+
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+
+    if(i < N){
+		
+		int idx = i % onceSize;
+		
+    	if(Y[idx] == 1){
+
+    		R[i] = val;
+
+    	}else{
+
+    		R[i] = X[i];
+
+    	}
+
+    } 
+
+}
 
 extern "C"
-
 __global__ void mul_kernel(int N, float *X, float *Y, float *R)
 
 {
@@ -1417,9 +1545,7 @@ __global__ void permute_add_kernel(int N, float *data_in, float *data_out, int *
 }
 
 
-
 extern "C"
-
 __global__ void mean_kernel(int N, float *x, float *y, int C) {
 
     int tid = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
@@ -1440,12 +1566,7 @@ __global__ void mean_kernel(int N, float *x, float *y, int C) {
 
 }
 
-
-
-
-
 extern "C"
-
 __global__ void mean_back_kernel(int N, float *dy, float *dx, int C) {
 
     int tid = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
@@ -1460,4 +1581,49 @@ __global__ void mean_back_kernel(int N, float *dy, float *dx, int C) {
 
     }
 
+}
+
+extern "C"
+__global__ void cat_width_kernel(int N, float *a, float *b, float *y, int W) {
+
+    int tid = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+
+    if (tid < N) {
+        for (int i = 0; i < W * 2; i++) {
+			int oi = i / 2;
+			if(i / W < 1){
+				y[tid * W * 2 + i] = a[tid * W + oi];
+			}else{
+				y[tid * W * 2 + i] = b[tid * W + oi];
+			}
+        }
+    }
+
+}
+
+extern "C"
+__global__ void cat_width_back_kernel(int N, float *da, float *db, float *dy, int W) {
+
+    int tid = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+
+    if (tid < N) {
+        for (int i = 0; i < W * 2; i++) {
+			int oi = i / 2;
+			if(i / W < 1){
+				da[tid * W + oi] = dy[tid * W * 2 + i];
+			}else{
+				db[tid * W + oi] = dy[tid * W * 2 + i];
+			}
+        }
+    }
+
+}
+
+
+extern "C"
+__global__ void update_ema(int N,float *ema, float *model,float decay)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (i >= N) return;
+	ema[i] = ema[i] * decay + model[i] * (1 - decay);
 }

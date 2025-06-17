@@ -1,6 +1,6 @@
 package com.omega.engine.parallel.ddp.distributed;
 
-import com.omega.utils.JsonUtils;
+import com.omega.common.utils.JsonUtils;
 import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.parallel.ddp.DDP;
 import jcuda.Pointer;

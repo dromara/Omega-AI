@@ -1,11 +1,12 @@
 package com.omega.engine.nn.layer.active.gpu;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.JsonUtils;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.JsonUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUfunction;
@@ -87,10 +88,10 @@ public class LeakyReluKernel extends BaseKernel {
              * float* data_im,float* data_col,int n,int height,int width,int kh,int kw,int s,int p,int oh,int ow
 
              */
-            forwardKernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{input.dataLength}), Pointer.to(new float[]{scale}));
-            this.N = output.number;
+            forwardKernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{input.getDataLength()}), Pointer.to(new float[]{scale}));
+            this.N = output.getShape()[0];
             //			}
-            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(input.dataLength), 1, 1,      // Grid dimension
+            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(input.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     forwardKernelParameters, null // Kernel- and extra parameters
@@ -129,8 +130,8 @@ public class LeakyReluKernel extends BaseKernel {
              * float* data_im,float* data_col,int n,int height,int width,int kh,int kw,int s,int p,int oh,int ow
 
              */
-            backwardKernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(diff.getGpuData()), Pointer.to(new int[]{input.dataLength}), Pointer.to(new float[]{scale}));
-            cuLaunchKernel(function_back, this.CAFFE_GET_BLOCKS(delta.dataLength), 1, 1,      // Grid dimension
+            backwardKernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(diff.getGpuData()), Pointer.to(new int[]{input.getDataLength()}), Pointer.to(new float[]{scale}));
+            cuLaunchKernel(function_back, this.CAFFE_GET_BLOCKS(delta.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     backwardKernelParameters, null // Kernel- and extra parameters
@@ -168,9 +169,9 @@ public class LeakyReluKernel extends BaseKernel {
              * float* data_im,float* data_col,int n,int height,int width,int kh,int kw,int s,int p,int oh,int ow
 
              */
-            backwardKernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(diff.getGpuData()), Pointer.to(new int[]{input.dataLength}), Pointer.to(new float[]{scale}));
+            backwardKernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(diff.getGpuData()), Pointer.to(new int[]{input.getDataLength()}), Pointer.to(new float[]{scale}));
             //			}
-            cuLaunchKernel(function_back_temp, this.CAFFE_GET_BLOCKS(delta.dataLength), 1, 1,      // Grid dimension
+            cuLaunchKernel(function_back_temp, this.CAFFE_GET_BLOCKS(delta.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     backwardKernelParameters, null // Kernel- and extra parameters

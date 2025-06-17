@@ -1,15 +1,16 @@
 package com.omega.engine.nn.layer.normalization.gpu;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.JsonUtils;
-import com.omega.utils.MatrixUtils;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.JsonUtils;
+import com.omega.common.utils.MatrixUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.RMSLayer;
 import com.omega.engine.nn.network.Transformer;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUdeviceptr;
@@ -157,10 +158,10 @@ public class RMSKernel extends BaseKernel {
         int batchSize = 0;
         switch (bnType) {
             case fully_bn:
-                batchSize = input.number * input.channel * input.height;
+                batchSize = input.getShape()[0] * input.getShape()[1] * input.getShape()[2];
                 break;
             case conv_bn:
-                batchSize = input.number * input.channel;
+                batchSize = input.getShape()[0] * input.getShape()[1];
                 break;
         }
         if (B != batchSize) {

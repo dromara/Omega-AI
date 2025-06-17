@@ -1,10 +1,10 @@
 package com.omega.engine.loss;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.JsonUtils;
-import com.omega.utils.MatrixOperation;
+import com.omega.common.utils.JsonUtils;
+import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 
 public abstract class LossFunction {
     public LossType lossType;
@@ -34,14 +34,14 @@ public abstract class LossFunction {
     public abstract LossType getLossType();
 
     public float gradientCheck(Tensor x, Tensor label) {
-        Tensor f1 = this.loss(new Tensor(x.number, x.channel, x.height, x.width, MatrixOperation.add(x.data, eta), true), label);
-        Tensor f2 = this.loss(new Tensor(x.number, x.channel, x.height, x.width, MatrixOperation.subtraction(x.data, eta), true), label);
+        Tensor f1 = this.loss(new Tensor(x.getShape()[0], x.getShape()[1], x.getShape()[2], x.getShape()[3], MatrixOperation.add(x.getData(), eta), true), label);
+        Tensor f2 = this.loss(new Tensor(x.getShape()[0], x.getShape()[1], x.getShape()[2], x.getShape()[3], MatrixOperation.subtraction(x.getData(), eta), true), label);
         Tensor diff = this.diff(x, label);
-        float[] temp = MatrixOperation.subtraction(f1.data, f2.data);
+        float[] temp = MatrixOperation.subtraction(f1.getData(), f2.getData());
         temp = MatrixOperation.division(temp, 2 * eta);
         System.out.println("diff:" + JsonUtils.toJson(diff.syncHost()));
         System.out.println("gradientCheck:" + JsonUtils.toJson(temp));
-        float[] error = MatrixOperation.subtraction(diff.data, temp);
+        float[] error = MatrixOperation.subtraction(diff.getData(), temp);
         return MatrixOperation.sum(error);
     }
 

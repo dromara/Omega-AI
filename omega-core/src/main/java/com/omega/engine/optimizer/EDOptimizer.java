@@ -1,24 +1,24 @@
 package com.omega.engine.optimizer;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.models.transformer.*;
-import com.omega.utils.MathUtils;
-import com.omega.utils.MatrixOperation;
-import com.omega.utils.MatrixUtils;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.MathUtils;
+import com.omega.common.utils.MatrixOperation;
+import com.omega.common.utils.MatrixUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.data.BaseData;
 import com.omega.engine.nn.grad.GradClipping;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.gpu.RoPEKernel;
 import com.omega.engine.nn.network.*;
 import com.omega.engine.optimizer.lr.LearnRateUpdate;
-import com.omega.data.asr.AudioDataset;
-import com.omega.data.rnn.IndexDataLoader;
-import com.omega.data.transformer.LVMPreTrainDataset;
-import com.omega.data.transformer.PreTrainDataset;
-import com.omega.data.transformer.PreTrainDataset2;
-import com.omega.data.transformer.SFTDataset;
-import com.omega.models.transformer.bpe.CNBpeTokenizer;
+import com.omega.engine.tensor.Tensor;
+import com.omega.example.asr.dataset.AudioDataset;
+import com.omega.example.rnn.data.IndexDataLoader;
+import com.omega.example.transformer.dataset.LVMPreTrainDataset;
+import com.omega.example.transformer.dataset.PreTrainDataset;
+import com.omega.example.transformer.dataset.PreTrainDataset2;
+import com.omega.example.transformer.dataset.SFTDataset;
+import com.omega.example.transformer.utils.*;
+import com.omega.example.transformer.utils.bpe.CNBpeTokenizer;
 import jcuda.driver.JCudaDriver;
 
 import java.math.BigDecimal;
@@ -175,16 +175,16 @@ public class EDOptimizer extends Optimizer {
                      *
                      */
                     if (this.loss.isHasGPU()) {
-                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / inputDecoder.number;
+                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / inputDecoder.getShape()[0];
                     } else {
-                        this.currentError = MatrixOperation.sum(this.loss.data) / inputDecoder.number;
+                        this.currentError = MatrixOperation.sum(this.loss.getData()) / inputDecoder.getShape()[0];
                     }
                     // train_loss += this.currentError;
                     output.syncHost();
                     // System.out.println(JsonUtils.toJson(inputEncoder.shape()));
                     // System.out.println(JsonUtils.toJson(output.shape()));
                     // System.out.println(JsonUtils.toJson(label.shape()));
-                    int time = output.number / batchSize;
+                    int time = output.getShape()[0] / batchSize;
                     float error = this.accuracy(output, label, time, batchSize);
                     // if(error > 99) {
                     // break;
@@ -285,16 +285,16 @@ public class EDOptimizer extends Optimizer {
                      *
                      */
                     if (this.loss.isHasGPU()) {
-                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / inputDecoder.number;
+                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / inputDecoder.getShape()[0];
                     } else {
-                        this.currentError = MatrixOperation.sum(this.loss.data) / inputDecoder.number;
+                        this.currentError = MatrixOperation.sum(this.loss.getData()) / inputDecoder.getShape()[0];
                     }
                     // train_loss += this.currentError;
                     output.syncHost();
                     // System.out.println(JsonUtils.toJson(inputEncoder.shape()));
                     // System.out.println(JsonUtils.toJson(output.shape()));
                     // System.out.println(JsonUtils.toJson(label.shape()));
-                    int time = output.number / batchSize;
+                    int time = output.getShape()[0] / batchSize;
                     float error = this.accuracy(output, label, time, batchSize);
                     // if(error > 99) {
                     // break;
@@ -400,16 +400,16 @@ public class EDOptimizer extends Optimizer {
                      *
                      */
                     if (this.loss.isHasGPU()) {
-                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.getShape()[0];
                     } else {
-                        this.currentError = MatrixOperation.sum(this.loss.data) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.getData()) / input.getShape()[0];
                     }
                     // train_loss += this.currentError;
                     output.syncHost();
                     // System.out.println(JsonUtils.toJson(inputEncoder.shape()));
                     // System.out.println(JsonUtils.toJson(output.shape()));
                     // System.out.println(JsonUtils.toJson(label.shape()));
-                    int time = output.number / batchSize;
+                    int time = output.getShape()[0] / batchSize;
                     float error = this.accuracyBatchFisrt(input, output, label, time, batchSize, trainingData.vocab, trainingData.dictionary.get("<pad>"));
                     // if(error > 99) {
                     // break;
@@ -516,16 +516,16 @@ public class EDOptimizer extends Optimizer {
                      *
                      */
                     if (this.loss.isHasGPU()) {
-                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.getShape()[0];
                     } else {
-                        this.currentError = MatrixOperation.sum(this.loss.data) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.getData()) / input.getShape()[0];
                     }
                     // train_loss += this.currentError;
                     output.syncHost();
                     // System.out.println(JsonUtils.toJson(inputEncoder.shape()));
                     // System.out.println(JsonUtils.toJson(output.shape()));
                     // System.out.println(JsonUtils.toJson(label.shape()));
-                    int time = output.number / batchSize;
+                    int time = output.getShape()[0] / batchSize;
                     float error = this.accuracyBatchFisrt(input, output, label, time, batchSize, trainingData.vocab, trainingData.dictionary.get("<pad>"));
                     // if(error > 99) {
                     // break;
@@ -632,16 +632,16 @@ public class EDOptimizer extends Optimizer {
                      *
                      */
                     if (this.loss.isHasGPU()) {
-                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.getShape()[0];
                     } else {
-                        this.currentError = MatrixOperation.sum(this.loss.data) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.getData()) / input.getShape()[0];
                     }
                     // train_loss += this.currentError;
                     output.syncHost();
                     // System.out.println(JsonUtils.toJson(inputEncoder.shape()));
                     // System.out.println(JsonUtils.toJson(output.shape()));
                     // System.out.println(JsonUtils.toJson(label.shape()));
-                    int time = output.number / batchSize;
+                    int time = output.getShape()[0] / batchSize;
                     float error = this.accuracyBatchFisrt(input, output, label, time, batchSize, trainingData.vocab, trainingData.dictionary.get("<pad>"));
                     // if(error > 99) {
                     // break;
@@ -748,16 +748,16 @@ public class EDOptimizer extends Optimizer {
                      *
                      */
                     if (this.loss.isHasGPU()) {
-                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.getShape()[0];
                     } else {
-                        this.currentError = MatrixOperation.sum(this.loss.data) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.getData()) / input.getShape()[0];
                     }
                     // train_loss += this.currentError;
                     output.syncHost();
                     // System.out.println(JsonUtils.toJson(inputEncoder.shape()));
                     // System.out.println(JsonUtils.toJson(output.shape()));
                     // System.out.println(JsonUtils.toJson(label.shape()));
-                    int time = output.number / batchSize;
+                    int time = output.getShape()[0] / batchSize;
                     float error = this.accuracyBatchFisrt(input, output, label, time, batchSize, trainingData.vocab, trainingData.dictionary.get("<pad>"));
                     // if(error > 99) {
                     // break;
@@ -869,16 +869,16 @@ public class EDOptimizer extends Optimizer {
                      *
                      */
                     if (this.loss.isHasGPU()) {
-                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.getShape()[0];
                     } else {
-                        this.currentError = MatrixOperation.sum(this.loss.data) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.getData()) / input.getShape()[0];
                     }
                     // train_loss += this.currentError;
                     output.syncHost();
                     // System.out.println(JsonUtils.toJson(inputEncoder.shape()));
                     // System.out.println(JsonUtils.toJson(output.shape()));
                     // System.out.println(JsonUtils.toJson(label.shape()));
-                    int time = output.number / batchSize;
+                    int time = output.getShape()[0] / batchSize;
                     float error = this.accuracyBatchFisrt(input, output, label, time, batchSize, trainingData.vocab, trainingData.dictionary.get("<pad>"));
                     String msg = "training[" + this.trainIndex + "]{" + it + "} (lr:" + this.network.learnRate + ") accuracy:{" + error + "%} train_loss:" + this.currentError + " [costTime:" + (System.nanoTime() - start) / 1e6 + "ms.]";
                     System.out.println(msg);
@@ -971,16 +971,16 @@ public class EDOptimizer extends Optimizer {
                      *
                      */
                     if (this.loss.isHasGPU()) {
-                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.getShape()[0];
                     } else {
-                        this.currentError = MatrixOperation.sum(this.loss.data) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.getData()) / input.getShape()[0];
                     }
                     // train_loss += this.currentError;
                     output.syncHost();
                     // System.out.println(JsonUtils.toJson(inputEncoder.shape()));
                     // System.out.println(JsonUtils.toJson(output.shape()));
                     // System.out.println(JsonUtils.toJson(label.shape()));
-                    int time = output.number / batchSize;
+                    int time = output.getShape()[0] / batchSize;
                     if (it % 20 == 0) {
                         float error = this.accuracyIdx(input, output, label, time, batchSize, trainingData.vocab, trainingData.dictionary.get("<pad>"));
                     }
@@ -1099,12 +1099,12 @@ public class EDOptimizer extends Optimizer {
                      *
                      */
                     if (this.loss.isHasGPU()) {
-                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.getShape()[0];
                     } else {
-                        this.currentError = MatrixOperation.sum(this.loss.data) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.getData()) / input.getShape()[0];
                     }
                     output.syncHost();
-                    int time = output.number / batchSize;
+                    int time = output.getShape()[0] / batchSize;
                     float error = this.accuracyBatchFisrt(input, output, label, time, batchSize, trainingData.tokenizer, trainingData.tokenizer.specials.get("<pad>"));
                     String msg = "training[" + this.trainIndex + "]{" + it + "} (lr:" + this.network.learnRate + ") accuracy:{" + error + "%} train_loss:" + this.currentError + " [costTime:" + (System.nanoTime() - start) / 1e6 + "ms.]";
                     System.out.println(msg);
@@ -1204,16 +1204,16 @@ public class EDOptimizer extends Optimizer {
                      *
                      */
                     if (this.loss.isHasGPU()) {
-                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.getShape()[0];
                     } else {
-                        this.currentError = MatrixOperation.sum(this.loss.data) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.getData()) / input.getShape()[0];
                     }
                     // train_loss += this.currentError;
                     output.syncHost();
                     // System.out.println(JsonUtils.toJson(inputEncoder.shape()));
                     // System.out.println(JsonUtils.toJson(output.shape()));
                     // System.out.println(JsonUtils.toJson(label.shape()));
-                    int time = output.number / batchSize;
+                    int time = output.getShape()[0] / batchSize;
                     float error = this.accuracyBatchFisrt(input, output, label, time, batchSize, trainingData.vocab);
                     // if(error > 99) {
                     // break;
@@ -1312,12 +1312,12 @@ public class EDOptimizer extends Optimizer {
                      *
                      */
                     if (this.loss.isHasGPU()) {
-                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.getShape()[0];
                     } else {
-                        this.currentError = MatrixOperation.sum(this.loss.data) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.getData()) / input.getShape()[0];
                     }
                     output.syncHost();
-                    int time = output.number / batchSize;
+                    int time = output.getShape()[0] / batchSize;
                     float error = this.accuracyIdx(input, output, label, time, batchSize, trainingData.vocab);
                     String msg = "training[" + this.trainIndex + "]{" + it + "} (lr:" + this.network.learnRate + ") accuracy:{" + error + "%} train_loss:" + this.currentError + " [costTime:" + (System.nanoTime() - start) / 1e6 + "ms.]";
                     System.out.println(msg);
@@ -1407,12 +1407,12 @@ public class EDOptimizer extends Optimizer {
                      *
                      */
                     if (this.loss.isHasGPU()) {
-                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.getShape()[0];
                     } else {
-                        this.currentError = MatrixOperation.sum(this.loss.data) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.getData()) / input.getShape()[0];
                     }
                     output.syncHost();
-                    int time = output.number / batchSize;
+                    int time = output.getShape()[0] / batchSize;
                     if (it % 20 == 0) {
                         float error = this.accuracyIdx(input, output, label, time, batchSize, trainingData.vocab, trainingData.dictionary.get("<pad>"));
                     }
@@ -1512,13 +1512,13 @@ public class EDOptimizer extends Optimizer {
                      *
                      */
                     if (this.loss.isHasGPU()) {
-                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.getShape()[0];
                     } else {
-                        this.currentError = MatrixOperation.sum(this.loss.data) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.getData()) / input.getShape()[0];
                     }
                     output.syncHost();
                     if (it % 20 == 0) {
-                        int time = output.number / batchSize;
+                        int time = output.getShape()[0] / batchSize;
                         if (trainingData.tokenizer != null) {
                             float error = this.accuracyBatchFisrt(input, output, label, time, batchSize, trainingData.tokenizer, pad);
                         } else {
@@ -1642,13 +1642,13 @@ public class EDOptimizer extends Optimizer {
                      *
                      */
                     if (this.loss.isHasGPU()) {
-                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.getShape()[0];
                     } else {
-                        this.currentError = MatrixOperation.sum(this.loss.data) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.getData()) / input.getShape()[0];
                     }
                     output.syncHost();
                     if (it % 20 == 0) {
-                        int time = output.number / batchSize;
+                        int time = output.getShape()[0] / batchSize;
                         if (trainingData.tokenizer != null) {
                             float error = this.accuracyBatchFisrt(input, output, label, time, batchSize, trainingData.tokenizer, pad);
                         } else {
@@ -1768,13 +1768,13 @@ public class EDOptimizer extends Optimizer {
                      *
                      */
                     if (this.loss.isHasGPU()) {
-                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.getShape()[0];
                     } else {
-                        this.currentError = MatrixOperation.sum(this.loss.data) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.getData()) / input.getShape()[0];
                     }
                     output.syncHost();
                     if (it % 20 == 0) {
-                        int time = output.number / batchSize;
+                        int time = output.getShape()[0] / batchSize;
                         if (trainingData.tokenizer != null) {
                             float error = this.accuracyBatchFisrt(input, tmpInput, output, label, tmpLabel, time, batchSize, trainingData.tokenizer, pad);
                         } else {
@@ -1894,13 +1894,13 @@ public class EDOptimizer extends Optimizer {
                      *
                      */
                     if (this.loss.isHasGPU()) {
-                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.getShape()[0];
                     } else {
-                        this.currentError = MatrixOperation.sum(this.loss.data) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.getData()) / input.getShape()[0];
                     }
                     output.syncHost();
                     if (it % 20 == 0) {
-                        int time = output.number / batchSize;
+                        int time = output.getShape()[0] / batchSize;
                         if (trainingData.tokenizer != null) {
                             float error = this.accuracyBatchFisrt(input, tmpInput, output, label, tmpLabel, time, batchSize, trainingData.tokenizer, pad);
                         } else {
@@ -2017,13 +2017,13 @@ public class EDOptimizer extends Optimizer {
                      *
                      */
                     if (this.loss.isHasGPU()) {
-                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.getShape()[0];
                     } else {
-                        this.currentError = MatrixOperation.sum(this.loss.data) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.getData()) / input.getShape()[0];
                     }
                     output.syncHost();
                     if (it % 20 == 0) {
-                        int time = output.number / batchSize;
+                        int time = output.getShape()[0] / batchSize;
                         if (trainingData.tokenizer != null) {
                             float error = this.accuracyBatchFisrt(input, tmpInput, output, label, tmpLabel, time, batchSize, trainingData.tokenizer, pad);
                         } else {
@@ -2118,12 +2118,12 @@ public class EDOptimizer extends Optimizer {
                      *
                      */
                     if (this.loss.isHasGPU()) {
-                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.getShape()[0];
                     } else {
-                        this.currentError = MatrixOperation.sum(this.loss.data) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.getData()) / input.getShape()[0];
                     }
                     output.syncHost();
-                    int time = output.number / batchSize;
+                    int time = output.getShape()[0] / batchSize;
                     float error = this.accuracyIdx(input, output, label, time, batchSize, trainingData.vocab);
                     String msg = "training[" + this.trainIndex + "]{" + it + "} (lr:" + this.network.learnRate + ") accuracy:{" + error + "%} train_loss:" + this.currentError + " [costTime:" + (System.nanoTime() - start) / 1e6 + "ms.]";
                     System.out.println(msg);
@@ -2229,12 +2229,12 @@ public class EDOptimizer extends Optimizer {
                      *
                      */
                     if (this.loss.isHasGPU()) {
-                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.getShape()[0];
                     } else {
-                        this.currentError = MatrixOperation.sum(this.loss.data) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.getData()) / input.getShape()[0];
                     }
                     if (it % 100 == 0) {
-                        int time = output.number / batchSize;
+                        int time = output.getShape()[0] / batchSize;
                         if (trainingData.tokenizer != null) {
                             float error = this.accuracyBatchFisrt(input, output, label, time, batchSize, trainingData.tokenizer, pad);
                         } else {
@@ -2369,16 +2369,16 @@ public class EDOptimizer extends Optimizer {
                      *
                      */
                     if (this.loss.isHasGPU()) {
-                        int N = input.number;
+                        int N = input.getShape()[0];
                         if (pad > -1) {
-                            N = input.number - MatrixUtils.countOccurrences(label.data, pad);
+                            N = input.getShape()[0] - MatrixUtils.countOccurrences(label.getData(), pad);
                         }
                         this.currentError = MatrixOperation.sum(this.loss.syncHost()) / N;
                     } else {
-                        this.currentError = MatrixOperation.sum(this.loss.data) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.getData()) / input.getShape()[0];
                     }
                     if (it % 100 == 0) {
-                        int time = output.number / batchSize;
+                        int time = output.getShape()[0] / batchSize;
                         if (trainingData.tokenizer != null) {
                             float error = this.accuracyBatchFisrt(input, output, label, time, batchSize, trainingData.tokenizer, pad);
                         } else {
@@ -2510,12 +2510,12 @@ public class EDOptimizer extends Optimizer {
                      *
                      */
                     if (this.loss.isHasGPU()) {
-                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.getShape()[0];
                     } else {
-                        this.currentError = MatrixOperation.sum(this.loss.data) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.getData()) / input.getShape()[0];
                     }
                     if (it % 100 == 0) {
-                        int time = output.number / batchSize;
+                        int time = output.getShape()[0] / batchSize;
                         if (trainingData.tokenizer != null) {
                             float error = this.accuracyBatchFisrt(input, output, label, time, batchSize, trainingData.tokenizer, pad);
                         } else {
@@ -2575,7 +2575,6 @@ public class EDOptimizer extends Optimizer {
                 Tensor output = null;
                 /**
                  * 遍历整个训练集
-                 *
                  */
                 for (int it = 0; it < trainingData.count_it; it++) {
                     if (Math.abs(this.currentError) <= this.error) {
@@ -2586,32 +2585,26 @@ public class EDOptimizer extends Optimizer {
                     this.lossDiff.clear();
                     /**
                      * 读取训练数据
-                     *
                      */
                     trainingData.loadData2(input, label, tmpInput, tmpLabel, it);
                     /**
                      * forward
-                     *
                      */
                     output = network.forward(cos, sin, input);
                     /**
                      * loss
-                     *
                      */
                     this.loss = network.loss(output, label, pad);
                     /**
                      * loss diff
-                     *
                      */
                     this.lossDiff = network.lossDiff(output, label, pad);
                     /**
                      * back
-                     *
                      */
                     network.back(cos, sin, this.lossDiff);
                     /**
                      * update
-                     *
                      */
                     if (gradAccSteps > 1) {
                         this.network.accGrad(gradAccSteps);
@@ -2624,15 +2617,14 @@ public class EDOptimizer extends Optimizer {
                     }
                     /**
                      * current time error
-                     *
                      */
                     if (this.loss.isHasGPU()) {
-                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.getShape()[0];
                     } else {
-                        this.currentError = MatrixOperation.sum(this.loss.data) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.getData()) / input.getShape()[0];
                     }
                     if (it % 100 == 0) {
-                        int time = output.number / batchSize;
+                        int time = output.getShape()[0] / batchSize;
                         if (trainingData.tokenizer != null) {
                             float error = this.accuracyBatchFisrt(input, output, label, time, batchSize, trainingData.tokenizer, pad);
                         } else {
@@ -2643,7 +2635,6 @@ public class EDOptimizer extends Optimizer {
                     System.out.println(msg);
                     /**
                      * dynamic update learnRate
-                     *
                      */
                     updateLRDynamic(i * trainingData.count_it + it, this.trainTime * trainingData.count_it);
                     this.batchIndex++;
@@ -2751,16 +2742,16 @@ public class EDOptimizer extends Optimizer {
                      *
                      */
                     if (this.loss.isHasGPU()) {
-                        int N = input.number;
+                        int N = input.getShape()[0];
                         if (pad > -1) {
-                            N = input.number - MatrixUtils.countOccurrences(label.data, pad);
+                            N = input.getShape()[0] - MatrixUtils.countOccurrences(label.getData(), pad);
                         }
                         this.currentError = MatrixOperation.sum(this.loss.syncHost()) / N;
                     } else {
-                        this.currentError = MatrixOperation.sum(this.loss.data) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.getData()) / input.getShape()[0];
                     }
                     if (it % 100 == 0) {
-                        int time = output.number / batchSize;
+                        int time = output.getShape()[0] / batchSize;
                         if (trainingData.tokenizer != null) {
                             float error = this.accuracyBatchFisrt(input, output, label, time, batchSize, trainingData.tokenizer, pad);
                         } else {
@@ -2884,12 +2875,12 @@ public class EDOptimizer extends Optimizer {
                      *
                      */
                     if (this.loss.isHasGPU()) {
-                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.getShape()[0];
                     } else {
-                        this.currentError = MatrixOperation.sum(this.loss.data) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.getData()) / input.getShape()[0];
                     }
                     if (it % 100 == 0) {
-                        int time = output.number / batchSize;
+                        int time = output.getShape()[0] / batchSize;
                         if (trainingData.tokenizer != null) {
                             float error = this.accuracyBatchFisrt(input, output, label, time, batchSize, trainingData.tokenizer, pad);
                         } else {
@@ -2982,9 +2973,9 @@ public class EDOptimizer extends Optimizer {
                      *
                      */
                     if (this.loss.isHasGPU()) {
-                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.getShape()[0];
                     } else {
-                        this.currentError = MatrixOperation.sum(this.loss.data) / input.number;
+                        this.currentError = MatrixOperation.sum(this.loss.getData()) / input.getShape()[0];
                     }
                     /**
                      * update
@@ -2998,7 +2989,7 @@ public class EDOptimizer extends Optimizer {
                         this.network.update();
                     }
                     if (it % 100 == 0) {
-                        int time = output.number / batchSize;
+                        int time = output.getShape()[0] / batchSize;
                         float error = this.accuracyBatchFisrt(output, label, time, batchSize, trainingData.tokenizer, pad);
                     }
                     String msg = "training[" + this.trainIndex + "]{" + it + "/" + trainingData.count_it + "} (lr:" + this.network.learnRate + ") train_loss:" + this.currentError + " [costTime:" + (System.nanoTime() - start) / 1e6 + "ms.]";
@@ -3099,7 +3090,7 @@ public class EDOptimizer extends Optimizer {
             String[] txts = output2TXT(output, trainingData, 1, 1);
             txt += txts[0];
             startInput.clear();
-            startInput.data[trainingData.ch_dictionary.get(txts[0])] = 1.0f;
+            startInput.getData()[trainingData.ch_dictionary.get(txts[0])] = 1.0f;
             startInput.hostToDevice();
         }
         System.out.println(txt);
@@ -3111,7 +3102,7 @@ public class EDOptimizer extends Optimizer {
         Tensor input = trainingData.loadByTxt(input_txt);
         Tensor en_hidden = network.encoder(input);
         en_hidden.syncHost();
-        Tensor de_hidden = new Tensor(1, 1, 1, en_hidden.width, en_hidden.getByNumber(en_hidden.number - 1), true);
+        Tensor de_hidden = new Tensor(1, 1, 1, en_hidden.getShape()[3], en_hidden.getByNumber(en_hidden.getShape()[0] - 1), true);
         float[] data = new float[trainingData.ch_characters];
         data[trainingData.ch_dictionary.get("<BOS>")] = 1.0f;
         Tensor startInput = new Tensor(1, 1, 1, trainingData.ch_characters, data, true);
@@ -3122,7 +3113,7 @@ public class EDOptimizer extends Optimizer {
             String[] txts = output2TXT(output, trainingData, 1, 1);
             txt += txts[0];
             startInput.clear();
-            startInput.data[trainingData.ch_dictionary.get(txts[0])] = 1.0f;
+            startInput.getData()[trainingData.ch_dictionary.get(txts[0])] = 1.0f;
             startInput.hostToDevice();
         }
         System.out.println(txt);
@@ -3158,12 +3149,12 @@ public class EDOptimizer extends Optimizer {
              *
              */
             if (this.loss.isHasGPU()) {
-                this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.number;
+                this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.getShape()[0];
             } else {
-                this.currentError = MatrixOperation.sum(this.loss.data) / input.number;
+                this.currentError = MatrixOperation.sum(this.loss.getData()) / input.getShape()[0];
             }
             output.syncHost();
-            int time = output.number / batchSize;
+            int time = output.getShape()[0] / batchSize;
             float error = this.accuracyBatchFisrt(input, output, label, time, batchSize, trainingData.vocab);
             String msg = "vail[" + this.trainIndex + "]{" + it + "} (lr:" + this.network.learnRate + ") accuracy:{" + error + "%} vail_loss:" + this.currentError + " [costTime:" + (System.nanoTime() - start) / 1e6 + "ms.]";
             System.out.println(msg);
@@ -3199,12 +3190,12 @@ public class EDOptimizer extends Optimizer {
              *
              */
             if (this.loss.isHasGPU()) {
-                this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.number;
+                this.currentError = MatrixOperation.sum(this.loss.syncHost()) / input.getShape()[0];
             } else {
-                this.currentError = MatrixOperation.sum(this.loss.data) / input.number;
+                this.currentError = MatrixOperation.sum(this.loss.getData()) / input.getShape()[0];
             }
             output.syncHost();
-            int time = output.number / batchSize;
+            int time = output.getShape()[0] / batchSize;
             float error = this.accuracyBatchFisrt(input, output, label, time, batchSize, trainingData.vocab, trainingData.dictionary.get("<pad>"));
             String msg = "vail[" + this.trainIndex + "]{" + it + "} (lr:" + this.network.learnRate + ") accuracy:{" + error + "%} vail_loss:" + this.currentError + " [costTime:" + (System.nanoTime() - start) / 1e6 + "ms.]";
             System.out.println(msg);

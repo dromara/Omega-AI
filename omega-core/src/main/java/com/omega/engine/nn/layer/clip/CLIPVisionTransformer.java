@@ -1,10 +1,10 @@
 package com.omega.engine.nn.layer.clip;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;
@@ -86,7 +86,7 @@ public class CLIPVisionTransformer extends Layer {
     @Override
     public void init() {
         // TODO Auto-generated method stub
-        this.number = this.input.number;
+        this.number = this.input.getShape()[0];
         this.time = this.network.time;
     }
 
@@ -104,7 +104,7 @@ public class CLIPVisionTransformer extends Layer {
     public void output() {
         // TODO Auto-generated method stub
         getEmbeddings().forward(input);
-        Tensor emb = getEmbeddings().getOutput().view(getEmbeddings().getOutput().number * getEmbeddings().getOutput().channel, 1, 1, getEmbeddings().getOutput().width);
+        Tensor emb = getEmbeddings().getOutput().view(getEmbeddings().getOutput().getShape()[0] * getEmbeddings().getOutput().getShape()[1], 1, 1, getEmbeddings().getOutput().getShape()[3]);
         getPreLayrnorm().forward(emb);
         Tensor out1 = getPreLayrnorm().getOutput();
         for (int i = 0; i < n_layers; i++) {

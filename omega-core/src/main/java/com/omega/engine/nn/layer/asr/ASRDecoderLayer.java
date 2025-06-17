@@ -1,10 +1,10 @@
 package com.omega.engine.nn.layer.asr;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 import java.io.IOException;
@@ -80,8 +80,8 @@ public class ASRDecoderLayer extends Layer {
     @Override
     public void init() {
         // TODO Auto-generated method stub
-        this.number = this.input.number;
-        if (this.tmp1 == null || this.tmp1.number != this.number) {
+        this.number = this.input.getShape()[0];
+        if (this.tmp1 == null || this.tmp1.getShape()[0] != this.number) {
             this.tmp1 = Tensor.createTensor(this.tmp1, number, 1, 1, embedDim, true);
             this.tmp2 = Tensor.createTensor(this.tmp2, number, 1, 1, embedDim, true);
             this.tmp3 = Tensor.createTensor(this.tmp3, number, 1, 1, embedDim, true);

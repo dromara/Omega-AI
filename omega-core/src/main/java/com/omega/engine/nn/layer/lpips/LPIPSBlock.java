@@ -1,11 +1,11 @@
 package com.omega.engine.nn.layer.lpips;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.ad.op.gpu.NormalizeKernel;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.lpips.gpu.LPIPSKernel;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -22,14 +22,18 @@ public class LPIPSBlock extends Layer {
     private int[] featuresIndex;
     private NormalizeKernel normKernel;
     private LPIPSKernel lpipsKernel;
+    private boolean scaling = false;
     private Tensor shift;
     private Tensor scale;
     private Tensor[] outputs;
     private Tensor[] feats0;
     private Tensor[] feats1;
     private Tensor[] diffs;
-
-    public LPIPSBlock(int channel, int height, int width, boolean dropout, String[] cfg, int numClass, int[] featuresIndex, Network network) {
+    
+    private Tensor scalingInput;
+    private Tensor scalingTaget;
+    
+    public LPIPSBlock(int channel, int height, int width, boolean dropout, String[] cfg, int numClass, int[] featuresIndex,boolean scaling, Network network) {
         this.network = network;
         this.dropout = dropout;
         this.channel = channel;
@@ -41,6 +45,7 @@ public class LPIPSBlock extends Layer {
         this.cfg = cfg;
         this.numClass = numClass;
         this.featuresIndex = featuresIndex;
+        this.scaling = scaling;
         initLayers();
     }
 
@@ -70,15 +75,15 @@ public class LPIPSBlock extends Layer {
             feats1 = new Tensor[featuresIndex.length];
             diffs = new Tensor[featuresIndex.length];
         }
-        if (output == null || output.number != this.input.number) {
-            output = Tensor.createGPUTensor(output, this.input.number, 1, 1, 1, true);
+        if (output == null || output.getShape()[0] != this.input.getShape()[0]) {
+            output = Tensor.createGPUTensor(output, this.input.getShape()[0], 1, 1, 1, true);
         } else {
             this.output.clearGPU();
         }
     }
 
     public void init(Tensor input) {
-        this.number = input.number;
+        this.number = input.getShape()[0];
         if (outputs == null) {
             outputs = new Tensor[featuresIndex.length];
             feats0 = new Tensor[featuresIndex.length];
@@ -92,9 +97,13 @@ public class LPIPSBlock extends Layer {
                 feats1[i] = outputs[i].createLike();
                 diffs[i] = outputs[i].createLike();
             }
+            if(scaling) {
+            	scalingInput = Tensor.createGPUTensor(scalingInput, input.getShape()[0], input.getShape()[1], input.getShape()[2], input.getShape()[3], true);
+            	scalingTaget = Tensor.createGPUTensor(scalingTaget, input.getShape()[0], input.getShape()[1], input.getShape()[2], input.getShape()[3], true);
+            }
         }
-        if (output == null || output.number != input.number) {
-            output = Tensor.createGPUTensor(output, input.number, 1, 1, 1, true);
+        if (output == null || output.getShape()[0] != input.getShape()[0]) {
+            output = Tensor.createGPUTensor(output, input.getShape()[0], 1, 1, 1, true);
         } else {
             this.output.clearGPU();
         }
@@ -118,10 +127,23 @@ public class LPIPSBlock extends Layer {
         // TODO Auto-generated method stub
         //		lpipsKernel.scaling(input, shift, scale, input);
         //		lpipsKernel.scaling(label, shift, scale, label);
-        vgg.featuresCopy(label, featuresIndex, feats1);
-        vgg.features(input, featuresIndex, outputs);
+    	
+    	if(scaling) {
+            lpipsKernel.scaling(label, shift, scale, scalingTaget);
+    		lpipsKernel.scaling(input, shift, scale, scalingInput);
+//    		int last1 = 16 * input.getOnceSize();
+//    		input.showDMByOffsetRed(last1, input.getOnceSize(), "input");
+            vgg.featuresCopy(scalingTaget, featuresIndex, feats1);
+            vgg.features(scalingInput, featuresIndex, outputs);
+    	}else {
+    		vgg.featuresCopy(label, featuresIndex, feats1);
+            vgg.features(input, featuresIndex, outputs);
+    	}
+        
         for (int i = 0; i < feats1.length; i++) {
             normKernel.l2norm1Dim(outputs[i], feats0[i]);
+//            int last1 = 17 * feats1[i].getOnceSize();
+//            feats0[i].showDMByOffsetRed(last1, feats0[i].getOnceSize(), "1["+i+"]");
             normKernel.l2norm1Dim(feats1[i], feats1[i]);
             lpipsKernel.lpip_l2(feats0[i], feats1[i], diffs[i]);  //y = (x1 - x2)^2
             lins.get(i).forward(diffs[i]);
@@ -142,10 +164,24 @@ public class LPIPSBlock extends Layer {
         for (int i = feats1.length - 1; i >= 0; i--) {
             Tensor_OP().mean2DimBack(delta, lins.get(i).getOutput());
             lins.get(i).back(lins.get(i).getOutput());
+
+//            int last1 = 17 * feats1[i].getOnceSize();
+//            feats0[i].showDMByOffsetRed(last1, feats0[i].getOnceSize(), "1["+i+"]");
+//            feats1[i].showDMByOffsetRed(last1, feats1[i].getOnceSize(), "2["+i+"]");
+            
             lpipsKernel.lpip_l2_backward(lins.get(i).diff, feats0[i], feats1[i], feats1[i]);
-            normKernel.l2norm1Dim_back2(outputs[i], feats1[i], feats0[i]);
+            
+//            feats1[i].showDMByOffsetRed(last1, feats1[i].getOnceSize(), "d["+i+"]");
+            
+            normKernel.l2norm1Dim_back3(outputs[i], feats1[i], feats0[i]);
+//            int last = 17 * feats0[i].getOnceSize();
+//            feats0[i].showDMByOffsetRed(last, feats0[i].getOnceSize(), "dx1["+i+"]");
         }
         Tensor diff = vgg.featuresBackward(feats0, featuresIndex);
+//        diff.showDM("dsix");
+        if(scaling) {
+        	lpipsKernel.scaling_backwad(diff, scale, diff);
+        }
         //		lpipsKernel.scaling_backwad(diff, scale, diff);
         this.diff = diff;
     }
@@ -261,12 +297,10 @@ public class LPIPSBlock extends Layer {
         initBack();
         /**
          * 设置梯度
-
          */
         this.setDelta(delta);
         /**
          * 计算梯度
-
          */
         this.diff();
     }
@@ -287,4 +321,3 @@ public class LPIPSBlock extends Layer {
     public void loadModel(RandomAccessFile inputStream) throws IOException {
     }
 }
-

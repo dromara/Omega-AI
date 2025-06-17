@@ -1,9 +1,9 @@
 package com.omega.engine.ad;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.ad.op.OP;
 import com.omega.engine.ad.op.OPType;
 import com.omega.engine.ad.op.TensorOP;
+import com.omega.engine.tensor.Tensor;
 
 import java.io.Serializable;
 
@@ -38,10 +38,10 @@ public class Tape implements Serializable {
                 int count = position[2];
                 switch (dims) {
                     case 0:
-                        setOutput(new Tensor(count, self.channel, self.height, self.width, self.isHasGPU(), g));
+                        setOutput(new Tensor(count, self.getShape()[1], self.getShape()[2], self.getShape()[3], self.isHasGPU(), g));
                         break;
                     case 1:
-                        setOutput(new Tensor(self.number, count, self.height, self.width, self.isHasGPU(), g));
+                        setOutput(new Tensor(self.getShape()[0], count, self.getShape()[2], self.getShape()[3], self.isHasGPU(), g));
                         break;
                 }
             } else {
@@ -50,19 +50,19 @@ public class Tape implements Serializable {
                         setOutput(new Tensor(1, 1, 1, 1, self.isHasGPU(), g));
                         break;
                     case 1:
-                        setOutput(new Tensor(self.number, 1, 1, 1, self.isHasGPU(), g));
+                        setOutput(new Tensor(self.getShape()[0], 1, 1, 1, self.isHasGPU(), g));
                         break;
                 }
             }
         } else {
             if (op.getOpType().equals(OPType.dot)) {
-                setOutput(new Tensor(self.number, self.channel, self.height, other.width, self.isHasGPU(), g));
+                setOutput(new Tensor(self.getShape()[0], self.getShape()[1], self.getShape()[2], other.getShape()[3], self.isHasGPU(), g));
             } else if (op.getOpType().equals(OPType.set)) {
                 this.output = self;
             } else if (op.getOpType().equals(OPType.transpose)) {
-                setOutput(new Tensor(self.width, self.channel, self.height, self.number, self.isHasGPU(), g));
+                setOutput(new Tensor(self.getShape()[3], self.getShape()[1], self.getShape()[2], self.getShape()[0], self.isHasGPU(), g));
             } else {
-                setOutput(new Tensor(self.number, self.channel, self.height, self.width, self.isHasGPU(), g));
+                setOutput(new Tensor(self.getShape()[0], self.getShape()[1], self.getShape()[2], self.getShape()[3], self.isHasGPU(), g));
             }
         }
         this.setOp(op);
@@ -151,7 +151,7 @@ public class Tape implements Serializable {
 
     public Tensor getTmp() {
         if (tmp == null) {
-            this.tmp = new Tensor(this.x.number, this.x.channel, this.x.height, this.x.width, this.x.isHasGPU());
+            this.tmp = new Tensor(this.x.getShape()[0], this.x.getShape()[1], this.x.getShape()[2], this.x.getShape()[3], this.x.isHasGPU());
         }
         return tmp;
     }

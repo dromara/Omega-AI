@@ -1,11 +1,11 @@
 package com.omega.engine.optimizer;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.JsonUtils;
-import com.omega.utils.MatrixOperation;
+import com.omega.common.utils.JsonUtils;
+import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.nn.data.BaseData;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.optimizer.lr.LearnRateUpdate;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * Batch Gradient Descent
@@ -59,7 +59,7 @@ public class BGDOptimizer extends Optimizer {
                  * current time error
 
                  */
-                this.currentError = MatrixOperation.sum(this.loss.data) / this.batchSize;
+                this.currentError = MatrixOperation.sum(this.loss.getData()) / this.batchSize;
                 /**
                  * back
 

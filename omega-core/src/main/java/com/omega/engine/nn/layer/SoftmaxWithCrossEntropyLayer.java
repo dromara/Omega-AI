@@ -1,7 +1,7 @@
 package com.omega.engine.nn.layer;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.gpu.SoftmaxKernel;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * SoftmaxWithCrossEntropyLayer
@@ -34,7 +34,7 @@ public class SoftmaxWithCrossEntropyLayer extends Layer {
         // TODO Auto-generated method stub
         this.initKernel();
         this.number = this.network.number;
-        if (output == null || output.number != number) {
+        if (output == null || output.getShape()[0] != number) {
             this.output = new Tensor(number, oChannel, oHeight, oWidth, true);
             this.diff = new Tensor(number, channel, height, width, true);
         }

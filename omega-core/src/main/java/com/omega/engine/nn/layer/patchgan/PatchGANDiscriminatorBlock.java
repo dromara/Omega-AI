@@ -1,19 +1,19 @@
 package com.omega.engine.nn.layer.patchgan;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.engine.nn.layer.ConvolutionLayer;
-import com.omega.engine.nn.layer.Layer;
-import com.omega.engine.nn.layer.LayerType;
-import com.omega.engine.nn.layer.ParamsInit;
-import com.omega.engine.nn.layer.active.LeakyReluLayer;
-import com.omega.engine.nn.layer.normalization.BNLayer;
-import com.omega.engine.nn.network.Network;
-import com.omega.engine.updater.UpdaterFactory;
-
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.omega.common.utils.RandomUtils;
+import com.omega.engine.nn.layer.ConvolutionLayer;
+import com.omega.engine.nn.layer.Layer;
+import com.omega.engine.nn.layer.LayerType;
+import com.omega.engine.nn.layer.active.LeakyReluLayer;
+import com.omega.engine.nn.layer.normalization.BNLayer;
+import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
+import com.omega.engine.updater.UpdaterFactory;
 
 public class PatchGANDiscriminatorBlock extends Layer {
     public List<Layer> layers;
@@ -43,12 +43,15 @@ public class PatchGANDiscriminatorBlock extends Layer {
         int iw = width;
         for (int i = 0; i < convChannels.length - 1; i++) {
             boolean hasBias = false;
-            if (i == 0) {
+            if (i == 0 || i == convChannels.length - 1) {
                 hasBias = true;
+            }else {
+            	hasBias = false;
             }
             ConvolutionLayer conv = new ConvolutionLayer(convChannels[i], convChannels[i + 1], iw, ih, kernels[i], kernels[i], paddings[i], strides[i], hasBias, network);
+            conv.weight.setData(RandomUtils.normal_(conv.weight.getDataLength(), 0.0f, 0.02f));
             conv.setUpdater(UpdaterFactory.create(this.network));
-            conv.paramsInit = ParamsInit.leaky_relu;
+
             layers.add(conv);
             Layer next = conv;
             if (i != convChannels.length - 2 && i != 0) {

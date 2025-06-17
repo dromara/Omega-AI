@@ -1,9 +1,10 @@
 package com.omega.engine.gpu.cudnn;
 
-import com.omega.common.tensor.Tensor;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.nn.layer.gpu.PoolingBaseKernel;
 import com.omega.engine.pooling.PoolingType;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.jcudnn.JCudnn;
 import jcuda.jcudnn.cudnnPoolingDescriptor;
@@ -98,7 +99,7 @@ public class PoolingCudnnKernel extends PoolingBaseKernel {
     }
 
     public void forward(Tensor input, Tensor output) {
-        this.init(input.number);
+        this.init(input.getShape()[0]);
         handle(JCudnn.cudnnPoolingForward(CudnnHandleManager.getHandle(), poolingDesc, alpha_P, xDesc, input.getGpuData(), beta_P, yDesc, output.getGpuData()));
     }
 

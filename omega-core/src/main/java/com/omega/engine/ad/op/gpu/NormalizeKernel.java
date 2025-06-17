@@ -1,9 +1,10 @@
 package com.omega.engine.ad.op.gpu;
 
-import com.omega.common.tensor.Tensor;
-import com.omega.utils.RandomUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
+import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
 import jcuda.runtime.cudaError;
@@ -25,6 +26,7 @@ public class NormalizeKernel extends BaseKernel implements Serializable {
     private CUfunction l2_norm_1dim_function;
     private CUfunction l2_norm_1dim_backward_function;
     private CUfunction l2_norm_1dim_backward_function2;
+    private CUfunction l2_norm_1dim_backward_function3;
 
     //	private CUfunction norm_grad_function;
     public NormalizeKernel(CUDAManager cudaManager) {
@@ -35,6 +37,7 @@ public class NormalizeKernel extends BaseKernel implements Serializable {
         l2_norm_1dim_function = cudaManager.getLocalFunctionByModule("NormalizeKernel.cu", "l2norm_1dim_kernel");
         l2_norm_1dim_backward_function = cudaManager.getLocalFunctionByModule("NormalizeKernel.cu", "l2norm_1dim_backward_kernel");
         l2_norm_1dim_backward_function2 = cudaManager.getLocalFunctionByModule("NormalizeKernel.cu", "l2norm_1dim_backward_kernel2");
+        l2_norm_1dim_backward_function3 = cudaManager.getLocalFunctionByModule("NormalizeKernel.cu", "l2norm_1dim_backward_kernel3");
         //		norm_grad_function = CUDAModules.getLocalFunctionByModule("NormalizeKernel.cu", "NormalizeGradientKernel");
     }
 
@@ -43,7 +46,7 @@ public class NormalizeKernel extends BaseKernel implements Serializable {
         int C = 3;
         int H = 2;
         int W = 2;
-        float[] data = RandomUtils.order(N * C * H * W, 0.1f, 0.1f);
+        float[] data = RandomUtils.order(N * C * H * W, 0.0001f, 0.0001f);
         Tensor input = new Tensor(N, C, H, W, data, true);
         Tensor dx = new Tensor(N, C, H, W, true);
         Tensor output = new Tensor(N, C, H, W, true);
@@ -64,17 +67,18 @@ public class NormalizeKernel extends BaseKernel implements Serializable {
         //    	kernel.l2norm1Dim_back2(input, delta, dx);
         //
         //    	dx.showDM();
-        input.view(N * C * H, 1, 1, W);
-        output.view(N * C * H, 1, 1, W);
-        kernel.l2norm(input, output);
+//        input.view(N * C * H, 1, 1, W);
+//        output.view(N * C * H, 1, 1, W);
+        kernel.l2norm1Dim(input, output);
         input.showDM();
         output.showDM();
-        input.view(N * C * H, 1, 1, W);
-        output.view(N * C * H, 1, 1, W);
-        delta.view(N * C * H, 1, 1, W);
-        dx.view(N * C * H, 1, 1, W);
-        kernel.l2norm_back(input, output, delta, dx);
+//        input.view(N * C * H, 1, 1, W);
+//        output.view(N * C * H, 1, 1, W);
+//        delta.view(N * C * H, 1, 1, W);
+//        dx.view(N * C * H, 1, 1, W);
+        kernel.l2norm1Dim_back3(input, delta, dx);
         dx.showDM();
+
         //    	Tensor output2 = new Tensor(N, C, 1, 1, true);
         //
         //    	TensorOP.mean2Dim(input, output2);
@@ -131,8 +135,8 @@ public class NormalizeKernel extends BaseKernel implements Serializable {
              * int N, float *x,float *out, float *dx, int filters
 
              */
-            Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{x.number * x.channel}), Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(new int[]{x.height * x.width}));
-            checkCUDA(cuLaunchKernel(l2_norm_function, CAFFE_GET_BLOCKS(x.number * x.channel), 1, 1,      // Grid dimension
+            Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{x.getShape()[0] * x.getShape()[1]}), Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(new int[]{x.getShape()[2] * x.getShape()[3]}));
+            checkCUDA(cuLaunchKernel(l2_norm_function, CAFFE_GET_BLOCKS(x.getShape()[0] * x.getShape()[1]), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameter, null // Kernel- and extra parameters
@@ -149,8 +153,8 @@ public class NormalizeKernel extends BaseKernel implements Serializable {
              * int N, float *x,float *out,float *delta, float *dx, int filters
 
              */
-            Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{x.number * x.channel}), Pointer.to(x.getGpuData()), Pointer.to(out.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(dx.getGpuData()), Pointer.to(new int[]{x.height * x.width}));
-            checkCUDA(cuLaunchKernel(l2_norm_backward_function, CAFFE_GET_BLOCKS(x.number * x.channel), 1, 1,      // Grid dimension
+            Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{x.getShape()[0] * x.getShape()[1]}), Pointer.to(x.getGpuData()), Pointer.to(out.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(dx.getGpuData()), Pointer.to(new int[]{x.getShape()[2] * x.getShape()[3]}));
+            checkCUDA(cuLaunchKernel(l2_norm_backward_function, CAFFE_GET_BLOCKS(x.getShape()[0] * x.getShape()[1]), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameter, null // Kernel- and extra parameters
@@ -167,8 +171,8 @@ public class NormalizeKernel extends BaseKernel implements Serializable {
              * int N, float *x,float *out, int batch, int filters, int spatial, float eps
 
              */
-            Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{x.number * x.height * x.width}), Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(new int[]{x.number}), Pointer.to(new int[]{x.channel}), Pointer.to(new int[]{x.height * x.width}), Pointer.to(new float[]{1e-10f}));
-            checkCUDA(cuLaunchKernel(l2_norm_1dim_function, CAFFE_GET_BLOCKS(x.number * x.height * x.width), 1, 1,      // Grid dimension
+            Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{x.getShape()[0] * x.getShape()[2] * x.getShape()[3]}), Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(new int[]{x.getShape()[0]}), Pointer.to(new int[]{x.getShape()[1]}), Pointer.to(new int[]{x.getShape()[2] * x.getShape()[3]}), Pointer.to(new float[]{1e-10f}));
+            checkCUDA(cuLaunchKernel(l2_norm_1dim_function, CAFFE_GET_BLOCKS(x.getShape()[0] * x.getShape()[2] * x.getShape()[3]), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameter, null // Kernel- and extra parameters
@@ -185,8 +189,8 @@ public class NormalizeKernel extends BaseKernel implements Serializable {
              * int N, float *x,float *out,float *delta, float *dx, int batch, int filters, int spatial, float eps
 
              */
-            Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{x.number * x.height * x.width}), Pointer.to(x.getGpuData()), Pointer.to(out.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(dx.getGpuData()), Pointer.to(new int[]{x.number}), Pointer.to(new int[]{x.channel}), Pointer.to(new int[]{x.height * x.width}), Pointer.to(new float[]{1e-10f}));
-            checkCUDA(cuLaunchKernel(l2_norm_1dim_backward_function, CAFFE_GET_BLOCKS(x.number * x.height * x.width), 1, 1,      // Grid dimension
+            Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{x.getShape()[0] * x.getShape()[2] * x.getShape()[3]}), Pointer.to(x.getGpuData()), Pointer.to(out.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(dx.getGpuData()), Pointer.to(new int[]{x.getShape()[0]}), Pointer.to(new int[]{x.getShape()[1]}), Pointer.to(new int[]{x.getShape()[2] * x.getShape()[3]}), Pointer.to(new float[]{1e-10f}));
+            checkCUDA(cuLaunchKernel(l2_norm_1dim_backward_function, CAFFE_GET_BLOCKS(x.getShape()[0] * x.getShape()[2] * x.getShape()[3]), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameter, null // Kernel- and extra parameters
@@ -203,8 +207,8 @@ public class NormalizeKernel extends BaseKernel implements Serializable {
              * int N, float *x,float *delta, float *dx, int batch, int filters, int spatial, float eps
 
              */
-            Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{x.number * x.height * x.width}), Pointer.to(x.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(dx.getGpuData()), Pointer.to(new int[]{x.number}), Pointer.to(new int[]{x.channel}), Pointer.to(new int[]{x.height * x.width}), Pointer.to(new float[]{1e-10f}));
-            checkCUDA(cuLaunchKernel(l2_norm_1dim_backward_function2, CAFFE_GET_BLOCKS(x.number * x.height * x.width), 1, 1,      // Grid dimension
+            Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{x.getShape()[0] * x.getShape()[2] * x.getShape()[3]}), Pointer.to(x.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(dx.getGpuData()), Pointer.to(new int[]{x.getShape()[0]}), Pointer.to(new int[]{x.getShape()[1]}), Pointer.to(new int[]{x.getShape()[2] * x.getShape()[3]}), Pointer.to(new float[]{1e-10f}));
+            checkCUDA(cuLaunchKernel(l2_norm_1dim_backward_function2, CAFFE_GET_BLOCKS(x.getShape()[0] * x.getShape()[2] * x.getShape()[3]), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameter, null // Kernel- and extra parameters
@@ -214,7 +218,25 @@ public class NormalizeKernel extends BaseKernel implements Serializable {
             e.printStackTrace();
         }
     }
+    
+    public void l2norm1Dim_back3(Tensor x, Tensor delta, Tensor dx) {
+        try {
+            /**
+             * int N, float *x,float *delta, float *dx, int batch, int filters, int spatial, float eps
 
+             */
+            Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{x.getShape()[0] * x.getShape()[2] * x.getShape()[3]}), Pointer.to(x.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(dx.getGpuData()), Pointer.to(new int[]{x.getShape()[0]}), Pointer.to(new int[]{x.getShape()[1]}), Pointer.to(new int[]{x.getShape()[2] * x.getShape()[3]}), Pointer.to(new float[]{1e-10f}));
+            checkCUDA(cuLaunchKernel(l2_norm_1dim_backward_function3, CAFFE_GET_BLOCKS(x.getShape()[0] * x.getShape()[2] * x.getShape()[3]), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameter, null // Kernel- and extra parameters
+            ));
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
     public int CAFFE_GET_BLOCKS(int N) {
         return (N + CAFFE_CUDA_NUM_THREADS - 1) / CAFFE_CUDA_NUM_THREADS;
     }
