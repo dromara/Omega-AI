@@ -8,6 +8,7 @@ import java.io.RandomAccessFile;
 import java.util.Map;
 
 import com.omega.common.utils.RandomUtils;
+import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.gpu.GPUOP;
 import com.omega.engine.gpu.cudnn.SoftmaxCudnnKernel;
 import com.omega.engine.nn.layer.FullyLayer;
@@ -31,6 +32,8 @@ import com.omega.example.transformer.utils.LagJsonReader;
  * @author Administrator
  */
 public class DiTCrossAttentionLayer2 extends Layer {
+	
+    private int batchSize = 1;
 	
     public LNLayer qNorm;
     public LNLayer kNorm;
@@ -62,7 +65,9 @@ public class DiTCrossAttentionLayer2 extends Layer {
     private Tensor attn;
     private Tensor oi;
     private Tensor dattn;
-    private int batchSize = 1;
+
+    private Tensor temp_out;
+    private Tensor temp_key_out;
 
     public DiTCrossAttentionLayer2(int embedDim, int kvDim, int headNum, int time, int kvTime, boolean bias, boolean qkNorm) {
     	this.qkNorm = qkNorm;
@@ -259,6 +264,29 @@ public class DiTCrossAttentionLayer2 extends Layer {
             this.oi = Tensor.createGPUTensor(this.oi, batchSize * time, 1, 1, embedDim, true);
         }
     }
+    
+    public void init_eval(Tensor input,Tensor context) {
+        // TODO Auto-generated method stub
+        this.number = input.number;
+        this.batchSize = this.number / time;
+        
+        this.rq = CUDAMemoryManager.getCache("dit_block_cross_rq", batchSize, time, headNum, dk);
+    	this.qt = CUDAMemoryManager.getCache("dit_block_cross_qt", batchSize, headNum, time, dk);
+    	this.kt = CUDAMemoryManager.getCache("dit_block_cross_kt", batchSize, headNum, kvTime, dk);
+    	this.vt = CUDAMemoryManager.getCache("dit_block_cross_vt", batchSize, headNum, kvTime, dk);
+        
+    	if (time < dk) {
+            this.temp = CUDAMemoryManager.getCache("dit_block_cross_temp", batchSize, headNum, time, dk);
+        } else {
+            this.temp = CUDAMemoryManager.getCache("dit_block_cross_temp", batchSize, time, kvTime, dk);
+        }
+    	
+    	this.attn = CUDAMemoryManager.getCache("dit_block_cross_attn", batchSize, time, kvTime, dk);
+    	this.oi = CUDAMemoryManager.getCache("dit_block_cross_oi", batchSize * time, 1, 1, embedDim);
+    	this.output = CUDAMemoryManager.getCache("dit_block_cross_out", input.number, input.channel, input.height, input.width);
+        this.temp_out = CUDAMemoryManager.getCache("dit_block_cross_temp_out", input.number, input.channel, input.height, input.width);
+        this.temp_key_out = CUDAMemoryManager.getCache("dit_block_cross_temp_key_out", context.number, input.channel, input.height, input.width);
+    }
 
     @Override
     public void initBack() {
@@ -344,6 +372,37 @@ public class DiTCrossAttentionLayer2 extends Layer {
         //		oLinerLayer.bias.showDM("olb");
         this.output = this.oLinerLayer.getOutput();
         //		output.showDMByOffsetRed(10 * output.height * output.width, output.height * output.width, "output----");
+    }
+    
+    public void output_eval(Tensor context,Tensor cos,Tensor sin) {
+        // TODO Auto-generated method stub
+        //		context.showShape();
+        this.qLinerLayer.forward(this.input, temp_out);
+        Tensor query = this.qLinerLayer.getOutput().view(batchSize, time, headNum, dk);
+        ropeKernel.forward2d(cos, sin, query, rq, time, headNum, dk);
+        Tensor_OP().permute(rq, qt, new int[]{0, 2, 1, 3});
+
+        this.kLinerLayer.forward(context, temp_key_out);
+        Tensor key = temp_key_out.view(batchSize, kvTime, headNum, dk);
+        Tensor_OP().permute(key, kt, new int[]{0, 2, 1, 3});
+        
+        temp_key_out.viewOrg();
+        this.vLinerLayer.forward(context, temp_key_out);
+        Tensor value = this.vLinerLayer.getOutput().view(batchSize, kvTime, headNum, dk);
+        Tensor_OP().permute(value, vt, new int[]{0, 2, 1, 3});
+ 
+        if(qkNorm) {
+        	qNorm.forward(qt, qt);
+        	kNorm.forward(kt, kt);
+        }
+        scaledDotProductAttention(qt, kt, vt);
+        
+        Tensor vaccum = temp;
+        attentionKernel.unpermute(vaccum, oi, batchSize, time, headNum, dk);
+        this.getoLinerLayer().forward(oi, output);
+        this.output = this.oLinerLayer.getOutput();
+        temp_out.viewOrg();
+        temp_key_out.viewOrg();
     }
 
     public void scaledDotProductAttention(Tensor query, Tensor key, Tensor value) {
@@ -524,18 +583,34 @@ public class DiTCrossAttentionLayer2 extends Layer {
     
     public void forward(Tensor input, Tensor context,Tensor cos,Tensor sin) {
         // TODO Auto-generated method stub
-        /**
-         * 参数初始化
-         */
-        this.init(input);
-        /**
-         * 设置输入
-         */
-        this.setInput(input);
-        /**
-         * 计算输出
-         */
-        this.output(context, cos, sin);
+    	if(network.RUN_MODEL == RunModel.EVAL) {
+    		/**
+             * 参数初始化
+             */
+            this.init_eval(input, context);
+            /**
+             * 设置输入
+             */
+            this.setInput(input);
+            /**
+             * 计算输出
+             */
+            this.output_eval(context, cos, sin);
+    	}else {
+    		/**
+             * 参数初始化
+             */
+            this.init(input);
+            /**
+             * 设置输入
+             */
+            this.setInput(input);
+            /**
+             * 计算输出
+             */
+            this.output(context, cos, sin);
+    	}
+        
     }
 
     @Override

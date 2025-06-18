@@ -191,6 +191,9 @@ public class VQVAE2 extends Network {
     }
 
     public void quantizer(Tensor ze) {
+    	if(z_flattened != null) {
+    		 z_flattened.viewOrg();
+    	}
         if (this.z_flattened == null || this.z_flattened.number != ze.number) {
             this.z_flattened = Tensor.createGPUTensor(this.z_flattened, ze.number, ze.height, ze.width, this.latendDim, true);
             this.idx = Tensor.createGPUTensor(this.idx, ze.number * ze.height * ze.width, 1, 1, 1, true);
@@ -198,11 +201,6 @@ public class VQVAE2 extends Network {
             //			if(this.RUN_MODEL == RunModel.TRAIN) {
             //				this.avg_probs = Tensor.createGPUTensor(this.avg_probs, 1, 1, 1, num_vq_embeddings, true);
             //				this.avg_probs_log = Tensor.createGPUTensor(this.avg_probs_log, 1, 1, 1, num_vq_embeddings, true);
-            //			}
-        } else {
-            z_flattened.viewOrg();
-            //			if(this.RUN_MODEL == RunModel.TRAIN) {
-            //				avg_probs.clear();
             //			}
         }
         //		ze.showDMByOffsetRed(0, 10, "ze");

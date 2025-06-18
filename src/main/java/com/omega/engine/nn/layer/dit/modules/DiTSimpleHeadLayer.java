@@ -18,35 +18,35 @@ import com.omega.engine.updater.UpdaterFactory;
  * @author Administrator
  */
 public class DiTSimpleHeadLayer extends Layer {
-    private int iChannel = 0;
-    private int oChannel = 1;
+    private int inDim = 0;
+    private int outDim = 1;
     private boolean bias = false;
 
     public FullyLayer linear1;
     private GeluLayer active;
     public FullyLayer linear2;
 
-    public DiTSimpleHeadLayer(int iChannel, int oChannel, boolean bias) {
-        this.iChannel = iChannel;
-        this.oChannel = oChannel;
+    public DiTSimpleHeadLayer(int inDim, int outDim, boolean bias) {
+        this.inDim = inDim;
+        this.outDim = outDim;
         this.bias = bias;
         this.oChannel = 1;
         this.oHeight = 1;
-        this.oWidth = oChannel;
+        this.oWidth = outDim;
         this.initLayers();
     }
 
-    public DiTSimpleHeadLayer(int iChannel, int oChannel, boolean bias, Network network) {
+    public DiTSimpleHeadLayer(int inDim, int outDim, boolean bias, Network network) {
         this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
         }
-        this.iChannel = iChannel;
-        this.oChannel = oChannel;
+        this.inDim = inDim;
+        this.outDim = outDim;
         this.bias = bias;
         this.oChannel = 1;
         this.oHeight = 1;
-        this.oWidth = oChannel;
+        this.oWidth = outDim;
         this.initLayers();
     }
 
@@ -54,14 +54,14 @@ public class DiTSimpleHeadLayer extends Layer {
     }
 
     public void initLayers() {
-        this.linear1 = new FullyLayer(iChannel, iChannel + oChannel, bias, network);
-        this.linear1.weight.setData(RandomUtils.xavierUniform(iChannel * (iChannel + oChannel), iChannel, (iChannel + oChannel), 1.0f));
+        this.linear1 = new FullyLayer(inDim, inDim + outDim, bias, network);
+        this.linear1.weight.setData(RandomUtils.xavierUniform(inDim * (inDim + outDim), inDim, (inDim + outDim), 1.0f));
         if(this.linear1.bias != null) {
         	this.linear1.bias.clearGPU();
         }
         this.active = new GeluLayer(linear1);
-        this.linear2 = new FullyLayer((iChannel + oChannel), oChannel, bias, network);
-        this.linear2.weight.setData(RandomUtils.xavierUniform((iChannel + oChannel) * oChannel, (iChannel + oChannel), oChannel, 1.0f));
+        this.linear2 = new FullyLayer((inDim + outDim), outDim, bias, network);
+        this.linear2.weight.setData(RandomUtils.xavierUniform((inDim + outDim) * outDim, (inDim + outDim), outDim, 1.0f));
         if(this.linear2.bias != null) {
         	this.linear2.bias.clearGPU();
         }

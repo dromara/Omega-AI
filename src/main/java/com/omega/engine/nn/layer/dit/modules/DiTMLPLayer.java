@@ -4,11 +4,13 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 
 import com.omega.common.utils.RandomUtils;
+import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.active.GeluLayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
@@ -25,6 +27,9 @@ public class DiTMLPLayer extends Layer {
     public FullyLayer linear1;
     private GeluLayer active;
     public FullyLayer linear2;
+    
+    private Tensor tmp1;
+    private Tensor tmp2;
 
     public DiTMLPLayer(int embedDim, int nChannel, boolean bias) {
         this.embedDim = embedDim;
@@ -71,6 +76,10 @@ public class DiTMLPLayer extends Layer {
     public void init() {
         // TODO Auto-generated method stub
         this.number = this.input.number;
+        if(network.RUN_MODEL == RunModel.EVAL) {
+        	this.tmp1 =  CUDAMemoryManager.getCache("dit_block_mlp_tmp1", number, linear1.oChannel, linear1.oHeight, linear1.oWidth);
+        	this.tmp2 =  CUDAMemoryManager.getCache("dit_block_mlp_tmp2", number, linear2.oChannel, linear2.oHeight, linear2.oWidth);
+        }
     }
 
     @Override
@@ -91,7 +100,15 @@ public class DiTMLPLayer extends Layer {
         linear2.forward(active.getOutput());
         this.output = linear2.getOutput();
     }
-
+    
+    public void output_eval() {
+        // TODO Auto-generated method stub
+        linear1.forward(input, tmp1);
+        active.forward(linear1.getOutput(), tmp1);
+        linear2.forward(active.getOutput(), tmp2);
+        this.output = linear2.getOutput();
+    }
+    
     @Override
     public Tensor getOutput() {
         // TODO Auto-generated method stub
@@ -157,7 +174,11 @@ public class DiTMLPLayer extends Layer {
         /**
          * 计算输出
          */
-        this.output();
+        if(network.RUN_MODEL == RunModel.EVAL) {
+        	this.output_eval();
+        }else {
+        	this.output();
+        }
     }
 
     @Override

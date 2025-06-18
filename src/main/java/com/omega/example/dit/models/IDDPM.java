@@ -7,6 +7,7 @@ import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.nn.network.DiT;
 import com.omega.engine.nn.network.DiT_ORG;
+import com.omega.engine.nn.network.DiT_ORG_SRA;
 import com.omega.engine.nn.network.DiT_SRA;
 import com.omega.engine.nn.network.DiffusionUNetCond2;
 import com.omega.engine.tensor.Tensor;
@@ -202,6 +203,41 @@ public class IDDPM {
 		return noiseInput;
 	}
 	
+	public Tensor p_sample(DiT_ORG_SRA network, Tensor cos, Tensor sin, Tensor noiseInput, Tensor noise, Tensor condInput, Tensor t, Tensor predMean, Tensor predVar) {
+		
+		RandomUtils.gaussianRandom(noiseInput, 0, 1);
+		
+		Tensor xt = noiseInput;
+		
+		for(int time = diffusion_steps - 1;time>=0;time--) {
+	        for (int i = 0; i < noiseInput.number; i++) {
+	            t.data[i] = time;
+	        }
+	        t.hostToDevice();
+	        Tensor pred = network.forward(xt, t, condInput, cos, sin);
+	        network.tensorOP.getByChannel(pred, predMean, 0, 4);
+            network.tensorOP.getByChannel(pred, predVar, 4, 4);
+            
+            p_mean_variance(predMean, predVar, t, xt, pred_xstart, predMean, predVar);
+            
+            network.tensorOP.mul(predVar, 0.5f, noiseInput);
+        	network.tensorOP.exp(noiseInput, noiseInput);
+            
+            if(time > 0) {
+            	RandomUtils.gaussianRandom(noise, 0, 1);
+            	network.tensorOP.mul(noiseInput, noise, noiseInput);
+            	network.tensorOP.add(predMean, noiseInput, noiseInput);
+            }else {
+            	network.tensorOP.add(predMean, noiseInput, noiseInput);
+            }
+            
+            xt = noiseInput;
+            System.err.println("p_sample:" + time);
+		}
+		
+		return noiseInput;
+	}
+	
 	public Tensor p_sample(DiT_ORG network, Tensor cos, Tensor sin, Tensor noiseInput, Tensor noise, Tensor condInput, Tensor t, Tensor predMean, Tensor predVar) {
 		
 		RandomUtils.gaussianRandom(noiseInput, 0, 1);
@@ -325,7 +361,7 @@ public class IDDPM {
 	}
 	
 	public Tensor min_log(Tensor t,Tensor x) {
-		if(minLog == null || minLog.checkShape(x)){
+		if(minLog == null || !minLog.checkShape(x)){
 			minLog = Tensor.createGPUTensor(minLog, x.shape(), true);
 		}
 		iddpmKernel.extract_into(posterior_log_variance_clipped_t, t, minLog);
@@ -333,7 +369,7 @@ public class IDDPM {
 	}
 	
 	public Tensor max_log(Tensor t,Tensor x) {
-		if(maxLog == null || maxLog.checkShape(x)){
+		if(maxLog == null || !maxLog.checkShape(x)){
 			maxLog = Tensor.createGPUTensor(maxLog, x.shape(), true);
 		}
 		iddpmKernel.extract_into(log_betas_t, t, maxLog);
@@ -357,7 +393,7 @@ public class IDDPM {
 	}
 	
 	public Tensor normal_kl(Tensor tureMean,Tensor trueLogVar,Tensor mean,Tensor logvar) {
-		if(kl == null || kl.checkShape(mean)) {
+		if(kl == null || !kl.checkShape(mean)) {
 			kl = Tensor.createGPUTensor(kl, mean.shape(), true);
 		}
 		iddpmKernel.normal_kl(tureMean, trueLogVar, mean, logvar, kl);
@@ -365,7 +401,7 @@ public class IDDPM {
 	}
 	
 	public Tensor normal_kl_back(Tensor tureMean,Tensor trueLogVar,Tensor mean,Tensor logvar) {
-		if(d_logvarKL == null || d_logvarKL.checkShape(logvar)) {
+		if(d_logvarKL == null || !d_logvarKL.checkShape(logvar)) {
 			d_logvarKL = Tensor.createGPUTensor(d_logvarKL, logvar.shape(), true);
 		}
 		iddpmKernel.normal_kl_back(tureMean, trueLogVar, mean, logvar, d_logvarKL);
@@ -373,7 +409,7 @@ public class IDDPM {
 	}
 	
 	public Tensor discretized_gaussian_log_likelihood(Tensor xStart, Tensor mean, Tensor logvar) {
-		if(decoder_nll == null || decoder_nll.checkShape(xStart)) {
+		if(decoder_nll == null || !decoder_nll.checkShape(xStart)) {
 			decoder_nll = Tensor.createGPUTensor(decoder_nll, xStart.shape(), true);
 		}
 //		xStart.showDM("xStart");
@@ -383,7 +419,7 @@ public class IDDPM {
 	}
 	
 	public Tensor discretized_gaussian_log_likelihood_back(Tensor xStart, Tensor mean, Tensor logvar) {
-		if(d_logvar1 == null || d_logvar1.checkShape(xStart)) {
+		if(d_logvar1 == null || !d_logvar1.checkShape(xStart)) {
 			d_logvar1 = Tensor.createGPUTensor(d_logvar1, xStart.shape(), true);
 		}
 		iddpmKernel.discretized_gaussian_log_likelihood_back(xStart, mean, logvar, d_logvar1);
@@ -391,10 +427,10 @@ public class IDDPM {
 	}
 	
 	public Tensor vb_terms_bpd(Tensor out_m,Tensor out_v,Tensor t,Tensor xStart,Tensor xt) {
-		if(vb == null || vb.checkShape(out_m)) {
+		if(vb == null || vb.number != out_m.number) {
 			vb = Tensor.createGPUTensor(vb, out_m.number, 1, 1, 1, true);
 		}
-		if(tureMean == null || tureMean.checkShape(out_m)) {
+		if(tureMean == null || !tureMean.checkShape(out_m)) {
 			tureMean = Tensor.createGPUTensor(tureMean, out_m.shape(), true);
 			trueLogVar = Tensor.createGPUTensor(trueLogVar, out_m.shape(), true);
 			pred_xstart = Tensor.createGPUTensor(pred_xstart, out_m.shape(), true);

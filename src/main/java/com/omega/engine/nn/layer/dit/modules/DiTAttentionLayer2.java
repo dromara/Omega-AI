@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 
 import com.omega.common.utils.RandomUtils;
+import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.gpu.cudnn.SoftmaxCudnnKernel;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
@@ -15,6 +16,7 @@ import com.omega.engine.nn.layer.gpu.AttentionKernel;
 import com.omega.engine.nn.layer.gpu.RoPEKernel;
 import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
@@ -61,6 +63,8 @@ public class DiTAttentionLayer2 extends Layer {
     private int batchSize = 1;
     
     private boolean qkNorm = false;
+    
+    private Tensor temp_out;
 
     public DiTAttentionLayer2(int embedDim, int headNum, int time, boolean bias, boolean qkNorm) {
         this.bias = bias;
@@ -195,6 +199,30 @@ public class DiTAttentionLayer2 extends Layer {
             this.getoLinerLayer().getOutput().viewOrg();
         }
     }
+    
+    public void init_eval(Tensor input) {
+        // TODO Auto-generated method stub
+        this.number = input.number;
+        this.batchSize = this.number/time;
+        this.rq = CUDAMemoryManager.getCache("dit_block_attn_rq", batchSize, time, headNum, dk);
+    	this.rk = CUDAMemoryManager.getCache("dit_block_attn_rk", batchSize, time, headNum, dk);
+    	this.qt = CUDAMemoryManager.getCache("dit_block_attn_qt", batchSize, headNum, time, dk);
+    	this.kt = CUDAMemoryManager.getCache("dit_block_attn_kt", batchSize, headNum, time, dk);
+    	this.vt = CUDAMemoryManager.getCache("dit_block_attn_vt", batchSize, headNum, time, dk);
+        // [batch_size，n_heads，len_q，len_k]
+        if (time < dk) {
+            this.temp = CUDAMemoryManager.getCache("dit_block_attn_temp", batchSize, headNum, time, dk);
+        } else {
+            this.temp = CUDAMemoryManager.getCache("dit_block_attn_temp", batchSize, time, time, dk);
+        }
+        temp.clearGPU();
+        // [batch_size，n_heads，len_q，len_k]
+        this.attn = CUDAMemoryManager.getCache("dit_block_attn_attn", batchSize, time, time, dk);
+        // [batch_size, len_q, n_heads * dim_v]
+        this.oi = CUDAMemoryManager.getCache("dit_block_attn_oi", batchSize * time, 1, 1, embedDim);
+        this.output = CUDAMemoryManager.getCache("dit_block_attn_out", input.number, input.channel, input.height, input.width);
+        this.temp_out = CUDAMemoryManager.getCache("dit_block_attn_temp_out", input.number, input.channel, input.height, input.width);
+    }
 
     @Override
     public void initBack() {
@@ -278,6 +306,39 @@ public class DiTAttentionLayer2 extends Layer {
         attentionKernel.unpermute(vaccum, oi, batchSize, time, headNum, dk);
 
         this.getoLinerLayer().forward(oi);
+        this.output = this.getoLinerLayer().getOutput();
+
+    }
+    
+    public void output_eval(Tensor cos,Tensor sin) {
+        // TODO Auto-generated method stub
+        this.getqLinerLayer().forward(input, temp_out);
+        Tensor query = temp_out.view(batchSize, time, headNum, dk);
+        ropeKernel.forward2d(cos, sin, query, rq, time, headNum, dk);
+        
+        temp_out.viewOrg();
+        this.getkLinerLayer().forward(input, temp_out);
+        Tensor key = temp_out.view(batchSize, time, headNum, dk);
+        ropeKernel.forward2d(cos, sin, key, rk, time, headNum, dk);
+        
+        temp_out.viewOrg();
+        this.getvLinerLayer().forward(input, temp_out);
+        Tensor value = temp_out.view(batchSize, time, headNum, dk);
+        Tensor_OP().permute(value, vt, new int[]{0, 2, 1, 3});
+        temp_out.viewOrg();
+        
+        Tensor_OP().permute(rq, qt, new int[]{0, 2, 1, 3});
+        Tensor_OP().permute(rk, kt, new int[]{0, 2, 1, 3});
+
+        if(qkNorm) {
+        	qNorm.forward(qt, qt);
+        	kNorm.forward(kt, kt);
+        }
+        scaledDotProductAttention(qt, kt, vt);
+        Tensor vaccum = temp;
+        attentionKernel.unpermute(vaccum, oi, batchSize, time, headNum, dk);
+
+        this.getoLinerLayer().forward(oi, output);
         this.output = this.getoLinerLayer().getOutput();
 
     }
@@ -435,23 +496,41 @@ public class DiTAttentionLayer2 extends Layer {
     
     public void forward(Tensor input,Tensor cos,Tensor sin) {
         // TODO Auto-generated method stub
-        /**
-         * 参数初始化
+    	if(network.RUN_MODEL == RunModel.EVAL) {
+    		/**
+             * 参数初始化
 
-         */
-        this.init(input);
-        /**
-         * 设置输入
+             */
+            this.init_eval(input);
+            /**
+             * 设置输入
 
-         */
-        this.setInput(input);
-        /**
-         * 计算输出
+             */
+            this.setInput(input);
+            /**
+             * 计算输出
 
-         */
-        this.output(cos, sin);
+             */
+            this.output_eval(cos, sin);
+    	}else {
+    		/**
+             * 参数初始化
+
+             */
+            this.init(input);
+            /**
+             * 设置输入
+
+             */
+            this.setInput(input);
+            /**
+             * 计算输出
+
+             */
+            this.output(cos, sin);
+    	}  
     }
-
+    
     @Override
     public void back(Tensor delta) {
         // TODO Auto-generated method stub

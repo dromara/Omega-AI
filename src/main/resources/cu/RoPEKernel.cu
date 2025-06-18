@@ -48,6 +48,38 @@ __global__ void rope_backward(float* delta, float* diff,float* c_cos,float* c_si
 }
 
 extern "C"
+__global__ void rope_2d_norm(float* x, float* out,float* cos, float* sin, int N, int T, int headNum,int headSize)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (i >= N/2) return;
+    int index = i * 2;
+    int n = index / T / headNum / headSize;
+    int t = index / headNum / headSize % T;
+    int hn = index % (headNum * headSize) / headSize;
+    int hs = index % (headNum * headSize) % headSize;
+    out[index] = cos[t * headSize + hs] * x[index] - sin[t * headSize + hs] * x[index+1];
+    out[index+1] = cos[t * headSize + hs + 1] * x[index+1] + sin[t * headSize + hs + 1] * x[index];
+}
+
+extern "C"
+__global__ void rope_2d_back(float* delta, float* diff,float* cos, float* sin, int N, int T, int headNum,int headSize)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (i >= N/2) return;
+    int index = i * 2;
+    int n = index / T / headNum / headSize;
+    int t = index / headNum / headSize % T;
+    int hn = index % (headNum * headSize) / headSize;
+    int hs = index % (headNum * headSize) % headSize;
+    
+    const float d0 = delta[index + 0];
+    const float d1 = delta[index + 1];
+    
+    diff[index] = cos[t * headSize + hs] * d0 + sin[t * headSize + hs + 1] * d1;
+    diff[index+1] = cos[t * headSize + hs + 1] * d1 - sin[t * headSize + hs] * d0;
+}
+
+extern "C"
 __global__ void rope_all_norm(const float* q,const float* k, float* qo, float* ko,float* c_cos,float* c_sin, int ncols, int T,int headSize) {
     const int col = 2*(blockDim.y*blockIdx.y + threadIdx.y);
     if (col >= ncols) {

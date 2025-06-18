@@ -5,6 +5,7 @@ import java.io.RandomAccessFile;
 import java.util.Map;
 
 import com.omega.common.utils.RandomUtils;
+import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -15,6 +16,7 @@ import com.omega.engine.nn.layer.dit.modules.DiTMLPLayer;
 import com.omega.engine.nn.layer.gpu.RoPEKernel;
 import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
@@ -47,7 +49,7 @@ public class DiTOrgBlock extends Layer {
     public FullyLayer modulation_scale_mlp;
     public FullyLayer modulation_gate_mlp;
     
-    private LNLayer norm1;
+    public LNLayer norm1;
 //    public RMSLayer norm1;
     public DiTAttentionLayer2 attn;
     public LNLayer norm2;
@@ -60,6 +62,11 @@ public class DiTOrgBlock extends Layer {
     private Tensor crossAttnOut;
     private Tensor mlpInput;
     
+    private Tensor temp_ma;
+    private Tensor temp_m1;
+    private Tensor temp_m2;
+    
+    private Tensor temp_out;
 
     public DiTOrgBlock(int embedDim, int cEmbedDim, int textStateDim, int time, int textTime, int mlpHiddenDim, int headNum, boolean bias, boolean qkNorm) {
         this.embedDim = embedDim;
@@ -153,6 +160,35 @@ public class DiTOrgBlock extends Layer {
         if(output == null || output.number != number) {
         	output = Tensor.createGPUTensor(output, input.number, oChannel, oHeight, oWidth, true);
         }
+
+    }
+    
+    public void init(Tensor input,Tensor tc) {
+        // TODO Auto-generated method stub
+        this.number = input.number;
+        this.batchSize = number / time;
+        if(attnInput == null || attnInput.number != number) {
+        	attnInput = Tensor.createGPUTensor(attnInput, input.number, input.channel, input.height, input.width, true);
+        }
+        if(crossAttnInput == null || crossAttnInput.number != number) {
+        	crossAttnInput = Tensor.createGPUTensor(crossAttnInput, input.number, input.channel, input.height, input.width, true);
+        	crossAttnOut = Tensor.createGPUTensor(crossAttnOut, input.number, input.channel, input.height, input.width, true);
+        }
+        if(mlpInput == null || mlpInput.number != number) {
+        	mlpInput = Tensor.createGPUTensor(mlpInput, input.number, input.channel, input.height, input.width, true);
+        }
+        
+        if(network.RUN_MODEL == RunModel.EVAL) {
+        	temp_ma = CUDAMemoryManager.getCache("dit_block_temp_ma", tc.number, tc.channel, tc.height, tc.width);
+        	temp_m1 = CUDAMemoryManager.getCache("dit_block_temp_m1", tc.number, modulation_shift_msa.oChannel, modulation_shift_msa.oHeight, modulation_shift_msa.oWidth);
+        	temp_m2 = CUDAMemoryManager.getCache("dit_block_temp_m2", tc.number, modulation_shift_msa.oChannel, modulation_shift_msa.oHeight, modulation_shift_msa.oWidth);
+        	temp_out = CUDAMemoryManager.getCache("dit_block_temp_out", input.number, input.channel, input.height, input.width);
+        	output = CUDAMemoryManager.getCache("dit_block_output", input.number, oChannel, oHeight, oWidth);
+        }else {
+        	if(output == null || output.number != number) {
+            	output = Tensor.createGPUTensor(output, input.number, oChannel, oHeight, oWidth, true);
+            }
+        }
     }
     
     @Override
@@ -184,8 +220,6 @@ public class DiTOrgBlock extends Layer {
     
     public void output(Tensor tc,Tensor text) {
     	
-    	norm1.forward(input);
-
     	modulationAct.forward(tc);
     	modulation_shift_msa.forward(modulationAct.getOutput());
     	modulation_scale_msa.forward(modulationAct.getOutput());
@@ -193,6 +227,8 @@ public class DiTOrgBlock extends Layer {
     	modulation_shift_mlp.forward(modulationAct.getOutput());
     	modulation_scale_mlp.forward(modulationAct.getOutput());
     	modulation_gate_mlp.forward(modulationAct.getOutput());
+
+    	norm1.forward(input);
 
     	modulate(norm1.getOutput(), modulation_shift_msa.getOutput(), modulation_scale_msa.getOutput(), attnInput);
 
@@ -236,6 +272,7 @@ public class DiTOrgBlock extends Layer {
     	norm1.forward_llmc(input);
     	modulate(norm1.getOutput(), modulation_shift_msa.getOutput(), modulation_scale_msa.getOutput(), attnInput);
     	attn.forward(attnInput, cos , sin);
+
     	Tensor_OP().mul(attn.getOutput(), modulation_gate_msa.getOutput(), crossAttnInput, batchSize, time, 1, crossAttnInput.width, 1);
     	Tensor_OP().add(input, crossAttnInput, crossAttnInput);
 
@@ -255,7 +292,49 @@ public class DiTOrgBlock extends Layer {
     	Tensor_OP().mul(mlp.getOutput(), modulation_gate_mlp.getOutput(), output, batchSize, time, 1, output.width, 1);
     	Tensor_OP().add(crossAttnOut, output, output);
     }
+    
+    public void output_eval(Tensor tc,Tensor text,Tensor cos,Tensor sin) {
+    	
+    	Tensor x = input;
+    	
+    	/**
+    	 * shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = self.adaLN_modulation(c).chunk(6, dim=1)
+    	 */
+    	modulationAct.forward(tc, temp_ma);
+    	
+    	modulation_shift_msa.forward(temp_ma, temp_m1);
+    	modulation_scale_msa.forward(temp_ma, temp_m2);
+    	/**
+    	 *  x1 = x + gate_msa.unsqueeze(1) * self.attn(modulate(self.norm1(x), shift_msa, scale_msa))
+    	 */
+    	norm1.forward_llmc(x, temp_out);
+    	modulate(temp_out, temp_m1, temp_m2, temp_out);
+    	attn.forward(temp_out, cos , sin);
+    	modulation_gate_msa.forward(temp_ma, temp_m1);
 
+    	Tensor_OP().mul(attn.getOutput(), temp_m1, temp_out, batchSize, time, 1, temp_out.width, 1);
+    	Tensor_OP().add(x, temp_out, x);
+
+    	/**
+    	 * x2 = x1 + self.crossAttn(self.norm2(x1), text)
+    	 */
+    	norm2.forward_llmc(x, temp_out);
+    	cross_attn.forward(temp_out, text, cos , sin);
+    	Tensor_OP().add(x, cross_attn.getOutput(), x);
+
+    	/**
+    	 * x3 = x2 + gate_mlp.unsqueeze(1) * self.mlp(modulate(self.norm3(x2), shift_mlp, scale_mlp))
+    	 */
+    	modulation_shift_mlp.forward(temp_ma, temp_m1);
+    	modulation_scale_mlp.forward(temp_ma, temp_m2);
+    	norm3.forward_llmc(x, temp_out);
+    	modulate(temp_out, temp_m1, temp_m2, temp_out);
+    	mlp.forward(temp_out);
+    	modulation_gate_mlp.forward(temp_ma, temp_m1);
+    	Tensor_OP().mul(mlp.getOutput(), temp_m1, temp_out, batchSize, time, 1, temp_out.width, 1);
+    	Tensor_OP().add(x, temp_out, output);
+    }
+    
     @Override
     public Tensor getOutput() {
         // TODO Auto-generated method stub
@@ -488,11 +567,15 @@ public class DiTOrgBlock extends Layer {
         /**
          * 参数初始化
          */
-        this.init(input);
+        this.init(input, tc);
         /**
          * 计算输出
          */
-        this.output(tc, text, cos, sin);
+        if(network.RUN_MODEL == RunModel.EVAL) {
+        	this.output_eval(tc, text, cos, sin);
+        }else {
+        	this.output(tc, text, cos, sin);
+        }
     }
 
     @Override
