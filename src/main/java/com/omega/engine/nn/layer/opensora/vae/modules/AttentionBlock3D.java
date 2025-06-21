@@ -88,7 +88,7 @@ public class AttentionBlock3D extends Layer {
     	
         Transformer tf = new Transformer();
         tf.CUDNN = true;
-        float[] data = RandomUtils.order(input.dataLength, 0.1f, 0.1f);
+        float[] data = RandomUtils.order(input.dataLength, 0.001f, 0.001f);
         Tensor input2 = new Tensor(batchSize, channel * numFrames, imageSize, imageSize, data, true);
 //        float[] delta_data = MatrixUtils.val(batchSize * time * embedDim, 1.0f);
 //        Tensor delta = new Tensor(batchSize * time, 1, 1, embedDim, delta_data, true);
@@ -223,7 +223,7 @@ public class AttentionBlock3D extends Layer {
     public void train() {
 
     	this.norm.forward(input);
-
+    	norm.getOutput().showDM("norm");
         this.qLinerLayer.forward(norm.getOutput());
         this.kLinerLayer.forward(norm.getOutput());
         this.vLinerLayer.forward(norm.getOutput());

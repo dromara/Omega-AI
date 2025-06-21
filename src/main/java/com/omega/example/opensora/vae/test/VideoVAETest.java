@@ -222,21 +222,24 @@ public class VideoVAETest {
         	Tensor input_z = new Tensor(batchSize, 40, 4, 4, true);
         	ClipModelUtils.loadData(input_z, zdatas, "z", 5);
         	
-//        	input.showDM();
+        	input.showDM("x:");
         	
         	String path = "H:\\model\\opensora_vae.json";
         	loadWeight(LagJsonReader.readJsonFileSmallWeight(path), network, true);
         	
-        	Opensora_LPIPS lpips = new Opensora_LPIPS(LossType.MSE, UpdaterType.adamw, imageSize);
-            String lpipsWeight = "H:\\model\\opensora_lpips.json";
-            LPIPSTest.loadLPIPSWeight(LagJsonReader.readJsonFileSmallWeight(lpipsWeight), lpips, true);
-        	
-        	network.forward(input, input_z);
-        	
-        	float totalLoss = network.totalLoss(network.getOutput(), input, lpips);
-        	network.back(input);
-        	System.err.println("totalLoss:"+totalLoss);
+        	network.forward(input);
         	network.getOutput().showDM();
+        	
+//        	Opensora_LPIPS lpips = new Opensora_LPIPS(LossType.MSE, UpdaterType.adamw, imageSize);
+//            String lpipsWeight = "H:\\model\\opensora_lpips.json";
+//            LPIPSTest.loadLPIPSWeight(LagJsonReader.readJsonFileSmallWeight(lpipsWeight), lpips, true);
+//        	
+//        	network.forward(input, input_z);
+        	
+//        	float totalLoss = network.totalLoss(network.getOutput(), input, lpips);
+//        	network.back(input);
+//        	System.err.println("totalLoss:"+totalLoss);
+//        	network.getOutput().showDM();
         	
         } catch (Exception e) {
             // TODO: handle exception

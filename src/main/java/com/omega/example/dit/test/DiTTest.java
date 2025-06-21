@@ -960,7 +960,7 @@ public class DiTTest {
         boolean horizontalFilp = true;
         int imgSize = 256;
         int maxContextLen = 77;
-        int batchSize = 3;
+        int batchSize = 8;
         float[] mean = new float[]{0.5f, 0.5f, 0.5f};
         float[] std = new float[]{0.5f, 0.5f, 0.5f};
         String vocabPath = "/omega/models/bpe_tokenizer/vocab.json";

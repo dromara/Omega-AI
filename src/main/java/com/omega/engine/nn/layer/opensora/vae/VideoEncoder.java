@@ -148,7 +148,7 @@ public class VideoEncoder extends Layer {
     public void output() {
         // TODO Auto-generated method stub
         convIn.forward(this.input);
-
+        
         Tensor x = convIn.getOutput();
        
         for (int i = 0; i < downBlock.size(); i++) {
@@ -156,13 +156,14 @@ public class VideoEncoder extends Layer {
             layer.forward(x);
             x = layer.getOutput();
         }
-
+        x.showDM("block");
         for (int i = 0; i < midBlock.size(); i++) {
         	Layer layer = midBlock.get(i);
             layer.forward(x);
             x = layer.getOutput();
+            x.showDM("mid:"+i);
         }
-        
+ 
         convNormOut.forward(x);
         convAct.forward(convNormOut.getOutput());
         convOut.forward(convAct.getOutput());

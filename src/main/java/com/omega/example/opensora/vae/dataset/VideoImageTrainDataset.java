@@ -10,9 +10,11 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
 public class VideoImageTrainDataset {
+	
     public final static float[] mean = new float[]{0.48145466f, 0.4578275f, 0.40821073f};
     public final static float[] std = new float[]{0.26862954f, 0.26130258f, 0.27577711f};
     public boolean shuffle = false;
+    public int numFrames;
     public int number = 0;
     public int channel = 3;
     public int imageSize = 224;
@@ -28,11 +30,12 @@ public class VideoImageTrainDataset {
     private float[] tmpImageInput;
     private boolean sort = false;
 
-    public VideoImageTrainDataset(String imagePath, int imageSize, int batchSize, boolean shuffle) {
+    public VideoImageTrainDataset(String imagePath, int imageSize, int batchSize, int numFrames, boolean shuffle) {
         this.shuffle = shuffle;
         this.imagePath = imagePath;
         this.imageSize = imageSize;
-        this.onceImgSize = 3 * this.imageSize * this.imageSize;
+        this.numFrames = numFrames;
+        this.onceImgSize = this.numFrames * 3 * this.imageSize * this.imageSize;
         this.batchSize = batchSize;
         this.number = loadCount();
         this.count_it = this.number / batchSize;

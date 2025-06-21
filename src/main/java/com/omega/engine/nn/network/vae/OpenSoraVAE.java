@@ -143,7 +143,9 @@ public class OpenSoraVAE extends Network {
         inputLayer.forward(input);
         
         encoder.forward(input);
-
+        
+        encoder.getOutput().showDM();
+        
         reparameterize(encoder.getOutput());
 
         decoder.forward(z);
