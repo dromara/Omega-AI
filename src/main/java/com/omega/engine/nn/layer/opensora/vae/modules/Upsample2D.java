@@ -81,24 +81,20 @@ public class Upsample2D extends Layer {
     public void output() {
         // TODO Auto-generated method stub
 
-    	input.view(number, channel, depth, height * width);
-    	inputT.view(number, depth, channel, height * width);
-    	Tensor_OP().permute(input, inputT, new int[]{0, 2, 1, 3});
-
-    	inputT.viewOrg();
+    	Tensor_OP().permute(input, inputT,
+    			new int[] {number, channel, depth, height, width},
+    			new int[] {number, depth, channel, height, width},
+    			new int[]{0, 2, 1, 3, 4});
 
     	up.forward(inputT);
 
     	conv.forward(up.getOutput());
 
-    	conv.getOutput().view(number, depth, conv.oChannel, conv.oHeight * conv.oWidth);
-
-    	output.view(number, conv.oChannel, depth, conv.oHeight * conv.oWidth);
-
-    	Tensor_OP().permute(conv.getOutput(), output, new int[]{0, 2, 1, 3});
+    	Tensor_OP().permute(conv.getOutput(), output,
+    			new int[] {number, depth, conv.oChannel, conv.oHeight, conv.oWidth},
+    			new int[] {number, conv.oChannel, depth, conv.oHeight, conv.oWidth},
+    			new int[]{0, 2, 1, 3, 4});
     	
-        output.viewOrg();
-        
     }
 
     @Override
@@ -110,18 +106,22 @@ public class Upsample2D extends Layer {
     @Override
     public void diff() {
         // TODO Auto-generated method stub
-    	delta.view(number, conv.oChannel, depth, conv.oHeight * conv.oWidth);
-    	conv.getOutput().view(number, depth, conv.oChannel, conv.oHeight * conv.oWidth);
-    	Tensor_OP().permute(delta, conv.getOutput(), new int[]{0, 2, 1, 3});
-    	conv.getOutput().viewOrg();
+
+    	Tensor_OP().permute(delta, conv.getOutput(),
+    			new int[] {number, conv.oChannel, depth, conv.oHeight, conv.oWidth},
+    			new int[] {number, depth, conv.oChannel, conv.oHeight, conv.oWidth},
+    			new int[]{0, 2, 1, 3, 4});
+    	
         conv.back(conv.getOutput(), up.getOutput());
        
         up.back(up.getOutput(), inputT);
         
-        inputT.view(number, depth, channel, height * width);
-        input.view(number, channel, depth, height * width);
-        Tensor_OP().permute(inputT, input, new int[]{0, 2, 1, 3});
-        this.diff = input.viewOrg();
+        Tensor_OP().permute(inputT, input,
+    			new int[] {number, depth, channel, height, width},
+    			new int[] {number, channel, depth, height, width},
+    			new int[]{0, 2, 1, 3, 4});
+
+        this.diff = input;
     }
 
     @Override

@@ -664,6 +664,23 @@ public class OPKernel extends BaseKernel implements Serializable {
         }
     }
     
+    public void mask_gpu(Tensor a, Tensor b, Tensor y, float val, int dataLen, int onceSize) {
+        try {
+            /**
+             * int N, float *X, float *Y, float *R, int onceSize,float val
+             */
+            Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{dataLen}), Pointer.to(a.getGpuData()), Pointer.to(b.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(new int[]{onceSize}), Pointer.to(new float[]{val}));
+            checkCUDA(cuLaunchKernel(mask_gpu_function, CAFFE_GET_BLOCKS(dataLen), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameter, null // Kernel- and extra parameters
+            ));
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
     public void mul_gpu(Tensor a, Tensor b, Tensor y, int N, int C, int H, int W, int axis) {
         try {
             /**

@@ -156,12 +156,10 @@ public class VideoEncoder extends Layer {
             layer.forward(x);
             x = layer.getOutput();
         }
-        x.showDM("block");
         for (int i = 0; i < midBlock.size(); i++) {
         	Layer layer = midBlock.get(i);
             layer.forward(x);
             x = layer.getOutput();
-            x.showDM("mid:"+i);
         }
  
         convNormOut.forward(x);

@@ -170,6 +170,14 @@ public class TensorOP {
         }
     }
     
+    public void mask(Tensor a, Tensor b, Tensor c, float val, int dataLen, int onceSize) {
+        if (c.isHasGPU()) {
+            op.mask_gpu(a, b, c, val, dataLen, onceSize);
+        }else {
+        	
+        }
+    }
+    
     public void mul(Tensor a, Tensor b, Tensor c, int offset, int N) {
         if (c.isHasGPU()) {
             op.mul_gpu(a, b, c, offset, N);
@@ -717,16 +725,30 @@ public class TensorOP {
         int dims = position[0];
         int start = position[1];
         int count = position[2];
-        switch (dims) {
-            case 0:
-                getByNumber(org, target, start, count);
-                break;
-            case 1:
-                getByChannel(org, target, start, count);
-                break;
-            default:
-                break;
+        if(cp == 0) {
+        	 switch (dims) {
+	             case 0:
+	                 getByNumber(org, target, start, count);
+	                 break;
+	             case 1:
+	                 getByChannel(org, target, start, count);
+	                 break;
+	             default:
+	                 break;
+	         }
+        }else {
+        	switch (dims) {
+	            case 0:
+	                getByNumber_back(org, target, start, count);
+	                break;
+	            case 1:
+	                getByChannel_back(org, target, start, count);
+	                break;
+	            default:
+	                break;
+	        }
         }
+       
     }
     
     public void getByNumber(Tensor org, Tensor target, int start, int count) {
@@ -742,6 +764,28 @@ public class TensorOP {
         assert org.getChannel() >= (start + count - 1);
         if (org.isHasGPU()) {
             this.op.copy_channel_gpu(org, target, start, 0);
+        } else {
+            int size = org.height * org.width;
+            for (int n = 0; n < org.number; n++) {
+                int startIndex = n * org.channel * size + start * size;
+                System.arraycopy(org.data, startIndex, target.data, n * count * size, count * size);
+            }
+        }
+    }
+    
+    public void getByNumber_back(Tensor org, Tensor target, int start, int count) {
+        assert org.getNumber() >= (start + count - 1);
+        if (org.isHasGPU()) {
+            this.op.copy_number_gpu(org, target, start * count, 1);
+        } else {
+            System.arraycopy(org.data, start * count * org.channel * org.height * org.width, target.data, 0, target.dataLength);
+        }
+    }
+
+    public void getByChannel_back(Tensor org, Tensor target, int start, int count) {
+        assert org.getChannel() >= (start + count - 1);
+        if (org.isHasGPU()) {
+            this.op.copy_channel_gpu(org, target, start, 1);
         } else {
             int size = org.height * org.width;
             for (int n = 0; n < org.number; n++) {

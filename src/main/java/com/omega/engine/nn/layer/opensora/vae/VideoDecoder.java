@@ -149,11 +149,13 @@ public class VideoDecoder extends Layer {
 
     @Override
     public void initBack() {
+    	
     }
 
     @Override
     public void initParam() {
         // TODO Auto-generated method stub
+    	
     }
 
     @Override
@@ -163,20 +165,17 @@ public class VideoDecoder extends Layer {
         convIn.forward(this.input);
         
         Tensor x = convIn.getOutput();
-        x.showDM("decoder-convIn:");
         for (int i = 0; i < midBlock.size(); i++) {
         	Layer layer = midBlock.get(i);
             layer.forward(x);
             x = layer.getOutput();
-            x.showDM("decoder-mid["+i+"]:");
         }
-        x.showDM("decoder-mid:");
+
         for (int i = 0; i < upBlock.size(); i++) {
             Layer layer = upBlock.get(i);
             layer.forward(x);
             x = layer.getOutput();
         }
-        x.showDM("decoder-res:");
         convNormOut.forward(x);
         convAct.forward(convNormOut.getOutput());
         convOut.forward(convAct.getOutput());
@@ -184,7 +183,7 @@ public class VideoDecoder extends Layer {
         convOut.getOutput().showDM("convOut.getOutput():");
         Tensor_OP().getByPosition(convOut.getOutput(), this.output, new int[] {1 , (temporal_downsample - 1), oDepth}, 0);
         convOut.getOutput().viewOrg();
-        output.showDM("output:");
+//        output.showDM("output:");
     }
 
     @Override
@@ -196,24 +195,26 @@ public class VideoDecoder extends Layer {
     @Override
     public void diff() {
         // TODO Auto-generated method stub
-    	convOut.getOutput().view(number * convOut.oChannel, convOut.oDepth, convOut.oHeight, convOut.oWidth);
     	convOut.getOutput().clearGPU();
+    	convOut.getOutput().view(number * convOut.oChannel, convOut.oDepth, convOut.oHeight, convOut.oWidth);
     	Tensor_OP().getByPosition(convOut.getOutput(), delta, new int[] {1 , (temporal_downsample - 1), oDepth}, 1);
     	convOut.getOutput().viewOrg();
         convOut.back(convOut.getOutput());
         convAct.back(convOut.diff);
         convNormOut.back(convAct.diff);
         Tensor d = convNormOut.diff;
-      
         for (int i = upBlock.size() - 1; i >= 0; i--) {
             Layer up = upBlock.get(i);
             up.back(d);
             d = up.diff;
+            System.err.println(up);
+//            d.showDM("up_"+i);
         }
         for (int i = midBlock.size() - 1; i >= 0; i--) {
             Layer mid = midBlock.get(i);
             mid.back(d);
             d = mid.diff;
+//            d.showDM("mid_"+i);
         }
         convIn.back(d);
         this.diff = convIn.diff;

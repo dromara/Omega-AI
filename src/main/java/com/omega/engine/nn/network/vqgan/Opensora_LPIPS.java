@@ -88,13 +88,13 @@ public class Opensora_LPIPS extends Network {
         return lpips.getOutput();
     }
 
-    public Tensor forward(Tensor label, Tensor input) {
+    public Tensor forward(Tensor input, Tensor label) {
         /**
          * 设置输入数据
          */
         this.setInputData(input);
         inputLayer.forward();
-        lpips.forward(label, input);
+        lpips.forward(input, label);
         return lpips.getOutput();
     }
 

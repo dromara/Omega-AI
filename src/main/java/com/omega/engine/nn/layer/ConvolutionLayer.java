@@ -424,7 +424,6 @@ public class ConvolutionLayer extends Layer {
         //		System.out.println("===========");
         /**
          * 计算deltaB
-
          */
         if (this.hasBias) {
             biasKernel.backwardConvBias(diffB, delta);

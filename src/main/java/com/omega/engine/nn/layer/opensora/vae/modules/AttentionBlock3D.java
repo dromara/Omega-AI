@@ -5,18 +5,22 @@ import static jcuda.jcublas.cublasOperation.CUBLAS_OP_T;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.Map;
 
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.cudnn.SoftmaxCudnnKernel;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
+import com.omega.engine.nn.layer.dit.modules.DiTCrossAttentionLayer2;
 import com.omega.engine.nn.layer.gpu.AttentionKernel;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
+import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
  * AttentionBlock3D
@@ -92,7 +96,11 @@ public class AttentionBlock3D extends Layer {
         Tensor input2 = new Tensor(batchSize, channel * numFrames, imageSize, imageSize, data, true);
 //        float[] delta_data = MatrixUtils.val(batchSize * time * embedDim, 1.0f);
 //        Tensor delta = new Tensor(batchSize * time, 1, 1, embedDim, delta_data, true);
-        AttentionBlock3D mal = new AttentionBlock3D(channel, numFrames, imageSize, imageSize, true, false, tf);
+        AttentionBlock3D mal = new AttentionBlock3D(channel, numFrames, imageSize, imageSize, true, true, tf);
+        
+        String weight = "H:\\model\\opensora_attn3d.json";
+        loadWeight(LagJsonReader.readJsonFileSmallWeight(weight), mal, true);
+        
         for (int i = 0; i < 10; i++) {
             mal.forward(input2);
             mal.getOutput().showShape();
@@ -100,6 +108,26 @@ public class AttentionBlock3D extends Layer {
 //            mal.back(delta);
 //            mal.diff.showDM();
         }
+    }
+    
+    public static void loadWeight(Map<String, Object> weightMap, AttentionBlock3D network, boolean showLayers) {
+        if (showLayers) {
+            for (String key : weightMap.keySet()) {
+                System.out.println(key);
+            }
+        }
+        
+        network.norm.norm.gamma = ClipModelUtils.loadData(network.norm.norm.gamma, weightMap, 1, "norm.weight");
+        network.norm.norm.beta = ClipModelUtils.loadData(network.norm.norm.beta, weightMap, 1, "norm.bias");
+        
+        ClipModelUtils.loadData(network.qLinerLayer.weight, weightMap, "q.conv.weight", 5);
+        ClipModelUtils.loadData(network.qLinerLayer.bias, weightMap, "q.conv.bias");
+        ClipModelUtils.loadData(network.kLinerLayer.weight, weightMap, "k.conv.weight", 5);
+        ClipModelUtils.loadData(network.kLinerLayer.bias, weightMap, "k.conv.bias");
+        ClipModelUtils.loadData(network.vLinerLayer.weight, weightMap, "v.conv.weight", 5);
+        ClipModelUtils.loadData(network.vLinerLayer.bias, weightMap, "v.conv.bias");
+        ClipModelUtils.loadData(network.oLinerLayer.weight, weightMap, "proj_out.conv.weight", 5);
+        ClipModelUtils.loadData(network.oLinerLayer.bias, weightMap, "proj_out.conv.bias");
     }
 
     public static boolean same(Tensor a, Tensor b) {
@@ -235,6 +263,7 @@ public class AttentionBlock3D extends Layer {
         Tensor_OP().permute(q, qt, new int[]{0, 2, 3, 1});
         Tensor_OP().permute(k, kt, new int[]{0, 2, 3, 1});
         Tensor_OP().permute(v, vt, new int[]{0, 2, 3, 1});
+
         scaledDotProductAttention(qt, kt, vt);
         Tensor vaccum = temp;
         attentionKernel.unpermute(vaccum, oi, number, time, headNum, dk);
@@ -252,10 +281,13 @@ public class AttentionBlock3D extends Layer {
         Tensor preatt = temp;
         GPU_OP().bmmEX(CUBLAS_OP_T, CUBLAS_OP_N, time, time, dk, 1.0f, key.getGpuData(), dk, time * dk, query.getGpuData(), dk, time * dk, 0.0f, preatt.getGpuData(), time, time * time, number * headNum);
         Tensor_OP().mul(preatt, d_k, preatt);
+
         if(isCausal) {
-        	Tensor_OP().mask(preatt, mask, preatt, maskFill);
+        	Tensor_OP().mask(preatt, mask, preatt, maskFill, number * mask.dataLength, mask.dataLength);
         }
+
         softmaxKernel.softmax(preatt, attn, number * headNum * time);
+
         Tensor tmp = attn;
         Tensor vaccum = temp;
         GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_N, dk, time, time, 1.0f, value.getGpuData(), dk, time * dk, tmp.getGpuData(), time, time * time, 0.0f, vaccum.getGpuData(), dk, time * dk, number * headNum);

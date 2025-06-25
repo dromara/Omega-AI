@@ -230,16 +230,16 @@ public class VideoVAETest {
         	network.forward(input);
         	network.getOutput().showDM();
         	
-//        	Opensora_LPIPS lpips = new Opensora_LPIPS(LossType.MSE, UpdaterType.adamw, imageSize);
-//            String lpipsWeight = "H:\\model\\opensora_lpips.json";
-//            LPIPSTest.loadLPIPSWeight(LagJsonReader.readJsonFileSmallWeight(lpipsWeight), lpips, true);
-//        	
-//        	network.forward(input, input_z);
+        	Opensora_LPIPS lpips = new Opensora_LPIPS(LossType.MSE, UpdaterType.adamw, imageSize);
+            String lpipsWeight = "H:\\model\\opensora_lpips.json";
+            LPIPSTest.loadLPIPSWeight(LagJsonReader.readJsonFileSmallWeight(lpipsWeight), lpips, true);
+
+        	float totalLoss = network.totalLoss(network.getOutput(), input, lpips);
+
+        	System.err.println("totalLoss:"+totalLoss);
+        	network.getOutput().showDM();
         	
-//        	float totalLoss = network.totalLoss(network.getOutput(), input, lpips);
-//        	network.back(input);
-//        	System.err.println("totalLoss:"+totalLoss);
-//        	network.getOutput().showDM();
+        	network.back();
         	
         } catch (Exception e) {
             // TODO: handle exception
