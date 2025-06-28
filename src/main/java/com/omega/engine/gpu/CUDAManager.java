@@ -141,7 +141,7 @@ public class CUDAManager {
     	MyCUDAModule m = null;
 
     	if(nvcc) {
-    		String rootPath = LibPaths.LIB_PATH;
+    		String rootPath = LibPaths.getLibPath();
             fileName = rootPath + fileName;
             m = this.getModule(fileName);
     	}else {
