@@ -96,7 +96,7 @@ public class CUDAModules {
     private static CUDAUtils instance;
 
     public static CUfunction getLocalFunctionByModule(String fileName, String functionName) {
-        String rootPath = LibPaths.LIB_PATH;
+        String rootPath = LibPaths.getLibPath();
         fileName = rootPath + fileName;
         File file = new File(fileName);
         if (!file.exists()) {
