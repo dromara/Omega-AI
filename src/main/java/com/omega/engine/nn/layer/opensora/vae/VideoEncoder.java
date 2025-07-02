@@ -3,6 +3,7 @@ package com.omega.engine.nn.layer.opensora.vae;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.ParamsInit;
@@ -150,12 +151,14 @@ public class VideoEncoder extends Layer {
         convIn.forward(this.input);
         
         Tensor x = convIn.getOutput();
-       
+//        System.err.println("x:"+MatrixOperation.sum(x.syncHost()));
+//        x.showDM();
         for (int i = 0; i < downBlock.size(); i++) {
             Layer layer = downBlock.get(i);
             layer.forward(x);
             x = layer.getOutput();
         }
+//        System.err.println("x2:"+MatrixOperation.sum(x.syncHost()));
         for (int i = 0; i < midBlock.size(); i++) {
         	Layer layer = midBlock.get(i);
             layer.forward(x);
@@ -186,6 +189,7 @@ public class VideoEncoder extends Layer {
             mid.back(d);
             d = mid.diff;
         }
+        
         for (int i = downBlock.size() - 1; i >= 0; i--) {
             Layer down = downBlock.get(i);
             down.back(d);

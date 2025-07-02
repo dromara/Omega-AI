@@ -122,7 +122,17 @@ public class GNLayer3D extends Layer {
     	norm.back(delta);
     	delta.viewOrg();
     	input.viewOrg();
-        this.diff = norm.diff;
+        this.diff = norm.diff.view(input.shape());
+    }
+    
+    public void diff(Tensor diff) {
+        // TODO Auto-generated method stub
+    	delta.view(number, channel, depth * height, width);
+    	input.view(number, channel, depth * height, width);
+    	norm.back(delta, diff);
+    	delta.viewOrg();
+    	input.viewOrg();
+        this.diff = norm.diff.view(input.shape());
     }
 
     @Override
@@ -224,7 +234,22 @@ public class GNLayer3D extends Layer {
          */
         this.diff();
     }
+    
+    public void back(Tensor delta,Tensor diff) {
+        // TODO Auto-generated method stub
+        initBack();
+        /**
+         * 设置梯度
 
+         */
+        this.setDelta(delta);
+        /**
+         * 计算梯度
+
+         */
+        this.diff(diff);
+    }
+    
     @Override
     public void backTemp() {
         // TODO Auto-generated method stub

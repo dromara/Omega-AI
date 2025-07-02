@@ -147,6 +147,8 @@ public class OpenSoraVAE extends Network {
         encoder.forward(input);
         
         encoder.getOutput().showDM();
+
+        System.err.println("encoder.getOutput():"+MatrixOperation.sum(encoder.getOutput().syncHost()));
         
         reparameterize(encoder.getOutput());
 
@@ -206,9 +208,10 @@ public class OpenSoraVAE extends Network {
 
     public void reparameterize_back(Tensor delta) {
         vaeKernel.backward(delta, eps, logvar, dmu, dlogvar);
-        dmu.showDM("dmu");
-        dlogvar.showDM("dlogvar");
+//        dmu.showDM("dmu");
+//        dlogvar.showDM("dlogvar");
         vaeKernel.concat_channel_forward(dmu, dlogvar, encoderDelta, dmu.number, this.latendDim, this.latendDim, latendDepth * dmu.height, dmu.width);
+        encoderDelta.showDM("encoderDelta");
     }
 
     public void initBack() {
@@ -233,38 +236,38 @@ public class OpenSoraVAE extends Network {
         this.setLossDiff(lossDiff);  //only decoder delta
         initBack();
 //        lpipsLossDiff.showDM("lpipsLossDelta");
-        lpips.back(lpipsLossDiff);
-//        int last = 17 * lpips.lpips.diff.getOnceSize() + 2 * 32 * 32 + 31 * 32;
-//        lpips.lpips.diff.showDMByOffsetRed(last, 32, "lpipsLossDiff:");
-        lpips.lpips.diff.showDM("lpipsLossDiff");
+//        lpips.back(lpipsLossDiff);
+////        int last = 17 * lpips.lpips.diff.getOnceSize() + 2 * 32 * 32 + 31 * 32;
+////        lpips.lpips.diff.showDMByOffsetRed(last, 32, "lpipsLossDiff:");
+//        lpips.lpips.diff.showDM("lpipsLossDiff");
+//        
+//        l1Kernel.backward(rec_video, video, rec_video, video.number);
+//        
+//        tensorOP.add(rec_video, lpips.lpips.diff, rec_video);
+//
+//        //output.number, decoder.oDepth, decoder.oChannel, output.height * output.width
+//        recLoss.view(decoder.number, decoder.oChannel, decoder.oDepth, decoder.oHeight * decoder.oWidth);
+//        rec_video.viewOrg();
+//        tensorOP.permute(rec_video, recLoss, new int[] {0, 2, 1, 3});
+//        recLoss.view(decoder.number, decoder.oChannel * decoder.oDepth, decoder.oHeight, decoder.oWidth);
+//        // dmu , dlogvar
+//        vaeKernel.kl_back(mu, logvar, kl_weight, dmu, dlogvar);
         
-        l1Kernel.backward(rec_video, video, rec_video, video.number);
-        
-        tensorOP.add(rec_video, lpips.lpips.diff, rec_video);
-        rec_video.showDM("recon_video-diff");
-        //output.number, decoder.oDepth, decoder.oChannel, output.height * output.width
-        recLoss.view(decoder.number, decoder.oChannel, decoder.oDepth, decoder.oHeight * decoder.oWidth);
-        rec_video.viewOrg();
-        tensorOP.permute(rec_video, recLoss, new int[] {0, 2, 1, 3});
-        recLoss.view(decoder.number, decoder.oChannel * decoder.oDepth, decoder.oHeight, decoder.oWidth);
-        // dmu , dlogvar
-        vaeKernel.kl_back(mu, logvar, kl_weight, dmu, dlogvar);
-        
-        this.decoder.back(recLoss);
-        reparameterize_back(decoder.diff);
-        this.encoder.back(encoderDelta);
+        this.decoder.back(lossDiff);
+//        reparameterize_back(decoder.diff);
+//        this.encoder.back(encoderDelta);
     }
     
     public void back() {
         // TODO Auto-generated method stub
         initBack();
-//        lpipsLossDiff.showDM("lpipsLossDelta");
+
         lpips.back(lpipsLossDiff);
 
         lpips.lpips.diff.showDM("lpipsLossDiff");
-        
+
         l1Kernel.backward(rec_video, video, rec_video, video.number);
-        
+
         tensorOP.add(rec_video, lpips.lpips.diff, rec_video);
         rec_video.showDM("recon_video-diff");
         //output.number, decoder.oDepth, decoder.oChannel, output.height * output.width

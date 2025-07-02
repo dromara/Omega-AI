@@ -445,6 +445,7 @@ public abstract class Network {
     	for(int i = 0;i<paramLayers.size();i++) {
     		Layer l1 = paramLayers.get(i);
     		Layer l2 = model.paramLayers.get(i);
+    		System.err.println(l2);
     		if (l1 instanceof NormalizationLayer) {
                 NormalizationLayer ema_nl = (NormalizationLayer) l1;
                 NormalizationLayer model_nl = (NormalizationLayer) l2;

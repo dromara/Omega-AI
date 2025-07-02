@@ -1,8 +1,10 @@
-package com.omega.engine.nn.layer.opensora.vae.modules;
+package com.omega.engine.nn.layer.opensora.wfvae;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.Map;
 
+import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.active.ActiveType;
 import com.omega.engine.gpu.PaddingKernel;
@@ -18,13 +20,15 @@ import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.utils.ModelUtils;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
+import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
  * ConvolutionLayer
  *
  * @author Administrator
  */
-public class CausalConv3DPlainAR extends Layer {
+public class WFCausalConv3D extends Layer {
     public int depth = 0;
     public int kernelNum = 0;
     public int kernelSize = 0;
@@ -58,7 +62,7 @@ public class CausalConv3DPlainAR extends Layer {
      * @param activeFunction
      * @param updater
      */
-    public CausalConv3DPlainAR(int channel, int kernelNum, int depth, int width, int height, int kernelSize, int stride) {
+    public WFCausalConv3D(int channel, int kernelNum, int depth, int width, int height, int kernelSize, int stride) {
         this.kernelNum = kernelNum;
         this.channel = channel;
         this.depth = depth;
@@ -84,7 +88,7 @@ public class CausalConv3DPlainAR extends Layer {
      * @param activeFunction
      * @param updater
      */
-    public CausalConv3DPlainAR(int channel, int kernelNum, int depth, int width, int height, int kernelSize, int stride, boolean hasBias) {
+    public WFCausalConv3D(int channel, int kernelNum, int depth, int width, int height, int kernelSize, int stride, boolean hasBias) {
         this.kernelNum = kernelNum;
         this.channel = channel;
         this.depth = depth;
@@ -111,7 +115,7 @@ public class CausalConv3DPlainAR extends Layer {
      * @param activeFunction
      * @param updater
      */
-    public CausalConv3DPlainAR(int channel, int kernelNum, int depth, int width, int height, int kernelSize, int stride, boolean hasBias, Network network) {
+    public WFCausalConv3D(int channel, int kernelNum, int depth, int width, int height, int kernelSize, int stride, boolean hasBias, Network network) {
         this.kernelNum = kernelNum;
         this.channel = channel;
         this.depth = depth;
@@ -141,7 +145,7 @@ public class CausalConv3DPlainAR extends Layer {
      * @param activeFunction
      * @param updater
      */
-    public CausalConv3DPlainAR(int channel, int kernelNum, int depth, int width, int height, int kernelSize, int stride, boolean hasBias, boolean freeze, Network network) {
+    public WFCausalConv3D(int channel, int kernelNum, int depth, int width, int height, int kernelSize, int stride, boolean hasBias, boolean freeze, Network network) {
         this.kernelNum = kernelNum;
         this.channel = channel;
         this.depth = depth;
@@ -158,7 +162,7 @@ public class CausalConv3DPlainAR extends Layer {
         this.initParam();
     }
 
-    public CausalConv3DPlainAR(int channel, int kernelNum, int depth, int width, int height, int kernelSize, int stride, boolean hasBias, ParamsInit paramsInit) {
+    public WFCausalConv3D(int channel, int kernelNum, int depth, int width, int height, int kernelSize, int stride, boolean hasBias, ParamsInit paramsInit) {
         this.kernelNum = kernelNum;
         this.channel = channel;
         this.depth = depth;
@@ -172,7 +176,7 @@ public class CausalConv3DPlainAR extends Layer {
         this.initParam();
     }
 
-    public CausalConv3DPlainAR(int channel, int kernelNum, int depth, int width, int height, int kernelSize, int stride, boolean hasBias, Network network, ParamsInit paramsInit) {
+    public WFCausalConv3D(int channel, int kernelNum, int depth, int width, int height, int kernelSize, int stride, boolean hasBias, Network network, ParamsInit paramsInit) {
         this.kernelNum = kernelNum;
         this.channel = channel;
         this.depth = depth;
@@ -188,7 +192,7 @@ public class CausalConv3DPlainAR extends Layer {
         this.initParam();
     }
 
-    public CausalConv3DPlainAR(int channel, int kernelNum, int depth, int width, int height, int kernelSize, int stride, boolean hasBias, Network network, ActiveType activeType) {
+    public WFCausalConv3D(int channel, int kernelNum, int depth, int width, int height, int kernelSize, int stride, boolean hasBias, Network network, ActiveType activeType) {
         this.kernelNum = kernelNum;
         this.channel = channel;
         this.depth = depth;
@@ -224,31 +228,49 @@ public class CausalConv3DPlainAR extends Layer {
 
     public static void main(String[] args) {
         int N = 2;
-        int C = 1;
-        int F = 6;
+        int C = 3;
+        int F = 17;
         int H = 32;
         int W = 32;
         
-        int KC = 1;
+        int KC = 4;
         int KS = 2;
         int stride = 2;
         
-        float[] data = RandomUtils.order(N * C * F * H * W, 0.1f, 0.1f);
-        Tensor input = new Tensor(N, C * F, H, W, data, true);
+//        float[] data = RandomUtils.order(N * C * F * H * W, 0.1f, 0.1f);
+//        Tensor input = new Tensor(N, C * F, H, W, data, true);
+        
+        String inputPath = "D:\\models\\input_wf.json";
+    	Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
+    	Tensor input = new Tensor(N, C * F, H, W, true);
+    	ClipModelUtils.loadData(input, datas, "x", 5);
+        
         CNN nn = new CNN(null);
         nn.CUDNN = true;
         nn.number = N;
         //nt channel,int kernelNum,int depth,int width,int height,int kDepth,int kWidth,int kHeight,int padding,int stride
-        CausalConv3DPlainAR conv1 = new CausalConv3DPlainAR(C, KC, F, W, H, KS, stride, true, nn);
-//        conv1.weight = new Tensor(KC, C * KS, KS, KS, RandomUtils.order(KC * C * KS * KS * KS, 0.1f, 0.1f), true);
+        WFCausalConv3D conv1 = new WFCausalConv3D(C, KC, F, W, H, KS, stride, false, nn);
+        
+//        float[] w = new float[] {0.3536f, 0.3536f, 0.3536f, 0.3536f, 0.3536f, 0.3536f, 0.3536f, 0.3536f};
+        
+        conv1.weight = new Tensor(4, 3 * 2, 2, 2, MatrixUtils.order(4 * 3 * 2 * 2 * 2, 0.01f, 0.01f), true);
 //        conv1.bias = new Tensor(1, 1, 1, KC, RandomUtils.order(KC, 0.1f, 0.1f), true);
         conv1.forward(input);
 //        float[] delta_data = MatrixUtils.val(conv1.getOutput().dataLength, 1.0f);
 //        Tensor delta = new Tensor(N, conv1.oChannel * conv1.oDepth, conv1.oHeight, conv1.oWidth, delta_data, true);
 //        conv1.back(delta);
-//        conv1.getOutput().showShape();
-//        conv1.getOutput().showDM();
-//        conv1.diff.showDM();
+        conv1.getOutput().showShape();
+        conv1.getOutput().showDM();
+        
+        String deltaPath = "D:\\models\\input_wf_delta.json";
+    	Map<String, Object> datas2 = LagJsonReader.readJsonFileSmallWeight(deltaPath);
+    	Tensor delta = new Tensor(N, 4 * 9, 16, 16, true);
+    	ClipModelUtils.loadData(delta, datas2, "dx", 5);
+        
+    	conv1.back(delta);
+    	
+        conv1.diff.showDM();
+        conv1.diff.showDMByOffsetRed(0, conv1.diff.getOnceSize(), "");
 //        conv1.diffW.showDM();
 //        conv1.diffB.showDM();
     }
@@ -259,9 +281,9 @@ public class CausalConv3DPlainAR extends Layer {
         int dataLength = kernelNum * channel * kernelSize * kernelSize * kernelSize;
         this.oChannel = this.kernelNum;
         int time_pad = (kernelSize - 1) + Math.max(1 - stride, 0);
-        int height_pad = kernelSize / 2;
-        int width_pad = kernelSize / 2;
-        this.padding3d = new int[] {width_pad, width_pad, height_pad, height_pad, time_pad, 0};	
+//        int height_pad = kernelSize / 2;
+//        int width_pad = kernelSize / 2;
+        this.padding3d = new int[] {0, 0, 0, 0, time_pad, 0};	
         this.pDepth = this.depth + padding3d[4] + padding3d[5];
         this.pHeight = this.height + padding3d[2] + padding3d[3];
         this.pWidth = this.width + padding3d[0] + padding3d[1];
@@ -362,8 +384,9 @@ public class CausalConv3DPlainAR extends Layer {
     public void output() {
         // TODO Auto-generated method stub
     	input.showShape();
-    	paddingKernel.padding3d(input, pOutput, depth, padding3d, 0);
+    	paddingKernel.padding3d_self(input, pOutput, depth, padding3d);
     	pOutput.showShape();
+    	pOutput.showDM();
         kernel.conv(pOutput, weight, output);
 //        System.err.println("weight:"+MatrixOperation.sum(weight.syncHost()));
 //        System.err.println("output:"+MatrixOperation.sum(output.syncHost()));
@@ -421,9 +444,9 @@ public class CausalConv3DPlainAR extends Layer {
 
              */
             kernel.dx(delta, weight, pDiff);
-            
-            paddingKernel.padding3dGrad(pDiff, diff, depth, padding3d);
-            
+
+            paddingKernel.padding3dGrad_self(pDiff, diff, depth, padding3d);
+
             //			System.out.println(this.index+":"+diff.isZero()+":"+delta.isZero());
         }
         //		System.out.println("back:"+(System.nanoTime() - start) / 1e6 + "ms.");
@@ -470,7 +493,7 @@ public class CausalConv3DPlainAR extends Layer {
              */
             kernel.dx(delta, weight, pDiff);
             
-            paddingKernel.padding3dGrad(pDiff, diff, depth, padding3d);
+            paddingKernel.padding3dGrad_self(pDiff, diff, depth, padding3d);
             
             //			System.out.println(this.index+":"+diff.isZero()+":"+delta.isZero());
         }

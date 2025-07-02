@@ -179,8 +179,9 @@ public class VideoDecoder extends Layer {
         convNormOut.forward(x);
         convAct.forward(convNormOut.getOutput());
         convOut.forward(convAct.getOutput());
+
         convOut.getOutput().view(number * convOut.oChannel, convOut.oDepth, convOut.oHeight, convOut.oWidth);
-        convOut.getOutput().showDM("convOut.getOutput():");
+
         Tensor_OP().getByPosition(convOut.getOutput(), this.output, new int[] {1 , (temporal_downsample - 1), oDepth}, 0);
         convOut.getOutput().viewOrg();
 //        output.showDM("output:");
@@ -195,21 +196,24 @@ public class VideoDecoder extends Layer {
     @Override
     public void diff() {
         // TODO Auto-generated method stub
+//    	delta.showDM("delta");
     	convOut.getOutput().clearGPU();
     	convOut.getOutput().view(number * convOut.oChannel, convOut.oDepth, convOut.oHeight, convOut.oWidth);
     	Tensor_OP().getByPosition(convOut.getOutput(), delta, new int[] {1 , (temporal_downsample - 1), oDepth}, 1);
     	convOut.getOutput().viewOrg();
         convOut.back(convOut.getOutput());
+//        convOut.diff.showDM("h_a_diff:");
         convAct.back(convOut.diff);
         convNormOut.back(convAct.diff);
         Tensor d = convNormOut.diff;
+        d.showShape("norm");
+//        d.showDM("h_block_delta:");
         for (int i = upBlock.size() - 1; i >= 0; i--) {
             Layer up = upBlock.get(i);
             up.back(d);
             d = up.diff;
-            System.err.println(up);
-//            d.showDM("up_"+i);
         }
+//        d.showDM("h_block_delta:");
         for (int i = midBlock.size() - 1; i >= 0; i--) {
             Layer mid = midBlock.get(i);
             mid.back(d);
@@ -217,6 +221,7 @@ public class VideoDecoder extends Layer {
 //            d.showDM("mid_"+i);
         }
         convIn.back(d);
+//        convIn.diff.showDM("decoder-z_delta:");
         this.diff = convIn.diff;
     }
 

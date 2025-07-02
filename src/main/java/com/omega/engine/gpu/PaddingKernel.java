@@ -15,6 +15,8 @@ public class PaddingKernel extends CUDAKernel {
     private CUfunction gradFunction;
     private CUfunction function2d;
     private CUfunction gradFunction2d;
+    private CUfunction function_self;
+    private CUfunction gradFunction_self;
     private int CAFFE_CUDA_NUM_THREADS = 1024;
     private Pointer kernelParameters;
 
@@ -81,6 +83,12 @@ public class PaddingKernel extends CUDAKernel {
             }
             if (gradFunction2d == null) {
                 gradFunction2d = getCudaManager().getLocalFunctionByModule("PaddingKernel.cu", "ConstantPadGrad2d");
+            }
+            if (function_self == null) {
+            	function_self = getCudaManager().getLocalFunctionByModule("PaddingKernel.cu", "constPadding3d_seft");
+            }
+            if (gradFunction_self == null) {
+            	gradFunction_self = getCudaManager().getLocalFunctionByModule("PaddingKernel.cu", "ConstantPadGrad3d_self");
             }
         } catch (Exception e) {
             // TODO: handle exception
@@ -259,6 +267,51 @@ public class PaddingKernel extends CUDAKernel {
     /**
      * padding shape [wLeft,wRight,hTop,hBottom,dHead,dBack]
      */
+    public void padding3d_self(Tensor x, Tensor y, int xd, int[] padding) {
+        try {
+            if (padding.length != 6) {
+                throw new RuntimeException("padding shape must be [dHead,dBack,hTop,hBottom,wLeft,wRight].");
+            }
+            int C = x.channel / xd;
+            int D = xd;
+            int H = x.height;
+            int W = x.width;
+            int oDepth = D + padding[4] + padding[5];
+            int oHeight = H + padding[2] + padding[3];
+            int oWidth = W + padding[0] + padding[1];
+            if (y.channel != oDepth * C || y.height != oHeight || y.width != oWidth) {
+                throw new RuntimeException("the output tensor shape is not same as padded shape.");
+            }
+            /**
+             * 设置入参
+             *const long size, const float *input, const int64_t num, const int64_t channels,
+
+             const int64_t old_depth, const int64_t old_height, const int64_t old_width,
+
+             const int64_t old_dhw, const int64_t old_hw, const int64_t padded_depth,
+
+             const int64_t padded_height, const int64_t padded_width, const int64_t padded_dhw,
+
+             const int64_t padded_hw, const int64_t pad_head, const int64_t pad_top,
+
+             const int64_t pad_left, const float *pad_value, float *output
+
+             */
+            kernelParameters = Pointer.to(Pointer.to(new long[]{y.dataLength}), Pointer.to(x.getGpuData()), Pointer.to(new int[]{x.number}), Pointer.to(new int[]{C}), Pointer.to(new int[]{D}), Pointer.to(new int[]{H}), Pointer.to(new int[]{W}), Pointer.to(new int[]{D * H * W}), Pointer.to(new int[]{H * W}), Pointer.to(new int[]{oDepth}), Pointer.to(new int[]{oHeight}), Pointer.to(new int[]{oWidth}), Pointer.to(new int[]{oDepth * oHeight * oWidth}), Pointer.to(new int[]{oHeight * oWidth}), Pointer.to(new int[]{padding[4]}), Pointer.to(new int[]{padding[2]}), Pointer.to(new int[]{padding[0]}), Pointer.to(y.getGpuData()));
+            cuLaunchKernel(function_self, this.CAFFE_GET_BLOCKS(y.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameters, null // Kernel- and extra parameters
+            );
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    /**
+     * padding shape [wLeft,wRight,hTop,hBottom,dHead,dBack]
+     */
     public void padding3dGrad(Tensor dy, Tensor dx, int xd, int[] padding) {
         try {
             if (padding.length != 6) {
@@ -297,7 +350,50 @@ public class PaddingKernel extends CUDAKernel {
             e.printStackTrace();
         }
     }
-
+    
+    /**
+     * padding shape [wLeft,wRight,hTop,hBottom,dHead,dBack]
+     */
+    public void padding3dGrad_self(Tensor dy, Tensor dx, int xd, int[] padding) {
+        try {
+            if (padding.length != 6) {
+                throw new RuntimeException("padding shape must be [dHead,dBack,hTop,hBottom,wLeft,wRight].");
+            }
+            int C = dx.channel / xd;
+            int D = xd;
+            int H = dx.height;
+            int W = dx.width;
+            int oDepth = D + padding[4] + padding[5];
+            int oHeight = H + padding[2] + padding[3];
+            int oWidth = W + padding[0] + padding[1];
+            /**
+             * 设置入参
+             *const size_t size, const float *dy, const int64_t num, const int64_t channels,
+             const int64_t old_depth, const int64_t old_height, const int64_t old_width,
+             const int64_t old_dhw, const int64_t old_hw, const int64_t padded_depth,
+             const int64_t padded_height, const int64_t padded_width, const int64_t padded_dhw,
+             const int64_t padded_hw, const int64_t pad_head, const int64_t pad_top,
+             const int64_t pad_left, float *dx
+             */
+            kernelParameters = Pointer.to(Pointer.to(new long[]{dx.dataLength}), Pointer.to(dy.getGpuData()), Pointer.to(new int[]{dy.number}), Pointer.to(new int[]{C}), Pointer.to(new int[]{D}), Pointer.to(new int[]{H}), Pointer.to(new int[]{W}), Pointer.to(new int[]{D * H * W}), Pointer.to(new int[]{H * W}), Pointer.to(new int[]{oDepth}), Pointer.to(new int[]{oHeight}), Pointer.to(new int[]{oWidth}), Pointer.to(new int[]{oDepth * oHeight * oWidth}), Pointer.to(new int[]{oHeight * oWidth}), Pointer.to(new int[]{padding[4]}), Pointer.to(new int[]{padding[2]}), Pointer.to(new int[]{padding[0]}), Pointer.to(dx.getGpuData()));
+            cuLaunchKernel(gradFunction, this.CAFFE_GET_BLOCKS(dx.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameters, null // Kernel- and extra parameters
+            );
+            
+            kernelParameters = Pointer.to(Pointer.to(new long[]{dy.dataLength}), Pointer.to(dy.getGpuData()), Pointer.to(new int[]{dy.number}), Pointer.to(new int[]{C}), Pointer.to(new int[]{D}), Pointer.to(new int[]{H}), Pointer.to(new int[]{W}), Pointer.to(new int[]{D * H * W}), Pointer.to(new int[]{H * W}), Pointer.to(new int[]{oDepth}), Pointer.to(new int[]{oHeight}), Pointer.to(new int[]{oWidth}), Pointer.to(new int[]{oDepth * oHeight * oWidth}), Pointer.to(new int[]{oHeight * oWidth}), Pointer.to(new int[]{padding[4]}), Pointer.to(new int[]{padding[2]}), Pointer.to(new int[]{padding[0]}), Pointer.to(dx.getGpuData()));
+            cuLaunchKernel(gradFunction_self, this.CAFFE_GET_BLOCKS(dy.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameters, null // Kernel- and extra parameters
+            );
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
     public void checkCUDA(int code) {
         if (code != cudaError.cudaSuccess) {
             System.err.println("Error code " + code + ":" + cudaError.stringFor(code));

@@ -235,7 +235,24 @@ public class SiLULayer extends ActiveFunctionLayer {
             this.gradientCheck();
         }
     }
+    
+    public void back(Tensor delta,Tensor diff) {
+        // TODO Auto-generated method stub
+        this.initBack(diff);
+        /**
+         * 设置梯度
 
+         */
+        this.setDelta(delta);
+        /**
+         * 计算梯度
+         */
+        this.diff();
+        if (this.network.GRADIENT_CHECK) {
+            this.gradientCheck();
+        }
+    }
+    
     @Override
     public void forward(Tensor input, int batch, int step) {
         // TODO Auto-generated method stub

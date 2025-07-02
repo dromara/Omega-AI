@@ -3525,7 +3525,7 @@ public class MBSGDOptimizer extends Optimizer {
         }
     }
 
-    public void trainVQVAE2_lpips_nogan(DiffusionImageDataLoader trainingData, LPIPS lpips) {
+    public void trainVQVAE2_lpips_nogan(DiffusionImageDataLoader trainingData, LPIPS lpips,String showPath) {
         // TODO Auto-generated method stub
         try {
             float perceptual_weight = 1;
@@ -3622,9 +3622,9 @@ public class MBSGDOptimizer extends Optimizer {
                      * print image
                      */
                     //					showImgs("/omega/test/vqvae/anime/", output, i + "", trainingData.mean, trainingData.std);
-                    showImgs("H:\\vae_dataset\\pokemon-blip\\test256\\", output, i + "", trainingData.mean, trainingData.std);
+                    showImgs(showPath, output, i + "", trainingData.mean, trainingData.std);
                 }
-                if (i > 0 && i % 20 == 0) {
+                if (i > 0 && i % 200 == 0) {
                     String save_model_path = "/omega/models/anime_vqvae2_256_" + i + ".model";
                     ModelUtils.saveModel(network, save_model_path);
                 }
@@ -3645,7 +3645,7 @@ public class MBSGDOptimizer extends Optimizer {
         try {
             float perceptual_weight = 1f;
             float disc_weight = 0.5f;
-            CUDAModules.initCUDAFunctions();
+//            CUDAModules.initCUDAFunctions();
             VQVAE2 network = (VQVAE2) this.network;
             this.dataSize = trainingData.number;
             if (isWarmUp()) {
@@ -3783,10 +3783,9 @@ public class MBSGDOptimizer extends Optimizer {
                  * update learning rate
                  */
                 //				this.updateLR(this.lr_step);
-                if (i % 1 == 0) {
+                if (i % 10 == 0) {
                     /**
                      * showImage
-
                      */
                     this.network.RUN_MODEL = RunModel.TEST;
                     Tensor output = network.forward(input);
@@ -3794,15 +3793,14 @@ public class MBSGDOptimizer extends Optimizer {
                     output.data = MatrixOperation.clampSelf(output.data, -1, 1);
                     /**
                      * print image
-
                      */
                     //					showImgs("/omega/test/vqvae/anime/", output, i + "", trainingData.mean, trainingData.std);
-                    showImgs("/omega/test/", output, i + "", trainingData.mean, trainingData.std);
+                    showImgs("D:\\test\\vae\\256\\", output, i + "", trainingData.mean, trainingData.std);
                 }
-                if (i > 0 && i % 20 == 0) {
-                    String save_model_path = "/omega/models/anime_vqvae2_256_" + i + ".model";
-                    ModelUtils.saveModel(network, save_model_path);
-                }
+//                if (i > 0 && i % 20 == 0) {
+//                    String save_model_path = "/omega/models/anime_vqvae2_256_" + i + ".model";
+//                    ModelUtils.saveModel(network, save_model_path);
+//                }
             }
             /**
              * 停止训练
@@ -6738,7 +6736,7 @@ public class MBSGDOptimizer extends Optimizer {
                     updateLRDynamic(i * trainingData.count_it + it, this.trainTime * trainingData.count_it, 1e-6f);
 
                 }
-                if (i % 100 == 0) {
+                if (i % 20 == 0) {
                     network.RUN_MODEL = RunModel.TEST;
                     System.out.println("start create test images.");
                     testDiT_ORG_SRA_IDDPM(i + "", latend, noise, t, condInput, cos, sin, mean, var, network, vae, iddpm, labels, testPath, scale_factor);

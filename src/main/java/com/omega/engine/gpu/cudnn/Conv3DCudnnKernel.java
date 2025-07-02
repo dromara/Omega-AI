@@ -1,20 +1,25 @@
 package com.omega.engine.gpu.cudnn;
 
-import com.omega.common.utils.JsonUtils;
+import static jcuda.jcudnn.cudnnConvolutionBwdDataAlgo.CUDNN_CONVOLUTION_BWD_DATA_ALGO_COUNT;
+import static jcuda.jcudnn.cudnnConvolutionFwdAlgo.CUDNN_CONVOLUTION_FWD_ALGO_COUNT;
+import static jcuda.jcudnn.cudnnConvolutionMode.CUDNN_CROSS_CORRELATION;
+import static jcuda.jcudnn.cudnnDataType.CUDNN_DATA_FLOAT;
+import static jcuda.jcudnn.cudnnTensorFormat.CUDNN_TENSOR_NCHW;
+
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.nn.layer.gpu.Conv3DBaseKernel;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.tensor.Tensor;
 
 import jcuda.Pointer;
-import jcuda.jcudnn.*;
+import jcuda.jcudnn.JCudnn;
+import jcuda.jcudnn.cudnnConvolutionBwdDataAlgoPerf;
+import jcuda.jcudnn.cudnnConvolutionBwdFilterAlgoPerf;
+import jcuda.jcudnn.cudnnConvolutionDescriptor;
+import jcuda.jcudnn.cudnnConvolutionFwdAlgoPerf;
+import jcuda.jcudnn.cudnnFilterDescriptor;
+import jcuda.jcudnn.cudnnTensorDescriptor;
 import jcuda.runtime.JCuda;
-
-import static jcuda.jcudnn.cudnnConvolutionBwdDataAlgo.CUDNN_CONVOLUTION_BWD_DATA_ALGO_COUNT;
-import static jcuda.jcudnn.cudnnConvolutionFwdAlgo.CUDNN_CONVOLUTION_FWD_ALGO_COUNT;
-import static jcuda.jcudnn.cudnnConvolutionMode.CUDNN_CROSS_CORRELATION;
-import static jcuda.jcudnn.cudnnDataType.CUDNN_DATA_FLOAT;
-import static jcuda.jcudnn.cudnnTensorFormat.CUDNN_TENSOR_NCHW;
 
 public class Conv3DCudnnKernel extends Conv3DBaseKernel {
     private int C;
@@ -180,6 +185,7 @@ public class Conv3DCudnnKernel extends Conv3DBaseKernel {
             //                     results[algoIndex].algo, results[algoIndex].time,
             //                     (long)results[algoIndex].memory, "["+result+"]");
             //             }
+            
             return results[0].algo;
         } else {
             return convAlgorithm;

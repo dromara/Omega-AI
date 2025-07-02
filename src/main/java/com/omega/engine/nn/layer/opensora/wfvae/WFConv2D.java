@@ -1,9 +1,8 @@
-package com.omega.engine.nn.layer.opensora.vae.modules;
+package com.omega.engine.nn.layer.opensora.wfvae;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
-import com.omega.engine.gpu.PaddingKernel;
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -13,28 +12,19 @@ import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 /**
- * Downsample2D
- *
+ * WFConv2D
+ * video to image
  * @author Administrator
  */
-public class Downsample2D extends Layer {
-
-	public PaddingKernel kernel;
+public class WFConv2D extends Layer {
 
     public ConvolutionLayer conv;
 
-    private Tensor padOutput;
-    
-    private int[] padding = new int[] {0, 1, 0, 1};
-
-    private int pw;
-    private int ph;
-    
     private int depth;
     
     private Tensor inputT;
     
-    public Downsample2D(int channel, int depth, int height, int width, Network network) {
+    public WFConv2D(int channel, int depth, int height, int width, Network network) {
         this.network = network;
         this.channel = channel;
         this.depth = depth;
@@ -48,33 +38,23 @@ public class Downsample2D extends Layer {
     }
 
     public void initLayers() {
-    	
-        kernel = new PaddingKernel(cuda());
-        
-        pw = padding[0] + width + padding[1];
-        ph = padding[2] + height + padding[3];
-        
-        conv = new ConvolutionLayer(channel, channel, pw, ph, 3, 3, 0, 2, true, this.network);
+        conv = new ConvolutionLayer(channel, channel, width, height, 3, 3, 0, 2, true, this.network);
         conv.setUpdater(UpdaterFactory.create(this.network));
         conv.paramsInit = ParamsInit.silu;
-       
     }
 
     @Override
     public void init() {
         this.number = this.network.number;
-        if(padOutput == null || padOutput.number != this.number * depth) {
+        if(inputT == null || inputT.number != this.number * depth) {
         	inputT = Tensor.createGPUTensor(inputT, number * depth, channel, height, width, true);
-        	padOutput = Tensor.createGPUTensor(padOutput, number * depth, channel, ph, pw, true);
         	this.output = Tensor.createGPUTensor(output, number, conv.oChannel * depth, conv.oHeight, conv.oWidth, true);
         }
     }
 
     @Override
     public void initBack() {
-//    	if(this.diff == null || this.diff.number != this.number) {
-//    		this.diff = Tensor.createGPUTensor(this.diff, number, channel, height, width, true);
-//    	}
+
     }
 
     @Override
@@ -86,8 +66,7 @@ public class Downsample2D extends Layer {
     public void output() {
         // TODO Auto-generated method stub
     	Tensor_OP().permute(input, inputT, new int[] {number, channel, depth, height, width}, new int[] {number, depth, channel, height, width}, new int[]{0, 2, 1, 3, 4});
-    	kernel.padding2d(inputT, padOutput, padding, 0);
-    	conv.forward(padOutput);
+    	conv.forward(inputT);
     	Tensor_OP().permute(conv.getOutput(), output, new int[] {number, depth, conv.oChannel, conv.oHeight, conv.oWidth}, new int[] {number, conv.oChannel, depth, conv.oHeight, conv.oWidth}, new int[]{0, 2, 1, 3, 4});
     }
 
@@ -101,8 +80,7 @@ public class Downsample2D extends Layer {
     public void diff() {
         // TODO Auto-generated method stub
     	Tensor_OP().permute(delta, conv.getOutput(), new int[] {number, conv.oChannel, depth, conv.oHeight, conv.oWidth}, new int[] {number, depth, conv.oChannel, conv.oHeight, conv.oWidth}, new int[]{0, 2, 1, 3, 4});
-        conv.back(conv.getOutput(), padOutput);
-        kernel.padding2dGrad(padOutput, inputT, padding);
+        conv.back(conv.getOutput(), inputT);
         Tensor_OP().permute(inputT, input, new int[] {number, depth, channel, height, width}, new int[] {number, channel, depth, height, width}, new int[]{0, 2, 1, 3, 4});
         this.diff = input;
     }

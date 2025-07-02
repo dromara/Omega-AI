@@ -5,6 +5,7 @@ import java.io.RandomAccessFile;
 import java.util.Map;
 
 import com.omega.common.utils.RandomUtils;
+import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.ParamsInit;
@@ -35,6 +36,9 @@ public class Resnet3DBlock extends Layer {
     public CausalConv3DPlainAR conv2;
     
     public CausalConv3DPlainAR shortcut;
+    
+    private Tensor tmp_diff;
+    private Tensor tmp_norm_diff;
     
     public Resnet3DBlock(int channel, int oChannel, int depth, int height, int width, Network network) {
         this.network = network;
@@ -171,11 +175,14 @@ public class Resnet3DBlock extends Layer {
     @Override
     public void diff() {
         // TODO Auto-generated method stub
-    	conv2.back(delta);
+    	this.tmp_diff = CUDAMemoryManager.getCache("opensora_block_tmp_diff", conv2.input.shape());
+    	conv2.back(delta, tmp_diff);
     	act2.back(conv2.diff);
-    	norm2.back(act2.diff);
+    	this.tmp_norm_diff = CUDAMemoryManager.getCache("opensora_block_tmp_norm_diff", act2.input.shape());
+    	norm2.back(act2.diff, tmp_norm_diff);
     	
-    	conv1.back(norm2.diff);
+    	this.tmp_diff = CUDAMemoryManager.getCache("opensora_block_tmp_diff", conv1.input.shape());
+    	conv1.back(norm2.diff, tmp_diff);
     	act1.back(conv1.diff);
     	norm1.back(act1.diff);
     	

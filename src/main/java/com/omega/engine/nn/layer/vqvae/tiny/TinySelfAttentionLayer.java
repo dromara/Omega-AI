@@ -303,25 +303,25 @@ public class TinySelfAttentionLayer extends Layer {
         Tensor dpreatt = dattn;
         // backward into dv
         GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_T, dk, time, time, 1.0f, dvaccum.getGpuData(), dk, time * dk, attn.getGpuData(), time, time * time, 0.0f, dqkvt.getGpuData(), dk, time * dk, batchSize * headNum);
-        vt.view(batchSize, time, headNum, dk);
-        Tensor_OP().permute(dqkvt, vt, new int[]{0, 2, 1, 3});
-        Tensor vDelta = vt.view(batchSize * time, 1, 1, headNum * dk);
-        this.vLinerLayer.back(vDelta, input);
-        Tensor_OP().add(input, 0, delta);
+        Tensor dvt = vt.view(batchSize, time, headNum, dk);
+        Tensor_OP().permute(dqkvt, dvt, new int[]{0, 2, 1, 3});
+        Tensor vDelta = dvt.view(batchSize * time, 1, 1, headNum * dk);
+        this.vLinerLayer.back(vDelta, output);
+        Tensor_OP().add(output, 0, delta);
         // backward into q
         GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_N, dk, time, time, 1.0f, kt.getGpuData(), dk, time * dk, dpreatt.getGpuData(), time, time * time, 0.0f, dqkvt.getGpuData(), dk, time * dk, batchSize * headNum);
-        qt.view(batchSize, time, headNum, dk);
-        Tensor_OP().permute(dqkvt, qt, new int[]{0, 2, 1, 3});
-        Tensor qDelta = qt.view(batchSize * time, 1, 1, headNum * dk);
-        this.qLinerLayer.back(qDelta, input);
-        Tensor_OP().add(delta, input, delta);
+        Tensor dqt = vt.view(batchSize, time, headNum, dk);
+        Tensor_OP().permute(dqkvt, dqt, new int[]{0, 2, 1, 3});
+        Tensor qDelta = dqt.view(batchSize * time, 1, 1, headNum * dk);
+        this.qLinerLayer.back(qDelta, output);
+        Tensor_OP().add(delta, output, delta);
         // backward into k
         GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_T, dk, time, time, 1.0f, qt.getGpuData(), dk, time * dk, dpreatt.getGpuData(), time, time * time, 0.0f, dqkvt.getGpuData(), dk, time * dk, batchSize * headNum);
-        kt.view(batchSize, time, headNum, dk);
-        Tensor_OP().permute(dqkvt, kt, new int[]{0, 2, 1, 3});
-        Tensor kDelta = kt.view(batchSize * time, 1, 1, headNum * dk);
-        this.kLinerLayer.back(kDelta, input);
-        Tensor_OP().add(delta, input, delta);
+        Tensor dkt = vt.view(batchSize, time, headNum, dk);
+        Tensor_OP().permute(dqkvt, dkt, new int[]{0, 2, 1, 3});
+        Tensor kDelta = dkt.view(batchSize * time, 1, 1, headNum * dk);
+        this.kLinerLayer.back(kDelta, output);
+        Tensor_OP().add(delta, output, delta);
 //        Tensor_OP().add(this.qLinerLayer.diff, this.kLinerLayer.diff, this.qLinerLayer.diff);
 //        Tensor_OP().add(this.qLinerLayer.diff, this.vLinerLayer.diff, this.qLinerLayer.diff);
         this.diff = delta;

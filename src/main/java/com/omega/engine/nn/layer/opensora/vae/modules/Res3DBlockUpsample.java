@@ -112,19 +112,16 @@ public class Res3DBlockUpsample extends Layer {
     @Override
     public void diff() {
         // TODO Auto-generated method stub
-    	act2.back(delta);
+    	act2.back(delta, act2.getOutput());
     	norm2.back(act2.diff);
-    	norm2.diff.showDM("norm2");
     	conv2.back(norm2.diff);
-    	conv2.diff.showDM("conv2");
+
     	act1.back(conv2.diff);
-    	
     	norm1.back(act1.diff);
     	conv1.back(norm1.diff);
-    	conv1.diff.showDM("conv1");
-    	act2.diff.showDM("act2");
+
     	Tensor_OP().add(conv1.diff, act2.diff, conv1.diff);
-    	conv1.diff.showDM("x");
+
     	this.diff = conv1.diff;
     }
     
