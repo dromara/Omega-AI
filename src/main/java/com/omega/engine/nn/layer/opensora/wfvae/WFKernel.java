@@ -167,15 +167,15 @@ public class WFKernel extends BaseKernel {
         }
     }
 
-    public void append(Tensor input, Tensor output, int length, int offset) {
+    public void append(Tensor input, Tensor output, int length, int size, int count, int currentIndex) {
         try {
             /**
              * 设置入参
              *
              */
-            forwardKernelParameters = Pointer.to(Pointer.to(input.getGpuData()),
+            forwardKernelParameters = Pointer.to(Pointer.to(new int[]{size}),Pointer.to(input.getGpuData()),
                     Pointer.to(output.getGpuData()),
-                    Pointer.to(new int[]{length}), Pointer.to(new int[]{offset}));
+                    Pointer.to(new int[]{length}), Pointer.to(new int[]{count}), Pointer.to(new int[]{currentIndex}));
 
             cuLaunchKernel(function_append, this.CAFFE_GET_BLOCKS(output.dataLength), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension

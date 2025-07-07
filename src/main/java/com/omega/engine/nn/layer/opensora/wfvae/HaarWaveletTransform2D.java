@@ -101,17 +101,20 @@ public class HaarWaveletTransform2D extends Layer {
     	Tensor_OP().permute(input, inputT, new int[] {number, channel, depth, height, width}, new int[] {number, depth, channel, height, width}, new int[]{0, 2, 1, 3, 4});
 
     	conv_ll.forward(inputT);
-    	int length = conv_ll.getOutput().dataLength;
-    	wfKernel.append(conv_ll.getOutput(), outputT, length, 0);
+
+    	int length = conv_ll.oChannel * conv_ll.oWidth * conv_ll.oHeight;
+    	int dataLength = conv_ll.getOutput().dataLength;
+
+    	wfKernel.append(conv_ll.getOutput(), outputT, length, dataLength, 4, 0);
 
     	conv_lh.forward(inputT);
-        wfKernel.append(conv_lh.getOutput(), outputT, length, length);
+        wfKernel.append(conv_lh.getOutput(), outputT, length, dataLength, 4, 1);
 
     	conv_hl.forward(inputT);
-        wfKernel.append(conv_hl.getOutput(), outputT, length, 2 * length);
+        wfKernel.append(conv_hl.getOutput(), outputT, length, dataLength, 4, 2);
 
     	conv_hh.forward(inputT);
-        wfKernel.append(conv_hh.getOutput(), outputT, length, 3 * length);
+        wfKernel.append(conv_hh.getOutput(), outputT, length, dataLength, 4, 3);
 
 //    	inputs[0] = conv_ll.getOutput();
 //    	inputs[1] = conv_lh.getOutput();
@@ -275,7 +278,7 @@ public class HaarWaveletTransform2D extends Layer {
         
         t2d.forward(input);
         
-        t2d.output.showDM();
+        t2d.output.showDMByNumber(1);
         t2d.output.showShape();
         
     }
