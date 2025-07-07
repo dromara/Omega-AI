@@ -37,6 +37,15 @@ __global__ void cat_number_4_expend(const size_t size, const float *x0, const fl
 }
 
 extern "C"
+__global__ void append(const float *x0, float *output, int len, int offset)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if(i < len) {
+		output[offset + i] = x0[i];
+	}
+}
+
+extern "C"
 __global__ void cat_number(int size, const float **x, int count, int len, float *output)
 {
 

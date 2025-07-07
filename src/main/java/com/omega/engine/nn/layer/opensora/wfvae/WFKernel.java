@@ -15,6 +15,7 @@ public class WFKernel extends BaseKernel {
     private CUfunction function;
     private CUfunction function_expend;
     private CUfunction function_4_expend;
+    private CUfunction function_append;
     private CUfunction function_back;
     private int CAFFE_CUDA_NUM_THREADS = 1024;
     private Pointer forwardKernelParameters;
@@ -83,6 +84,9 @@ public class WFKernel extends BaseKernel {
             if (function_4_expend == null) {
             	function_4_expend = getCudaManager().getLocalFunctionByModule("wf_vae.cu", "cat_number_4_expend");
             }
+            if (function_append == null) {
+                function_append = getCudaManager().getLocalFunctionByModule("wf_vae.cu", "append");
+            }
             if (function_back == null) {
                 function_back = getCudaManager().getLocalFunctionByModule("wf_vae.cu", "cat_number");
             }
@@ -124,12 +128,12 @@ public class WFKernel extends BaseKernel {
         try {
             /**
              * 设置入参
-             * 
+             *
              */
             forwardKernelParameters = Pointer.to(Pointer.to(new int[] {output.dataLength / input.length}),
-            		Pointer.to(input[0].getGpuData()),Pointer.to(input[1].getGpuData()),Pointer.to(input[2].getGpuData()),Pointer.to(input[3].getGpuData()),
-            		Pointer.to(input[4].getGpuData()),Pointer.to(input[5].getGpuData()),Pointer.to(input[6].getGpuData()),Pointer.to(input[7].getGpuData()),
-            		Pointer.to(new int[]{length}), Pointer.to(output.getGpuData()));
+                    Pointer.to(input[0].getGpuData()),Pointer.to(input[1].getGpuData()),Pointer.to(input[2].getGpuData()),Pointer.to(input[3].getGpuData()),
+                    Pointer.to(input[4].getGpuData()),Pointer.to(input[5].getGpuData()),Pointer.to(input[6].getGpuData()),Pointer.to(input[7].getGpuData()),
+                    Pointer.to(new int[]{length}), Pointer.to(output.getGpuData()));
 
             cuLaunchKernel(function_expend, this.CAFFE_GET_BLOCKS(output.dataLength / input.length), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
@@ -159,6 +163,26 @@ public class WFKernel extends BaseKernel {
             );
         } catch (Exception e) {
             // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+
+    public void append(Tensor input, Tensor output, int length, int offset) {
+        try {
+            /**
+             * 设置入参
+             *
+             */
+            forwardKernelParameters = Pointer.to(Pointer.to(input.getGpuData()),
+                    Pointer.to(output.getGpuData()),
+                    Pointer.to(new int[]{length}), Pointer.to(new int[]{offset}));
+
+            cuLaunchKernel(function_append, this.CAFFE_GET_BLOCKS(output.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    forwardKernelParameters, null // Kernel- and extra parameters
+            );
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
