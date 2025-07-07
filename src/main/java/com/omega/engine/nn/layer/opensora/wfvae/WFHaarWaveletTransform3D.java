@@ -1,5 +1,7 @@
 package com.omega.engine.nn.layer.opensora.wfvae;
 
+import java.util.Map;
+
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -7,6 +9,9 @@ import com.omega.engine.nn.network.CNN;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
+import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.transformer.utils.LagJsonReader;
+import jcuda.runtime.JCuda;
 
 public class WFHaarWaveletTransform3D extends Layer {
     private WFCausalConv3D hConv;
@@ -43,7 +48,11 @@ public class WFHaarWaveletTransform3D extends Layer {
     }
 
     public static void main(String[] args) {
-    	
+        try {
+            Thread.sleep(10000);
+        } catch (Exception e) {
+
+        }
         int N = 2;
         int C = 3;
         int F = 17;
@@ -53,7 +62,7 @@ public class WFHaarWaveletTransform3D extends Layer {
         float[] data = RandomUtils.order(N * C * F * H * W, 0.1f, 0.1f);
         Tensor input = new Tensor(N, C * F, H, W, data, true);
 
-//        String inputPath = "D:\\models\\input_wf.json";
+//        String inputPath = "c:\\temp\\input_wf.json";
 //        Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
 //        Tensor input = new Tensor(N, C * F, H, W, true);
 //        ClipModelUtils.loadData(input, datas, "x", 5);
@@ -62,7 +71,7 @@ public class WFHaarWaveletTransform3D extends Layer {
         nn.CUDNN = true;
         nn.number = N;
         //nt channel,int kernelNum,int depth,int width,int height,int kDepth,int kWidth,int kHeight,int padding,int stride
-        WFHaarWaveletTransform3D conv1 = new WFHaarWaveletTransform3D(C, F, W, H, nn);
+        WFHaarWaveletTransform3D conv1 = new WFHaarWaveletTransform3D(C,  F, W, H, nn);
 
         conv1.forward(input);
 //        float[] delta_data = MatrixUtils.val(conv1.getOutput().dataLength, 1.0f);
@@ -73,6 +82,7 @@ public class WFHaarWaveletTransform3D extends Layer {
     }
 
     private void initLayers() {
+        int kernelNum = 1;
         int kernelSize = 2;
         int stride = 2;
         float[] h = createWeight(new float[]{1, 1, 1, 1, 1, 1, 1, 1}, 0.3536f);
@@ -124,7 +134,7 @@ public class WFHaarWaveletTransform3D extends Layer {
     private float[] createWeight(float[] values, float scale) {
         float[] kernel = new float[8];
         for (int i = 0; i < 8; i++) {
-             kernel[i] = values[i] * scale;
+            kernel[i] = values[i] * scale;
         }
         return kernel;
     }
@@ -166,26 +176,64 @@ public class WFHaarWaveletTransform3D extends Layer {
     @Override
     public void output() {
         Tensor reshaped = this.input.view(this.number * this.channel, this.depth, this.height, this.width);
-        
+
+//        long start = System.currentTimeMillis();
         hConv.forward(reshaped);
-        gConv.forward(reshaped);
-        hhConv.forward(reshaped);
-        ghConv.forward(reshaped);
-        hVConv.forward(reshaped);
-        gVConv.forward(reshaped);
-        hhVConv.forward(reshaped);
-        ghVConv.forward(reshaped);
+        int length = hConv.getOutput().dataLength;
+        wfKernel.append(hConv.getOutput(), this.output, length, 0);
 
-        inputs[0] = hConv.getOutput();
-        inputs[1] = gConv.getOutput();
-        inputs[2] = hhConv.getOutput();
-        inputs[3] = ghConv.getOutput();
-        inputs[4] = hVConv.getOutput();
-        inputs[5] = gVConv.getOutput();
-        inputs[6] = hhVConv.getOutput();
-        inputs[7] = ghVConv.getOutput();
+        gConv.forward(reshaped, hConv.getOutput());
+        wfKernel.append(gConv.getOutput(), this.output, length, length);
 
+        hhConv.forward(reshaped, gConv.getOutput());
+        wfKernel.append(hhConv.getOutput(), this.output, length, 2 * length);
+
+        ghConv.forward(reshaped, hhConv.getOutput());
+        wfKernel.append(ghConv.getOutput(), this.output, length, 3 * length);
+
+        hVConv.forward(reshaped, ghConv.getOutput());
+        wfKernel.append(hVConv.getOutput(), this.output, length, 4 * length);
+
+        gVConv.forward(reshaped, hVConv.getOutput());
+        wfKernel.append(gVConv.getOutput(), this.output, length, 5 * length);
+
+        hhVConv.forward(reshaped, gVConv.getOutput());
+        wfKernel.append(hhVConv.getOutput(), this.output, length, 6 * length);
+
+        ghVConv.forward(reshaped, hhVConv.getOutput());
+        wfKernel.append(ghVConv.getOutput(), this.output, length, 7 * length);
+
+//        JCuda.cudaDeviceSynchronize();
+//        long end = System.currentTimeMillis();
+//        System.out.println(end - start);
+
+
+//        long start = System.currentTimeMillis();
+//        hConv.forward(reshaped);
+//        gConv.forward(reshaped);
+//        hhConv.forward(reshaped);
+//        ghConv.forward(reshaped);
+//        hVConv.forward(reshaped);
+//        gVConv.forward(reshaped);
+//        hhVConv.forward(reshaped);
+//        ghVConv.forward(reshaped);
+//
+//        inputs[0] = hConv.getOutput();
+//        inputs[1] = gConv.getOutput();
+//        inputs[2] = hhConv.getOutput();
+//        inputs[3] = ghConv.getOutput();
+//        inputs[4] = hVConv.getOutput();
+//        inputs[5] = gVConv.getOutput();
+//        inputs[6] = hhVConv.getOutput();
+//        inputs[7] = ghVConv.getOutput();
+//
+//        ghVConv.getOutput().syncHost();
+//
         wfKernel.cat_number_expend(inputs, output, ghVConv.oDepth * ghVConv.oWidth * ghVConv.oHeight);
+//        JCuda.cudaDeviceSynchronize();
+//        long end = System.currentTimeMillis();
+//        System.out.println(end - start);
+
     }
 
     @Override

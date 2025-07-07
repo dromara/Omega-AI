@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Map;
 
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -98,15 +99,26 @@ public class HaarWaveletTransform2D extends Layer {
     public void output() {
         // TODO Auto-generated method stub
     	Tensor_OP().permute(input, inputT, new int[] {number, channel, depth, height, width}, new int[] {number, depth, channel, height, width}, new int[]{0, 2, 1, 3, 4});
+
     	conv_ll.forward(inputT);
+    	int length = conv_ll.getOutput().dataLength;
+    	wfKernel.append(conv_ll.getOutput(), outputT, length, 0);
+
     	conv_lh.forward(inputT);
+        wfKernel.append(conv_lh.getOutput(), outputT, length, length);
+
     	conv_hl.forward(inputT);
+        wfKernel.append(conv_hl.getOutput(), outputT, length, 2 * length);
+
     	conv_hh.forward(inputT);
-    	inputs[0] = conv_ll.getOutput();
-    	inputs[1] = conv_lh.getOutput();
-    	inputs[2] = conv_hl.getOutput();
-    	inputs[3] = conv_hh.getOutput();
-    	wfKernel.cat_number_4_expend(inputs, outputT, conv_ll.oWidth * conv_ll.oHeight);
+        wfKernel.append(conv_hh.getOutput(), outputT, length, 3 * length);
+
+//    	inputs[0] = conv_ll.getOutput();
+//    	inputs[1] = conv_lh.getOutput();
+//    	inputs[2] = conv_hl.getOutput();
+//    	inputs[3] = conv_hh.getOutput();
+//    	wfKernel.cat_number_4_expend(inputs, outputT, conv_ll.oWidth * conv_ll.oHeight);
+
     	Tensor_OP().permute(outputT, output, new int[] {number, depth, channel, 4, conv_hh.oHeight, conv_hh.oWidth}, new int[] {number, channel, 4, depth, conv_hh.oHeight, conv_hh.oWidth}, new int[]{0, 2, 3, 1, 4, 5});
     }
 
@@ -247,7 +259,10 @@ public class HaarWaveletTransform2D extends Layer {
         int H = 32;
         int W = 32;
 
-        String inputPath = "D:\\models\\input_wf.json";
+//        float[] data = RandomUtils.order(N * C * F * H * W, 0.1f, 0.1f);
+//        Tensor input = new Tensor(N, C * F, H, W, data, true);
+
+        String inputPath = "c:\\temp\\input_wf.json";
     	Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
     	Tensor input = new Tensor(N, C * F, H, W, true);
     	ClipModelUtils.loadData(input, datas, "x", 5);
