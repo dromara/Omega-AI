@@ -11,6 +11,7 @@ import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 import com.omega.example.clip.utils.ClipModelUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
+
 import jcuda.runtime.JCuda;
 
 public class WFHaarWaveletTransform3D extends Layer {
@@ -48,41 +49,49 @@ public class WFHaarWaveletTransform3D extends Layer {
     }
 
     public static void main(String[] args) {
-        try {
-            Thread.sleep(10000);
-        } catch (Exception e) {
-
-        }
+//        try {
+//            Thread.sleep(10000);
+//        } catch (Exception e) {
+//
+//        }
         int N = 2;
         int C = 3;
         int F = 17;
         int H = 256;
         int W = 256;
 
-        float[] data = RandomUtils.order(N * C * F * H * W, 0.1f, 0.1f);
-        Tensor input = new Tensor(N, C * F, H, W, data, true);
+//        float[] data = RandomUtils.order(N * C * F * H * W, 0.1f, 0.1f);
+//        Tensor input = new Tensor(N, C * F, H, W, data, true);
 
-//        String inputPath = "c:\\temp\\input_wf.json";
-//        Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
-//        Tensor input = new Tensor(N, C * F, H, W, true);
-//        ClipModelUtils.loadData(input, datas, "x", 5);
+        String inputPath = "D:\\models\\input_wf.json";
+        Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
+        Tensor input = new Tensor(N, C * F, H, W, true);
+        ClipModelUtils.loadData(input, datas, "x", 5);
 
         CNN nn = new CNN(null);
         nn.CUDNN = true;
         nn.number = N;
         //nt channel,int kernelNum,int depth,int width,int height,int kDepth,int kWidth,int kHeight,int padding,int stride
         WFHaarWaveletTransform3D conv1 = new WFHaarWaveletTransform3D(C,  F, W, H, nn);
-
-        conv1.forward(input);
+        
+        for(int i = 0;i<10;i++) {
+        	long start = System.nanoTime();
+        	conv1.forward(input);
+        	JCuda.cudaDeviceSynchronize();
+        	long end = System.nanoTime();
+          System.out.println((end - start) / 1e6 + "ms.");
+        }
+        
+        
 //        float[] delta_data = MatrixUtils.val(conv1.getOutput().dataLength, 1.0f);
 //        Tensor delta = new Tensor(N, conv1.oChannel * conv1.oDepth, conv1.oHeight, conv1.oWidth, delta_data, true);
 //        conv1.back(delta);
         conv1.getOutput().showShape();
-        conv1.getOutput().showDM();
+//        conv1.getOutput().showDM();
+        conv1.getOutput().showDMByNumber(1);
     }
 
     private void initLayers() {
-        int kernelNum = 1;
         int kernelSize = 2;
         int stride = 2;
         float[] h = createWeight(new float[]{1, 1, 1, 1, 1, 1, 1, 1}, 0.3536f);
@@ -229,7 +238,7 @@ public class WFHaarWaveletTransform3D extends Layer {
 //
 //        ghVConv.getOutput().syncHost();
 //
-        wfKernel.cat_number_expend(inputs, output, ghVConv.oDepth * ghVConv.oWidth * ghVConv.oHeight);
+//        wfKernel.cat_number_expend(inputs, output, ghVConv.oDepth * ghVConv.oWidth * ghVConv.oHeight);
 //        JCuda.cudaDeviceSynchronize();
 //        long end = System.currentTimeMillis();
 //        System.out.println(end - start);

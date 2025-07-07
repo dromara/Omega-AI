@@ -349,8 +349,9 @@ __global__ void UpsampleTrilinear3DGradKernel(const size_t elem_num, const float
     size_t dout_offset = 0;
     for (int n = 0; n < batchsize; ++n) {
       for (int c = 0; c < channels; ++c) {
+		
         const float d2val = grad[dout_offset + (t2 * grad_h + h2) * grad_w + w2];
-
+		
         FastAtomicAdd(dinput, dinput_offset + idx_dhw(dinput_h, dinput_w, t1, h1, w1), elem_num,
                       t0lambda * h0lambda * w0lambda * d2val);
         FastAtomicAdd(dinput, dinput_offset + idx_dhw(dinput_h, dinput_w, t1, h1, w1 + w1p), elem_num,
@@ -379,10 +380,10 @@ __global__ void UpsampleTrilinear3DGradKernel(const size_t elem_num, const float
 extern "C"
 __global__ void UpsampleTrilinear3DGradKernel_offset(const size_t elem_num, const float *grad, const int batchsize,
                                               const int channels, const int grad_d, const int grad_h, const int grad_w,
-                                              const int grad_dhw, const int dinput_d, const int dinput_h,
+                                              const int grad_dhw, const int tar_grad_dhw, const int dinput_d, const int dinput_h,
                                               const int dinput_w, const int dinput_dhw, const float d_scale,
                                               const float h_scale, const float w_scale, const bool align_corner, float *dinput, const int offset) {
-  for (size_t pos = blockIdx.x * blockDim.x + threadIdx.x; pos < grad_dhw; pos += blockDim.x * gridDim.x) {
+  for (size_t pos = blockIdx.x * blockDim.x + threadIdx.x; pos < tar_grad_dhw; pos += blockDim.x * gridDim.x) {
     const int t2 = pos / (grad_h * grad_w);
     const int h2 = pos / grad_w % grad_h;
     const int w2 = pos % grad_w;
@@ -409,8 +410,10 @@ __global__ void UpsampleTrilinear3DGradKernel_offset(const size_t elem_num, cons
     size_t dout_offset = 0;
     for (int n = 0; n < batchsize; ++n) {
       for (int c = 0; c < channels; ++c) {
-        const float d2val = grad[dout_offset + (t2 * grad_h + h2) * grad_w + w2];
-
+		dinput_offset += offset * dinput_h * dinput_w;
+		
+        const float d2val = grad[dout_offset + ((t2 + offset) * grad_h + h2) * grad_w + w2];
+		
         FastAtomicAdd(dinput, dinput_offset + idx_dhw(dinput_h, dinput_w, t1, h1, w1), elem_num,
                       t0lambda * h0lambda * w0lambda * d2val);
         FastAtomicAdd(dinput, dinput_offset + idx_dhw(dinput_h, dinput_w, t1, h1, w1 + w1p), elem_num,
@@ -429,7 +432,7 @@ __global__ void UpsampleTrilinear3DGradKernel_offset(const size_t elem_num, cons
                       t1lambda * h1lambda * w1lambda * d2val);
 
         dout_offset += grad_dhw;
-        dinput_offset += dinput_dhw;
+        dinput_offset += dinput_dhw - offset * dinput_h * dinput_w;
       }
     }
   }

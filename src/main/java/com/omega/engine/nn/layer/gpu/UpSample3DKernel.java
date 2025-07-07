@@ -23,7 +23,7 @@ public class UpSample3DKernel extends BaseKernel {
     private CUfunction backward_trilinear_function;
     
     private CUfunction forward_trilinear_offset_function;
-    private CUfunction backward_trilinear_igone_function;
+    private CUfunction backward_trilinear_offset_function;
     
     private Pointer forwardKernelParameters;
     private Pointer backwardKernelParameters;
@@ -84,6 +84,19 @@ public class UpSample3DKernel extends BaseKernel {
             output2.showShape();
             PrintUtils.printImage(output2);
             
+            float[] d2 = RandomUtils.order(N * C * (oDepth - 1) * oHeight * oWidth, 0.1f, 0.1f);
+            Tensor delta2 = new Tensor(N, C * (oDepth - 1), oHeight, oWidth, d2, true);
+            
+            pooling.upsample3d_trilinear_delta_offset(delta2, diff, N, H, D, 1, H, W, (oDepth - 1), 1, scale, scale, false, 0);
+            diff.showShape();
+            diff.showDM();
+            PrintUtils.printImage(diff);
+            
+//            pooling.upsample3d_trilinear_delta_offset(delta2, diff, N, H, D, D-1, H, W, (oDepth - 1), scale, scale, scale, false, 1);
+//            diff.showShape();
+//            diff.showDM();
+//            PrintUtils.printImage(diff);
+            
 //            pooling.upsample3d_trilinear_offset(input, output2, N, C, D, D - 1, H, W, (oDepth - 1), scale, scale, scale, false, 1);
 //            output2.showDM();
 //            output2.showShape();
@@ -120,8 +133,8 @@ public class UpSample3DKernel extends BaseKernel {
             if(forward_trilinear_offset_function == null) {
             	forward_trilinear_offset_function = getCudaManager().getLocalFunctionByModule("UpSampleKernel2.cu", "UpsampleTrilinear3DKernel_offset");
             }
-            if(backward_trilinear_igone_function == null){
-            	backward_trilinear_igone_function = getCudaManager().getLocalFunctionByModule("UpSampleKernel2.cu", "UpsampleTrilinear3DGradKernel");
+            if(backward_trilinear_offset_function == null){
+            	backward_trilinear_offset_function = getCudaManager().getLocalFunctionByModule("UpSampleKernel2.cu", "UpsampleTrilinear3DGradKernel_offset");
             }
         } catch (Exception e) {
             // TODO: handle exception
@@ -332,6 +345,54 @@ public class UpSample3DKernel extends BaseKernel {
             		Pointer.to(new int[]{depth}), Pointer.to(new int[]{height}), Pointer.to(new int[]{width}), Pointer.to(new int[]{dinput_dhw}),
             		Pointer.to(new float[]{ds}), Pointer.to(new float[]{hs}), Pointer.to(new float[]{ws}), Pointer.to(new int[]{ab}), Pointer.to(diff.getGpuData()));
             checkCUDA(cuLaunchKernel(backward_trilinear_function, gridSize, 1, 1,      // Grid dimension
+            		blockSize, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    backwardKernelParameters, null // Kernel- and extra parameters
+            ));
+            //	        System.out.println((System.nanoTime() - start1) / 1e6 + "ms1");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void upsample3d_trilinear_delta_offset(Tensor delta, Tensor diff,int number,int channel,int org_depth,int tar_depth,int height,int width, int oDepth, int dScale, int hScale, int wScale, boolean align_corners,int offset) {
+        try {
+        	int od = tar_depth * dScale;
+        	int oh = height * hScale;
+        	int ow = width * wScale;
+            this.N = number;
+            
+            int dinput_dhw = org_depth * height * width;
+            int grad_dhw = oDepth * oh * ow;
+            int tar_grad_dhw = od * oh * ow;
+            long dinput_size = tar_depth * height * width * N * channel;
+            
+            int blockSize = Math.min(this.getCudaManager().props.maxThreadsPerBlock, 256);
+            int gridSize = (tar_grad_dhw + blockSize - 1) / blockSize;
+            
+            int ab = 0;
+            if(align_corners) {
+            	ab = 1;
+            }
+            
+            float ds = areaPixelComputeScale(tar_depth, od, align_corners, dScale);
+            float hs = areaPixelComputeScale(height, oh, align_corners, hScale);
+            float ws = areaPixelComputeScale(width, ow, align_corners, wScale);
+            
+            /**
+             * 设置入参
+             * const size_t elem_num, const float *grad, const int batchsize,
+              const int channels, const int grad_d, const int grad_h, const int grad_w,
+              const int grad_dhw, const int dinput_d, const int dinput_h,
+              const int dinput_w, const int dinput_dhw, const float d_scale,
+              const float h_scale, const float w_scale, const bool align_corner, float *dinput
+             */
+            backwardKernelParameters = Pointer.to(Pointer.to(new long[]{dinput_size}), Pointer.to(delta.getGpuData()), Pointer.to(new int[]{N}), Pointer.to(new int[]{channel}),
+            		Pointer.to(new int[]{od}), Pointer.to(new int[]{oh}), Pointer.to(new int[]{ow}), Pointer.to(new int[]{grad_dhw}), Pointer.to(new int[]{tar_grad_dhw}),
+            		Pointer.to(new int[]{tar_depth}), Pointer.to(new int[]{height}), Pointer.to(new int[]{width}), Pointer.to(new int[]{dinput_dhw}),
+            		Pointer.to(new float[]{ds}), Pointer.to(new float[]{hs}), Pointer.to(new float[]{ws}), Pointer.to(new int[]{ab}), Pointer.to(diff.getGpuData()), Pointer.to(new int[]{offset}));
+            checkCUDA(cuLaunchKernel(backward_trilinear_offset_function, gridSize, 1, 1,      // Grid dimension
             		blockSize, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     backwardKernelParameters, null // Kernel- and extra parameters
