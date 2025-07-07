@@ -47,7 +47,6 @@ __global__ void cat_number(int size, const float **x, int count, int len, float 
     printf("%f,", x[0][0]);
     if(index < size) {
 		for(int i = 0;i<count;i++){
-			
 			output[N * count * len + i * len + w] = x[i][N * len + w];
 		}
 	}
