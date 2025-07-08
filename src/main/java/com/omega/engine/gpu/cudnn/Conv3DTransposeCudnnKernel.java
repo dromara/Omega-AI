@@ -22,7 +22,7 @@ import jcuda.jcudnn.cudnnFilterDescriptor;
 import jcuda.jcudnn.cudnnTensorDescriptor;
 import jcuda.runtime.JCuda;
 
-public class Conv3DCudnnKernel extends Conv3DBaseKernel {
+public class Conv3DTransposeCudnnKernel extends Conv3DBaseKernel {
     private int C;
     private int F;
     private int H;
@@ -31,7 +31,14 @@ public class Conv3DCudnnKernel extends Conv3DBaseKernel {
     private int kf;
     private int kh;
     private int kw;
+    private int on;
+    private int oc;
+    private int of;
+    private int oh;
+    private int ow;
     private int padding = 0;
+    private int output_padding = 0;
+    private int dilation = 1;
     private int stride = 1;
     private int convAlgorithm = -1;
     private int fw_algo;
@@ -45,7 +52,7 @@ public class Conv3DCudnnKernel extends Conv3DBaseKernel {
     private cudnnTensorDescriptor yDesc;
     private cudnnConvolutionDescriptor convDesc;
 
-    public Conv3DCudnnKernel(Network network, int C, int F, int H, int W, int ko, int kf, int kh, int kw, int s, int p, CUDAManager cudaManager) {
+    public Conv3DTransposeCudnnKernel(Network network, int C, int F, int H, int W, int ko, int kf, int kh, int kw, int s, int p, int d, int op, CUDAManager cudaManager) {
         super(cudaManager);
         this.network = network;
         this.C = C;
@@ -58,6 +65,8 @@ public class Conv3DCudnnKernel extends Conv3DBaseKernel {
         this.kw = kw;
         this.stride = s;
         this.padding = p;
+        this.output_padding = op;
+        this.dilation = d;
         xDesc = new cudnnTensorDescriptor();
         kernelDesc = new cudnnFilterDescriptor();
         yDesc = new cudnnTensorDescriptor();
@@ -95,81 +104,63 @@ public class Conv3DCudnnKernel extends Conv3DBaseKernel {
         }
         return stride;
     }
-
+    
     public void init(int number) {
         if (this.N != number) {
             this.N = number;
             int convDims = 3;
             int[] padA = {padding, padding, padding};
-            System.out.println(JsonUtils.toJson(padA));
-            int[] weight = {ko, C, kf, kh, kw};
-            int[] upscaleA = {1, 1, 1};
+            int[] weight = {C, ko, kf, kh, kw};
+            int[] upscaleA = {dilation, dilation, dilation};
             int[] tensorOuputDimA = {N, C, F, H, W};
+//            System.err.println(JsonUtils.toJson(tensorOuputDimA));
             int[] strideA = computeStride(tensorOuputDimA);
-            			
+//            System.err.println(JsonUtils.toJson(strideA));
             JCudnn.cudnnSetTensorNdDescriptor(xDesc, CUDNN_DATA_FLOAT, 5, tensorOuputDimA, strideA);
             JCudnn.cudnnSetFilterNdDescriptor(kernelDesc, CUDNN_DATA_FLOAT, CUDNN_TENSOR_NCHW, 5, weight);
             int[] filterStrideA = {stride, stride, stride};
+
             JCudnn.cudnnSetConvolutionNdDescriptor(convDesc, convDims, padA, filterStrideA, upscaleA, CUDNN_CROSS_CORRELATION, CUDNN_DATA_FLOAT);
-            handle(JCudnn.cudnnGetConvolutionNdForwardOutputDim(convDesc, xDesc, kernelDesc, 5, tensorOuputDimA));
+ 
+            this.on = this.N;
+            this.oc = this.ko;
+            this.of = (F - 1) * stride - 2 * padA[0] + dilation * (this.kf - 1) + output_padding + 1;
+            this.oh = (H - 1) * stride - 2 * padA[1] + dilation * (this.kh - 1) + output_padding + 1;
+            this.ow = (W - 1) * stride - 2 * padA[2] + dilation * (this.kw - 1) + output_padding + 1;
+            tensorOuputDimA[0] = on;
+            tensorOuputDimA[1] = oc;
+            tensorOuputDimA[2] = of;
+            tensorOuputDimA[3] = oh;
+            tensorOuputDimA[4] = ow;
             int[] out_strideA = computeStride(tensorOuputDimA);
-//            System.out.println(JsonUtils.toJson(tensorOuputDimA));
+//            System.err.println(JsonUtils.toJson(tensorOuputDimA));
             JCudnn.cudnnSetTensorNdDescriptor(yDesc, CUDNN_DATA_FLOAT, 5, tensorOuputDimA, out_strideA);
-            this.fw_algo = getForwardAlgorithm(convAlgorithm, xDesc, kernelDesc, convDesc, yDesc);
-            this.bkf_algo = getBKFGO(xDesc, yDesc, kernelDesc, convDesc);
-            this.bkd_algo = getBKDGO(convDims, xDesc, yDesc, kernelDesc, convDesc);
+            this.fw_algo = getForwardAlgorithm(convAlgorithm, yDesc, kernelDesc, convDesc, xDesc);
+            this.bkf_algo = getBKFGO(convDims, yDesc, xDesc, kernelDesc, convDesc);
+            this.bkd_algo = getBKDGO(convDims, yDesc, xDesc, kernelDesc, convDesc);
             getWorkSpace();
         }
     }
-    
-    public void init(int number, int[] padA) {
-        if (this.N != number) {
-            this.N = number;
-            int convDims = 3;
-            int[] weight = {ko, C, kf, kh, kw};
-            int[] upscaleA = {1, 1, 1};
-            int[] tensorOuputDimA = {N, C, F, H, W};
-            int[] strideA = computeStride(tensorOuputDimA);
-//            System.out.println("strideA:"+JsonUtils.toJson(strideA));
-            //			System.out.println(JsonUtils.toJson(tensorOuputDimA));
-            JCudnn.cudnnSetTensorNdDescriptor(xDesc, CUDNN_DATA_FLOAT, 5, tensorOuputDimA, strideA);
-            JCudnn.cudnnSetFilterNdDescriptor(kernelDesc, CUDNN_DATA_FLOAT, CUDNN_TENSOR_NCHW, 5, weight);
-            int[] filterStrideA = {stride, stride, stride};
-            JCudnn.cudnnSetConvolutionNdDescriptor(convDesc, convDims, padA, filterStrideA, upscaleA, CUDNN_CROSS_CORRELATION, CUDNN_DATA_FLOAT);
-            handle(JCudnn.cudnnGetConvolutionNdForwardOutputDim(convDesc, xDesc, kernelDesc, 5, tensorOuputDimA));
-            int[] out_strideA = computeStride(tensorOuputDimA);
-//            System.out.println("strideA:"+JsonUtils.toJson(out_strideA));
-            JCudnn.cudnnSetTensorNdDescriptor(yDesc, CUDNN_DATA_FLOAT, 5, tensorOuputDimA, out_strideA);
-            this.fw_algo = getForwardAlgorithm(convAlgorithm, xDesc, kernelDesc, convDesc, yDesc);
-            this.bkf_algo = getBKFGO(xDesc, yDesc, kernelDesc, convDesc);
-            this.bkd_algo = getBKDGO(convDims, xDesc, yDesc, kernelDesc, convDesc);
-            getWorkSpace();
-        }
-    }
-    
-    public void conv(Tensor input, Tensor kernel, Tensor output) {
+
+    public void convTranspose(Tensor input, Tensor kernel, Tensor output) {
         this.init(input.number);
-        handle(JCudnn.cudnnConvolutionForward(CudnnHandleManager.getHandle(), alpha_P, xDesc, input.getGpuData(), kernelDesc, kernel.getGpuData(), convDesc, fw_algo, this.network.workspace, this.network.workspaceSize, beta_P, yDesc, output.getGpuData()));
-    }
-    
-    public void conv(Tensor input, Tensor kernel, Tensor output, int[] padA) {
-        this.init(input.number, padA);
-        handle(JCudnn.cudnnConvolutionForward(CudnnHandleManager.getHandle(), alpha_P, xDesc, input.getGpuData(), kernelDesc, kernel.getGpuData(), convDesc, fw_algo, this.network.workspace, this.network.workspaceSize, beta_P, yDesc, output.getGpuData()));
+        handle(JCudnn.cudnnConvolutionBackwardData(CudnnHandleManager.getHandle(), alpha_P, kernelDesc, kernel.getGpuData(), xDesc, input.getGpuData(), convDesc, bkd_algo, this.network.workspace, this.network.workspaceSize, beta_P, yDesc, output.getGpuData()));
     }
 
     public void dw(Tensor input, Tensor delta, Tensor dKernel) {
-        handle(JCudnn.cudnnConvolutionBackwardFilter(CudnnHandleManager.getHandle(), alpha_P, xDesc, input.getGpuData(), yDesc, delta.getGpuData(), convDesc, bkf_algo, this.network.workspace, this.network.workspaceSize, beta_P, kernelDesc, dKernel.getGpuData()));
+        handle(JCudnn.cudnnConvolutionBackwardFilter(CudnnHandleManager.getHandle(), alpha_P, yDesc, delta.getGpuData(), xDesc, input.getGpuData(), convDesc, bkf_algo, this.network.workspace, this.network.workspaceSize, beta_P, kernelDesc, dKernel.getGpuData()));
     }
 
     public void dx(Tensor delta, Tensor kernel, Tensor diff) {
-        handle(JCudnn.cudnnConvolutionBackwardData(CudnnHandleManager.getHandle(), alpha_P, kernelDesc, kernel.getGpuData(), yDesc, delta.getGpuData(), convDesc, bkd_algo, this.network.workspace, this.network.workspaceSize, beta_P, xDesc, diff.getGpuData()));
+        handle(JCudnn.cudnnConvolutionForward(CudnnHandleManager.getHandle(), alpha_P, yDesc, delta.getGpuData(), kernelDesc, kernel.getGpuData(), convDesc, fw_algo, this.network.workspace, this.network.workspaceSize, beta_P, xDesc, diff.getGpuData()));
     }
 
     public int getBKDGO(int convAlgorithm, cudnnTensorDescriptor dxDesc, cudnnTensorDescriptor dyDesc, cudnnFilterDescriptor wDesc, cudnnConvolutionDescriptor convDesc) {
-        int requestedAlgoCount = CUDNN_CONVOLUTION_BWD_DATA_ALGO_COUNT;
+        int knum = CUDNN_CONVOLUTION_BWD_DATA_ALGO_COUNT * 2;
+        int requestedAlgoCount = knum;
         int returnedAlgoCount = -1;
-        int returnedAlgoCountArray[] = {returnedAlgoCount};
-        cudnnConvolutionBwdDataAlgoPerf results[] = new cudnnConvolutionBwdDataAlgoPerf[2 * CUDNN_CONVOLUTION_BWD_DATA_ALGO_COUNT];
+        int returnedAlgoCountArray[] = {knum};
+        cudnnConvolutionBwdDataAlgoPerf results[] = new cudnnConvolutionBwdDataAlgoPerf[knum];
         //        System.out.println("Testing cudnnFindConvolutionBackwardDataAlgorithm ...");
         JCudnn.cudnnFindConvolutionBackwardDataAlgorithm(CudnnHandleManager.getHandle(), wDesc, dyDesc, convDesc, dxDesc, requestedAlgoCount, returnedAlgoCountArray, results);
         returnedAlgoCount = returnedAlgoCountArray[0];
@@ -183,7 +174,7 @@ public class Conv3DCudnnKernel extends Conv3DBaseKernel {
         return results[0].algo;
     }
 
-    public int getBKFGO(cudnnTensorDescriptor xDesc, cudnnTensorDescriptor dyDesc, cudnnFilterDescriptor dwDesc, cudnnConvolutionDescriptor convDesc) {
+    public int getBKFGO(int convAlgorithm, cudnnTensorDescriptor xDesc, cudnnTensorDescriptor dyDesc, cudnnFilterDescriptor dwDesc, cudnnConvolutionDescriptor convDesc) {
         int requestedAlgoCount = CUDNN_CONVOLUTION_BWD_DATA_ALGO_COUNT;
         int returnedAlgoCount = -1;
         int returnedAlgoCountArray[] = {returnedAlgoCount};
@@ -217,7 +208,6 @@ public class Conv3DCudnnKernel extends Conv3DBaseKernel {
             //                     results[algoIndex].algo, results[algoIndex].time,
             //                     (long)results[algoIndex].memory, "["+result+"]");
             //             }
-            
             return results[0].algo;
         } else {
             return convAlgorithm;
@@ -230,18 +220,17 @@ public class Conv3DCudnnKernel extends Conv3DBaseKernel {
         }
         long most = 0;
         long[] sa = {most};
-        //		System.out.println("fw_algo:"+fw_algo);
-        handle(JCudnn.cudnnGetConvolutionForwardWorkspaceSize(CudnnHandleManager.getHandle(), xDesc, kernelDesc, convDesc, yDesc, fw_algo, sa));
+        handle(JCudnn.cudnnGetConvolutionForwardWorkspaceSize(CudnnHandleManager.getHandle(), yDesc, kernelDesc, convDesc, xDesc, fw_algo, sa));
         if (sa[0] > most) {
             most = sa[0];
         }
         //		System.out.println("bkf_algo:"+bkf_algo);
-        handle(JCudnn.cudnnGetConvolutionBackwardFilterWorkspaceSize(CudnnHandleManager.getHandle(), xDesc, yDesc, convDesc, kernelDesc, bkf_algo, sa));
+        handle(JCudnn.cudnnGetConvolutionBackwardFilterWorkspaceSize(CudnnHandleManager.getHandle(), yDesc, xDesc, convDesc, kernelDesc, bkf_algo, sa));
         if (sa[0] > most) {
             most = sa[0];
         }
         //		System.out.println("bkd_algo:"+bkd_algo);
-        handle(JCudnn.cudnnGetConvolutionBackwardDataWorkspaceSize(CudnnHandleManager.getHandle(), kernelDesc, yDesc, convDesc, xDesc, bkd_algo, sa));
+        handle(JCudnn.cudnnGetConvolutionBackwardDataWorkspaceSize(CudnnHandleManager.getHandle(), kernelDesc, xDesc, convDesc, yDesc, bkd_algo, sa));
         if (sa[0] > most) {
             most = sa[0];
         }
@@ -253,8 +242,14 @@ public class Conv3DCudnnKernel extends Conv3DBaseKernel {
     }
 
     @Override
-    public void convTranspose(Tensor input, Tensor kernel, Tensor output) {
+    public void conv(Tensor input, Tensor kernel, Tensor output) {
         // TODO Auto-generated method stub
     }
+
+	@Override
+	public void conv(Tensor input, Tensor kernel, Tensor output, int[] pad) {
+		// TODO Auto-generated method stub
+		
+	}
 }
 
