@@ -10,7 +10,6 @@ import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.tensor.Tensor;
 
 import jcuda.Pointer;
-import jcuda.Sizeof;
 import jcuda.driver.CUfunction;
 import jcuda.runtime.cudaError;
 
@@ -87,15 +86,15 @@ public class UpSample3DKernel extends BaseKernel {
             float[] d2 = RandomUtils.order(N * C * (oDepth - 1) * oHeight * oWidth, 0.1f, 0.1f);
             Tensor delta2 = new Tensor(N, C * (oDepth - 1), oHeight, oWidth, d2, true);
             
-            pooling.upsample3d_trilinear_delta_offset(delta2, diff, N, H, D, 1, H, W, (oDepth - 1), 1, scale, scale, false, 0);
+            pooling.upsample3d_trilinear_delta_offset(delta2, diff, N, C, D, 1, H, W, (oDepth - 1), 1, scale, scale, false, 0);
             diff.showShape();
             diff.showDM();
             PrintUtils.printImage(diff);
             
-//            pooling.upsample3d_trilinear_delta_offset(delta2, diff, N, H, D, D-1, H, W, (oDepth - 1), scale, scale, scale, false, 1);
-//            diff.showShape();
-//            diff.showDM();
-//            PrintUtils.printImage(diff);
+            pooling.upsample3d_trilinear_delta_offset(delta2, diff, N, C, D, D-1, H, W, (oDepth - 1), scale, scale, scale, false, 1);
+            diff.showShape();
+            diff.showDM();
+            PrintUtils.printImage(diff);
             
 //            pooling.upsample3d_trilinear_offset(input, output2, N, C, D, D - 1, H, W, (oDepth - 1), scale, scale, scale, false, 1);
 //            output2.showDM();
@@ -366,7 +365,7 @@ public class UpSample3DKernel extends BaseKernel {
             int dinput_dhw = org_depth * height * width;
             int grad_dhw = oDepth * oh * ow;
             int tar_grad_dhw = od * oh * ow;
-            long dinput_size = tar_depth * height * width * N * channel;
+            long dinput_size = (tar_depth - offset) * height * width * N * channel;
             
             int blockSize = Math.min(this.getCudaManager().props.maxThreadsPerBlock, 256);
             int gridSize = (tar_grad_dhw + blockSize - 1) / blockSize;
@@ -375,11 +374,11 @@ public class UpSample3DKernel extends BaseKernel {
             if(align_corners) {
             	ab = 1;
             }
-            
+
             float ds = areaPixelComputeScale(tar_depth, od, align_corners, dScale);
             float hs = areaPixelComputeScale(height, oh, align_corners, hScale);
             float ws = areaPixelComputeScale(width, ow, align_corners, wScale);
-            
+
             /**
              * 设置入参
              * const size_t elem_num, const float *grad, const int batchsize,

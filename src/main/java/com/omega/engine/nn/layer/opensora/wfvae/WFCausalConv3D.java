@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Map;
 
+import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.active.ActiveType;
@@ -33,6 +34,7 @@ public class WFCausalConv3D extends Layer {
     public int kernelNum = 0;
     public int kernelSize = 0;
     public int stride = 1;
+    public int padding = 0;
     public int oDepth = 0;
     public Conv3DBaseKernel kernel;
     private BiasKernel biasKernel;
@@ -47,6 +49,8 @@ public class WFCausalConv3D extends Layer {
     private Tensor pDiff;
     
     private int[] padding3d = new int[]{1, 1, 1, 1, 2, 0};
+    
+    private int[] pad = new int[] {0, 0, 0};
     
     /**
      * ConvolutionLayer
@@ -123,6 +127,26 @@ public class WFCausalConv3D extends Layer {
         this.height = height;
         this.kernelSize = kernelSize;
         this.stride = stride;
+        this.hasBias = hasBias;
+        this.network = network;
+        //		network.paramLayers.add(this);
+        this.setUpdater(UpdaterFactory.create(this.network));
+        this.hasParams = true;
+        this.initParam();
+    }
+    
+    public WFCausalConv3D(int channel, int kernelNum, int depth, int width, int height, int kernelSize, int stride, int padding, boolean hasBias, Network network) {
+        this.kernelNum = kernelNum;
+        this.channel = channel;
+        this.depth = depth;
+        this.width = width;
+        this.height = height;
+        this.kernelSize = kernelSize;
+        this.stride = stride;
+        this.padding = padding;
+        if(padding > 0) {
+        	pad = new int[] {0, padding, padding};
+        }
         this.hasBias = hasBias;
         this.network = network;
         //		network.paramLayers.add(this);
@@ -234,8 +258,8 @@ public class WFCausalConv3D extends Layer {
         int W = 32;
         
         int KC = 4;
-        int KS = 2;
-        int stride = 2;
+        int KS = 3;
+        int stride = 1;
         
 //        float[] data = RandomUtils.order(N * C * F * H * W, 0.1f, 0.1f);
 //        Tensor input = new Tensor(N, C * F, H, W, data, true);
@@ -249,11 +273,11 @@ public class WFCausalConv3D extends Layer {
         nn.CUDNN = true;
         nn.number = N;
         //nt channel,int kernelNum,int depth,int width,int height,int kDepth,int kWidth,int kHeight,int padding,int stride
-        WFCausalConv3D conv1 = new WFCausalConv3D(C, KC, F, W, H, KS, stride, false, nn);
+        WFCausalConv3D conv1 = new WFCausalConv3D(C, KC, F, W, H, KS, stride, 0, false, nn);
         
 //        float[] w = new float[] {0.3536f, 0.3536f, 0.3536f, 0.3536f, 0.3536f, 0.3536f, 0.3536f, 0.3536f};
         
-        conv1.weight = new Tensor(4, 3 * 2, 2, 2, MatrixUtils.order(4 * 3 * 2 * 2 * 2, 0.01f, 0.01f), true);
+        conv1.weight = new Tensor(4, 3 * 3, 3, 3, MatrixUtils.order(4 * 3 * 3 * 3 * 3, 0.01f, 0.01f), true);
 //        conv1.bias = new Tensor(1, 1, 1, KC, RandomUtils.order(KC, 0.1f, 0.1f), true);
         conv1.forward(input);
 //        float[] delta_data = MatrixUtils.val(conv1.getOutput().dataLength, 1.0f);
@@ -262,15 +286,15 @@ public class WFCausalConv3D extends Layer {
         conv1.getOutput().showShape();
         conv1.getOutput().showDM();
         
-        String deltaPath = "D:\\models\\input_wf_delta.json";
-    	Map<String, Object> datas2 = LagJsonReader.readJsonFileSmallWeight(deltaPath);
-    	Tensor delta = new Tensor(N, 4 * 9, 16, 16, true);
-    	ClipModelUtils.loadData(delta, datas2, "dx", 5);
-        
-    	conv1.back(delta);
-    	
-        conv1.diff.showDM();
-        conv1.diff.showDMByOffsetRed(0, conv1.diff.getOnceSize(), "");
+//        String deltaPath = "D:\\models\\input_wf_delta.json";
+//    	Map<String, Object> datas2 = LagJsonReader.readJsonFileSmallWeight(deltaPath);
+//    	Tensor delta = new Tensor(N, 4 * 9, 16, 16, true);
+//    	ClipModelUtils.loadData(delta, datas2, "dx", 5);
+//        
+//    	conv1.back(delta);
+//    	
+//        conv1.diff.showDM();
+//        conv1.diff.showDMByOffsetRed(0, conv1.diff.getOnceSize(), "");
 //        conv1.diffW.showDM();
 //        conv1.diffB.showDM();
     }
@@ -283,13 +307,14 @@ public class WFCausalConv3D extends Layer {
         int time_pad = (kernelSize - 1) + Math.max(1 - stride, 0);
 //        int height_pad = kernelSize / 2;
 //        int width_pad = kernelSize / 2;
-        this.padding3d = new int[] {0, 0, 0, 0, time_pad, 0};	
+        this.padding3d = new int[] {0, 0, 0, 0, time_pad, 0};
+//        System.err.println(JsonUtils.toJson(this.padding3d));
         this.pDepth = this.depth + padding3d[4] + padding3d[5];
         this.pHeight = this.height + padding3d[2] + padding3d[3];
         this.pWidth = this.width + padding3d[0] + padding3d[1];
         this.oDepth = (this.pDepth - kernelSize) / this.stride + 1;
-        this.oWidth = (this.pWidth - kernelSize) / this.stride + 1;
-        this.oHeight = (this.pHeight - kernelSize) / this.stride + 1;
+        this.oWidth = (this.pWidth + this.padding * 2 - kernelSize) / this.stride + 1;
+        this.oHeight = (this.pHeight + this.padding * 2 - kernelSize) / this.stride + 1;
 
         this.weight = new Tensor(kernelNum, channel * kernelSize, kernelSize, kernelSize, RandomUtils.kaiming_uniform(dataLength, this.channel * kernelSize * kernelSize * kernelSize, this.paramsInit), true);
 //        this.weight = new Tensor(kernelNum, channel * kernelSize, kernelSize, kernelSize, RandomUtils.order(dataLength, 0.1f, 0.1f), true);
@@ -383,10 +408,16 @@ public class WFCausalConv3D extends Layer {
     @Override
     public void output() {
         // TODO Auto-generated method stub
-
     	paddingKernel.padding3d_self(input, pOutput, depth, padding3d);
+//    	System.err.println(pDepth + ":" + pHeight + ":" + pWidth);
+//    	pOutput.showDMByOffsetRed(2 * pHeight * pWidth, pHeight * pWidth, "pOutput");
+    	if(padding > 0) {
+    		kernel.conv(pOutput, weight, output, pad);
+    	}else {
+//    		System.err.println("in");
+    		kernel.conv(pOutput, weight, output);
+    	}
 
-        kernel.conv(pOutput, weight, output);
 //        System.err.println("weight:"+MatrixOperation.sum(weight.syncHost()));
 //        System.err.println("output:"+MatrixOperation.sum(output.syncHost()));
         if (this.hasBias) {
@@ -472,7 +503,6 @@ public class WFCausalConv3D extends Layer {
         //		System.out.println("===========");
         /**
          * 计算deltaB
-
          */
         if (this.hasBias) {
             biasKernel.backwardConvBias(diffB, delta);
@@ -491,7 +521,7 @@ public class WFCausalConv3D extends Layer {
 
              */
             kernel.dx(delta, weight, pDiff);
-            
+//            pDiff.showDM("pDiff");
             paddingKernel.padding3dGrad_self(pDiff, diff, depth, padding3d);
             
             //			System.out.println(this.index+":"+diff.isZero()+":"+delta.isZero());

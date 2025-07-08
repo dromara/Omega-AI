@@ -80,8 +80,9 @@ __global__ void constPadding3d_seft(const size_t size, const float *input, const
 	    const int block_num = pos / padded_dhw;
 	    if (pos_d - pad_head < 0 || pos_h - pad_top < 0 || pos_w - pad_left < 0 || pos_d - pad_head >= old_depth ||
 	        pos_h - pad_top >= old_height || pos_w - pad_left >= old_width) {
-		  int oidx = pos - block_num * pad_head * old_hw;
-	      output[pos] = input[oidx];
+		  //int oidx = pos - block_num * pad_head * old_hw;
+		  int index = block_num * old_dhw + old_hw * 0 + old_width * (pos_h - pad_top) + pos_w - pad_left;
+	      output[pos] = input[index];
 	    } else {
 	      int index = block_num * old_dhw + old_hw * (pos_d - pad_head) + old_width * (pos_h - pad_top) + pos_w - pad_left;
 	      output[pos] = input[index];
@@ -114,7 +115,7 @@ __global__ void ConstantPadGrad3d_self(const size_t size, const float *dy, const
                               const int64_t padded_height, const int64_t padded_width, const int64_t padded_dhw,
                               const int64_t padded_hw, const int64_t pad_head, const int64_t pad_top,
                               const int64_t pad_left, float *dx){
-
+	
     for (size_t pos = blockIdx.x * blockDim.x + threadIdx.x; pos < (size); pos += blockDim.x * gridDim.x) {
 	    const int pos_d = pos / padded_hw % padded_depth;
 	    const int pos_h = pos / padded_width % padded_height;
@@ -122,8 +123,10 @@ __global__ void ConstantPadGrad3d_self(const size_t size, const float *dy, const
 		const int block_num = pos / padded_dhw;
 	    if (pos_d - pad_head < 0 || pos_h - pad_top < 0 || pos_w - pad_left < 0 || pos_d - pad_head >= old_depth ||
 	        pos_h - pad_top >= old_height || pos_w - pad_left >= old_width) {
-		  int oidx = pos - block_num * pad_head * old_hw;		
-	      dx[oidx] += dy[pos];
+		  //int oidx = pos - block_num * pad_head * old_hw;		
+		  int index = block_num * old_dhw + old_hw * 0 + old_width * (pos_h - pad_top) + pos_w - pad_left;
+		  atomicAdd(&dx[index], dy[pos]);
+	      //dx[index] += dy[pos];
 	    }
   	}
 

@@ -6,6 +6,7 @@ import static jcuda.jcudnn.cudnnConvolutionMode.CUDNN_CROSS_CORRELATION;
 import static jcuda.jcudnn.cudnnDataType.CUDNN_DATA_FLOAT;
 import static jcuda.jcudnn.cudnnTensorFormat.CUDNN_TENSOR_NCHW;
 
+import com.omega.common.utils.JsonUtils;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.nn.layer.gpu.Conv3DBaseKernel;
 import com.omega.engine.nn.network.Network;
@@ -100,6 +101,7 @@ public class Conv3DCudnnKernel extends Conv3DBaseKernel {
             this.N = number;
             int convDims = 3;
             int[] padA = {padding, padding, padding};
+            System.out.println(JsonUtils.toJson(padA));
             int[] weight = {ko, C, kf, kh, kw};
             int[] upscaleA = {1, 1, 1};
             int[] tensorOuputDimA = {N, C, F, H, W};
@@ -114,14 +116,42 @@ public class Conv3DCudnnKernel extends Conv3DBaseKernel {
 //            System.out.println(JsonUtils.toJson(tensorOuputDimA));
             JCudnn.cudnnSetTensorNdDescriptor(yDesc, CUDNN_DATA_FLOAT, 5, tensorOuputDimA, out_strideA);
             this.fw_algo = getForwardAlgorithm(convAlgorithm, xDesc, kernelDesc, convDesc, yDesc);
-            this.bkf_algo = getBKFGO(convDims, xDesc, yDesc, kernelDesc, convDesc);
+            this.bkf_algo = getBKFGO(xDesc, yDesc, kernelDesc, convDesc);
             this.bkd_algo = getBKDGO(convDims, xDesc, yDesc, kernelDesc, convDesc);
             getWorkSpace();
         }
     }
-
+    
+    public void init(int number, int[] padA) {
+        if (this.N != number) {
+            this.N = number;
+            int convDims = 3;
+            int[] weight = {ko, C, kf, kh, kw};
+            int[] upscaleA = {1, 1, 1};
+            int[] tensorOuputDimA = {N, C, F, H, W};
+            int[] strideA = computeStride(tensorOuputDimA);
+            //			System.out.println(JsonUtils.toJson(tensorOuputDimA));
+            JCudnn.cudnnSetTensorNdDescriptor(xDesc, CUDNN_DATA_FLOAT, 5, tensorOuputDimA, strideA);
+            JCudnn.cudnnSetFilterNdDescriptor(kernelDesc, CUDNN_DATA_FLOAT, CUDNN_TENSOR_NCHW, 5, weight);
+            int[] filterStrideA = {stride, stride, stride};
+            JCudnn.cudnnSetConvolutionNdDescriptor(convDesc, convDims, padA, filterStrideA, upscaleA, CUDNN_CROSS_CORRELATION, CUDNN_DATA_FLOAT);
+            handle(JCudnn.cudnnGetConvolutionNdForwardOutputDim(convDesc, xDesc, kernelDesc, 5, tensorOuputDimA));
+            int[] out_strideA = computeStride(tensorOuputDimA);
+            JCudnn.cudnnSetTensorNdDescriptor(yDesc, CUDNN_DATA_FLOAT, 5, tensorOuputDimA, out_strideA);
+            this.fw_algo = getForwardAlgorithm(convAlgorithm, xDesc, kernelDesc, convDesc, yDesc);
+            this.bkf_algo = getBKFGO(xDesc, yDesc, kernelDesc, convDesc);
+            this.bkd_algo = getBKDGO(convDims, xDesc, yDesc, kernelDesc, convDesc);
+            getWorkSpace();
+        }
+    }
+    
     public void conv(Tensor input, Tensor kernel, Tensor output) {
         this.init(input.number);
+        handle(JCudnn.cudnnConvolutionForward(CudnnHandleManager.getHandle(), alpha_P, xDesc, input.getGpuData(), kernelDesc, kernel.getGpuData(), convDesc, fw_algo, this.network.workspace, this.network.workspaceSize, beta_P, yDesc, output.getGpuData()));
+    }
+    
+    public void conv(Tensor input, Tensor kernel, Tensor output, int[] padA) {
+        this.init(input.number, padA);
         handle(JCudnn.cudnnConvolutionForward(CudnnHandleManager.getHandle(), alpha_P, xDesc, input.getGpuData(), kernelDesc, kernel.getGpuData(), convDesc, fw_algo, this.network.workspace, this.network.workspaceSize, beta_P, yDesc, output.getGpuData()));
     }
 
@@ -151,7 +181,7 @@ public class Conv3DCudnnKernel extends Conv3DBaseKernel {
         return results[0].algo;
     }
 
-    public int getBKFGO(int convAlgorithm, cudnnTensorDescriptor xDesc, cudnnTensorDescriptor dyDesc, cudnnFilterDescriptor dwDesc, cudnnConvolutionDescriptor convDesc) {
+    public int getBKFGO(cudnnTensorDescriptor xDesc, cudnnTensorDescriptor dyDesc, cudnnFilterDescriptor dwDesc, cudnnConvolutionDescriptor convDesc) {
         int requestedAlgoCount = CUDNN_CONVOLUTION_BWD_DATA_ALGO_COUNT;
         int returnedAlgoCount = -1;
         int returnedAlgoCountArray[] = {returnedAlgoCount};
