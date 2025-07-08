@@ -48,6 +48,17 @@ __global__ void append(int size, const float *x0, float *output, int len, int co
 }
 
 extern "C"
+__global__ void chunk(int size, const float *x0, float *output, int len, int count, int currentIndex)
+{
+    int i = (blockIdx.x + blockIdx.y * gridDim.x) * blockDim.x + threadIdx.x;
+    int N = i / len;
+    int w = i % len;
+    if(i < size) {
+        output[N * len + w] = x0[N * count * len + currentIndex * len + w];
+    }
+}
+
+extern "C"
 __global__ void cat_number(int size, const float **x, int count, int len, float *output)
 {
 

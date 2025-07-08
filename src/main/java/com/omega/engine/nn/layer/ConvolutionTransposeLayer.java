@@ -205,6 +205,25 @@ public class ConvolutionTransposeLayer extends Layer {
         }
     }
 
+    public void init(Tensor input) {
+        // TODO Auto-generated method stub
+        this.number = input.number;
+        if (this.output == null || this.number != this.output.number) {
+            //			this.output = new Tensor(number, oChannel, oHeight, oWidth, true);
+            this.output = Tensor.createTensor(this.output, number, oChannel, oHeight, oWidth, true);
+        }
+        if (kernel == null) {
+            if (this.network.CUDNN) {
+                kernel = new ConvTransposeCudnnKernel(network, channel, height, width, kernelNum, kHeight, kWidth, stride, padding, dilation, output_padding, cuda());
+            } else {
+                //				kernel = new ConvKernel(channel, height, width, kernelNum, kHeight, kWidth, stride, padding);
+            }
+            if (this.hasBias) {
+                biasKernel = new BiasKernel(cuda());
+            }
+        }
+    }
+
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
@@ -401,7 +420,7 @@ public class ConvolutionTransposeLayer extends Layer {
          * 参数初始化
 
          */
-        this.init();
+        this.init(input);
         /**
          * 设置输入
 
