@@ -100,16 +100,16 @@ public class InverseHaarWaveletTransform2D extends Layer {
 
         Tensor_OP().getByChannel(inputT, tmp,  len, len);
         conv_lh.forward(tmp);
-
+        Tensor_OP().add(outputT, conv_lh.getOutput(), outputT);
 
         Tensor_OP().getByChannel(inputT, tmp, 2 * len, len);
         conv_hl.forward(tmp);
-//        Tensor_OP().add(outputT, conv_hl.getOutput(), outputT);
+        Tensor_OP().add(outputT, conv_hl.getOutput(), outputT);
 
 
         Tensor_OP().getByChannel(inputT, tmp, 3 * len, len);
         conv_hh.forward(tmp);
-//        Tensor_OP().add(outputT, conv_hh.getOutput(), outputT);
+        Tensor_OP().add(outputT, conv_hh.getOutput(), outputT);
 
     }
 

@@ -17,6 +17,7 @@ public class WFKernel extends BaseKernel {
     private CUfunction function_4_expend;
     private CUfunction function_append;
     private CUfunction function_chunk;
+    private CUfunction function_add_offset;
     private CUfunction function_back;
     private int CAFFE_CUDA_NUM_THREADS = 1024;
     private Pointer forwardKernelParameters;
@@ -91,10 +92,12 @@ public class WFKernel extends BaseKernel {
             if (function_back == null) {
                 function_back = getCudaManager().getLocalFunctionByModule("wf_vae.cu", "cat_number");
             }
-            if (function_chunk == null) {
-                function_chunk = getCudaManager().getLocalFunctionByModule("wf_vae.cu", "chunk");
+//            if (function_chunk == null) {
+//                function_chunk = getCudaManager().getLocalFunctionByModule("wf_vae.cu", "chunk");
+//            }
+            if(function_add_offset == null) {
+            	function_add_offset = getCudaManager().getLocalFunctionByModule("wf_vae.cu", "add_offset");
             }
-
         } catch (Exception e) {
             // TODO: handle exception
             e.printStackTrace();
@@ -190,18 +193,18 @@ public class WFKernel extends BaseKernel {
             e.printStackTrace();
         }
     }
-
-    public void chunk(Tensor input, Tensor output, int length, int size, int count, int currentIndex) {
+    
+    public void add_offset(Tensor input, Tensor output, int detph, int hw, int offset) {
         try {
             /**
              * 设置入参
-             *
+             * int size, const float *x, float *output, int detph, int hw, int offset
              */
-            forwardKernelParameters = Pointer.to(Pointer.to(new int[]{size}),Pointer.to(input.getGpuData()),
+            forwardKernelParameters = Pointer.to(Pointer.to(new int[]{output.dataLength}),Pointer.to(input.getGpuData()),
                     Pointer.to(output.getGpuData()),
-                    Pointer.to(new int[]{length}), Pointer.to(new int[]{count}), Pointer.to(new int[]{currentIndex}));
+                    Pointer.to(new int[]{detph}), Pointer.to(new int[]{hw}), Pointer.to(new int[]{offset}));
 
-            cuLaunchKernel(function_chunk, this.CAFFE_GET_BLOCKS(input.dataLength), 1, 1,      // Grid dimension
+            cuLaunchKernel(function_add_offset, this.CAFFE_GET_BLOCKS(output.dataLength), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     forwardKernelParameters, null // Kernel- and extra parameters
@@ -210,6 +213,26 @@ public class WFKernel extends BaseKernel {
             e.printStackTrace();
         }
     }
+
+//    public void chunk(Tensor input, Tensor output, int length, int size, int count, int currentIndex) {
+//        try {
+//            /**
+//             * 设置入参
+//             *
+//             */
+//            forwardKernelParameters = Pointer.to(Pointer.to(new int[]{size}),Pointer.to(input.getGpuData()),
+//                    Pointer.to(output.getGpuData()),
+//                    Pointer.to(new int[]{length}), Pointer.to(new int[]{count}), Pointer.to(new int[]{currentIndex}));
+//
+//            cuLaunchKernel(function_chunk, this.CAFFE_GET_BLOCKS(input.dataLength), 1, 1,      // Grid dimension
+//                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+//                    0, null,               // Shared memory size and stream
+//                    forwardKernelParameters, null // Kernel- and extra parameters
+//            );
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
+//    }
 
 }
 

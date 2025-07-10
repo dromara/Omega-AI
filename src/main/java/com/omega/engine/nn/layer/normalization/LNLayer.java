@@ -200,7 +200,44 @@ public class LNLayer extends NormalizationLayer {
             this.output = input.createGPULike();
         }
     }
-
+    
+    public void init(int channel,int height,int width, BNType bnType) {
+    	this.channel = channel;
+        this.height = height;
+        this.width = width;
+        this.oChannel = this.channel;
+        this.oHeight = this.height;
+        this.oWidth = this.width;
+        this.setBnType(bnType);
+        if (bnType == BNType.fully_bn) {
+            this.meanNum = this.channel * this.height * this.width;
+        } else {
+            this.meanNum = this.height * this.width;
+        }
+        if (kernel == null) {
+            kernel = new LNKernel(width, bnType, cuda());
+        }
+        if (this.gamma == null) {
+            this.gamma = new Tensor(1, 1, 1, meanNum, MatrixUtils.one(this.meanNum), true);
+            if (network != null) {
+                this.diffGamma = this.network.createParamterGrad(1, 1, 1, meanNum, true);
+            } else {
+                this.diffGamma = new Tensor(1, 1, 1, meanNum, true);
+            }
+        }
+       
+        if (this.beta == null && hasBias) {
+            this.beta = new Tensor(1, 1, 1, meanNum, true);
+            if (network != null) {
+                this.diffBeta = this.network.createParamterGrad(1, 1, 1, meanNum, true);
+            } else {
+                this.diffBeta = new Tensor(1, 1, 1, meanNum, true);
+            }
+        }
+//        gamma.showShape("init-gamma");
+//        beta.showShape("init-beta");
+    }
+    
     @Override
     public void initParam() {
         // TODO Auto-generated method stub
@@ -250,6 +287,9 @@ public class LNLayer extends NormalizationLayer {
         //		System.out.println(JsonUtils.toJson(beta.shape()));
         //		kernel.forward(gamma, beta, input, output);
         //		kernel.forwardAten(gamma, beta, input, output);
+//    	gamma.showShape("gamma");
+//    	beta.showShape("beta");
+//    	System.err.println("-------------------");
         kernel.forward_llmc(gamma, beta, input, output);
         //		System.err.println("1:");
         //		output.showDMByNumber(0);
@@ -509,6 +549,14 @@ public class LNLayer extends NormalizationLayer {
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
         init();
+        ModelUtils.loadParams(inputStream, gamma);
+        if (hasBias) {
+            ModelUtils.loadParams(inputStream, beta);
+        }
+    }
+    
+    public void loadModel(RandomAccessFile inputStream, int channel, int height, int width, BNType bnType) throws IOException {
+        init(channel, height, width, bnType);
         ModelUtils.loadParams(inputStream, gamma);
         if (hasBias) {
             ModelUtils.loadParams(inputStream, beta);

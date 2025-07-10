@@ -14,6 +14,7 @@ import com.omega.engine.nn.layer.dit.modules.DiTAttentionLayer2;
 import com.omega.engine.nn.layer.dit.modules.DiTCrossAttentionLayer2;
 import com.omega.engine.nn.layer.dit.modules.DiTMLPLayer;
 import com.omega.engine.nn.layer.gpu.RoPEKernel;
+import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
@@ -78,6 +79,9 @@ public class DiTOrgBlock extends Layer {
         this.mlpHiddenDim = mlpHiddenDim;
         this.bias = bias;
         this.qkNorm = qkNorm;
+        this.channel = 1;
+        this.height = 1;
+        this.width = embedDim;
         this.oChannel = 1;
         this.oHeight = 1;
         this.oWidth = embedDim;
@@ -97,6 +101,9 @@ public class DiTOrgBlock extends Layer {
         this.textTime = textTime;
         this.mlpHiddenDim = mlpHiddenDim;
         this.bias = bias;
+        this.channel = 1;
+        this.height = 1;
+        this.width = embedDim;
         this.oChannel = 1;
         this.oHeight = 1;
         this.oWidth = embedDim;
@@ -695,7 +702,8 @@ public class DiTOrgBlock extends Layer {
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
-    	norm1.loadModel(inputStream);
+    	
+    	norm1.loadModel(inputStream, channel, height, width, BNType.fully_bn);
     	modulation_shift_msa.loadModel(inputStream);
     	modulation_scale_msa.loadModel(inputStream);
     	modulation_gate_msa.loadModel(inputStream);
@@ -704,10 +712,10 @@ public class DiTOrgBlock extends Layer {
     	modulation_gate_mlp.loadModel(inputStream);
     	
     	attn.loadModel(inputStream);
-    	norm2.loadModel(inputStream);
+    	norm2.loadModel(inputStream, 1, 1, attn.oWidth, BNType.fully_bn);
     	
     	cross_attn.loadModel(inputStream);
-    	norm3.loadModel(inputStream);
+    	norm3.loadModel(inputStream, 1, 1, cross_attn.oWidth, BNType.fully_bn);
     	
     	mlp.loadModel(inputStream);
     }

@@ -2,7 +2,6 @@ package com.omega.engine.nn.layer.opensora.wfvae;
 
 import java.util.Map;
 
-import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.network.CNN;
@@ -11,9 +10,11 @@ import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 import com.omega.example.clip.utils.ClipModelUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
+
 import jcuda.runtime.JCuda;
 
 public class WFHaarWaveletTransform3D extends Layer {
+	
     private WFCausalConv3D hConv;
     private WFCausalConv3D gConv;
     private WFCausalConv3D hhConv;
@@ -28,7 +29,7 @@ public class WFHaarWaveletTransform3D extends Layer {
 
     private WFKernel wfKernel;
 
-    private Tensor[] inputs = new Tensor[8];
+//    private Tensor[] inputs = new Tensor[8];
 
     public WFHaarWaveletTransform3D(int channel, int depth, int width, int height) {
         this.channel = channel;
