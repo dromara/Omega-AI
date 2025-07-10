@@ -54,13 +54,24 @@ __global__ void cat_number(int size, const float **x, int count, int len, float 
     int index = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
     int N = index / len;
     int w = index % len;
-    printf("---");
-    printf("%f,", x[0][0]);
     if(index < size) {
 		for(int i = 0;i<count;i++){
 			output[N * count * len + i * len + w] = x[i][N * len + w];
 		}
 	}
 
+}
+
+extern "C"
+__global__ void add_offset(int size, const float *x, float *output, int detph, int hw, int offset)
+{
+    int i = (blockIdx.x + blockIdx.y * gridDim.x) * blockDim.x + threadIdx.x;
+    if(i < size) {
+	    int N = i / detph / hw;
+	    int w = i % (detph * hw);
+	    int d = w / hw + offset;
+	    int idx = w % hw;
+        output[i] += x[N * (detph + 1) * hw + d * hw + idx];
+    }
 }
 

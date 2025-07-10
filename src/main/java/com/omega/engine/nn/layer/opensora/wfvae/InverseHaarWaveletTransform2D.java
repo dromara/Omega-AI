@@ -23,7 +23,6 @@ public class InverseHaarWaveletTransform2D extends Layer {
     private int depth;
 
     private Tensor inputT;
-    private Tensor outputT;
 
     private WFKernel wfKernel;
 
@@ -70,7 +69,6 @@ public class InverseHaarWaveletTransform2D extends Layer {
         this.number = this.network.number;
         if(inputT == null || inputT.number != this.number * depth) {
         	inputT = Tensor.createGPUTensor(inputT, number * depth * channel, 1, height, width, true);
-        	this.outputT = Tensor.createGPUTensor(output, number, depth * channel, conv_hh.oHeight, conv_hh.oWidth, true);
         	this.output = Tensor.createGPUTensor(output, number, channel * depth, conv_hh.oHeight, conv_hh.oWidth, true);
         }
     }
@@ -87,38 +85,39 @@ public class InverseHaarWaveletTransform2D extends Layer {
 
     @Override
     public void output() {
-        Tensor lowLow = new Tensor(number * depth, channel, height, width, true);
-        wfKernel.chunk(input, lowLow, width * height, input.dataLength / 4, 4, 0);
-        lowLow.showShape();
-    	Tensor_OP().permute(lowLow, inputT, new int[] {number, channel, depth, height, width}, new int[] {number, depth, channel, height, width}, new int[]{0, 2, 1, 3, 4});
-        inputT.showShape();
-    	conv_ll.forward(inputT);
-        conv_ll.getOutput().syncHost();
-        lowLow.syncHost();
-        inputT.syncHost();
-        Tensor_OP().add(outputT, conv_ll.getOutput(), outputT);
 
-        Tensor lowHigh = new Tensor(number * depth, channel, height, width, true);
-        wfKernel.chunk(input, lowHigh, width * height, input.dataLength / 4, 4, 1);
-        Tensor_OP().permute(lowHigh, inputT, new int[] {number, channel, depth, height, width}, new int[] {number, depth, channel, height, width}, new int[]{0, 2, 1, 3, 4});
-        conv_lh.forward(inputT);
-        Tensor_OP().add(outputT, conv_lh.getOutput(), outputT);
-
-        Tensor highLow = new Tensor(number * depth, channel, height, width, true);
-        wfKernel.chunk(input, highLow, width * height, input.dataLength / 4, 4, 2);
-        Tensor_OP().permute(highLow, inputT, new int[] {number, channel, depth, height, width}, new int[] {number, depth, channel, height, width}, new int[]{0, 2, 1, 3, 4});
-        conv_hl.forward(inputT);
-        Tensor_OP().add(outputT, conv_hl.getOutput(), outputT);
-
-        Tensor highHigh = new Tensor(number * depth, channel, height, width, true);
-        wfKernel.chunk(input, highHigh, width * height, input.dataLength / 4, 4, 3);
-        Tensor_OP().permute(highHigh, inputT, new int[] {number, channel, depth, height, width}, new int[] {number, depth, channel, height, width}, new int[]{0, 2, 1, 3, 4});
-        conv_hh.forward(inputT);
-        Tensor_OP().add(outputT, conv_hh.getOutput(), outputT);
-
-        outputT.view(number, channel * depth, height * 2, width * 2);
-
-    	Tensor_OP().permute(outputT, output, new int[] {number, depth, channel, conv_hh.oHeight, conv_hh.oWidth}, new int[] {number, channel, depth, conv_hh.oHeight, conv_hh.oWidth}, new int[]{0, 2, 1, 3, 4});
+//        Tensor lowLow = new Tensor(number * depth, channel, height, width, true);
+//        wfKernel.chunk(input, lowLow, width * height, input.dataLength / 4, 4, 0);
+//        lowLow.showShape();
+//    	Tensor_OP().permute(lowLow, inputT, new int[] {number, channel, depth, height, width}, new int[] {number, depth, channel, height, width}, new int[]{0, 2, 1, 3, 4});
+//        inputT.showShape();
+//    	conv_ll.forward(inputT);
+//        conv_ll.getOutput().syncHost();
+//        lowLow.syncHost();
+//        inputT.syncHost();
+//        Tensor_OP().add(outputT, conv_ll.getOutput(), outputT);
+//
+//        Tensor lowHigh = new Tensor(number * depth, channel, height, width, true);
+//        wfKernel.chunk(input, lowHigh, width * height, input.dataLength / 4, 4, 1);
+//        Tensor_OP().permute(lowHigh, inputT, new int[] {number, channel, depth, height, width}, new int[] {number, depth, channel, height, width}, new int[]{0, 2, 1, 3, 4});
+//        conv_lh.forward(inputT);
+//        Tensor_OP().add(outputT, conv_lh.getOutput(), outputT);
+//
+//        Tensor highLow = new Tensor(number * depth, channel, height, width, true);
+//        wfKernel.chunk(input, highLow, width * height, input.dataLength / 4, 4, 2);
+//        Tensor_OP().permute(highLow, inputT, new int[] {number, channel, depth, height, width}, new int[] {number, depth, channel, height, width}, new int[]{0, 2, 1, 3, 4});
+//        conv_hl.forward(inputT);
+//        Tensor_OP().add(outputT, conv_hl.getOutput(), outputT);
+//
+//        Tensor highHigh = new Tensor(number * depth, channel, height, width, true);
+//        wfKernel.chunk(input, highHigh, width * height, input.dataLength / 4, 4, 3);
+//        Tensor_OP().permute(highHigh, inputT, new int[] {number, channel, depth, height, width}, new int[] {number, depth, channel, height, width}, new int[]{0, 2, 1, 3, 4});
+//        conv_hh.forward(inputT);
+//        Tensor_OP().add(outputT, conv_hh.getOutput(), outputT);
+//
+//        outputT.view(number, channel * depth, height * 2, width * 2);
+//
+//    	Tensor_OP().permute(outputT, output, new int[] {number, depth, channel, conv_hh.oHeight, conv_hh.oWidth}, new int[] {number, channel, depth, conv_hh.oHeight, conv_hh.oWidth}, new int[]{0, 2, 1, 3, 4});
     }
 
     @Override

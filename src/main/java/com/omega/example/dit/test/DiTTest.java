@@ -1022,16 +1022,16 @@ public class DiTTest {
     }
 	
 	public static void dit_org_iddpm_amine_train() throws Exception {
-		String labelPath = "/omega/dataset/data.json";
-        String imgDirPath = "/omega/dataset/256/";
+		String labelPath = "D:\\dataset\\amine\\data.json";
+        String imgDirPath = "D:\\dataset\\amine\\256\\";
         boolean horizontalFilp = true;
         int imgSize = 256;
         int maxContextLen = 77;
-        int batchSize = 10;
+        int batchSize = 16;
         float[] mean = new float[]{0.5f, 0.5f, 0.5f};
         float[] std = new float[]{0.5f, 0.5f, 0.5f};
-        String vocabPath = "/omega/models/vocab.json";
-        String mergesPath = "/omega/models/merges.txt";
+        String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
+        String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
         BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
         SDImageDataLoaderEN dataLoader = new SDImageDataLoaderEN(bpe, labelPath, imgDirPath, imgSize, imgSize, maxContextLen, batchSize, horizontalFilp, mean, std);
         int time = maxContextLen;
@@ -1044,7 +1044,7 @@ public class DiTTest {
         clip.CUDNN = true;
         clip.time = time;
         clip.RUN_MODEL = RunModel.EVAL;
-        String clipWeight = "/omega/models/clip-vit-base-patch32.json";
+        String clipWeight = "D:\\models\\clip-vit-base-patch32.json";
         ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, false);
         int z_dims = 128;
         int latendDim = 4;
@@ -1056,16 +1056,16 @@ public class DiTTest {
         vae.CUDNN = true;
         vae.learnRate = 0.001f;
         vae.RUN_MODEL = RunModel.EVAL;
-        String vqvae_model_path = "/omega/models/anime_vqvae2_256.model";
+        String vqvae_model_path = "D:\\models\\anime_vqvae2_256.model";
         ModelUtils.loadModel(vae, vqvae_model_path);
         
-        int ditHeadNum = 16;
+        int ditHeadNum = 6;
         int latendSize = 32;
         int depth = 12;
         int timeSteps = 1000;
         int mlpRatio = 4;
         int patchSize = 2;
-        int hiddenSize = 1024;
+        int hiddenSize = 384;
         
         DiT_ORG dit = new DiT_ORG(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, maxContextLen, textEmbedDim, mlpRatio, true);
         dit.CUDNN = true;
@@ -1073,10 +1073,13 @@ public class DiTTest {
         
         IDDPM iddpm = new IDDPM(timeSteps, BetaType.linear, dit.cudaManager);
         
+//        String model_path = "D:\\models\\dit_anime256.model";
+//        ModelUtils.loadModel(dit, model_path);
+        
         MBSGDOptimizer optimizer = new MBSGDOptimizer(dit, 1000, 0.00001f, batchSize, LearnRateUpdate.CONSTANT, false);
         //		optimizer.lr_step = new int[] {20,50,80};
-        optimizer.train_DiT_ORG_iddpm(dataLoader, vae, clip, iddpm, "/omega/test/dit/", "", 0.18125f);
-        String save_model_path = "/omega/models/sd_anime256.model";
+        optimizer.train_DiT_ORG_iddpm(dataLoader, vae, clip, iddpm, "D:\\test\\dit\\", "D:\\models\\dit\\", 0.18125f);
+        String save_model_path = "D:\\models\\dit\\dit_anime_384_256.model";
         ModelUtils.saveModel(dit, save_model_path);
     }
 	
@@ -1084,11 +1087,11 @@ public class DiTTest {
 
         int imgSize = 256;
         int maxContextLen = 77;
-        int batchSize = 10;
+        int batchSize = 1;
         float[] imgMean = new float[]{0.5f, 0.5f, 0.5f};
         float[] imgStd = new float[]{0.5f, 0.5f, 0.5f};
-        String vocabPath = "/omega/models/vocab.json";
-        String mergesPath = "/omega/models/merges.txt";
+        String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
+        String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
         BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
        
         int time = maxContextLen;
@@ -1101,7 +1104,7 @@ public class DiTTest {
         clip.CUDNN = true;
         clip.time = time;
         clip.RUN_MODEL = RunModel.EVAL;
-        String clipWeight = "/omega/models/clip-vit-base-patch32.json";
+        String clipWeight = "D:\\models\\clip-vit-base-patch32.json";
         ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, false);
         int z_dims = 128;
         int latendDim = 4;
@@ -1113,7 +1116,7 @@ public class DiTTest {
         vae.CUDNN = true;
         vae.learnRate = 0.001f;
         vae.RUN_MODEL = RunModel.EVAL;
-        String vqvae_model_path = "/omega/models/anime_vqvae2_256.model";
+        String vqvae_model_path = "D:\\models\\anime_vqvae2_256.model";
         ModelUtils.loadModel(vae, vqvae_model_path);
         
         int ditHeadNum = 16;
@@ -1127,10 +1130,11 @@ public class DiTTest {
         DiT_ORG dit = new DiT_ORG(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, maxContextLen, textEmbedDim, mlpRatio, true);
         dit.CUDNN = true;
         dit.learnRate = 0.0001f;
+        dit.RUN_MODEL = RunModel.TEST;
         
         IDDPM iddpm = new IDDPM(timeSteps, BetaType.linear, dit.cudaManager);
         
-        String model_path = "/omega/models/sd_anime256.model";
+        String model_path = "D:\\models\\dit_anime256.model";
         ModelUtils.loadModel(dit, model_path);
         
         Tensor[] cs = RoPEKernel.getCosAndSin2D(dit.time, dit.hiddenSize, dit.headNum);
@@ -1152,7 +1156,7 @@ public class DiTTest {
         	Tensor label = new Tensor(batchSize * dit.maxContextLen, 1, 1, 1, true);
             Scanner scanner = new Scanner(System.in);
         	while (true) {
-                 System.out.println("请输入中文:");
+                 System.out.println("请输入英文提示词:");
                  String input_txt = scanner.nextLine();
                  if (input_txt.equals("exit")) {
                      break;
@@ -1162,9 +1166,9 @@ public class DiTTest {
                  int[] ids = bpe.encodeInt(input_txt, maxContextLen);
                  for (int j = 0; j < maxContextLen; j++) {
                      if (j < ids.length) {
-                         label.data[maxContextLen + j] = ids[j];
+                         label.data[j] = ids[j];
                      } else {
-                         label.data[maxContextLen + j] = 0;
+                         label.data[j] = 0;
                      }
                  }
                  
@@ -1228,11 +1232,13 @@ public class DiTTest {
 	        	
 //	        	dit_org_iddpm_pokemon_cn_train();
 	        	
-//	        	dit_org_iddpm_amine_train();
+	        	dit_org_iddpm_amine_train();
 	        	
 //	        	dit_org_sra_pokemon_train();
 	        	
-	        	dit_org_sra_amine_train();
+//	        	dit_org_sra_amine_train();
+	        	
+//	        	dit_org_iddpm_amine_predict();
 	        	
 	        } catch (Exception e) {
 	            // TODO: handle exception

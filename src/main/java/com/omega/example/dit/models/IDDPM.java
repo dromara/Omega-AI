@@ -250,8 +250,13 @@ public class IDDPM {
 	        }
 	        t.hostToDevice();
 	        Tensor pred = network.forward(xt, t, condInput, cos, sin);
+
 	        network.tensorOP.getByChannel(pred, predMean, 0, 4);
             network.tensorOP.getByChannel(pred, predVar, 4, 4);
+            
+            if(pred_xstart == null) {
+            	pred_xstart = Tensor.createGPUTensor(pred_xstart, predMean.shape(), true);
+            }
             
             p_mean_variance(predMean, predVar, t, xt, pred_xstart, predMean, predVar);
             

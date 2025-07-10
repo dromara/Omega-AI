@@ -5970,7 +5970,7 @@ public class MBSGDOptimizer extends Optimizer {
                     	System.out.println("vb_loss:"+vb_loss);
                     	System.out.println("mse_loss:"+mse_loss);
                         this.currentError = mse_loss + vb_loss;
-                        t.showDM("t:");
+//                        t.showDM("t:");
                     } else {
                         this.currentError = MatrixOperation.sum(this.loss.data) / this.batchSize;
                     }
@@ -5987,6 +5987,11 @@ public class MBSGDOptimizer extends Optimizer {
                 if (i % 10 == 0) {
                     network.RUN_MODEL = RunModel.TEST;
                     System.out.println("start create test images.");
+                    labels[0] = "a highly detailed anime landscape,big tree on the water, epic sky,golden grass,detailed.";
+                    labels[1] = "a vibrant anime mountain lands";
+                    trainingData.loadLabel_offset(label, 0, labels[0]);
+                    trainingData.loadLabel_offset(label, 1, labels[1]);
+                    condInput = clip.forward(label);
                     testDiT_IDDPM(i + "", latend, noise, t, condInput, cos, sin, mean, var, network, vae, iddpm, labels, testPath, scale_factor);
                     System.out.println("finish create.");
                     network.RUN_MODEL = RunModel.TRAIN;

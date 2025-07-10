@@ -294,7 +294,19 @@ public class SDImageDataLoaderEN extends BaseDataLoader {
             }
         }
     }
-
+    
+    public void loadLabel_offset(Tensor label, int index, String labelStr) {
+    	int[] ids = tokenizer.encodeInt(labelStr, maxContextLen);
+        for (int j = 0; j < maxContextLen; j++) {
+            if (j < ids.length) {
+                label.data[index * maxContextLen + j] = ids[j];
+            } else {
+                label.data[index * maxContextLen + j] = 0;
+            }
+        }
+        label.hostToDevice();
+    }
+    
     public void loadLabels(int[] indexs, Tensor label, String[] labels) {
         for (int i = 0; i < indexs.length; i++) {
             int idx = indexs[i];
