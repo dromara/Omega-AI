@@ -221,13 +221,17 @@ public class Convolution3DTransposeLayer extends Layer {
             this.diff = new Tensor(number, channel * depth, height, width, true);
         }
     }
+    
+    public void initBack(Tensor diff) {
+        // TODO Auto-generated method stub
+        this.diff = diff;
+    }
 
     @Override
     public void output() {
         // TODO Auto-generated method stub
         //		long start = System.nanoTime();
         //		weight.showDM(weight.dataLength-1);
-
         kernel.convTranspose(input, weight, output);
         if (this.hasBias) {
         	biasKernel.addConvBiasFast(output, bias, oChannel, oDepth);
@@ -455,7 +459,25 @@ public class Convolution3DTransposeLayer extends Layer {
             this.gradientCheck();
         }
     }
+    
+    public void back(Tensor delta,Tensor diff) {
+        // TODO Auto-generated method stub
+        initBack(diff);
+        /**
+         * 设置梯度
 
+         */
+        this.setDelta(delta);
+        /**
+         * 计算梯度
+
+         */
+        this.diff();
+        if (this.network.GRADIENT_CHECK) {
+            this.gradientCheck();
+        }
+    }
+    
     @Override
     public void backTemp() {
         // TODO Auto-generated method stub

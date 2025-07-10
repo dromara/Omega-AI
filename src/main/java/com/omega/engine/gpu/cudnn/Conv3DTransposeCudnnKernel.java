@@ -6,7 +6,6 @@ import static jcuda.jcudnn.cudnnConvolutionMode.CUDNN_CROSS_CORRELATION;
 import static jcuda.jcudnn.cudnnDataType.CUDNN_DATA_FLOAT;
 import static jcuda.jcudnn.cudnnTensorFormat.CUDNN_TENSOR_NCHW;
 
-import com.omega.common.utils.JsonUtils;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.nn.layer.gpu.Conv3DBaseKernel;
 import com.omega.engine.nn.network.Network;
