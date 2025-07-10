@@ -2,6 +2,7 @@ package com.omega.engine.nn.layer.opensora.wfvae;
 
 import java.util.Map;
 
+import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.nn.layer.Convolution3DTransposeLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -29,6 +30,7 @@ public class InverseHaarWaveletTransform3D extends Layer {
     private int depth;
 
     private Tensor tmp;
+    private Tensor d_tmp;
     
     private WFKernel wfKernel;
 
@@ -85,19 +87,27 @@ public class InverseHaarWaveletTransform3D extends Layer {
         //nt channel,int kernelNum,int depth,int width,int height,int kDepth,int kWidth,int kHeight,int padding,int stride
         InverseHaarWaveletTransform3D conv1 = new InverseHaarWaveletTransform3D(C,  F, W, H, nn);
         
+        String deltaPath = "D:\\models\\delta_wf.json";
+        Map<String, Object> delta_datas = LagJsonReader.readJsonFileSmallWeight(deltaPath);
+        Tensor delta = new Tensor(N, 3 * 9, H * 2, W * 2, true);
+        ClipModelUtils.loadData(delta, delta_datas, "delta", 5);
+        
         for(int i = 0;i<10;i++) {
         	long start = System.nanoTime();
         	conv1.forward(input);
+        	conv1.back(delta);
             JCuda.cudaDeviceSynchronize();
             System.err.println((System.nanoTime() - start)/1e6+"ms.");
-        }
+        }        
         
-        
-//        float[] delta_data = MatrixUtils.val(conv1.getOutput().dataLength, 1.0f);
+//        float[] delta_data = MatrixUtils.order(conv1.getOutput().dataLength, 0.001f, 0.001f);
 //        Tensor delta = new Tensor(N, conv1.oChannel * conv1.oDepth, conv1.oHeight, conv1.oWidth, delta_data, true);
-//        conv1.back(delta);
-        conv1.getOutput().showShape();
+
+        delta.showShape();
+        
+//        conv1.getOutput().showShape();
         conv1.getOutput().showDM();
+        conv1.diff.showDM("diff:");
 //        conv1.getOutput().showDMByNumber(1);
     }
 
@@ -193,7 +203,10 @@ public class InverseHaarWaveletTransform3D extends Layer {
 
     @Override
     public void initBack() {
-
+    	if(this.diff == null || this.diff.number != number) {
+    		diff = Tensor.createGPUTensor(diff, input.shape(), true);
+    		d_tmp = Tensor.createGPUTensor(d_tmp, hConv.getOutput().shape(), true);
+    	}
     }
 
     @Override
@@ -205,7 +218,7 @@ public class InverseHaarWaveletTransform3D extends Layer {
     public void output() {
     	
     	input.view(number, channel, depth * height, width);
-    	
+
     	Tensor_OP().getByChannel(input, tmp, 0, oChannel);    	
         hConv.forward(tmp);
         wfKernel.add_offset(hConv.getOutput(), output, hConv.oDepth - 1, hConv.oHeight * hConv.oWidth, 1);
@@ -238,6 +251,7 @@ public class InverseHaarWaveletTransform3D extends Layer {
         ghVConv.forward(tmp, hConv.getOutput());
         wfKernel.add_offset(ghVConv.getOutput(), output, ghVConv.oDepth - 1, ghVConv.oHeight * ghVConv.oWidth, 1);
         
+        input.viewOrg();
     }
 
     @Override
@@ -248,8 +262,35 @@ public class InverseHaarWaveletTransform3D extends Layer {
     @Override
     public void diff() {
     	
+    	diff.view(number, channel, depth * height, width);
     	
+    	Tensor_OP().getByChannel_back(d_tmp, delta, 1, oDepth);
     	
+    	ghVConv.back(d_tmp, tmp);
+    	Tensor_OP().getByChannel_back(diff, tmp, 7 * oChannel, oChannel);
+
+    	hhVConv.back(d_tmp, tmp);
+    	Tensor_OP().getByChannel_back(diff, tmp, 6 * oChannel, oChannel);
+    	
+    	gVConv.back(d_tmp, tmp);
+    	Tensor_OP().getByChannel_back(diff, tmp, 5 * oChannel, oChannel);
+    	
+    	hVConv.back(d_tmp, tmp);
+    	Tensor_OP().getByChannel_back(diff, tmp, 4 * oChannel, oChannel);
+    	
+    	ghConv.back(d_tmp, tmp);
+    	Tensor_OP().getByChannel_back(diff, tmp, 3 * oChannel, oChannel);
+    	
+    	hhConv.back(d_tmp, tmp);
+    	Tensor_OP().getByChannel_back(diff, tmp, 2 * oChannel, oChannel);
+    	
+    	gConv.back(d_tmp, tmp);
+    	Tensor_OP().getByChannel_back(diff, tmp, 1 * oChannel, oChannel);
+    	
+    	hConv.back(d_tmp, tmp);
+    	Tensor_OP().getByChannel_back(diff, tmp, 0 * oChannel, oChannel);
+    	
+    	diff.viewOrg();
     }
 
     @Override
@@ -259,7 +300,19 @@ public class InverseHaarWaveletTransform3D extends Layer {
 
     @Override
     public void back() {
+    	initBack();
+        /**
+         * 设置梯度
 
+         */
+        this.setDelta();
+        /**
+         * 计算梯度
+         */
+        this.diff();
+        if (this.network.GRADIENT_CHECK) {
+            this.gradientCheck();
+        }
     }
 
     @Override
@@ -269,7 +322,19 @@ public class InverseHaarWaveletTransform3D extends Layer {
 
     @Override
     public void back(Tensor delta) {
+    	initBack();
+        /**
+         * 设置梯度
 
+         */
+        this.setDelta(delta);
+        /**
+         * 计算梯度
+         */
+        this.diff();
+        if (this.network.GRADIENT_CHECK) {
+            this.gradientCheck();
+        }
     }
 
     @Override
