@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Map;
 
-import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -50,22 +49,22 @@ public class HaarWaveletTransform2D extends Layer {
     }
 
     public void initLayers() {
-    	conv_ll = new ConvolutionLayer(1, 1, width, height, 2, 2, 0, 2, true, this.network);
+    	conv_ll = new ConvolutionLayer(1, 1, width, height, 2, 2, 0, 2, false, this.network);
     	conv_ll.setUpdater(UpdaterFactory.create(this.network));
     	conv_ll.paramsInit = ParamsInit.silu;
     	conv_ll.weight.setData(new float[] {0.5f, 0.5f, 0.5f, 0.5f});
     	
-    	conv_lh = new ConvolutionLayer(1, 1, width, height, 2, 2, 0, 2, true, this.network);
+    	conv_lh = new ConvolutionLayer(1, 1, width, height, 2, 2, 0, 2, false, this.network);
     	conv_lh.setUpdater(UpdaterFactory.create(this.network));
     	conv_lh.paramsInit = ParamsInit.silu;
     	conv_lh.weight.setData(new float[] {0.5f, 0.5f, -0.5f, -0.5f});
     	
-    	conv_hl = new ConvolutionLayer(1, 1, width, height, 2, 2, 0, 2, true, this.network);
+    	conv_hl = new ConvolutionLayer(1, 1, width, height, 2, 2, 0, 2, false, this.network);
     	conv_hl.setUpdater(UpdaterFactory.create(this.network));
     	conv_hl.paramsInit = ParamsInit.silu;
     	conv_hl.weight.setData(new float[] {0.5f, -0.5f, 0.5f, -0.5f});
     	
-    	conv_hh = new ConvolutionLayer(1, 1, width, height, 2, 2, 0, 2, true, this.network);
+    	conv_hh = new ConvolutionLayer(1, 1, width, height, 2, 2, 0, 2, false, this.network);
     	conv_hh.setUpdater(UpdaterFactory.create(this.network));
     	conv_hh.paramsInit = ParamsInit.silu;
     	conv_hh.weight.setData(new float[] {0.5f, -0.5f, -0.5f, 0.5f});

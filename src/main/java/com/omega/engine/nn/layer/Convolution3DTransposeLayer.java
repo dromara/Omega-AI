@@ -37,8 +37,7 @@ public class Convolution3DTransposeLayer extends Layer {
     public int oDepth = 0;
     private Conv3DBaseKernel kernel;
     private BiasKernel biasKernel;
-
-
+    
     /**
      * ConvolutionLayer
      *
@@ -68,6 +67,27 @@ public class Convolution3DTransposeLayer extends Layer {
         this.output_padding = output_padding;
         this.hasBias = hasBias;
         this.network = network;
+        this.hasParams = true;
+        //		network.paramLayers.add(this);
+        this.initParam();
+    }
+    
+    public Convolution3DTransposeLayer(int channel, int kernelNum, int depth, int width, int height, int kDepth, int kWidth, int kHeight, int padding, int stride, int dilation, int output_padding, boolean hasBias, boolean freeze, Network network) {
+        this.kernelNum = kernelNum;
+        this.channel = channel;
+        this.depth = depth;
+        this.width = width;
+        this.height = height;
+        this.kDepth = kDepth;
+        this.kWidth = kWidth;
+        this.kHeight = kHeight;
+        this.padding = padding;
+        this.stride = stride;
+        this.dilation = dilation;
+        this.output_padding = output_padding;
+        this.hasBias = hasBias;
+        this.network = network;
+        this.freeze = freeze;
         this.hasParams = true;
         //		network.paramLayers.add(this);
         this.initParam();
@@ -146,12 +166,14 @@ public class Convolution3DTransposeLayer extends Layer {
         if (this.hasBias) {
             this.bias = new Tensor(1, 1, 1, kernelNum, RandomUtils.kaimingUniformBias(kernelNum, this.channel * kDepth * kHeight * kWidth), true);
         }
-        if (network != null) {
-            this.diffB = this.network.createParamterGrad(1, 1, 1, kernelNum, true);
-            this.diffW = this.network.createParamterGrad(this.channel, this.kernelNum * kDepth, this.kHeight, this.kWidth, true);
-        } else {
-            this.diffB = new Tensor(1, 1, 1, kernelNum, true);
-            this.diffW = new Tensor(this.channel, this.kernelNum * kDepth, this.kHeight, this.kWidth, true);
+        if(!freeze) {
+        	if (network != null) {
+                this.diffB = this.network.createParamterGrad(1, 1, 1, kernelNum, true);
+                this.diffW = this.network.createParamterGrad(this.channel, this.kernelNum * kDepth, this.kHeight, this.kWidth, true);
+            } else {
+                this.diffB = new Tensor(1, 1, 1, kernelNum, true);
+                this.diffW = new Tensor(this.channel, this.kernelNum * kDepth, this.kHeight, this.kWidth, true);
+            }
         }
     }
 
