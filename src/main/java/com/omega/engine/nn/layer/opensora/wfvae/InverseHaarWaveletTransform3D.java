@@ -247,7 +247,9 @@ public class InverseHaarWaveletTransform3D extends Layer {
 
     @Override
     public void diff() {
-
+    	
+    	
+    	
     }
 
     @Override

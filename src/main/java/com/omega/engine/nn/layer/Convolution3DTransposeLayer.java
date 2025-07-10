@@ -248,25 +248,22 @@ public class Convolution3DTransposeLayer extends Layer {
     @Override
     public void diff() {
         // TODO Auto-generated method stub
-        //		long start = System.nanoTime();
-        //		if(oWidth == 7) {
-        //			System.out.println(JsonUtils.toJson(delta.syncHost()));
-        //
-        //		}
         /**
          * 计算deltaW
          * 20220816: dw = diff * im2col(input)T
          * diff[knumber * oh * ow]
          * im2col(input)T[oh * ow * C * kh * kw]
-
          */
-        kernel.dw(input, delta, diffW);
-        /**
-         * 计算deltaB
-         */
-        if (this.hasBias) {
-        	biasKernel.backwardConv3DBias(oDepth, diffB, delta);
-        }
+    	if(!freeze) {
+    		kernel.dw(input, delta, diffW);
+	        /**
+	         * 计算deltaB
+	         */
+	        if (this.hasBias) {
+	        	biasKernel.backwardConv3DBias(oDepth, diffB, delta);
+	        }
+    	}
+       
         /**
          * 计算diff
          */
