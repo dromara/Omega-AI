@@ -2,9 +2,9 @@
 
 - **开始**
 	- [框架介绍](/)
-	- [CUDA安装](/doc/start/example)
-    - [多卡训练配置](/doc/start/example)
-	- [在SpringBoot环境运行](/doc/start/example)
+	- [CUDA安装](/doc/start/cuda.md)
+    - [多卡训练配置](/doc/start/example.md)
+	- [在SpringBoot环境运行](/doc/start/example.md)
 
 - **API**
 	- **神经网络**
