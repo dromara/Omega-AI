@@ -1,8 +1,6 @@
 # cuda安装
 
 
-#  windows
-
 <!---------------------------- tabs:start ---------------------------->
 <!-------- tab:windows -------->
 ### 1.CUDA安装
@@ -74,8 +72,6 @@ https://developer.download.nvidia.cn/compute/cudnn/redist/cudnn/windows-x86_64
 
  若两个程序的输出结果中都出现Result = PASS，则说明 cuDNN 安装和配置正确。
 
-
-# linux
 
 <!------------- tab:linux  ------------->
 ### 1.CUDA安装
