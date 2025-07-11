@@ -1,4 +1,4 @@
-package com.omega.engine.nn.layer.opensora.wfvae;
+package com.omega.engine.nn.layer.opensora.wfvae.modules;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;

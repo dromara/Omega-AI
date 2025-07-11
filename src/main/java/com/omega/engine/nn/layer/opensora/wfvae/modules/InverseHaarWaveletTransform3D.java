@@ -1,4 +1,4 @@
-package com.omega.engine.nn.layer.opensora.wfvae;
+package com.omega.engine.nn.layer.opensora.wfvae.modules;
 
 import java.util.Map;
 
@@ -85,7 +85,7 @@ public class InverseHaarWaveletTransform3D extends Layer {
         nn.CUDNN = true;
         nn.number = N;
         //nt channel,int kernelNum,int depth,int width,int height,int kDepth,int kWidth,int kHeight,int padding,int stride
-        InverseHaarWaveletTransform3D conv1 = new InverseHaarWaveletTransform3D(C,  F, W, H, nn);
+        InverseHaarWaveletTransform3D conv1 = new InverseHaarWaveletTransform3D(C, F, W, H, nn);
         
         String deltaPath = "D:\\models\\delta_wf.json";
         Map<String, Object> delta_datas = LagJsonReader.readJsonFileSmallWeight(deltaPath);

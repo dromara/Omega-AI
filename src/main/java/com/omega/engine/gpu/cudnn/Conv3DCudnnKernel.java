@@ -101,7 +101,7 @@ public class Conv3DCudnnKernel extends Conv3DBaseKernel {
             this.N = number;
             int convDims = 3;
             int[] padA = {padding, padding, padding};
-            System.out.println(JsonUtils.toJson(padA));
+//            System.out.println(JsonUtils.toJson(padA));
             int[] weight = {ko, C, kf, kh, kw};
             int[] upscaleA = {1, 1, 1};
             int[] tensorOuputDimA = {N, C, F, H, W};

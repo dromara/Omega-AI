@@ -1,4 +1,4 @@
-package com.omega.engine.nn.layer.opensora.wfvae;
+package com.omega.engine.nn.layer.opensora.wfvae.modules;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -20,7 +20,7 @@ import com.omega.engine.updater.UpdaterFactory;
  *
  * @author Administrator
  */
-public class WFResnetBlock2D extends Layer {
+public class WFResnet2DBlock extends Layer {
 	private int depth;
     private int group = 32;
     private BasicBlockKernel kernel;
@@ -35,7 +35,7 @@ public class WFResnetBlock2D extends Layer {
     
     private Tensor inputT;
 
-    public WFResnetBlock2D(int channel, int oChannel, int depth, int height, int width, int group, float outputScale, Network network) {
+    public WFResnet2DBlock(int channel, int oChannel, int depth, int height, int width, int group, float outputScale, Network network) {
         this.network = network;
         this.depth = depth;
         this.channel = channel;

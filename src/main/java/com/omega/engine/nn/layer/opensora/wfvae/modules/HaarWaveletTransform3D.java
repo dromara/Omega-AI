@@ -1,4 +1,4 @@
-package com.omega.engine.nn.layer.opensora.wfvae;
+package com.omega.engine.nn.layer.opensora.wfvae.modules;
 
 import java.util.Map;
 
@@ -13,7 +13,7 @@ import com.omega.example.transformer.utils.LagJsonReader;
 
 import jcuda.runtime.JCuda;
 
-public class WFHaarWaveletTransform3D extends Layer {
+public class HaarWaveletTransform3D extends Layer {
 	
     private WFCausalConv3D hConv;
     private WFCausalConv3D gConv;
@@ -31,7 +31,7 @@ public class WFHaarWaveletTransform3D extends Layer {
 
 //    private Tensor[] inputs = new Tensor[8];
 
-    public WFHaarWaveletTransform3D(int channel, int depth, int width, int height) {
+    public HaarWaveletTransform3D(int channel, int depth, int width, int height) {
         this.channel = channel;
         this.depth = depth;
         this.height = height;
@@ -39,7 +39,7 @@ public class WFHaarWaveletTransform3D extends Layer {
         initLayers();
     }
 
-    public WFHaarWaveletTransform3D(int channel, int depth, int width, int height, Network network) {
+    public HaarWaveletTransform3D(int channel, int depth, int width, int height, Network network) {
         this.channel = channel;
         this.depth = depth;
         this.height = height;
@@ -72,7 +72,7 @@ public class WFHaarWaveletTransform3D extends Layer {
         nn.CUDNN = true;
         nn.number = N;
         //nt channel,int kernelNum,int depth,int width,int height,int kDepth,int kWidth,int kHeight,int padding,int stride
-        WFHaarWaveletTransform3D conv1 = new WFHaarWaveletTransform3D(C,  F, W, H, nn);
+        HaarWaveletTransform3D conv1 = new HaarWaveletTransform3D(C,  F, W, H, nn);
         
         for(int i = 0;i<10;i++) {
         	long start = System.nanoTime();

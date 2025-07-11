@@ -34,17 +34,16 @@ public class Downsample2D extends Layer {
     
     private Tensor inputT;
     
-    public Downsample2D(int channel, int depth, int height, int width, Network network) {
+    public Downsample2D(int channel, int oChannel, int depth, int height, int width, Network network) {
         this.network = network;
         this.channel = channel;
         this.depth = depth;
-        this.oChannel = channel;
+        this.oChannel = oChannel;
         this.height = height;
         this.width = width;
         initLayers();
         this.oHeight = conv.oHeight;
         this.oWidth = conv.oWidth;
-        this.oChannel = conv.oChannel;
     }
 
     public void initLayers() {
@@ -54,7 +53,7 @@ public class Downsample2D extends Layer {
         pw = padding[0] + width + padding[1];
         ph = padding[2] + height + padding[3];
         
-        conv = new ConvolutionLayer(channel, channel, pw, ph, 3, 3, 0, 2, true, this.network);
+        conv = new ConvolutionLayer(channel, oChannel, pw, ph, 3, 3, 0, 2, true, this.network);
         conv.setUpdater(UpdaterFactory.create(this.network));
         conv.paramsInit = ParamsInit.silu;
        

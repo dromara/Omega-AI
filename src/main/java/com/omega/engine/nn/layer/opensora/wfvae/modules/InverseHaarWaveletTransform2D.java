@@ -1,4 +1,4 @@
-package com.omega.engine.nn.layer.opensora.wfvae;
+package com.omega.engine.nn.layer.opensora.wfvae.modules;
 
 import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.RandomUtils;

@@ -1,4 +1,4 @@
-package com.omega.engine.nn.layer.opensora.wfvae;
+package com.omega.engine.nn.layer.opensora.wfvae.modules;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -21,16 +21,22 @@ public class WFConv2D extends Layer {
     public ConvolutionLayer conv;
 
     private int depth;
+    private int kernelSize;
+    private int padding;
+    private int stride;
     
     private Tensor inputT;
     
-    public WFConv2D(int channel, int depth, int height, int width, Network network) {
+    public WFConv2D(int channel, int oChannel, int depth, int height, int width, int kernelSize, int padding, int stride, Network network) {
         this.network = network;
         this.channel = channel;
         this.depth = depth;
-        this.oChannel = channel;
+        this.oChannel = oChannel;
         this.height = height;
         this.width = width;
+        this.kernelSize = kernelSize;
+        this.padding = padding;
+        this.stride = stride;
         initLayers();
         this.oHeight = conv.oHeight;
         this.oWidth = conv.oWidth;
@@ -38,7 +44,7 @@ public class WFConv2D extends Layer {
     }
 
     public void initLayers() {
-        conv = new ConvolutionLayer(channel, channel, width, height, 3, 3, 0, 2, true, this.network);
+        conv = new ConvolutionLayer(channel, oChannel, width, height, kernelSize, kernelSize, padding, stride, true, this.network);
         conv.setUpdater(UpdaterFactory.create(this.network));
         conv.paramsInit = ParamsInit.silu;
     }
