@@ -93,7 +93,7 @@ public class VideoEncoder extends Layer {
                     ih = dwon3d.oHeight;
                     iw = dwon3d.oWidth;
             	}else {
-            		Downsample2D dwon2d = new Downsample2D(inc, id, ih, iw, network);
+            		Downsample2D dwon2d = new Downsample2D(inc, inc, id, ih, iw, network);
             		downBlock.add(dwon2d);
             		ih = dwon2d.oHeight;
                     iw = dwon2d .oWidth;

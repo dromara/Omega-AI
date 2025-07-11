@@ -361,9 +361,9 @@ public class CausalConv3DPlainAR extends Layer {
     @Override
     public void output() {
         // TODO Auto-generated method stub
-    	input.showShape();
+//    	input.showShape();
     	paddingKernel.padding3d(input, pOutput, depth, padding3d, 0);
-    	pOutput.showShape();
+//    	pOutput.showShape();
         kernel.conv(pOutput, weight, output);
 //        System.err.println("weight:"+MatrixOperation.sum(weight.syncHost()));
 //        System.err.println("output:"+MatrixOperation.sum(output.syncHost()));

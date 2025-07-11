@@ -548,6 +548,10 @@ public class VQVAETest {
             String lpipsWeight = "D:\\models\\lpips.json";
             LPIPSTest.loadLPIPSWeight(LagJsonReader.readJsonFileSmallWeight(lpipsWeight), lpips, false);
             lpips.CUDNN = true;
+            
+            String model_path = "/omega/models/anime_vqvae_256_v1.0.model";
+            ModelUtils.loadModel(network, model_path);
+            
             MBSGDOptimizer optimizer = new MBSGDOptimizer(network, 500, 0.00001f, batchSize, LearnRateUpdate.CONSTANT, false);
             //			optimizer.lr_step = new int[] {50, 100, 150, 200, 250, 300, 350, 400, 450};
             optimizer.trainVQVAE2_lpips_nogan(dataLoader, lpips, "D:\\test\\vae\\256\\");
@@ -692,8 +696,8 @@ public class VQVAETest {
             //			anime_vqvae2_lpips_gandisc_32_nogan();
 //            anime_vqvae2_lpips_gandisc_32_nogan2();
 //            anime_vqvae2_lpips_gandisc_32_nogan2();
-//        	anime_vqvae2_lpips_gandisc_32_nogan2();
-        	anime_vqvae2_lpips_gandisc_32_gan2();
+        	anime_vqvae2_lpips_gandisc_32_nogan2();
+//        	anime_vqvae2_lpips_gandisc_32_gan2();
 //        	pokemon_vqvae2_lpips_gandisc_32_nogan2();
 //            anime_vqvae2_lpips_hight();
         } catch (Exception e) {

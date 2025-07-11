@@ -1,4 +1,4 @@
-package com.omega.engine.nn.layer.opensora.wfvae;
+package com.omega.engine.nn.layer.opensora.wfvae.modules;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -314,7 +314,7 @@ public class WFCausalConv3D extends Layer {
         this.oDepth = (this.pDepth - kernelSize) / this.stride + 1;
         this.oWidth = (this.pWidth + this.padding * 2 - kernelSize) / this.stride + 1;
         this.oHeight = (this.pHeight + this.padding * 2 - kernelSize) / this.stride + 1;
-
+        
         this.weight = new Tensor(kernelNum, channel * kernelSize, kernelSize, kernelSize, RandomUtils.kaiming_uniform(dataLength, this.channel * kernelSize * kernelSize * kernelSize, this.paramsInit), true);
 //        this.weight = new Tensor(kernelNum, channel * kernelSize, kernelSize, kernelSize, RandomUtils.order(dataLength, 0.1f, 0.1f), true);
         if (hasBias) {

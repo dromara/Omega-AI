@@ -1,16 +1,14 @@
-package com.omega.engine.nn.layer.opensora.wfvae;
+package com.omega.engine.nn.layer.opensora.wfvae.modules;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Map;
 
-import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.MatrixUtils;
+import com.omega.engine.gpu.PaddingKernel;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.ParamsInit;
-import com.omega.engine.nn.layer.gpu.UpSample3DKernel;
-import com.omega.engine.nn.layer.opensora.vae.modules.AttentionBlock3D;
 import com.omega.engine.nn.network.CNN;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.tensor.Tensor;
@@ -27,18 +25,20 @@ import jcuda.runtime.JCuda;
  */
 public class Spatial2xTime2x3DDownsample extends Layer {
 
-	public UpSample3DKernel kernel;
+	private PaddingKernel paddingKernel;
 
     public WFCausalConv3D conv;
 
-    private Tensor upOutput;
-    
-    private int pd;
-    private int pw;
-    private int ph;
-    
     public int depth;
     public int oDepth;
+    
+    private int[] padding3d = new int[] {0, 1, 0, 1, 0, 0};
+    
+    private int pDepth;
+    private int pHeight;
+    private int pWidth;
+    
+    private Tensor pOutput;
     
     public Spatial2xTime2x3DDownsample(int channel, int oChannel, int depth, int height, int width, Network network) {
         this.network = network;
@@ -56,13 +56,13 @@ public class Spatial2xTime2x3DDownsample extends Layer {
 
     public void initLayers() {
     	
-        kernel = new UpSample3DKernel(cuda());
+    	paddingKernel = new PaddingKernel(cuda());
         
-        pd = depth * 2 - 1;
-        pw = width * 2;
-        ph = height * 2;
+    	this.pDepth = this.depth + padding3d[4] + padding3d[5];
+        this.pHeight = this.height + padding3d[2] + padding3d[3];
+        this.pWidth = this.width + padding3d[0] + padding3d[1];
 
-        conv = new WFCausalConv3D(channel, oChannel, pd, pw, ph, 3, 1, 1, true, network);
+        conv = new WFCausalConv3D(channel, oChannel, pDepth, pWidth, pHeight, 3, 2, 0, true, network);
         conv.setUpdater(UpdaterFactory.create(this.network));
         conv.paramsInit = ParamsInit.silu;
        
@@ -71,14 +71,16 @@ public class Spatial2xTime2x3DDownsample extends Layer {
     @Override
     public void init() {
         this.number = this.network.number;
-        if(upOutput == null || upOutput.number != this.number) {
-        	upOutput = Tensor.createGPUTensor(upOutput, number, channel * pd, ph, pw, true);
+        if(this.pOutput == null || this.number != this.pOutput.number) {
+        	this.pOutput = paddingKernel.createOutput(number, channel, height, width, depth, padding3d);
         }
     }
 
     @Override
     public void initBack() {
-    	
+        if(this.diff == null || this.number != this.diff.number) {
+        	this.diff = new Tensor(number, channel * depth, height, width, true);
+        }
     }
 
     @Override
@@ -89,11 +91,8 @@ public class Spatial2xTime2x3DDownsample extends Layer {
     @Override
     public void output() {
         // TODO Auto-generated method stub
-    	kernel.upsample3d_trilinear_offset(input, upOutput, number, channel, depth, 1, height, width, pd, 1, 2, 2, false, 0);
-    	kernel.upsample3d_trilinear_offset(input, upOutput, number, channel, depth, depth - 1, height, width, pd, 2, 2, 2, false, 1);
-//    	upOutput.showDMByOffsetRed(1 * channel * pd * ph * pw + 1 * pd * ph * pw, pd * ph * pw, "3d:");
-//    	upOutput.showDM("upOutput");
-    	conv.forward(upOutput);
+    	paddingKernel.padding3d(input, pOutput, depth, padding3d, 0);
+    	conv.forward(pOutput);
     	this.output = conv.getOutput();
     }
 
@@ -106,11 +105,8 @@ public class Spatial2xTime2x3DDownsample extends Layer {
     @Override
     public void diff() {
         // TODO Auto-generated method stub
-        conv.back(delta, upOutput);
-//        upOutput.showDM("upOutput-diff");
-        kernel.upsample3d_trilinear_delta_offset(upOutput, input, number, channel, depth, depth - 1, height, width, pd, 2, 2, 2, false, 1);
-        kernel.upsample3d_trilinear_delta_offset(upOutput, input, number, channel, depth, 1, height, width, pd, 1, 2, 2, false, 0);
-        this.diff = input;
+        conv.back(delta, pOutput);
+        paddingKernel.padding3dGrad(pOutput, diff, depth, padding3d);
     }
 
     @Override
