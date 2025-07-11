@@ -26,6 +26,8 @@ public class InverseHaarWaveletTransform2D extends Layer {
 
     private Tensor inputT;
     private Tensor outputT;
+    private Tensor tmp;
+    private Tensor diffT;
 
     private WFKernel wfKernel;
 
@@ -33,7 +35,7 @@ public class InverseHaarWaveletTransform2D extends Layer {
         this.network = network;
         this.channel = channel;
         this.depth = depth;
-        this.oChannel = channel;
+        this.oChannel = channel / 4;
         this.height = height;
         this.width = width;
         initLayers();
@@ -72,14 +74,18 @@ public class InverseHaarWaveletTransform2D extends Layer {
         this.number = this.network.number;
         if(inputT == null || inputT.number != this.number * depth) {
             inputT = Tensor.createGPUTensor(inputT, number * depth, channel, height, width, true);
-            this.outputT = Tensor.createGPUTensor(output, number, depth * channel, conv_hh.oHeight, conv_hh.oWidth, true);
-            this.output = Tensor.createGPUTensor(output, number, channel * depth, conv_hh.oHeight, conv_hh.oWidth, true);
+            this.tmp = Tensor.createGPUTensor(this.tmp, number * depth * oChannel, 1, height, width, true);
+            this.outputT = Tensor.createGPUTensor(output, number,  oChannel * depth, conv_hh.oHeight, conv_hh.oWidth, true);
+            this.output = Tensor.createGPUTensor(output, number, oChannel * depth, conv_hh.oHeight, conv_hh.oWidth, true);
         }
     }
 
     @Override
     public void initBack() {
-
+        if(this.diff == null || this.diff.number != number) {
+            diff = Tensor.createGPUTensor(diff, input.shape(), true);
+            diffT = Tensor.createGPUTensor(this.diffT, number * depth, channel, height, width, true);
+        }
     }
 
     @Override
@@ -90,27 +96,25 @@ public class InverseHaarWaveletTransform2D extends Layer {
     @Override
     public void output() {
         Tensor_OP().permute(input, inputT, new int[] {number, channel, depth, height, width}, new int[] {number, depth, channel, height, width}, new int[]{0, 2, 1, 3, 4});
-        Tensor tmp = new Tensor(number * depth * channel / 4, 1, height, width, true);
-        int len = channel / 4;
+        int len = oChannel;
 
         Tensor_OP().getByChannel(inputT, tmp, 0, len);
         conv_ll.forward(tmp);
         Tensor_OP().add(outputT, conv_ll.getOutput(), outputT);
 
-
         Tensor_OP().getByChannel(inputT, tmp,  len, len);
-        conv_lh.forward(tmp);
+        conv_lh.forward(tmp, conv_ll.getOutput());
         Tensor_OP().add(outputT, conv_lh.getOutput(), outputT);
 
         Tensor_OP().getByChannel(inputT, tmp, 2 * len, len);
-        conv_hl.forward(tmp);
+        conv_hl.forward(tmp, conv_lh.getOutput());
         Tensor_OP().add(outputT, conv_hl.getOutput(), outputT);
 
-
         Tensor_OP().getByChannel(inputT, tmp, 3 * len, len);
-        conv_hh.forward(tmp);
+        conv_hh.forward(tmp, conv_hl.getOutput());
         Tensor_OP().add(outputT, conv_hh.getOutput(), outputT);
 
+        Tensor_OP().permute(outputT, output, new int[] {number, depth, oChannel, conv_hh.oHeight, conv_hh.oWidth}, new int[] {number, oChannel, depth, conv_hh.oHeight, conv_hh.oWidth}, new int[]{0, 2, 1, 3, 4});
     }
 
     @Override
@@ -121,8 +125,21 @@ public class InverseHaarWaveletTransform2D extends Layer {
 
     @Override
     public void diff() {
-        // TODO Auto-generated method stub
+        Tensor_OP().permute(delta, outputT, new int[] {number, oChannel, depth, conv_hh.oHeight, conv_hh.oWidth}, new int[] {number, depth, oChannel, conv_hh.oHeight, conv_hh.oWidth}, new int[]{0, 2, 1, 3, 4});
 
+        conv_hh.back(outputT, tmp);
+        Tensor_OP().getByChannel_back(diffT, tmp, 3 * oChannel, oChannel);
+
+        conv_hl.back(outputT, tmp);
+        Tensor_OP().getByChannel_back(diffT, tmp, 2 * oChannel, oChannel);
+
+        conv_lh.back(outputT, tmp);
+        Tensor_OP().getByChannel_back(diffT, tmp, oChannel, oChannel);
+
+        conv_ll.back(outputT, tmp);
+        Tensor_OP().getByChannel_back(diffT, tmp, 0, oChannel);
+
+        Tensor_OP().permute(diffT, diff, new int[] {number, depth, channel, height, width}, new int[] {number, channel, depth, height, width}, new int[]{0, 2, 1, 3, 4});
     }
 
     @Override
@@ -247,8 +264,8 @@ public class InverseHaarWaveletTransform2D extends Layer {
         int N = 2;
         int C = 4;
         int F = 17;
-        int H = 32;
-        int W = 32;
+        int H = 256;
+        int W = 256;
 
 //        float[] data = RandomUtils.order(N * C * F * H * W, 0.1f, 0.1f);
 //        Tensor input = new Tensor(N, C * F * 4, H, W, data, true);
@@ -262,18 +279,17 @@ public class InverseHaarWaveletTransform2D extends Layer {
         nn.CUDNN = true;
         nn.number = N;
 
-//        HaarWaveletTransform2D t2d = new HaarWaveletTransform2D(C, F, H, W, nn);
-//
-//        t2d.forward(input);
-
-//        t2d.output.showDMByNumber(1);
-//        t2d.output.showShape();
-
         InverseHaarWaveletTransform2D tr2d = new InverseHaarWaveletTransform2D(C, F, H, W, nn);
         tr2d.forward(input);
         tr2d.output.showShape();
         tr2d.output.showDM();
-        tr2d.output.showDMByNumber(0);
+
+        String deltaPath = "c:\\temp\\delta1_wf.json";
+        Map<String, Object> delta_datas = LagJsonReader.readJsonFileSmallWeight(deltaPath);
+        Tensor delta = new Tensor(N, 1 * F, H * 2, W * 2, true);
+        ClipModelUtils.loadData(delta, delta_datas, "delta", 5);
+
+        tr2d.back(delta);
     }
 
 }

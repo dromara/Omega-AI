@@ -232,6 +232,10 @@ public class ConvolutionTransposeLayer extends Layer {
         }
     }
 
+    public void initBack(Tensor diff) {
+        this.diff = diff;
+    }
+
     @Override
     public void output() {
         // TODO Auto-generated method stub
@@ -431,10 +435,10 @@ public class ConvolutionTransposeLayer extends Layer {
          */
         this.output();
     }
-    
+
     public void forward(Tensor input,Tensor output) {
         // TODO Auto-generated method stub
-    	this.output = output;
+        this.output = output;
         /**
          * 参数初始化
          */
@@ -455,6 +459,23 @@ public class ConvolutionTransposeLayer extends Layer {
     public void back(Tensor delta) {
         // TODO Auto-generated method stub
         initBack();
+        /**
+         * 设置梯度
+
+         */
+        this.setDelta(delta);
+        /**
+         * 计算梯度
+
+         */
+        this.diff();
+        if (this.network.GRADIENT_CHECK) {
+            this.gradientCheck();
+        }
+    }
+
+    public void back(Tensor delta, Tensor diff) {
+        initBack(diff);
         /**
          * 设置梯度
 
