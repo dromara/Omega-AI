@@ -28,7 +28,6 @@ public class InverseHaarWaveletTransform2D extends Layer {
     private Tensor inputT;
     private Tensor outputT;
     private Tensor tmp;
-    private Tensor diffT;
 
     private WFKernel wfKernel;
 
@@ -85,7 +84,6 @@ public class InverseHaarWaveletTransform2D extends Layer {
     public void initBack() {
         if(this.diff == null || this.diff.number != number) {
             diff = Tensor.createGPUTensor(diff, input.shape(), true);
-            diffT = Tensor.createGPUTensor(this.diffT, number * depth, channel, height, width, true);
         }
     }
 
@@ -129,18 +127,18 @@ public class InverseHaarWaveletTransform2D extends Layer {
         Tensor_OP().permute(delta, outputT, new int[] {number, oChannel, depth, conv_hh.oHeight, conv_hh.oWidth}, new int[] {number, depth, oChannel, conv_hh.oHeight, conv_hh.oWidth}, new int[]{0, 2, 1, 3, 4});
 
         conv_hh.back(outputT, tmp);
-        Tensor_OP().getByChannel_back(diffT, tmp, 3 * oChannel, oChannel);
+        Tensor_OP().getByChannel_back(inputT, tmp, 3 * oChannel, oChannel);
 
         conv_hl.back(outputT, tmp);
-        Tensor_OP().getByChannel_back(diffT, tmp, 2 * oChannel, oChannel);
+        Tensor_OP().getByChannel_back(inputT, tmp, 2 * oChannel, oChannel);
 
         conv_lh.back(outputT, tmp);
-        Tensor_OP().getByChannel_back(diffT, tmp, oChannel, oChannel);
+        Tensor_OP().getByChannel_back(inputT, tmp, oChannel, oChannel);
 
         conv_ll.back(outputT, tmp);
-        Tensor_OP().getByChannel_back(diffT, tmp, 0, oChannel);
+        Tensor_OP().getByChannel_back(inputT, tmp, 0, oChannel);
 
-        Tensor_OP().permute(diffT, diff, new int[] {number, depth, channel, height, width}, new int[] {number, channel, depth, height, width}, new int[]{0, 2, 1, 3, 4});
+        Tensor_OP().permute(inputT, diff, new int[] {number, depth, channel, height, width}, new int[] {number, channel, depth, height, width}, new int[]{0, 2, 1, 3, 4});
     }
 
     @Override
@@ -260,8 +258,8 @@ public class InverseHaarWaveletTransform2D extends Layer {
         int N = 2;
         int C = 4;
         int F = 17;
-        int H = 256;
-        int W = 256;
+        int H = 32;
+        int W = 32;
 
 //        float[] data = RandomUtils.order(N * C * F * H * W, 0.1f, 0.1f);
 //        Tensor input = new Tensor(N, C * F * 4, H, W, data, true);
