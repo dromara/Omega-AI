@@ -3,12 +3,16 @@ package com.omega.engine.nn.layer.dit;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
+import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.RandomUtils;
+import com.omega.engine.gpu.GPUOP;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.active.GeluLayer;
+import com.omega.engine.nn.layer.dit.kernel.TokenDropKernel;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.tensor.Tensor;
 
 /**
@@ -17,17 +21,41 @@ import com.omega.engine.tensor.Tensor;
  * @author Administrator
  */
 public class DiTCaptionEmbeddingLayer extends Layer {
-
+	
+	private int token_num = 77;
+	
     public FullyLayer linear1;
     public GeluLayer act;
     public FullyLayer linear2;
     private boolean bias = true;
     private int inChannel;
     private int outChannel;
+    private float uncond_prob = 0.0f;
+    
+    private TokenDropKernel kernel;
+    
+    private Tensor y_embedding;
+    private Tensor mask;
+    
 
-    public DiTCaptionEmbeddingLayer(int inChannel, int outChannel, boolean bias, Network network) {
+    public DiTCaptionEmbeddingLayer(int inChannel, int outChannel, int token_num, boolean bias, Network network) {
         this.network = network;
         this.bias = bias;
+        this.token_num = token_num;
+        this.inChannel = inChannel;
+        this.outChannel = outChannel;
+        this.height = 1;
+        this.width = inChannel;
+        this.oHeight = 1;
+        this.oWidth = outChannel;
+        initLayers();
+    }
+    
+    public DiTCaptionEmbeddingLayer(int inChannel, int outChannel, int token_num, float uncond_prob, boolean bias, Network network) {
+        this.network = network;
+        this.bias = bias;
+        this.token_num = token_num;
+        this.uncond_prob = uncond_prob;
         this.inChannel = inChannel;
         this.outChannel = outChannel;
         this.height = 1;
@@ -49,6 +77,9 @@ public class DiTCaptionEmbeddingLayer extends Layer {
         if(linear2.bias != null) {
         	linear2.bias.clearGPU();
         }
+        if(kernel == null) {
+        	kernel = new TokenDropKernel(cuda());
+        }
 //        linear2.weight = new Tensor(1, 1, dim, dim, MatrixUtils.order(dim * dim, 0.01f, 0.01f), true);
     }
 
@@ -61,6 +92,14 @@ public class DiTCaptionEmbeddingLayer extends Layer {
     public void init(Tensor input) {
         // TODO Auto-generated method stub
         this.number = input.number;
+        if(network.RUN_MODEL == RunModel.TRAIN && (mask == null || mask.number != number)) {
+        	mask = Tensor.createGPUTensor(mask, number, 1, 1, 1, true);
+        }
+        if(network.RUN_MODEL == RunModel.TRAIN && y_embedding == null) {
+        	float[] data = RandomUtils.gaussianRandom(token_num * inChannel, 0.0f, 1.0f);
+        	data = MatrixOperation.multiplication(data, (float) Math.pow(inChannel, 0.5));
+        	y_embedding = new Tensor(1, 1, token_num, inChannel, data, true);
+        }
     }
 
     @Override
@@ -76,6 +115,12 @@ public class DiTCaptionEmbeddingLayer extends Layer {
     @Override
     public void output() {
         // TODO Auto-generated method stub
+    	
+    	if(network.RUN_MODEL == RunModel.TRAIN && uncond_prob > 0) {
+    		GPUOP.getInstance().cudaRandom(this.mask);
+    		kernel.tokenDrop(input, y_embedding, mask, input, uncond_prob);
+    	}
+    	
         linear1.forward(input);
 
         act.forward(linear1.getOutput());

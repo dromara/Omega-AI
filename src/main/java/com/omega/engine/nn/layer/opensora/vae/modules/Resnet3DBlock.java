@@ -18,7 +18,7 @@ import com.omega.example.clip.utils.ClipModelUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
- * Resnet3DBlock
+ * WFEncoderMid
  *
  * @author Administrator
  */

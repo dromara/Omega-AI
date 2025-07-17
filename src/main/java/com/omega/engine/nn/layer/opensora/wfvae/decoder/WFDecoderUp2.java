@@ -1,4 +1,4 @@
-package com.omega.engine.nn.layer.opensora.wfvae;
+package com.omega.engine.nn.layer.opensora.wfvae.decoder;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -9,32 +9,31 @@ import java.util.Map;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
-import com.omega.engine.nn.layer.opensora.vae.modules.Downsample2D;
-import com.omega.engine.nn.layer.opensora.wfvae.modules.WFConv2D;
-import com.omega.engine.nn.layer.opensora.wfvae.modules.WFResnet2DBlock;
+import com.omega.engine.nn.layer.opensora.wfvae.modules.Spatial2xTime2x3DUpsample;
+import com.omega.engine.nn.layer.opensora.wfvae.modules.WFResnet3DBlock;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
 
 /**
- * Resnet3DBlock
+ * WFDecoderUp2
  *
  * @author Administrator
  */
-public class WFEncoderDown1 extends Layer {
+public class WFDecoderUp2 extends Layer {
 	
 	public int depth;
 	public int oDepth;
 	
 	private int num_resblocks;
 	
-    public WFConv2D conv;
-    
-    public List<WFResnet2DBlock> resBlocks;
-    
-    public Downsample2D downsample;
+    public List<WFResnet3DBlock> resBlocks;
 
-    public WFEncoderDown1(int channel, int oChannel, int depth, int height, int width, int num_resblocks, Network network) {
+    public Spatial2xTime2x3DUpsample up3d;
+
+    public WFResnet3DBlock block;
+    
+    public WFDecoderUp2(int channel, int oChannel, int depth, int height, int width, int num_resblocks, Network network) {
         this.network = network;
         this.num_resblocks = num_resblocks;
         this.channel = channel;
@@ -43,27 +42,30 @@ public class WFEncoderDown1 extends Layer {
         this.width = width;
         this.oChannel = oChannel;
         initLayers();
-        this.oDepth = depth;
-        this.oHeight = downsample.oHeight;
-        this.oWidth = downsample.oWidth;
+        this.oDepth = block.oDepth;
+        this.oHeight = block.oHeight;
+        this.oWidth = block.oWidth;
     }
 
     public void initLayers() {
     	
-    	conv = new WFConv2D(channel, oChannel, depth, height, width, 3, 1, 1, network);
+    	resBlocks = new ArrayList<WFResnet3DBlock>();
     	
-    	resBlocks = new ArrayList<WFResnet2DBlock>();
-    	
+    	int id = depth;
     	int ih = height;
     	int iw = width;
+    	
     	for(int i = 0;i<num_resblocks;i++) {
-    		WFResnet2DBlock block = new WFResnet2DBlock(oChannel, oChannel, depth, height, width, 32, 1.0f, network);
+    		WFResnet3DBlock block = new WFResnet3DBlock(channel, channel, id, ih, iw, network);
     		resBlocks.add(block);
+    		id = block.oDepth;
     		ih = block.oHeight;
     		iw = block.oWidth;
     	}
     	
-    	downsample = new Downsample2D(oChannel, oChannel, depth, ih, iw, network);
+    	up3d = new Spatial2xTime2x3DUpsample(channel, channel, id, ih, iw, network);
+    	
+    	block = new WFResnet3DBlock(channel, oChannel, up3d.oDepth, up3d.oHeight, up3d.oWidth, network);
     	
     }
 
@@ -115,7 +117,7 @@ public class WFEncoderDown1 extends Layer {
 //        block.diff.showDM();
     }
     
-    public static void loadWeight(Map<String, Object> weightMap, WFEncoderDown1 block, boolean showLayers) {
+    public static void loadWeight(Map<String, Object> weightMap, WFDecoderUp2 block, boolean showLayers) {
         if (showLayers) {
             for (String key : weightMap.keySet()) {
                 System.out.println(key);
@@ -136,19 +138,19 @@ public class WFEncoderDown1 extends Layer {
     public void output() {
         // TODO Auto-generated method stub
 
-    	conv.forward(input);
-    	
-    	Tensor x = conv.getOutput();
+    	Tensor x = input;
     	
     	for(int i = 0;i<resBlocks.size();i++) {
-    		WFResnet2DBlock block = resBlocks.get(i);
+    		WFResnet3DBlock block = resBlocks.get(i);
     		block.forward(x);
     		x = block.getOutput();
     	}
     	
-    	downsample.forward(x);
+    	up3d.forward(x);
     	
-    	this.output = downsample.getOutput();
+    	block.forward(up3d.getOutput());
+    	
+    	this.output = block.getOutput();
     }
 
     @Override
@@ -161,19 +163,19 @@ public class WFEncoderDown1 extends Layer {
     public void diff() {
         // TODO Auto-generated method stub
     	
-    	downsample.back(delta);
-    	
-    	Tensor d = downsample.diff;
+    	Tensor d = delta;
     	
     	for(int i = resBlocks.size() - 1;i>=0;i--) {
-    		WFResnet2DBlock block = resBlocks.get(i);
+    		WFResnet3DBlock block = resBlocks.get(i);
     		block.back(d);
     		d = block.diff;
     	}
     	
-    	conv.back(d);
+    	up3d.back(d);
     	
-    	this.diff = conv.diff;
+    	block.back(up3d.diff);
+    	
+    	this.diff = block.diff;
     }
 
     @Override
@@ -215,11 +217,11 @@ public class WFEncoderDown1 extends Layer {
     @Override
     public void update() {
         // TODO Auto-generated method stub
-        conv.update();
         for(int i = 0;i<resBlocks.size();i++) {
         	resBlocks.get(i).update();
     	}
-        downsample.update();
+        up3d.update();
+        block.update();
     }
 
     @Override
@@ -291,19 +293,19 @@ public class WFEncoderDown1 extends Layer {
     }
 
     public void saveModel(RandomAccessFile outputStream) throws IOException {
-    	conv.saveModel(outputStream);
         for(int i = 0;i<resBlocks.size();i++) {
         	resBlocks.get(i).saveModel(outputStream);
     	}
-        downsample.saveModel(outputStream);
+        up3d.saveModel(outputStream);
+    	block.saveModel(outputStream);
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
-    	conv.loadModel(inputStream);
         for(int i = 0;i<resBlocks.size();i++) {
         	resBlocks.get(i).loadModel(inputStream);
     	}
-        downsample.loadModel(inputStream);
+        up3d.loadModel(inputStream);
+    	block.loadModel(inputStream);
     }
 }
 

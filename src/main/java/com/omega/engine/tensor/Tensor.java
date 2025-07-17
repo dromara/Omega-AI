@@ -1020,6 +1020,14 @@ public class Tensor implements Serializable {
             return false;
         }
     }
+    
+    public boolean checkShape(int N, int C, int H, int W) {
+        if (this.number == N && this.channel == C && this.height == H && this.width == W) {
+            return true;
+        } else {
+            return false;
+        }
+    }
 
     public SerializablePointer getShareGPU() {
         return shareGPU;

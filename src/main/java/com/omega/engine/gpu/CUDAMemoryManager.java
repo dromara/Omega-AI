@@ -111,6 +111,7 @@ public class CUDAMemoryManager {
 
     public synchronized static Pointer getPointer(int size) {
         Pointer p = new Pointer();
+//        System.err.println(size * (long) Sizeof.FLOAT);
         checkCUDA(cudaMalloc(p, size * (long) Sizeof.FLOAT), p.toString(), size * (long) Sizeof.FLOAT);
         cu_porints.add(p);
         return p;

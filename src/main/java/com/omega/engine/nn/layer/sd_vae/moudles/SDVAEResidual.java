@@ -1,4 +1,4 @@
-package com.omega.engine.nn.layer.vqvae.tiny;
+package com.omega.engine.nn.layer.sd_vae.moudles;
 
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.nn.layer.ConvolutionLayer;
@@ -22,7 +22,7 @@ import java.io.RandomAccessFile;
  *
  * @author Administrator
  */
-public class VQVAEResidual extends Layer {
+public class SDVAEResidual extends Layer {
     private int group = 32;
     private BasicBlockKernel kernel;
     public GNLayer norm1;
@@ -35,7 +35,7 @@ public class VQVAEResidual extends Layer {
     private boolean shortcut = false;
     private Tensor cache;
     
-    public VQVAEResidual(int channel, int oChannel, int height, int width, int group, Network network) {
+    public SDVAEResidual(int channel, int oChannel, int height, int width, int group, Network network) {
         this.network = network;
         this.channel = channel;
         this.oChannel = channel;
@@ -60,11 +60,11 @@ public class VQVAEResidual extends Layer {
         conv1.paramsInit = ParamsInit.silu;
         norm2 = new GNLayer(group, conv1, BNType.conv_bn);
         a2 = new SiLULayer(norm2);
-        conv2 = new ConvolutionLayer(conv1.oChannel, oChannel, conv1.oWidth, conv1.oHeight, 3, 3, 1, 1, false, this.network);
+        conv2 = new ConvolutionLayer(conv1.oChannel, oChannel, conv1.oWidth, conv1.oHeight, 3, 3, 1, 1, true, this.network);
         conv2.setUpdater(UpdaterFactory.create(this.network));
         conv2.paramsInit = ParamsInit.silu;
         if (shortcut) {
-            conv_shortcut = new ConvolutionLayer(channel, oChannel, width, height, 1, 1, 0, 1, false, this.network);
+            conv_shortcut = new ConvolutionLayer(channel, oChannel, width, height, 1, 1, 0, 1, true, this.network);
             conv_shortcut.setUpdater(UpdaterFactory.create(this.network));
             conv_shortcut.paramsInit = ParamsInit.silu;
         }

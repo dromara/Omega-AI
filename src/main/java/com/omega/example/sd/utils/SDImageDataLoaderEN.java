@@ -32,7 +32,7 @@ public class SDImageDataLoaderEN extends BaseDataLoader {
     public int count_it;
     private String labelPath;
     private String imgDirPath;
-    private String extName;
+    private String extName = ".png";
     private int maxContextLen;
     private boolean horizontalFilp;
     private List<Map<String, Object>> datas;
@@ -65,6 +65,21 @@ public class SDImageDataLoaderEN extends BaseDataLoader {
         this.std = std;
         init();
     }
+    
+    public SDImageDataLoaderEN(BPETokenizerEN tokenizer, String labelPath, String imgDirPath, String extName, int img_w, int img_h, int maxContextLen, int batchSize, boolean horizontalFilp, float[] mean, float[] std) {
+        this.horizontalFilp = horizontalFilp;
+        this.imgDirPath = imgDirPath;
+        this.labelPath = labelPath;
+        this.maxContextLen = maxContextLen;
+        this.tokenizer = tokenizer;
+        this.img_w = img_w;
+        this.img_h = img_h;
+        this.batchSize = batchSize;
+        this.mean = mean;
+        this.std = std;
+        this.extName = extName;
+        init();
+    }
 
     public void init() {
         loadFileCount();
@@ -77,7 +92,7 @@ public class SDImageDataLoaderEN extends BaseDataLoader {
                 datas = LagJsonReader.readJsonDataSamll(labelPath);
                 idxSet = new String[datas.size()];
                 for (int i = 0; i < datas.size(); i++) {
-                    idxSet[i] = datas.get(i).get("id").toString() + ".png";
+                    idxSet[i] = datas.get(i).get("id").toString() + extName;
                 }
             }
             this.number = datas.size();

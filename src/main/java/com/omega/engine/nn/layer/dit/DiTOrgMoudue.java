@@ -43,11 +43,14 @@ public class DiTOrgMoudue extends Layer {
     private Tensor dtc;
     private Tensor dtext;
     
-    public DiTOrgMoudue(int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio, boolean learnSigma,Network network) {
+    private float y_drop_prob = 0.0f;
+    
+    public DiTOrgMoudue(int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio, boolean learnSigma, float y_drop_prob, Network network) {
 		this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
         }
+        this.y_drop_prob = y_drop_prob;
     	this.inChannel = inChannel;
 		this.width = width;
 		this.height = height;
@@ -73,7 +76,7 @@ public class DiTOrgMoudue extends Layer {
          
         timeEmbd = new DiTTimeEmbeddingLayer(timeSteps, 256, hiddenSize, true, network);
         
-        labelEmbd = new DiTCaptionEmbeddingLayer(textEmbedDim, hiddenSize, true, network);
+        labelEmbd = new DiTCaptionEmbeddingLayer(textEmbedDim, hiddenSize, maxContextLen, y_drop_prob, true, network);
         
         blocks = new ArrayList<DiTOrgBlock>();
          

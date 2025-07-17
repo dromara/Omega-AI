@@ -31,6 +31,7 @@ public class Downsample2D extends Layer {
     private int ph;
     
     private int depth;
+    public int oDepth;
     
     private Tensor inputT;
     
@@ -42,6 +43,7 @@ public class Downsample2D extends Layer {
         this.height = height;
         this.width = width;
         initLayers();
+        this.oDepth = depth;
         this.oHeight = conv.oHeight;
         this.oWidth = conv.oWidth;
     }

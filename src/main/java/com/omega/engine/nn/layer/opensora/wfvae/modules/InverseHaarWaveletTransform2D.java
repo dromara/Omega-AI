@@ -1,18 +1,19 @@
 package com.omega.engine.nn.layer.opensora.wfvae.modules;
 
-import com.omega.common.utils.JsonUtils;
-import com.omega.common.utils.RandomUtils;
-import com.omega.engine.nn.layer.*;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.util.Map;
+
+import com.omega.engine.nn.layer.ConvolutionTransposeLayer;
+import com.omega.engine.nn.layer.Layer;
+import com.omega.engine.nn.layer.LayerType;
+import com.omega.engine.nn.layer.ParamsInit;
 import com.omega.engine.nn.network.CNN;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 import com.omega.example.clip.utils.ClipModelUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
-
-import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.util.Map;
 
 
 public class InverseHaarWaveletTransform2D extends Layer {
@@ -147,17 +148,14 @@ public class InverseHaarWaveletTransform2D extends Layer {
         // TODO Auto-generated method stub
         /**
          * 参数初始化
-
          */
         this.init();
         /**
          * 设置输入
-
          */
         this.setInput();
         /**
          * 计算输出
-
          */
         this.output();
     }
@@ -168,12 +166,10 @@ public class InverseHaarWaveletTransform2D extends Layer {
         initBack();
         /**
          * 设置梯度
-
          */
         this.setDelta();
         /**
          * 计算梯度
-
          */
         this.diff();
     }

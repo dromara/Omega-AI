@@ -1,4 +1,4 @@
-package com.omega.engine.nn.layer.vqvae.tiny;
+package com.omega.engine.nn.layer.sd_vae.moudles;
 
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.Layer;
@@ -15,11 +15,11 @@ import java.io.RandomAccessFile;
  *
  * @author Administrator
  */
-public class VQVAEUpsample extends Layer {
+public class SDVAEUpsample extends Layer {
     private UPSampleLayer up;
     public ConvolutionLayer conv;
 
-    public VQVAEUpsample(int channel, int height, int width, Network network) {
+    public SDVAEUpsample(int channel, int height, int width, Network network) {
         this.network = network;
         this.channel = channel;
         this.oChannel = channel;

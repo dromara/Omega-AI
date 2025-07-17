@@ -781,6 +781,18 @@ public class TensorOP {
         }
     }
     
+    public void getByChannel(Tensor org, Tensor target,int[] shape, int start, int count) {
+        if (org.isHasGPU()) {
+            this.op.copy_channel_gpu(org, target, shape, start, 0);
+        }
+    }
+    
+    public void addByChannel(Tensor org, Tensor target,int[] shape, int start) {
+        if (org.isHasGPU()) {
+            this.op.add_channel_gpu(org, target, shape, start);
+        }
+    }
+    
     public void getByNumber_back(Tensor org, Tensor target, int start, int count) {
         assert org.getNumber() >= (start + count - 1);
         if (org.isHasGPU()) {
@@ -800,6 +812,12 @@ public class TensorOP {
                 int startIndex = n * org.channel * size + start * size;
                 System.arraycopy(org.data, startIndex, target.data, n * count * size, count * size);
             }
+        }
+    }
+    
+    public void getByChannel_back(Tensor org, Tensor target, int[] shape, int start, int count) {
+        if (org.isHasGPU()) {
+            this.op.copy_channel_gpu(org, target, shape, start, 1);
         }
     }
     

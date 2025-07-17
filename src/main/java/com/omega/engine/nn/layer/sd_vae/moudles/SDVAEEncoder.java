@@ -1,4 +1,4 @@
-package com.omega.engine.nn.layer.vqvae.tiny;
+package com.omega.engine.nn.layer.sd_vae.moudles;
 
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.Layer;
@@ -19,7 +19,7 @@ import java.util.List;
  *
  * @author Administrator
  */
-public class TinyVQVAEEncoder2 extends Layer {
+public class SDVAEEncoder extends Layer {
     private int num_res_blocks = 2;
     private int groups = 32;
     private int headNum;
@@ -32,7 +32,7 @@ public class TinyVQVAEEncoder2 extends Layer {
     public ConvolutionLayer convOut;
     private boolean hasAttn = true;
 
-    public TinyVQVAEEncoder2(int channel, int oChannel, int height, int width, int num_res_blocks, int groups, int headNum, int[] ch_mult, int ch, Network network) {
+    public SDVAEEncoder(int channel, int oChannel, int height, int width, int num_res_blocks, int groups, int headNum, int[] ch_mult, int ch, Network network) {
         this.network = network;
         this.channel = channel;
         this.oChannel = oChannel;
@@ -46,7 +46,7 @@ public class TinyVQVAEEncoder2 extends Layer {
         initLayers();
     }
     
-    public TinyVQVAEEncoder2(int channel, int oChannel, int height, int width, int num_res_blocks, int groups, int headNum, int[] ch_mult, int ch, boolean hasAttn, Network network) {
+    public SDVAEEncoder(int channel, int oChannel, int height, int width, int num_res_blocks, int groups, int headNum, int[] ch_mult, int ch, boolean hasAttn, Network network) {
         this.network = network;
         this.channel = channel;
         this.oChannel = oChannel;
@@ -74,29 +74,29 @@ public class TinyVQVAEEncoder2 extends Layer {
             int c_in = in_ch_mult[i] * ch;
             c_out = in_ch_mult[i + 1] * ch;
             for (int ri = 0; ri < num_res_blocks; ri++) {
-                VQVAEResidual res = new VQVAEResidual(c_in, c_out, ih, iw, this.groups, network);
+                SDVAEResidual res = new SDVAEResidual(c_in, c_out, ih, iw, this.groups, network);
                 down.add(res);
                 c_in = c_out;
                 ih = res.oHeight;
                 iw = res.oWidth;
                 if (hasAttn && i == ch_mult.length - 1) {
-                    VQVAEAttentionLayer2 attn = new VQVAEAttentionLayer2(c_out, headNum, ih, iw, groups, false, network);
+                    SDVAEAttentionLayer attn = new SDVAEAttentionLayer(c_out, headNum, ih, iw, groups, true, network);
                     down.add(attn);
                 }
             }
             if (i != ch_mult.length - 1) {
-                ConvolutionLayer downConv = new ConvolutionLayer(c_out, c_out, iw, ih, 3, 3, 1, 2, true, this.network);
+            	SDVAEDownsample downConv = new SDVAEDownsample(c_out, ih, iw, network);
                 down.add(downConv);
                 ih = downConv.oHeight;
                 iw = downConv.oWidth;
             }
         }
         //middle
-        VQVAEResidual res1 = new VQVAEResidual(c_out, c_out, ih, iw, this.groups, network);
+        SDVAEResidual res1 = new SDVAEResidual(c_out, c_out, ih, iw, this.groups, network);
         down.add(res1);
-        VQVAEAttentionLayer2 attn = new VQVAEAttentionLayer2(c_out, headNum, ih, iw, groups, false, network);
+        SDVAEAttentionLayer attn = new SDVAEAttentionLayer(c_out, headNum, ih, iw, groups, true, network);
         down.add(attn);
-        VQVAEResidual res2 = new VQVAEResidual(c_out, c_out, ih, iw, this.groups, network);
+        SDVAEResidual res2 = new SDVAEResidual(c_out, c_out, ih, iw, this.groups, network);
         down.add(res2);
         convNormOut = new GNLayer(groups, c_out, ih, iw, BNType.conv_bn, res2);
         convAct = new SiLULayer(convNormOut);
@@ -286,12 +286,12 @@ public class TinyVQVAEEncoder2 extends Layer {
         convIn.saveModel(outputStream);
         for (int i = 0; i < down.size(); i++) {
             Layer l = down.get(i);
-            if (l instanceof VQVAEResidual) {
-                VQVAEResidual r = (VQVAEResidual) l;
+            if (l instanceof SDVAEResidual) {
+                SDVAEResidual r = (SDVAEResidual) l;
                 r.saveModel(outputStream);
             }
-            if (l instanceof VQVAEAttentionLayer2) {
-                VQVAEAttentionLayer2 a = (VQVAEAttentionLayer2) l;
+            if (l instanceof SDVAEAttentionLayer) {
+                SDVAEAttentionLayer a = (SDVAEAttentionLayer) l;
                 a.saveModel(outputStream);
             }
             if (l instanceof ConvolutionLayer) {
@@ -307,12 +307,12 @@ public class TinyVQVAEEncoder2 extends Layer {
         convIn.loadModel(inputStream);
         for (int i = 0; i < down.size(); i++) {
             Layer l = down.get(i);
-            if (l instanceof VQVAEResidual) {
-                VQVAEResidual r = (VQVAEResidual) l;
+            if (l instanceof SDVAEResidual) {
+                SDVAEResidual r = (SDVAEResidual) l;
                 r.loadModel(inputStream);
             }
-            if (l instanceof VQVAEAttentionLayer2) {
-                VQVAEAttentionLayer2 a = (VQVAEAttentionLayer2) l;
+            if (l instanceof SDVAEAttentionLayer) {
+                SDVAEAttentionLayer a = (SDVAEAttentionLayer) l;
                 a.loadModel(inputStream);
             }
             if (l instanceof ConvolutionLayer) {

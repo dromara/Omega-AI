@@ -2,7 +2,9 @@ package com.omega.engine.nn.layer.opensora.wfvae.modules;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.Map;
 
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -12,8 +14,11 @@ import com.omega.engine.nn.layer.gpu.BasicBlockKernel;
 import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.GNLayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
+import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
  * resnet block layer
@@ -55,16 +60,16 @@ public class WFResnet2DBlock extends Layer {
     public void initLayers() {
         norm1 = new GNLayer(group, this, BNType.conv_bn);
         a1 = new SiLULayer(norm1);
-        conv1 = new ConvolutionLayer(channel, oChannel, width, height, 3, 3, 1, 1, false, this.network);
+        conv1 = new ConvolutionLayer(channel, oChannel, width, height, 3, 3, 1, 1, true, this.network);
         conv1.setUpdater(UpdaterFactory.create(this.network));
         conv1.paramsInit = ParamsInit.silu;
         norm2 = new GNLayer(group, conv1);
         a2 = new SiLULayer(norm2);
-        conv2 = new ConvolutionLayer(conv1.oChannel, oChannel, conv1.oWidth, conv1.oHeight, 3, 3, 1, 1, false, this.network);
+        conv2 = new ConvolutionLayer(conv1.oChannel, oChannel, conv1.oWidth, conv1.oHeight, 3, 3, 1, 1, true, this.network);
         conv2.setUpdater(UpdaterFactory.create(this.network));
         conv2.paramsInit = ParamsInit.silu;
         if (shortcut) {
-            conv_shortcut = new ConvolutionLayer(channel, oChannel, width, height, 1, 1, 0, 1, false, this.network);
+            conv_shortcut = new ConvolutionLayer(channel, oChannel, width, height, 1, 1, 0, 1, true, this.network);
             conv_shortcut.setUpdater(UpdaterFactory.create(this.network));
             conv_shortcut.paramsInit = ParamsInit.silu;
         }
@@ -112,6 +117,8 @@ public class WFResnet2DBlock extends Layer {
     	 * image to video
     	 */
         Tensor_OP().permute(conv2.getOutput(), output, new int[] {number, depth, conv2.oChannel, conv2.oHeight, conv2.oWidth}, new int[] {number, conv2.oChannel, depth, conv2.oHeight, conv2.oWidth}, new int[]{0, 2, 1, 3, 4});
+
+        output.showDMByNumber(0);
     }
 
     @Override
@@ -278,6 +285,60 @@ public class WFResnet2DBlock extends Layer {
     @Override
     public void accGrad(float scale) {
         // TODO Auto-generated method stub
+    }
+
+    public static void main(String[] args) {
+        int N = 2;
+        int C = 64;
+        int F = 5;
+        int H = 16;
+        int W = 16;
+
+        int OC = 32;
+
+//        float[] data = RandomUtils.order(N * C * F * H * W, 0.01f, 0.01f);
+//        Tensor input = new Tensor(N, C * F, H, W, data, true);
+
+        String inputPath = "D:\\models\\input_resnet.json";
+        Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
+        Tensor input = new Tensor(N, C * F, H, W, true);
+        ClipModelUtils.loadData(input, datas, "x", 5);
+
+        Transformer nn = new Transformer();
+        nn.CUDNN = true;
+        nn.number = N;
+
+        WFResnet2DBlock block = new WFResnet2DBlock(C, OC, F, H, W, 32, 0, nn);
+
+        String path = "D:\\models\\resnet_weight.json";
+        loadWeight(LagJsonReader.readJsonFileSmallWeight(path), block, true);
+
+        block.forward(input);
+        
+        block.getOutput().showDM();
+        
+    }
+
+    public static void loadWeight(Map<String, Object> weightMap, WFResnet2DBlock block, boolean showLayers) {
+        if (showLayers) {
+            for (String key : weightMap.keySet()) {
+                System.out.println(key);
+            }
+        }
+
+        block.norm1.gamma= ClipModelUtils.loadData(block.norm1.gamma, weightMap, 1, "norm1.weight");
+        block.norm1.beta = ClipModelUtils.loadData(block.norm1.beta, weightMap, 1, "norm1.bias");
+        ClipModelUtils.loadData(block.conv1.weight, weightMap, "conv1.weight", 4);
+        ClipModelUtils.loadData(block.conv1.bias, weightMap, "conv1.bias");
+        block.norm2.gamma = ClipModelUtils.loadData(block.norm2.gamma, weightMap, 1, "norm2.weight");
+        block.norm2.beta = ClipModelUtils.loadData(block.norm2.beta, weightMap, 1, "norm2.bias");
+        ClipModelUtils.loadData(block.conv2.weight, weightMap, "conv2.weight", 4);
+        ClipModelUtils.loadData(block.conv2.bias, weightMap, "conv2.bias");
+        
+        if(block.shortcut) {
+        	ClipModelUtils.loadData(block.conv_shortcut.weight, weightMap, "nin_shortcut.weight", 4);
+            ClipModelUtils.loadData(block.conv_shortcut.bias, weightMap, "nin_shortcut.bias");
+        }
     }
     
 }

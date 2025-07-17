@@ -84,7 +84,7 @@ public class DiTOrgMoudue_SRA extends Layer {
          
         timeEmbd = new DiTTimeEmbeddingLayer(timeSteps, 256, hiddenSize, hasBias, network);
         
-        labelEmbd = new DiTCaptionEmbeddingLayer(textEmbedDim, hiddenSize, hasBias, network);
+        labelEmbd = new DiTCaptionEmbeddingLayer(textEmbedDim, hiddenSize, maxContextLen, hasBias, network);
         
         blocks = new ArrayList<DiTOrgBlock>();
          

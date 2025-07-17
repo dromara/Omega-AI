@@ -1,25 +1,34 @@
-package com.omega.engine.nn.layer.vqvae.tiny;
-
-import com.omega.engine.nn.layer.ConvolutionLayer;
-import com.omega.engine.nn.layer.Layer;
-import com.omega.engine.nn.layer.LayerType;
-import com.omega.engine.nn.layer.UPSampleLayer;
-import com.omega.engine.nn.network.Network;
-import com.omega.engine.tensor.Tensor;
+package com.omega.engine.nn.layer.sd_vae.moudles;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
+
+import com.omega.engine.gpu.PaddingKernel;
+import com.omega.engine.nn.layer.ConvolutionLayer;
+import com.omega.engine.nn.layer.Layer;
+import com.omega.engine.nn.layer.LayerType;
+import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * VQVAEUpsample
  *
  * @author Administrator
  */
-public class VQVAEUpsample extends Layer {
-    private UPSampleLayer up;
-    public ConvolutionLayer conv;
+public class SDVAEDownsample extends Layer {
 
-    public VQVAEUpsample(int channel, int height, int width, Network network) {
+    public ConvolutionLayer conv;
+    
+    private PaddingKernel kernel;
+    
+    private int[] padding = new int[] {0, 1, 0, 1};
+    
+    private Tensor pout;
+    
+    private int ph;
+    private int pw;
+    
+    public SDVAEDownsample(int channel, int height, int width, Network network) {
         this.network = network;
         this.channel = channel;
         this.oChannel = channel;
@@ -31,13 +40,24 @@ public class VQVAEUpsample extends Layer {
     }
 
     public void initLayers() {
-        up = new UPSampleLayer(channel, height, width, 2, network);
-        conv = new ConvolutionLayer(channel, oChannel, up.oWidth, up.oHeight, 3, 3, 1, 1, true, this.network);
+    	
+    	this.ph = height + padding[0] + padding[1];
+    	this.pw = width + padding[2] + padding[3];
+    	
+        conv = new ConvolutionLayer(channel, oChannel, pw, ph, 3, 3, 0, 2, true, this.network);
+        
+        if(kernel == null) {
+        	kernel = new PaddingKernel(cuda());
+        }
+        
     }
 
     @Override
     public void init() {
         this.number = this.network.number;
+        if(pout == null || pout.number != this.number) {
+        	pout = Tensor.createGPUTensor(pout, number, channel, ph, pw, true);
+        }
     }
 
     @Override
@@ -52,8 +72,8 @@ public class VQVAEUpsample extends Layer {
     @Override
     public void output() {
         // TODO Auto-generated method stub
-        up.forward(this.input);
-        conv.forward(up.getOutput());
+    	kernel.padding2d(input, pout, padding, 0);
+        conv.forward(pout);
         this.output = conv.getOutput();
     }
 
@@ -66,9 +86,7 @@ public class VQVAEUpsample extends Layer {
     @Override
     public void diff() {
         // TODO Auto-generated method stub
-        conv.back(delta);
-        up.back(conv.diff);
-        this.diff = up.diff;
+
     }
 
     @Override

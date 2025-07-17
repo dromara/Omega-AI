@@ -297,7 +297,7 @@ public class ConvolutionLayer extends Layer {
         // TODO Auto-generated method stub
         this.number = input.number;
         if (this.output == null || this.number != this.output.number) {
-            this.output = Tensor.createTensor(this.output, number, oChannel, oHeight, oWidth, true);
+            this.output = Tensor.createTensor(this.output, this.number, oChannel, oHeight, oWidth, true);
         }
         if (kernel == null) {
             if (this.network.CUDNN) {
@@ -317,26 +317,22 @@ public class ConvolutionLayer extends Layer {
         if (this.diff == null || this.number != this.diff.number) {
             this.diff = new Tensor(number, channel, height, width, true);
         }
-        if (this.diffW == null) {
-            if (!freeze) {
-                if (this.hasBias) {
-                    this.diffB = new Tensor(1, 1, 1, kernelNum, true);
-                }
-                this.diffW = new Tensor(this.kernelNum, this.channel, this.kHeight, this.kWidth, true);
+        if (this.diffW == null && !freeze) {
+        	if (this.hasBias) {
+                this.diffB = new Tensor(1, 1, 1, kernelNum, true);
             }
+            this.diffW = new Tensor(this.kernelNum, this.channel, this.kHeight, this.kWidth, true);
         }
     }
     
     public void initBack(Tensor diff) {
         // TODO Auto-generated method stub
     	this.diff = diff;
-        if (this.diffW == null) {
-            if (!freeze) {
-                if (this.hasBias) {
-                    this.diffB = new Tensor(1, 1, 1, kernelNum, true);
-                }
-                this.diffW = new Tensor(this.kernelNum, this.channel, this.kHeight, this.kWidth, true);
+    	if (this.diffW == null && !freeze) {
+        	if (this.hasBias) {
+                this.diffB = new Tensor(1, 1, 1, kernelNum, true);
             }
+            this.diffW = new Tensor(this.kernelNum, this.channel, this.kHeight, this.kWidth, true);
         }
     }
 

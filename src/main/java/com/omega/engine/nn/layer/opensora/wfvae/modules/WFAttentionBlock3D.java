@@ -103,15 +103,21 @@ public class WFAttentionBlock3D extends Layer {
         String weight = "D:\\models\\wf_attn3d.json";
         loadWeight(LagJsonReader.readJsonFileSmallWeight(weight), mal, true);
         
+        String deltaPath = "D:\\models\\attn3d_delta_wf.json";
+        Map<String, Object> d = LagJsonReader.readJsonFileSmallWeight(deltaPath);
+        Tensor delta = new Tensor(N, C * F, H, W, true);
+        ClipModelUtils.loadData(delta, d, "delta", 5);
+        
         for (int i = 0; i < 1; i++) {
             mal.forward(input);
 //            mal.getOutput().showShape();
 //            mal.getOutput().showDM();
-//            mal.back(delta);
+            mal.back(delta);
 //            mal.diff.showDM();
         }
       mal.getOutput().showShape();
       mal.getOutput().showDM();
+      mal.diff.showDM();
     }
     
     public static void loadWeight(Map<String, Object> weightMap, WFAttentionBlock3D network, boolean showLayers) {
@@ -210,8 +216,8 @@ public class WFAttentionBlock3D extends Layer {
     public void initBack() {
         // TODO Auto-generated method stub
         if (this.dattn == null) {
-            this.dqkvt = Tensor.createGPUTensor(this.dqkvt, number, headNum, time, dk, true);
-            this.dattn = Tensor.createGPUTensor(this.dattn, number, headNum, time, time, true);
+            this.dqkvt = Tensor.createGPUTensor(this.dqkvt, number * depth, headNum, time, dk, true);
+            this.dattn = Tensor.createGPUTensor(this.dattn, number * depth, headNum, time, time, true);
             this.d_tmp = Tensor.createGPUTensor(this.d_tmp, input.shape(), true);
         }
     }
@@ -257,7 +263,7 @@ public class WFAttentionBlock3D extends Layer {
         this.qLinerLayer.forward(norm.getOutput());
         this.kLinerLayer.forward(norm.getOutput());
         this.vLinerLayer.forward(norm.getOutput());
-        
+
         Tensor q = this.qLinerLayer.getOutput().view(number, channel, depth, time);
         Tensor k = this.kLinerLayer.getOutput().view(number, channel, depth, time);
         Tensor v = this.vLinerLayer.getOutput().view(number, channel, depth, time);
@@ -307,46 +313,36 @@ public class WFAttentionBlock3D extends Layer {
     @Override
     public void diff() {
         // TODO Auto-generated method stub
-//        this.oLinerLayer.back(delta, oit);
-//        oit.viewOrg();
-////        oit.showDM("oit");
-//        Tensor_OP().permute(oit, oi, new int[]{0, 3, 2, 1});  //n c 1 t -> n t 1 c
-//        attentionKernel.unpermute_backward(temp, oi, number, time, headNum, dk);
-//        Tensor dvaccum = temp;
-//        // backward into datt
-//        GPU_OP().bmmEX(CUBLAS_OP_T, CUBLAS_OP_N, time, time, dk, 1.0f, vt.getGpuData(), dk, time * dk, dvaccum.getGpuData(), dk, time * dk, 0.0f, dattn.getGpuData(), time, time * time, number * headNum);
-////        dattn.showDMByOffsetRed(79 * 80, 80, "dattn");
-//        // backward into preatt
-//        softmaxKernel.softmax_backward(attn, dattn, dattn);
-//        float d_k = (float) (1.0f / Math.sqrt(dk));
-//        Tensor_OP().mul(dattn, d_k, dattn);
-//        Tensor dpreatt = dattn;
-//        // backward into dv
-//        GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_T, dk, time, time, 1.0f, dvaccum.getGpuData(), dk, time * dk, attn.getGpuData(), time, time * time, 0.0f, dqkvt.getGpuData(), dk, time * dk, number * headNum);
-//        Tensor dvt = vt.view(number, channel, 1, time); // b, c, 1, t
-//        Tensor_OP().permute(dqkvt, dvt, new int[]{0, 3, 1, 2});//n 1 t c-> n c 1 t
-//        Tensor vDelta = dvt.view(this.vLinerLayer.getOutput().shape());
-//        this.vLinerLayer.back(vDelta, norm.getOutput());
-//        Tensor_OP().add(norm.getOutput(), 0, d_tmp);
-//        // backward into q
-//        GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_N, dk, time, time, 1.0f, kt.getGpuData(), dk, time * dk, dpreatt.getGpuData(), time, time * time, 0.0f, dqkvt.getGpuData(), dk, time * dk, number * headNum);
-//        Tensor dqt = vt.view(number, channel, 1, time); // b, c, 1, t
-//        Tensor_OP().permute(dqkvt, dqt, new int[]{0, 3, 1, 2});//n 1 t c-> n c 1 t
-//        Tensor qDelta = dvt.view(this.qLinerLayer.getOutput().shape());
-//        this.qLinerLayer.back(qDelta, norm.getOutput());
-//
-//        Tensor_OP().add(norm.getOutput(), d_tmp, d_tmp);
-//        // backward into k
-//        GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_T, dk, time, time, 1.0f, qt.getGpuData(), dk, time * dk, dpreatt.getGpuData(), time, time * time, 0.0f, dqkvt.getGpuData(), dk, time * dk, number * headNum);
-//        Tensor dkt = vt.view(number, channel, 1, time); // b, c, 1, t
-//        Tensor_OP().permute(dqkvt, dkt, new int[]{0, 3, 1, 2});//n 1 t c-> n c 1 t
-//        Tensor kDelta = dvt.view(this.kLinerLayer.getOutput().shape());
-//        this.kLinerLayer.back(kDelta, norm.getOutput());
-//
-//        Tensor_OP().add(norm.getOutput(), d_tmp, d_tmp);
-//        this.norm.back(d_tmp);
-//        Tensor_OP().add(this.norm.diff, delta, this.norm.diff);
-//        this.diff = this.norm.diff;
+        this.oLinerLayer.back(delta, oi);
+        Tensor_OP().permute(oi, temp, new int[] {number, channel, depth, time}, new int[] {number, depth, time, channel}, new int[]{0, 2, 3, 1}, oi.dataLength);  //n c 1 t -> n t 1 c
+        Tensor dvaccum = temp;
+        // backward into datt
+        GPU_OP().bmmEX(CUBLAS_OP_T, CUBLAS_OP_N, time, time, dk, 1.0f, vt.getGpuData(), dk, time * dk, dvaccum.getGpuData(), dk, time * dk, 0.0f, dattn.getGpuData(), time, time * time, number * headNum * depth);
+//        dattn.showDMByOffsetRed(79 * 80, 80, "dattn");
+        // backward into preatt
+        softmaxKernel.softmax_backward(attn, dattn, dattn);
+        float d_k = (float) (1.0f / Math.sqrt(dk));
+        Tensor_OP().mul(dattn, d_k, dattn);
+        Tensor dpreatt = dattn;
+        // backward into dv
+        GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_T, dk, time, time, 1.0f, dvaccum.getGpuData(), dk, time * dk, attn.getGpuData(), time, time * time, 0.0f, dqkvt.getGpuData(), dk, time * dk, number * headNum * depth);
+        Tensor_OP().permute(dqkvt, this.vLinerLayer.getOutput(), new int[] {number, depth, time, channel}, new int[] {number, channel, depth, time}, new int[]{0, 3, 1, 2});//n 1 t c-> n c 1 t
+        this.vLinerLayer.back(this.vLinerLayer.getOutput(), norm.getOutput());
+        Tensor_OP().add(norm.getOutput(), 0, d_tmp);
+        // backward into q
+        GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_N, dk, time, time, 1.0f, kt.getGpuData(), dk, time * dk, dpreatt.getGpuData(), time, time * time, 0.0f, dqkvt.getGpuData(), dk, time * dk, number * headNum * depth);
+        Tensor_OP().permute(dqkvt, this.qLinerLayer.getOutput(), new int[] {number, depth, time, channel}, new int[] {number, channel, depth, time}, new int[]{0, 3, 1, 2});//n 1 t c-> n c 1 t
+        this.qLinerLayer.back(this.qLinerLayer.getOutput(), norm.getOutput());
+        Tensor_OP().add(norm.getOutput(), d_tmp, d_tmp);
+        // backward into k
+        GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_T, dk, time, time, 1.0f, qt.getGpuData(), dk, time * dk, dpreatt.getGpuData(), time, time * time, 0.0f, dqkvt.getGpuData(), dk, time * dk, number * headNum * depth);
+        Tensor_OP().permute(dqkvt, this.kLinerLayer.getOutput(), new int[] {number, depth, time, channel}, new int[] {number, channel, depth, time}, new int[]{0, 3, 1, 2});//n 1 t c-> n c 1 t
+        this.kLinerLayer.back(kLinerLayer.getOutput(), norm.getOutput());
+        Tensor_OP().add(norm.getOutput(), d_tmp, d_tmp);
+        
+        this.norm.back(d_tmp);
+        Tensor_OP().add(this.norm.diff, delta, this.norm.diff);
+        this.diff = this.norm.diff;
     }
 
     @Override
