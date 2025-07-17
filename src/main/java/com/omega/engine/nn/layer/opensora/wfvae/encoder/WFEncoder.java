@@ -6,6 +6,7 @@ import java.util.Map;
 
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
+import com.omega.engine.nn.layer.active.SiLULayer;
 import com.omega.engine.nn.layer.opensora.vae.modules.GNLayer3D;
 import com.omega.engine.nn.layer.opensora.wfvae.modules.HaarWaveletTransform2D;
 import com.omega.engine.nn.layer.opensora.wfvae.modules.HaarWaveletTransform3D;
@@ -39,6 +40,7 @@ public class WFEncoder extends Layer {
 	public WFConv2D connect_l2;
 	
 	public GNLayer3D norm_out;
+	private SiLULayer act;
 	public WFCausalConv3D conv_out;
 	
 	private int energy_flow_hidden_size;
@@ -87,6 +89,8 @@ public class WFEncoder extends Layer {
     	mid = new WFEncoderMid(base_channels * 2 + energy_flow_hidden_size, base_channels * 4, down2.oDepth, down2.oHeight, down2.oWidth, network);
     	
     	norm_out = new GNLayer3D(base_channels * 4, mid.oDepth, mid.oHeight, mid.oWidth, 32, network);
+    	
+    	act = new SiLULayer(network);
     	
     	conv_out = new WFCausalConv3D(base_channels * 4, latent_dim * 2, norm_out.oDepth, norm_out.oWidth, norm_out.oHeight, 3, 1, 1, true, network);
     	
@@ -197,7 +201,8 @@ public class WFEncoder extends Layer {
     	mid.forward(h2);
     	
     	norm_out.forward(mid.getOutput());
-    	conv_out.forward(norm_out.getOutput());
+    	act.forward(norm_out.getOutput());
+    	conv_out.forward(act.getOutput());
     	
     	this.output = conv_out.getOutput();
     }
@@ -241,7 +246,8 @@ public class WFEncoder extends Layer {
     	Tensor l2_delta = connect_l2.getOutput();
     	
     	conv_out.back(delta);
-    	norm_out.back(conv_out.diff);
+    	act.back(conv_out.diff);
+    	norm_out.back(act.diff);
     	
     	mid.back(norm_out.diff);
     	
@@ -273,17 +279,14 @@ public class WFEncoder extends Layer {
         // TODO Auto-generated method stub
         /**
          * 参数初始化
-
          */
         this.init();
         /**
          * 设置输入
-
          */
         this.setInput();
         /**
          * 计算输出
-
          */
         this.output();
     }
@@ -294,12 +297,10 @@ public class WFEncoder extends Layer {
         initBack();
         /**
          * 设置梯度
-
          */
         this.setDelta();
         /**
          * 计算梯度
-
          */
         this.diff();
     }

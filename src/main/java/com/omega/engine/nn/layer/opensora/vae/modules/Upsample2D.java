@@ -26,6 +26,7 @@ public class Upsample2D extends Layer {
     public ConvolutionLayer conv;
     
     private int depth;
+    public int oDepth;
     
     private Tensor inputT;
     
@@ -37,6 +38,7 @@ public class Upsample2D extends Layer {
         this.width = width;
         initLayers();
         this.oChannel = conv.oChannel;
+        this.oDepth = depth;
         this.oHeight = conv.oHeight;
         this.oWidth = conv.oWidth;
     }

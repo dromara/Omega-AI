@@ -25,6 +25,8 @@ public class WFConv2D extends Layer {
     private int padding;
     private int stride;
     
+    public int oDepth;
+    
     private Tensor inputT;
     
     public WFConv2D(int channel, int oChannel, int depth, int height, int width, int kernelSize, int padding, int stride, Network network) {
@@ -38,6 +40,7 @@ public class WFConv2D extends Layer {
         this.padding = padding;
         this.stride = stride;
         initLayers();
+        this.oDepth = depth;
         this.oHeight = conv.oHeight;
         this.oWidth = conv.oWidth;
         this.oChannel = conv.oChannel;

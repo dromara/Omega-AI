@@ -9,18 +9,18 @@ import java.util.Map;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
-import com.omega.engine.nn.layer.opensora.wfvae.modules.Spatial2xTime2x3DUpsample;
+import com.omega.engine.nn.layer.opensora.vae.modules.Upsample2D;
 import com.omega.engine.nn.layer.opensora.wfvae.modules.WFResnet3DBlock;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
 
 /**
- * WFDecoderUp2
+ * WFDecoderUp1
  *
  * @author Administrator
  */
-public class WFDecoderUp2 extends Layer {
+public class WFDecoderUp1 extends Layer {
 	
 	public int depth;
 	public int oDepth;
@@ -29,11 +29,11 @@ public class WFDecoderUp2 extends Layer {
 	
     public List<WFResnet3DBlock> resBlocks;
 
-    public Spatial2xTime2x3DUpsample up3d;
+    public Upsample2D up2d;
 
     public WFResnet3DBlock block;
     
-    public WFDecoderUp2(int channel, int oChannel, int depth, int height, int width, int num_resblocks, Network network) {
+    public WFDecoderUp1(int channel, int oChannel, int depth, int height, int width, int num_resblocks, Network network) {
         this.network = network;
         this.num_resblocks = num_resblocks;
         this.channel = channel;
@@ -56,16 +56,16 @@ public class WFDecoderUp2 extends Layer {
     	int iw = width;
     	
     	for(int i = 0;i<num_resblocks;i++) {
-    		WFResnet3DBlock block = new WFResnet3DBlock(channel, channel, id, ih, iw, network);
+    		WFResnet3DBlock block = new WFResnet3DBlock(i == 0 ? channel : oChannel, oChannel, id, ih, iw, network);
     		resBlocks.add(block);
     		id = block.oDepth;
     		ih = block.oHeight;
     		iw = block.oWidth;
     	}
     	
-    	up3d = new Spatial2xTime2x3DUpsample(channel, channel, id, ih, iw, network);
+    	up2d = new Upsample2D(oChannel, id, ih, iw, network);
     	
-    	block = new WFResnet3DBlock(channel, oChannel, up3d.oDepth, up3d.oHeight, up3d.oWidth, network);
+    	block = new WFResnet3DBlock(oChannel, oChannel, up2d.oDepth, up2d.oHeight, up2d.oWidth, network);
     	
     }
 
@@ -117,7 +117,7 @@ public class WFDecoderUp2 extends Layer {
 //        block.diff.showDM();
     }
     
-    public static void loadWeight(Map<String, Object> weightMap, WFDecoderUp2 block, boolean showLayers) {
+    public static void loadWeight(Map<String, Object> weightMap, WFDecoderUp1 block, boolean showLayers) {
         if (showLayers) {
             for (String key : weightMap.keySet()) {
                 System.out.println(key);
@@ -146,9 +146,9 @@ public class WFDecoderUp2 extends Layer {
     		x = block.getOutput();
     	}
     	
-    	up3d.forward(x);
+    	up2d.forward(x);
     	
-    	block.forward(up3d.getOutput());
+    	block.forward(up2d.getOutput());
     	
     	this.output = block.getOutput();
     }
@@ -162,12 +162,12 @@ public class WFDecoderUp2 extends Layer {
     @Override
     public void diff() {
         // TODO Auto-generated method stub
-    	
+
     	block.back(delta);
     	
-    	up3d.back(block.diff);
+    	up2d.back(block.diff);
     	
-    	Tensor d = up3d.diff;
+    	Tensor d = up2d.diff;
     	
     	for(int i = resBlocks.size() - 1;i>=0;i--) {
     		WFResnet3DBlock block = resBlocks.get(i);
@@ -220,7 +220,7 @@ public class WFDecoderUp2 extends Layer {
         for(int i = 0;i<resBlocks.size();i++) {
         	resBlocks.get(i).update();
     	}
-        up3d.update();
+        up2d.update();
         block.update();
     }
 
@@ -296,7 +296,7 @@ public class WFDecoderUp2 extends Layer {
         for(int i = 0;i<resBlocks.size();i++) {
         	resBlocks.get(i).saveModel(outputStream);
     	}
-        up3d.saveModel(outputStream);
+        up2d.saveModel(outputStream);
     	block.saveModel(outputStream);
     }
 
@@ -304,7 +304,7 @@ public class WFDecoderUp2 extends Layer {
         for(int i = 0;i<resBlocks.size();i++) {
         	resBlocks.get(i).loadModel(inputStream);
     	}
-        up3d.loadModel(inputStream);
+        up2d.loadModel(inputStream);
     	block.loadModel(inputStream);
     }
 }

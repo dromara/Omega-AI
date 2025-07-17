@@ -9,42 +9,40 @@ import java.util.Map;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
-import com.omega.engine.nn.layer.opensora.wfvae.modules.Spatial2xTime2x3DUpsample;
+import com.omega.engine.nn.layer.opensora.wfvae.modules.WFConv2D;
 import com.omega.engine.nn.layer.opensora.wfvae.modules.WFResnet3DBlock;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
 
 /**
- * WFDecoderUp2
+ * WFDecoderConnect1
  *
  * @author Administrator
  */
-public class WFDecoderUp2 extends Layer {
+public class WFDecoderConnect extends Layer {
 	
 	public int depth;
 	public int oDepth;
 	
-	private int num_resblocks;
+	private int connect_res_layer_num = 1;
 	
     public List<WFResnet3DBlock> resBlocks;
 
-    public Spatial2xTime2x3DUpsample up3d;
-
-    public WFResnet3DBlock block;
+    public WFConv2D conv;
     
-    public WFDecoderUp2(int channel, int oChannel, int depth, int height, int width, int num_resblocks, Network network) {
+    public WFDecoderConnect(int channel, int oChannel, int depth, int height, int width, int connect_res_layer_num, Network network) {
         this.network = network;
-        this.num_resblocks = num_resblocks;
+        this.connect_res_layer_num = connect_res_layer_num;
         this.channel = channel;
         this.depth = depth;
         this.height = height;
         this.width = width;
         this.oChannel = oChannel;
         initLayers();
-        this.oDepth = block.oDepth;
-        this.oHeight = block.oHeight;
-        this.oWidth = block.oWidth;
+        this.oDepth = conv.oDepth;
+        this.oHeight = conv.oHeight;
+        this.oWidth = conv.oWidth;
     }
 
     public void initLayers() {
@@ -55,7 +53,7 @@ public class WFDecoderUp2 extends Layer {
     	int ih = height;
     	int iw = width;
     	
-    	for(int i = 0;i<num_resblocks;i++) {
+    	for(int i = 0;i<connect_res_layer_num;i++) {
     		WFResnet3DBlock block = new WFResnet3DBlock(channel, channel, id, ih, iw, network);
     		resBlocks.add(block);
     		id = block.oDepth;
@@ -63,9 +61,7 @@ public class WFDecoderUp2 extends Layer {
     		iw = block.oWidth;
     	}
     	
-    	up3d = new Spatial2xTime2x3DUpsample(channel, channel, id, ih, iw, network);
-    	
-    	block = new WFResnet3DBlock(channel, oChannel, up3d.oDepth, up3d.oHeight, up3d.oWidth, network);
+    	conv = new WFConv2D(channel, oChannel, id, ih, iw, 3, 1, 1, network);
     	
     }
 
@@ -117,7 +113,7 @@ public class WFDecoderUp2 extends Layer {
 //        block.diff.showDM();
     }
     
-    public static void loadWeight(Map<String, Object> weightMap, WFDecoderUp2 block, boolean showLayers) {
+    public static void loadWeight(Map<String, Object> weightMap, WFDecoderConnect block, boolean showLayers) {
         if (showLayers) {
             for (String key : weightMap.keySet()) {
                 System.out.println(key);
@@ -146,11 +142,9 @@ public class WFDecoderUp2 extends Layer {
     		x = block.getOutput();
     	}
     	
-    	up3d.forward(x);
+    	conv.forward(x);
     	
-    	block.forward(up3d.getOutput());
-    	
-    	this.output = block.getOutput();
+    	this.output = conv.getOutput();
     }
 
     @Override
@@ -162,12 +156,10 @@ public class WFDecoderUp2 extends Layer {
     @Override
     public void diff() {
         // TODO Auto-generated method stub
+
+    	conv.back(delta);
     	
-    	block.back(delta);
-    	
-    	up3d.back(block.diff);
-    	
-    	Tensor d = up3d.diff;
+    	Tensor d = conv.diff;
     	
     	for(int i = resBlocks.size() - 1;i>=0;i--) {
     		WFResnet3DBlock block = resBlocks.get(i);
@@ -220,8 +212,7 @@ public class WFDecoderUp2 extends Layer {
         for(int i = 0;i<resBlocks.size();i++) {
         	resBlocks.get(i).update();
     	}
-        up3d.update();
-        block.update();
+        conv.update();
     }
 
     @Override
@@ -296,16 +287,14 @@ public class WFDecoderUp2 extends Layer {
         for(int i = 0;i<resBlocks.size();i++) {
         	resBlocks.get(i).saveModel(outputStream);
     	}
-        up3d.saveModel(outputStream);
-    	block.saveModel(outputStream);
+        conv.saveModel(outputStream);
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
         for(int i = 0;i<resBlocks.size();i++) {
         	resBlocks.get(i).loadModel(inputStream);
     	}
-        up3d.loadModel(inputStream);
-    	block.loadModel(inputStream);
+        conv.loadModel(inputStream);
     }
 }
 
