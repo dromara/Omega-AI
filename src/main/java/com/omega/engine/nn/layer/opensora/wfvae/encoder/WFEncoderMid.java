@@ -122,9 +122,9 @@ public class WFEncoderMid extends Layer {
         // TODO Auto-generated method stub
 
     	block1.forward(input);
-    	
+
     	attn.forward(block1.getOutput());
-    	
+
     	block2.forward(attn.getOutput());
     	
     	this.output = block2.getOutput();
@@ -220,17 +220,14 @@ public class WFEncoderMid extends Layer {
         // TODO Auto-generated method stub
         /**
          * 参数初始化
-
          */
         this.init();
         /**
          * 设置输入
-
          */
         this.setInput(input);
         /**
          * 计算输出
-
          */
         this.output();
     }

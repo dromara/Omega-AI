@@ -49,15 +49,15 @@ public class WFEncoderDown2 extends Layer {
     }
 
     public void initLayers() {
-    	
+     	
     	conv = new WFConv2D(channel, oChannel, depth, height, width, 3, 1, 1, network);
     	
     	resBlocks = new ArrayList<WFResnet3DBlock>();
     	
-    	int id = depth;
-    	int ih = height;
-    	int iw = width;
-    	
+    	int id = conv.oDepth;
+    	int ih = conv.oHeight;
+    	int iw = conv.oWidth;
+
     	for(int i = 0;i<num_resblocks;i++) {
     		WFResnet3DBlock block = new WFResnet3DBlock(oChannel, oChannel, id, ih, iw, network);
     		resBlocks.add(block);
@@ -65,7 +65,7 @@ public class WFEncoderDown2 extends Layer {
     		ih = block.oHeight;
     		iw = block.oWidth;
     	}
-    	
+   
     	downsample3d = new Spatial2xTime2x3DDownsample(oChannel, oChannel, id, ih, iw, network);
     	
     }

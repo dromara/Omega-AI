@@ -72,7 +72,7 @@ public class Spatial2xTime2x3DDownsample extends Layer {
     public void init() {
         this.number = this.network.number;
         if(this.pOutput == null || this.number != this.pOutput.number) {
-        	this.pOutput = paddingKernel.createOutput(number, channel, height, width, depth, padding3d);
+        	this.pOutput = Tensor.createGPUTensor(pOutput, number, channel * pDepth, pHeight, pWidth, true);
         }
     }
 
@@ -178,17 +178,14 @@ public class Spatial2xTime2x3DDownsample extends Layer {
         // TODO Auto-generated method stub
         /**
          * 参数初始化
-
          */
         this.init();
         /**
          * 设置输入
-
          */
         this.setInput(input);
         /**
          * 计算输出
-
          */
         this.output();
     }

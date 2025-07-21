@@ -139,14 +139,17 @@ public class WFEncoderDown1 extends Layer {
     	conv.forward(input);
     	
     	Tensor x = conv.getOutput();
-    	
+//    	x.showDM("down1_1");
     	for(int i = 0;i<resBlocks.size();i++) {
     		WFResnet2DBlock block = resBlocks.get(i);
     		block.forward(x);
     		x = block.getOutput();
+//    		x.showDM("down1_"+(i + 2));
     	}
     	
     	downsample.forward(x);
+    	
+//    	downsample.getOutput().showDM("down1_4");
     	
     	this.output = downsample.getOutput();
     }
@@ -164,7 +167,7 @@ public class WFEncoderDown1 extends Layer {
     	downsample.back(delta);
     	
     	Tensor d = downsample.diff;
-    	
+
     	for(int i = resBlocks.size() - 1;i>=0;i--) {
     		WFResnet2DBlock block = resBlocks.get(i);
     		block.back(d);
@@ -249,17 +252,14 @@ public class WFEncoderDown1 extends Layer {
         // TODO Auto-generated method stub
         /**
          * 参数初始化
-
          */
         this.init();
         /**
          * 设置输入
-
          */
         this.setInput(input);
         /**
          * 计算输出
-
          */
         this.output();
     }

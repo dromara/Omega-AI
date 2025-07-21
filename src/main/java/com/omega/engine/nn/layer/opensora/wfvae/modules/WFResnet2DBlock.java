@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Map;
 
-import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -29,13 +28,13 @@ public class WFResnet2DBlock extends Layer {
 	private int depth;
     private int group = 32;
     private BasicBlockKernel kernel;
-    private GNLayer norm1;
+    public GNLayer norm1;
     private SiLULayer a1;
-    private ConvolutionLayer conv1;
-    private GNLayer norm2;
+    public ConvolutionLayer conv1;
+    public GNLayer norm2;
     private SiLULayer a2;
-    private ConvolutionLayer conv2;
-    private ConvolutionLayer conv_shortcut;
+    public ConvolutionLayer conv2;
+    public ConvolutionLayer conv_shortcut;
     private boolean shortcut = false;
     
     private Tensor inputT;
@@ -118,7 +117,6 @@ public class WFResnet2DBlock extends Layer {
     	 */
         Tensor_OP().permute(conv2.getOutput(), output, new int[] {number, depth, conv2.oChannel, conv2.oHeight, conv2.oWidth}, new int[] {number, conv2.oChannel, depth, conv2.oHeight, conv2.oWidth}, new int[]{0, 2, 1, 3, 4});
 
-        output.showDMByNumber(0);
     }
 
     @Override

@@ -1,5 +1,6 @@
 package com.omega.engine.gpu;
 
+import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.PrintUtils;
 import com.omega.engine.tensor.Tensor;
@@ -235,7 +236,7 @@ public class PaddingKernel extends CUDAKernel {
             int oHeight = H + padding[2] + padding[3];
             int oWidth = W + padding[0] + padding[1];
             if (y.channel != oDepth * C || y.height != oHeight || y.width != oWidth) {
-                throw new RuntimeException("the output tensor shape is not same as padded shape.");
+                throw new RuntimeException("the output tensor shape is not same as padded shape."+JsonUtils.toJson(y.shape())+"->["+C+","+oDepth+":"+oHeight+":"+oWidth+"]");
             }
             /**
              * 设置入参

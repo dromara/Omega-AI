@@ -58,18 +58,18 @@ public class WFResnet3DBlock extends Layer {
     	
     	norm1 = new GNLayer3D(channel, depth, height, width, 32, network);
     	act1 = new SiLULayer(norm1);
-    	conv1 = new WFCausalConv3D(channel, oChannel, depth, width, height, 3, 1, true, network);
+    	conv1 = new WFCausalConv3D(channel, oChannel, depth, width, height, 3, 1, 1, true, network);
     	conv1.setUpdater(UpdaterFactory.create(this.network));
     	conv1.paramsInit = ParamsInit.silu;
     	
     	norm2 = new GNLayer3D(conv1.oChannel, conv1.oDepth, conv1.oHeight, conv1.oWidth, 32, network);
     	act2 = new SiLULayer(norm2);
-    	conv2 = new WFCausalConv3D(oChannel, oChannel, conv1.oDepth, conv1.oWidth, conv1.oHeight, 3, 1, true, network);
+    	conv2 = new WFCausalConv3D(oChannel, oChannel, conv1.oDepth, conv1.oWidth, conv1.oHeight, 3, 1, 1, true, network);
     	conv2.setUpdater(UpdaterFactory.create(this.network));
     	conv2.paramsInit = ParamsInit.silu;
     	
     	if(channel != oChannel) {
-    		shortcut = new WFCausalConv3D(channel, oChannel, depth, width, height, 1, 1, true, network);
+    		shortcut = new WFCausalConv3D(channel, oChannel, depth, width, height, 1, 1, 0, true, network);
     		shortcut.setUpdater(UpdaterFactory.create(this.network));
     		shortcut.paramsInit = ParamsInit.silu;
     	}

@@ -130,7 +130,6 @@ public class WFDecoder extends Layer {
         	up2_in = Tensor.createGPUTensor(up2_in, number, base_channels * 4 * mid.oDepth, mid.oHeight, mid.oWidth, true);
         	connect_l1_in = Tensor.createGPUTensor(connect_l1_in, number, energy_flow_hidden_size * up2.oDepth, up2.oHeight, up2.oWidth, true);
         	up1_in = Tensor.createGPUTensor(up1_in, number, base_channels * 4 * up2.oDepth, up2.oHeight, up2.oWidth, true);
-        	
         }
     }
 

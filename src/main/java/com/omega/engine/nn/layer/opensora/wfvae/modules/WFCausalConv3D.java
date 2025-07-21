@@ -494,7 +494,6 @@ public class WFCausalConv3D extends Layer {
              * 20220816: dw = diff * im2col(input)T
              * diff[knumber * oh * ow]
              * im2col(input)T[oh * ow * C * kh * kw]
-
              */
             kernel.dw(pOutput, delta, diffW);
         }

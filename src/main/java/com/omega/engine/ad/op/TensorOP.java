@@ -787,6 +787,12 @@ public class TensorOP {
         }
     }
     
+    public void getByChannel(Tensor org, Tensor target,int[] shape, int start) {
+        if (org.isHasGPU()) {
+            this.op.copy_channel_gpu(org, target, shape, start, 0);
+        }
+    }
+    
     public void addByChannel(Tensor org, Tensor target,int[] shape, int start) {
         if (org.isHasGPU()) {
             this.op.add_channel_gpu(org, target, shape, start);
