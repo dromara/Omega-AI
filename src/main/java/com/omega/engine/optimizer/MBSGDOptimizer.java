@@ -3554,7 +3554,7 @@ public class MBSGDOptimizer extends Optimizer {
         }
     }
 
-    public void trainVQVAE2_lpips_nogan(DiffusionImageDataLoader trainingData, LPIPS lpips,String showPath) {
+    public void trainVQVAE2_lpips_nogan(DiffusionImageDataLoader trainingData, LPIPS lpips, String showPath) {
         // TODO Auto-generated method stub
         try {
             float perceptual_weight = 1;
