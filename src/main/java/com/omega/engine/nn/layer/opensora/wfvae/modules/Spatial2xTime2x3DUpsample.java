@@ -71,6 +71,8 @@ public class Spatial2xTime2x3DUpsample extends Layer {
         this.number = this.network.number;
         if(upOutput == null || upOutput.number != this.number) {
         	upOutput = Tensor.createGPUTensor(upOutput, number, channel * pd, ph, pw, true);
+        }else {
+        	upOutput.clearGPU();
         }
     }
 
@@ -105,7 +107,7 @@ public class Spatial2xTime2x3DUpsample extends Layer {
     public void diff() {
         // TODO Auto-generated method stub
         conv.back(delta, upOutput);
-//        upOutput.showDM("upOutput-diff");
+        input.clearGPU();
         kernel.upsample3d_trilinear_delta_offset(upOutput, input, number, channel, depth, depth - 1, height, width, pd, 2, 2, 2, false, 1);
         kernel.upsample3d_trilinear_delta_offset(upOutput, input, number, channel, depth, 1, height, width, pd, 1, 2, 2, false, 0);
         this.diff = input;
@@ -201,12 +203,10 @@ public class Spatial2xTime2x3DUpsample extends Layer {
         initBack();
         /**
          * 设置梯度
-
          */
         this.setDelta(delta);
         /**
          * 计算梯度
-
          */
         this.diff();
     }

@@ -155,7 +155,7 @@ public class WFEncoder extends Layer {
         
         encoder.forward(input);
         
-        encoder.getOutput().showDM();
+        encoder.getOutput().showDM("out");
         
         String deltaPath = "D:\\models\\delta_encoder.json";
         Map<String, Object> datas2 = LagJsonReader.readJsonFileSmallWeight(deltaPath);
@@ -167,7 +167,7 @@ public class WFEncoder extends Layer {
         
         encoder.back(delta, l1_coeffs_delta, l2_coeffs_delta);
         
-        encoder.diff.showDM();
+        encoder.diff.showDM("diff");
     }
     
     public static void loadWeight(Map<String, Object> weightMap, WFEncoder block, boolean showLayers) {

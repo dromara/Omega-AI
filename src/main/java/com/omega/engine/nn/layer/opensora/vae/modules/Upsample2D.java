@@ -216,12 +216,10 @@ public class Upsample2D extends Layer {
         initBack();
         /**
          * 设置梯度
-
          */
         this.setDelta(delta);
         /**
          * 计算梯度
-
          */
         this.diff();
     }

@@ -318,7 +318,6 @@ public class WFAttentionBlock3D extends Layer {
         Tensor dvaccum = temp;
         // backward into datt
         GPU_OP().bmmEX(CUBLAS_OP_T, CUBLAS_OP_N, time, time, dk, 1.0f, vt.getGpuData(), dk, time * dk, dvaccum.getGpuData(), dk, time * dk, 0.0f, dattn.getGpuData(), time, time * time, number * headNum * depth);
-//        dattn.showDMByOffsetRed(79 * 80, 80, "dattn");
         // backward into preatt
         softmaxKernel.softmax_backward(attn, dattn, dattn);
         float d_k = (float) (1.0f / Math.sqrt(dk));

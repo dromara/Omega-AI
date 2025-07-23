@@ -164,7 +164,7 @@ public class WFDecoderUp1 extends Layer {
         // TODO Auto-generated method stub
 
     	block.back(delta);
-    	
+
     	up2d.back(block.diff);
     	
     	Tensor d = up2d.diff;

@@ -2,7 +2,6 @@ package com.omega.engine.nn.layer.opensora.wfvae.modules;
 
 import java.util.Map;
 
-import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.nn.layer.Convolution3DTransposeLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -262,35 +261,35 @@ public class InverseHaarWaveletTransform3D extends Layer {
     @Override
     public void diff() {
     	
-    	diff.view(number, channel, depth * height, width);
+    	int[] shape = new int[]{number * oChannel, hConv.oDepth, oHeight, oWidth};
+    	int[] c_shape = new int[]{number, channel, 1, depth * height * width};
     	
-    	Tensor_OP().getByChannel_back(d_tmp, delta, 1, oDepth);
-    	
+    	Tensor_OP().getByChannel_back(d_tmp, delta, shape, 1);
+
     	ghVConv.back(d_tmp, tmp);
-    	Tensor_OP().getByChannel_back(diff, tmp, 7 * oChannel, oChannel);
+    	Tensor_OP().getByChannel_back(diff, tmp, c_shape, 7 * oChannel);
 
     	hhVConv.back(d_tmp, tmp);
-    	Tensor_OP().getByChannel_back(diff, tmp, 6 * oChannel, oChannel);
+    	Tensor_OP().getByChannel_back(diff, tmp, c_shape, 6 * oChannel);
     	
     	gVConv.back(d_tmp, tmp);
-    	Tensor_OP().getByChannel_back(diff, tmp, 5 * oChannel, oChannel);
+    	Tensor_OP().getByChannel_back(diff, tmp, c_shape, 5 * oChannel);
     	
     	hVConv.back(d_tmp, tmp);
-    	Tensor_OP().getByChannel_back(diff, tmp, 4 * oChannel, oChannel);
+    	Tensor_OP().getByChannel_back(diff, tmp, c_shape, 4 * oChannel);
     	
     	ghConv.back(d_tmp, tmp);
-    	Tensor_OP().getByChannel_back(diff, tmp, 3 * oChannel, oChannel);
+    	Tensor_OP().getByChannel_back(diff, tmp, c_shape, 3 * oChannel);
     	
     	hhConv.back(d_tmp, tmp);
-    	Tensor_OP().getByChannel_back(diff, tmp, 2 * oChannel, oChannel);
+    	Tensor_OP().getByChannel_back(diff, tmp, c_shape, 2 * oChannel);
     	
     	gConv.back(d_tmp, tmp);
-    	Tensor_OP().getByChannel_back(diff, tmp, 1 * oChannel, oChannel);
+    	Tensor_OP().getByChannel_back(diff, tmp, c_shape, 1 * oChannel);
     	
     	hConv.back(d_tmp, tmp);
-    	Tensor_OP().getByChannel_back(diff, tmp, 0 * oChannel, oChannel);
+    	Tensor_OP().getByChannel_back(diff, tmp, c_shape, 0 * oChannel);
     	
-    	diff.viewOrg();
     }
 
     @Override

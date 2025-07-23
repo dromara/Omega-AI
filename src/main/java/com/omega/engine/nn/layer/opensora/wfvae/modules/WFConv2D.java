@@ -89,7 +89,7 @@ public class WFConv2D extends Layer {
     public void diff() {
         // TODO Auto-generated method stub
     	Tensor_OP().permute(delta, conv.getOutput(), new int[] {number, conv.oChannel, depth, conv.oHeight, conv.oWidth}, new int[] {number, depth, conv.oChannel, conv.oHeight, conv.oWidth}, new int[]{0, 2, 1, 3, 4});
-        conv.back(conv.getOutput(), inputT);
+    	conv.back(conv.getOutput(), inputT);
         Tensor_OP().permute(inputT, input, new int[] {number, depth, channel, height, width}, new int[] {number, channel, depth, height, width}, new int[]{0, 2, 1, 3, 4});
         this.diff = input;
     }
@@ -181,12 +181,10 @@ public class WFConv2D extends Layer {
         initBack();
         /**
          * 设置梯度
-
          */
         this.setDelta(delta);
         /**
          * 计算梯度
-
          */
         this.diff();
     }
