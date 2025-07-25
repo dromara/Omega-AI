@@ -23,6 +23,10 @@ public class IDDPMKernel extends CUDAKernel {
     private CUfunction where_function;
     private CUfunction dvar_back_function;
     private CUfunction mean_function;
+    private CUfunction get_score_from_velocity_function;
+    private CUfunction q_sample_function;
+    private CUfunction p_sample_function;
+    private CUfunction p_sample_last_function;
     
     private int CAFFE_CUDA_NUM_THREADS = 1024;
     
@@ -71,6 +75,18 @@ public class IDDPMKernel extends CUDAKernel {
             }
             if(dvar_back_function ==  null) {
             	dvar_back_function = getCudaManager().getLocalFunctionByModule("iddpm.cu", "var_back");
+            }
+            if(get_score_from_velocity_function == null) {
+            	get_score_from_velocity_function = getCudaManager().getLocalFunctionByModule("iddpm.cu", "get_score_from_velocity"); 
+            }
+            if(q_sample_function == null) {
+            	q_sample_function = getCudaManager().getLocalFunctionByModule("iddpm.cu", "q_sample"); 
+            }
+            if(p_sample_function == null) {
+            	p_sample_function = getCudaManager().getLocalFunctionByModule("iddpm.cu", "p_sample"); 
+            }
+            if(p_sample_last_function == null) {
+            	p_sample_last_function = getCudaManager().getLocalFunctionByModule("iddpm.cu", "p_sample_last"); 
             }
         } catch (Exception e) {
             // TODO: handle exception
@@ -348,6 +364,105 @@ public class IDDPMKernel extends CUDAKernel {
         }
     }
     
+    public void get_score_from_velocity(Tensor vt,Tensor xt,float t,Tensor score) {
+        try {
+            /**
+             * 设置入参
+             *  float* vt,
+			    float* xt,
+			    float* t,
+			    float* score,
+			    int N, int W
+             */
+            kernelParameters = Pointer.to(Pointer.to(vt.getGpuData()), Pointer.to(xt.getGpuData()), Pointer.to(new float[]{t}), Pointer.to(score.getGpuData()),
+            		Pointer.to(new int[]{vt.dataLength}), Pointer.to(new int[]{vt.getOnceSize()}));
+            cuLaunchKernel(get_score_from_velocity_function, this.CAFFE_GET_BLOCKS(vt.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameters, null // Kernel- and extra parameters
+            );
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void q_sample(Tensor latend,Tensor noise,Tensor t,Tensor output, Tensor target) {
+        try {
+            /**
+             * 设置入参
+             *  float* latend,
+			    float* noise,
+			    float* t,
+			    float output,
+			    float target,
+			    int N, int W
+             */
+            kernelParameters = Pointer.to(Pointer.to(latend.getGpuData()),Pointer.to(noise.getGpuData()),Pointer.to(t.getGpuData()),Pointer.to(output.getGpuData()),Pointer.to(target.getGpuData()),
+            		Pointer.to(new int[]{latend.dataLength}), Pointer.to(new int[]{latend.getOnceSize()}));
+            cuLaunchKernel(q_sample_function, this.CAFFE_GET_BLOCKS(latend.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameters, null // Kernel- and extra parameters
+            );
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void p_sample(Tensor v_cur,Tensor x_cur,Tensor s_cur,Tensor deps,float diffusion,float dt,Tensor x_next) {
+        try {
+            /**
+             * 设置入参
+             *  float* v_cur,
+			    float* x_cur,
+			    float* s_cur,
+			    float* deps,
+			    float* diffusion,
+			    float* dt,
+			    float* x_next,
+			    int N, int W
+             */
+            kernelParameters = Pointer.to(Pointer.to(v_cur.getGpuData()), Pointer.to(x_cur.getGpuData()), Pointer.to(s_cur.getGpuData()), Pointer.to(deps.getGpuData()),
+            		Pointer.to(new float[]{diffusion}), Pointer.to(new float[]{dt}), Pointer.to(x_next.getGpuData()),
+            		Pointer.to(new int[]{v_cur.dataLength}), Pointer.to(new int[]{v_cur.getOnceSize()}));
+            cuLaunchKernel(p_sample_function, this.CAFFE_GET_BLOCKS(v_cur.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameters, null // Kernel- and extra parameters
+            );
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void p_sample_last(Tensor v_cur,Tensor x_cur,Tensor s_cur,float diffusion,float dt,Tensor x_next) {
+        try {
+            /**
+             * 设置入参
+             *  float* v_cur,
+			    float* x_cur,
+			    float* s_cur,
+			    float* diffusion,
+			    float* dt,
+			    float* x_next,
+			    int N, int W
+             */
+            kernelParameters = Pointer.to(Pointer.to(v_cur.getGpuData()), Pointer.to(x_cur.getGpuData()), Pointer.to(s_cur.getGpuData()),
+            		Pointer.to(new float[]{diffusion}), Pointer.to(new float[]{dt}), Pointer.to(x_next.getGpuData()),
+            		Pointer.to(new int[]{v_cur.dataLength}), Pointer.to(new int[]{v_cur.getOnceSize()}));
+            cuLaunchKernel(p_sample_last_function, this.CAFFE_GET_BLOCKS(v_cur.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameters, null // Kernel- and extra parameters
+            );
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
     
     public void checkCUDA(int code) {
         if (code != cudaError.cudaSuccess) {

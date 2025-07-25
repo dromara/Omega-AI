@@ -6,7 +6,6 @@ import com.omega.common.utils.PrintUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.CUDAKernel;
 import com.omega.engine.gpu.CUDAManager;
-import com.omega.engine.gpu.MaskKernel;
 import com.omega.engine.tensor.Tensor;
 
 import jcuda.Pointer;
@@ -15,6 +14,7 @@ import jcuda.runtime.cudaError;
 
 public class TokenDropKernel extends CUDAKernel {
     private CUfunction function;
+    private CUfunction timestep_embedding_function;
     private int CAFFE_CUDA_NUM_THREADS = 1024;
     private Pointer kernelParameters;
 
@@ -27,6 +27,9 @@ public class TokenDropKernel extends CUDAKernel {
         try {
             if (function == null) {
                 function = getCudaManager().getLocalFunctionByModule("TokenDropKernel.cu", "token_drop");
+            }
+            if (timestep_embedding_function == null) {
+            	timestep_embedding_function = getCudaManager().getLocalFunctionByModule("TokenDropKernel.cu", "timestep_embedding");
             }
         } catch (Exception e) {
             // TODO: handle exception
@@ -68,6 +71,25 @@ public class TokenDropKernel extends CUDAKernel {
              */
             kernelParameters = Pointer.to(Pointer.to(new long[]{x.dataLength}), Pointer.to(x.getGpuData()), Pointer.to(param.getGpuData()), Pointer.to(mask.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{x.getOnceSize()}), Pointer.to(new float[]{prob}));
             cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(x.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameters, null // Kernel- and extra parameters
+            );
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void timestep_embedding(Tensor t, Tensor freqs, Tensor output, int d_model) {
+        try {
+            /**
+             * 设置入参
+             * int N, const float *t, float *freqs, float *out, const int d_model
+             */
+        	int N = t.dataLength * d_model / 2;
+            kernelParameters = Pointer.to(Pointer.to(new long[]{N}), Pointer.to(t.getGpuData()), Pointer.to(freqs.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{d_model}));
+            cuLaunchKernel(timestep_embedding_function, this.CAFFE_GET_BLOCKS(N), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameters, null // Kernel- and extra parameters

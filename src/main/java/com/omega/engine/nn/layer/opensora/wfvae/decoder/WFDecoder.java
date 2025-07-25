@@ -10,7 +10,6 @@ import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.active.SiLULayer;
 import com.omega.engine.nn.layer.opensora.vae.modules.GNLayer3D;
-import com.omega.engine.nn.layer.opensora.wfvae.encoder.WFEncoder;
 import com.omega.engine.nn.layer.opensora.wfvae.modules.InverseHaarWaveletTransform2D;
 import com.omega.engine.nn.layer.opensora.wfvae.modules.InverseHaarWaveletTransform3D;
 import com.omega.engine.nn.layer.opensora.wfvae.modules.WFCausalConv3D;
@@ -34,6 +33,7 @@ public class WFDecoder extends Layer {
 	
 	private int num_resblocks = 2;
 	private int base_channels = 128;
+	private int connect_res_layer_num = 1;
 	
 	public WFCausalConv3D conv_in;
 	
@@ -67,7 +67,7 @@ public class WFDecoder extends Layer {
     private Tensor l1_coeffs;
     private Tensor l2_coeffs;
     
-    public WFDecoder(int channel, int depth, int height, int width, int num_resblocks, int base_channels, int energy_flow_hidden_size, int latent_dim, Network network) {
+    public WFDecoder(int channel, int depth, int height, int width, int num_resblocks, int base_channels, int energy_flow_hidden_size, int latent_dim, int connect_res_layer_num, Network network) {
         this.network = network;
         this.num_resblocks = num_resblocks;
         this.channel = channel;
@@ -76,6 +76,7 @@ public class WFDecoder extends Layer {
         this.width = width;
         this.base_channels = base_channels;
         this.energy_flow_hidden_size = energy_flow_hidden_size;
+        this.connect_res_layer_num = connect_res_layer_num;
         this.latent_dim = latent_dim;
         initLayers();
         this.oChannel = conv_out.oChannel;
@@ -90,12 +91,12 @@ public class WFDecoder extends Layer {
     	
     	mid = new WFDecoderMid(base_channels * 4, base_channels * 4 + energy_flow_hidden_size, conv_in.oDepth, conv_in.oHeight, conv_in.oWidth, network);
     	
-    	connect_l2 = new WFDecoderConnect(energy_flow_hidden_size, 24, mid.oDepth, mid.oHeight, mid.oWidth, 1, network);
+    	connect_l2 = new WFDecoderConnect(energy_flow_hidden_size, 24, mid.oDepth, mid.oHeight, mid.oWidth, connect_res_layer_num, network);
     	inverse_wavelet_transform_l2 = new InverseHaarWaveletTransform3D(24, connect_l2.oDepth, connect_l2.oWidth, connect_l2.oHeight, network);
     	
     	up2 = new WFDecoderUp2(base_channels * 4, base_channels * 4 + energy_flow_hidden_size, mid.oDepth, mid.oHeight, mid.oWidth, num_resblocks, network);
     	
-    	connect_l1 = new WFDecoderConnect(energy_flow_hidden_size, 12, up2.oDepth, up2.oHeight, up2.oWidth, 1, network);
+    	connect_l1 = new WFDecoderConnect(energy_flow_hidden_size, 12, up2.oDepth, up2.oHeight, up2.oWidth, connect_res_layer_num, network);
     	inverse_wavelet_transform_l1 = new InverseHaarWaveletTransform2D(connect_l1.oChannel, connect_l1.oDepth, connect_l1.oHeight, connect_l1.oWidth, network);
     	
     	up1 = new WFDecoderUp1(base_channels * 4, base_channels * 2, up2.oDepth, up2.oHeight, up2.oWidth, num_resblocks, network);
@@ -172,7 +173,7 @@ public class WFDecoder extends Layer {
         int base_channels = 32;
         int latent_dim = 8;
         int energy_flow_hidden_size = 32;
-        WFDecoder decoder = new WFDecoder(C, OF, OH, OW, num_resblocks, base_channels, energy_flow_hidden_size, latent_dim, nn);
+        WFDecoder decoder = new WFDecoder(C, OF, OH, OW, num_resblocks, base_channels, energy_flow_hidden_size, latent_dim, 1, nn);
         
         String weight = "D:\\models\\wf_decoder.json";
         loadWeight(LagJsonReader.readJsonFileSmallWeight(weight), decoder, true);
@@ -580,12 +581,10 @@ public class WFDecoder extends Layer {
         initBack();
         /**
          * 设置梯度
-
          */
         this.setDelta(delta);
         /**
          * 计算梯度
-
          */
         this.diff(l1_coeffs_delta, l2_coeffs_delta);
     }

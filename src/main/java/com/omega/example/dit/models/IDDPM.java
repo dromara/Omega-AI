@@ -7,6 +7,7 @@ import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.nn.network.DiT;
 import com.omega.engine.nn.network.DiT_ORG;
+import com.omega.engine.nn.network.DiT_ORG2;
 import com.omega.engine.nn.network.DiT_ORG_SRA;
 import com.omega.engine.nn.network.DiT_SRA;
 import com.omega.engine.nn.network.DiffusionUNetCond2;
@@ -278,6 +279,61 @@ public class IDDPM {
 		return noiseInput;
 	}
 	
+	public Tensor p_sample_mean(DiT_ORG2 network, Tensor cos, Tensor sin, Tensor noiseInput, Tensor noise, Tensor condInput, Tensor t, Tensor score) {
+		
+		RandomUtils.gaussianRandom(noiseInput, 0, 1);
+		
+		Tensor xt = noiseInput;
+		
+		int num_steps = 20;
+		
+		float[] t_steps = MatrixUtils.linspace(1.0f, 0.04f, num_steps, 0.0f);
+		
+		for(int i = 0;i<t_steps.length - 1;i++) {
+			
+			 float t_cur = t_steps[i];
+			 float t_next = t_steps[i+1];
+			 float dt = t_next - t_cur;
+			 
+			 for (int n = 0; n < noiseInput.number; n++) {
+		        t.data[n] = t_cur;
+		     }
+		     t.hostToDevice();
+		     Tensor pred = network.forward(xt, t, condInput, cos, sin);
+		     
+		     float diffusion = t_cur * 2;
+		     
+		     RandomUtils.gaussianRandom(noise, 0, 1);
+		     
+		     network.tensorOP.mul(noise, (float) Math.sqrt(Math.abs(dt)), noise);
+		     
+		     iddpmKernel.get_score_from_velocity(pred, xt, t_cur, score);
+		     
+		     iddpmKernel.p_sample(pred, xt, score, noise, diffusion, dt, xt);
+		     
+		     System.err.println("p_sample:" + i);
+		}
+		
+		//last step
+		float t_cur = t_steps[t_steps.length - 2];
+		float t_next = t_steps[t_steps.length - 1];
+		float dt = t_next - t_cur;
+		
+		for (int n = 0; n < noiseInput.number; n++) {
+	        t.data[n] = t_cur;
+		}
+		t.hostToDevice();
+		Tensor pred = network.forward(xt, t, condInput, cos, sin);
+		 
+		float diffusion = t_cur * 2;
+		
+		iddpmKernel.get_score_from_velocity(pred, xt, t_cur, score);
+		 
+		iddpmKernel.p_sample_last(pred, xt, score, diffusion, dt, xt);
+		
+		return xt;
+	}
+	
 	public Tensor p_sample(DiT_SRA network, Tensor cos, Tensor sin, Tensor noiseInput, Tensor noise, Tensor condInput, Tensor t, Tensor predMean, Tensor predVar) {
 		
 		RandomUtils.gaussianRandom(noiseInput, 0, 1);
@@ -352,6 +408,10 @@ public class IDDPM {
 //		sqrt_alphas_cumprod_t.showDM("sqrt_alphas_cumprod_t");
 //		sqrt_one_minus_alphas_cumprod_t.showDM("sqrt_one_minus_alphas_cumprod_t");
 		iddpmKernel.add_mul(sqrt_alphas_cumprod_t, sqrt_one_minus_alphas_cumprod_t, latend, noise, t, output);
+	}
+	
+	public void q_sample(Tensor latend, Tensor noise, Tensor t, Tensor output, Tensor target) {
+		iddpmKernel.q_sample(latend, noise, t, output, target);
 	}
 	
 	public void q_posterior_mean_variance(Tensor xStart,Tensor xt,Tensor t,Tensor posterior_mean,Tensor posterior_log_variance_clipped) {

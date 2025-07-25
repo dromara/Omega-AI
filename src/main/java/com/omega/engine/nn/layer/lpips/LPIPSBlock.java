@@ -272,17 +272,14 @@ public class LPIPSBlock extends Layer {
         // TODO Auto-generated method stub
         /**
          * 参数初始化
-
          */
         this.init(input);
         /**
          * 设置输入
-
          */
         this.setInput(input);
         /**
          * 计算输出
-
          */
         this.output(input, label);
     }

@@ -183,6 +183,21 @@ public class MatrixUtils {
         }
         return output;
     }
+    
+    public static float[] linspace(float start, float end, int count, float lastVal) {
+        float step = (end - start) / (count - 1);
+        float[] output = new float[count + 1];
+        output[0] = start;
+        for (int i = 1; i < count; i++) {
+            if (i == count - 1) {
+                output[i] = end;
+            } else {
+                output[i] = output[i - 1] + step;
+            }
+        }
+        output[count] = lastVal;
+        return output;
+    }
 
     public static float[] range(float start, float end, int step, float tmp) {
         int count = (int) ((end - start) / step);

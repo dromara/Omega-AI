@@ -514,7 +514,7 @@ public class Tensor implements Serializable {
         System.arraycopy(data, start, getOnce(), 0, height * width);
         return this.once;
     }
-
+    
     public void setByNumberAndChannel(int n, int c, float[] x) {
         System.arraycopy(x, 0, data, n * channel * height * width + c * height * width, height * width);
     }

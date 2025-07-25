@@ -41,6 +41,15 @@ public class RandomUtils {
         }
     }
     
+    public static void uniform(Tensor data) {
+    	for (int i = 0; i < data.dataLength; i++) {
+            data.data[i] = getInstance().nextFloat();
+        }
+        if(data.isHasGPU()) {
+        	data.hostToDevice();
+        }
+    }
+    
     public static int randomInt(int min, int max) {
         return min + (int) (Math.random() * (max - min));
     }

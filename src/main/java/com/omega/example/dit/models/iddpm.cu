@@ -290,3 +290,84 @@ __global__ void mean_kernel(
 		output[idx] = sum / W;
     }
 }
+
+extern "C"
+__global__ void get_score_from_velocity(
+    float* vt,
+    float* xt,
+    float t,
+    float* score,
+    int N, int W
+) {
+    int idx = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (idx < N) {
+       int n = idx / W;
+       float alpha_t = 1 - t;
+       float d_alpha_t = -1;
+       float sigma_t = t;
+       float d_sigma_t  = 1;
+       float reverse_alpha_ratio = alpha_t / d_alpha_t;
+       float var = sigma_t * sigma_t - reverse_alpha_ratio * d_sigma_t * sigma_t;
+       score[idx] = (reverse_alpha_ratio * vt[idx] - xt[idx]) / var;
+    }
+}
+
+extern "C"
+__global__ void p_sample(
+    float* v_cur,
+    float* x_cur,
+    float* s_cur,
+    float* deps,
+    float diffusion,
+    float dt,
+    float* x_next,
+    int N, int W
+) {
+    int idx = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (idx < N) {
+       int n = idx / W;
+	   float d_cur = v_cur[idx] - 0.5f * diffusion * s_cur[idx];
+	   x_next[idx] =  x_cur[idx] + d_cur * dt + sqrtf(diffusion) * deps[idx];
+    }
+}
+
+extern "C"
+__global__ void p_sample_last(
+    float* v_cur,
+    float* x_cur,
+    float* s_cur,
+    float diffusion,
+    float dt,
+    float* x_next,
+    int N, int W
+) {
+    int idx = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (idx < N) {
+       int n = idx / W;
+	   float d_cur = v_cur[idx] - 0.5f * diffusion * s_cur[idx];
+	   x_next[idx] =  x_cur[idx] + d_cur * dt;
+    }
+}
+
+extern "C"
+__global__ void q_sample(
+    float* latend,
+    float* noise,
+    float* t,
+    float* output,
+    float* target,
+    int N, int W
+) {
+    int idx = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (idx < N) {
+       int n = idx / W;
+       float tf = t[n];
+       float alpha_t = 1 - tf;
+       float sigma_t = tf;
+       float d_alpha_t = -1;
+       float d_sigma_t =  1;
+       
+	   output[idx] = alpha_t * latend[idx] + sigma_t * noise[idx];
+	   target[idx] = d_alpha_t * latend[idx] + d_sigma_t * noise[idx];
+    }
+}
