@@ -4146,7 +4146,6 @@ public class MBSGDOptimizer extends Optimizer {
             }
             /**
              * 停止训练
-
              */
             System.out.println("training finish. [" + this.trainIndex + "] finalError:" + this.currentError);
         } catch (Exception e) {

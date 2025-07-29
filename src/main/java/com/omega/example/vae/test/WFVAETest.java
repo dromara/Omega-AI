@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.loss.LossType;
@@ -13,7 +14,9 @@ import com.omega.engine.nn.network.vae.WFVAE;
 import com.omega.engine.nn.network.vqgan.LPIPS;
 import com.omega.engine.optimizer.MBSGDOptimizer;
 import com.omega.engine.optimizer.lr.LearnRateUpdate;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
+import com.omega.example.clip.utils.ClipModelUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
 import com.omega.example.transformer.utils.ModelUtils;
 import com.omega.example.transformer.utils.bpe.BPETokenizerEN;
@@ -136,7 +139,33 @@ public class WFVAETest {
         optimizer.train_wfvae(dataLoader, lpips, "D:\\test\\vae\\256\\");
         String save_model_path = "/omega/models/wfvae_256.model";
         ModelUtils.saveModel(network, save_model_path);
-		
+        
+//        String encoder_out_path = "D:\\models\\encoder_out.json";
+//        Map<String, Object> datas2 = LagJsonReader.readJsonFileSmallWeight(encoder_out_path);
+//        Tensor encoder_out = new Tensor(2, 48, 32, 32, true);
+//        ClipModelUtils.loadData(encoder_out, datas2, "encoder_out", 5);
+//        
+//        String decoder_out_path = "D:\\models\\decoder_out.json";
+//        Map<String, Object> datas3 = LagJsonReader.readJsonFileSmallWeight(decoder_out_path);
+//        Tensor decoder_out = new Tensor(2, 3 * 9, 256, 256, true);
+//        ClipModelUtils.loadData(decoder_out, datas3, "decoder_out", 5);
+//		
+//        String target_out_path = "D:\\models\\target_out.json";
+//        Map<String, Object> datas4 = LagJsonReader.readJsonFileSmallWeight(target_out_path);
+//        Tensor target_out = new Tensor(2, 3 * 9, 256, 256, true);
+//        ClipModelUtils.loadData(target_out, datas4, "target_out", 5);
+//        
+//        String posteriors_rn_path = "D:\\models\\posteriors_rn.json";
+//        Map<String, Object> rn_data = LagJsonReader.readJsonFileSmallWeight(posteriors_rn_path);
+//        Tensor rn = new Tensor(2, 24, 32, 32, true);
+//        ClipModelUtils.loadData(rn, rn_data, "posteriors_rn", 5);
+//
+//        network.sample(encoder_out, rn);
+//        
+//        network.totalLoss(decoder_out, target_out, lpips);
+//        
+//        network.backward(lpips);
+        
 	}
 	
 	public static void main(String[] args) {

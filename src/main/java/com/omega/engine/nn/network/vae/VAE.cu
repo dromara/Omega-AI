@@ -64,6 +64,25 @@ __global__ void kl_loss_back(float *mu,float *logvar,float kl_weight, float *dmu
 }
 
 extern "C"
+__global__ void kl_loss2(float *mu,float *logvar,float kl_weight, float *klLoss, int n)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if(i < n) {
+		klLoss[i] = (0.5f * powf(mu[i], 2) + expf(logvar[i]) - 1.0f - logvar[i]) * kl_weight;
+    }
+}
+
+extern "C"
+__global__ void kl_loss_back2(float *mu,float *logvar,float kl_weight, float *dmu, float * dlogvar,int batch, int n)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if(i < n) {
+		dmu[i] = kl_weight * mu[i];
+		dlogvar[i] = kl_weight * (expf(logvar[i]) - 1.0f);
+    }
+}
+
+extern "C"
 __global__ void CdistP(float *x1, float *x2, float *result, double p, const int64_t r2, const int64_t m, const int64_t r_size,
                        const int64_t l1_size, const int64_t l2_size) {
   

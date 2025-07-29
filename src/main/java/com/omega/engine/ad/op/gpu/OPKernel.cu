@@ -137,7 +137,7 @@ __global__ void copy_channel_kernel(int N,  float *X, float *Y, int n,int c,int 
     	int tn = i / size;
 
 		int tc = (i / h / w) % bc + start;
-
+		
 		int th = i / w % h;
 
 		int tw = i % w;
@@ -458,14 +458,14 @@ __global__ void sum_kernel(int N, float *X, float *Y)
     int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
 
     if(i < 1) {
-
+		
+		Y[0] = 0;
+		
 	    for(int index = 0;index<N;index++){
 
 	    	Y[0] += X[index];
 
 	    }
-
-	    
 
     }
 
