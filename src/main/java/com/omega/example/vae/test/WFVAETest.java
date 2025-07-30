@@ -61,16 +61,16 @@ public class WFVAETest {
 		String filePath = "D:\\dataset\\pexels_45k\\pexels_45k\\popular_2\\";
 		String dataPath = "/root/gpufree-data/pexels/tar/pexels_45k/popular_2/";
 		String outputPath = "D:\\dataset\\pexels_45k\\train_linux.csv";
-		
+
 		CsvReader reader = CsvUtil.getReader();
         CsvData data = reader.read(FileUtil.file(csvPath));
-        
+
         List<CsvRow> rows = data.getRows();
-        
+
         File root = new File(filePath);
-        
+
         if(root.isDirectory()) {
-        	
+
         	File[] files = root.listFiles();
         	List<CsvRow> hasList = new ArrayList<CsvRow>();
         	for(File file:files) {
@@ -82,7 +82,7 @@ public class WFVAETest {
         			hasList.add(hit);
         		}
         	}
-        	
+
         	List<String> header = new ArrayList<String>();
         	header.add("path");
         	header.add("text");
@@ -94,14 +94,14 @@ public class WFVAETest {
          	header.add("fps");
          	header.add("filename");
         	CsvData outData = new CsvData(header, hasList);
-        	
+
         	generateCsvWithConfig(outData, outputPath);
         }
-        
+
 	}
-	
+
 	public static void createVideoDatasetCSV2() {
-		
+
 		String csvPath = "D:\\dataset\\pexels_45k\\test.csv";
 		String filePath = "D:\\dataset\\t2v_dataset\\";
 		String dataPath = "/root/gpufree-data/pexels/tar/pexels_45k/popular_2/";
@@ -180,7 +180,7 @@ public class WFVAETest {
         MBSGDOptimizer optimizer = new MBSGDOptimizer(network, 500, 0.00001f, batchSize, LearnRateUpdate.CONSTANT, false);
 
         optimizer.train_wfvae(dataLoader, lpips, "D:\\test\\vae\\256\\", "/omega/models/wfvae/");
-        
+
         String save_model_path = "/omega/models/wfvae_256.model";
         ModelUtils.saveModel(network, save_model_path);
         
@@ -211,13 +211,31 @@ public class WFVAETest {
 //        network.backward(lpips);
         
 	}
-	
+
+	public static void test_weight() {
+		int imgSize = 256;
+		int num_frames = 9;
+
+		int latendDim = 8;
+		int base_channels = 128;
+		int en_energy_flow_hidden_size = 64;
+		int de_energy_flow_hidden_size = 128;
+		int num_res_blocks = 2;
+		int connect_res_layer_num = 2;
+		WFVAE network = new WFVAE(LossType.MSE, UpdaterType.adamw, num_frames, latendDim, imgSize, base_channels, en_energy_flow_hidden_size, de_energy_flow_hidden_size, num_res_blocks, connect_res_layer_num);
+		network.CUDNN = true;
+		network.learnRate = 0.0001f;
+
+		String vaeWeight = "c:\\temp\\wfvae.json";
+		ClipModelUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(vaeWeight), network, true);
+	}
+
 	public static void main(String[] args) {
         try {
         	
 //        	createVideoDatasetCSV();
 //        	createVideoDatasetCSV2();
-        	
+
         	wf_vae_train();
         	
         } catch (Exception e) {

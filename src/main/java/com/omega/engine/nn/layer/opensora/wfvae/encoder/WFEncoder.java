@@ -60,7 +60,10 @@ public class WFEncoder extends Layer {
     private Tensor h1;
     private Tensor h2;
     
-	
+	public int getNum_resblocks() {
+	    return num_resblocks;
+    }
+
     public WFEncoder(int channel, int depth, int height, int width, int num_resblocks, int base_channels, int energy_flow_hidden_size, int latent_dim, Network network) {
         this.network = network;
         this.num_resblocks = num_resblocks;
