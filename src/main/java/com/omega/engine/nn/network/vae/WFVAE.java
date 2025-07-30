@@ -49,6 +49,8 @@ public class WFVAE extends Network {
     private Tensor rec_loss;
     private Tensor kl_loss;
     
+    private float wavelet_weight = 0.1f;
+    
     private Tensor wl_loss_l1;
     private Tensor wl_loss_l2;
     
@@ -162,15 +164,36 @@ public class WFVAE extends Network {
     }
     
     public void sample(Tensor en_out) {
-    	
+
     	if(z == null || z.number != en_out.number) {
-    		mean = Tensor.createGPUTensor(mean, en_out.number, encoder.oChannel * latendDim, en_out.height, en_out.width, true);
+    		mean = Tensor.createGPUTensor(mean, en_out.number, latendDim * encoder.oDepth, en_out.height, en_out.width, true);
     		logvar = Tensor.createGPUTensor(logvar, mean.shape(), true);
     		r_z = Tensor.createGPUTensor(r_z, mean.shape(), true);
     		z = Tensor.createGPUTensor(z, mean.shape(), true);
     	}
     	
+    	tensorOP.getByChannel(en_out, mean, new int[] {number, encoder.oChannel, 1, encoder.oDepth * en_out.height * en_out.width}, 0);
+    	tensorOP.getByChannel(en_out, logvar, new int[] {number, encoder.oChannel, 1, encoder.oDepth * en_out.height * en_out.width}, latendDim);
+    	
     	RandomUtils.gaussianRandom(r_z);
+    	
+    	vaeKernel.forward(mean, logvar, r_z, z);
+    	
+    }
+    
+    public void sample(Tensor en_out, Tensor r_z) {
+
+    	if(z == null || z.number != en_out.number) {
+    		this.number = en_out.number;
+    		mean = Tensor.createGPUTensor(mean, en_out.number, latendDim * encoder.oDepth, en_out.height, en_out.width, true);
+    		logvar = Tensor.createGPUTensor(logvar, mean.shape(), true);
+    		z = Tensor.createGPUTensor(z, mean.shape(), true);
+    	}
+
+    	tensorOP.getByChannel(en_out, mean, new int[] {number, encoder.oChannel, 1, encoder.oDepth * en_out.height * en_out.width}, 0);
+    	tensorOP.getByChannel(en_out, logvar, new int[] {number, encoder.oChannel, 1, encoder.oDepth * en_out.height * en_out.width}, latendDim);
+    	
+//    	tensorOP.clamp(logvar, -30.0f, 20.0f, logvar);
     	
     	vaeKernel.forward(mean, logvar, r_z, z);
     	
@@ -194,13 +217,18 @@ public class WFVAE extends Network {
     }
     
     public float totalLoss(Tensor output, Tensor label, LPIPS lpips) {
+//        mean.showDM("mean");
+//        logvar.showDM("logvar");
     	if (rec_loss == null || rec_loss.number != output.number) {
+    		this.number = output.number;
     		dec_t = Tensor.createGPUTensor(dec_t, number * depth, 3, imageSize, imageSize, true);
     		input_t = Tensor.createGPUTensor(input_t, number * depth, 3, imageSize, imageSize, true);
-            this.rec_loss = Tensor.createGPUTensor(rec_loss, output.shape(), true);
+            this.rec_loss = Tensor.createGPUTensor(rec_loss, dec_t.shape(), true);
             kl_loss = Tensor.createGPUTensor(kl_loss, mean.shape(), true);
-            wl_loss_l1 = Tensor.createGPUTensor(wl_loss_l1, encoder.getL1_coeffs().shape(), true);
-            wl_loss_l2 = Tensor.createGPUTensor(wl_loss_l2, decoder.getL1_coeffs().shape(), true);
+            if(encoder.getL1_coeffs() != null) {
+            	wl_loss_l1 = Tensor.createGPUTensor(wl_loss_l1, encoder.getL1_coeffs().shape(), true);
+                wl_loss_l2 = Tensor.createGPUTensor(wl_loss_l2, decoder.getL1_coeffs().shape(), true);
+            }
             loss_sum = Tensor.createGPUTensor(loss_sum, 1, 1, 1, 1, true);
         }
     	
@@ -217,64 +245,94 @@ public class WFVAE extends Network {
         
         Tensor lpipsOutput = lpips.forward(dec_t, input_t);
 
+//        lpipsOutput.showDM();
+
         vaeKernel.kl(mean, logvar, 1, kl_loss);
         
-        vaeKernel.l1_loss(encoder.getL1_coeffs(), encoder.getL2_coeffs(), wl_loss_l1);
+        if(encoder.getL1_coeffs() != null) {
+        	 vaeKernel.l1_loss(encoder.getL1_coeffs(), encoder.getL2_coeffs(), wl_loss_l1);
+             vaeKernel.l1_loss(decoder.getL1_coeffs(), decoder.getL2_coeffs(), wl_loss_l2);
+        }
         
-        vaeKernel.l1_loss(decoder.getL1_coeffs(), decoder.getL2_coeffs(), wl_loss_l2);
+//        tensorOP.sum(rec_loss, loss_sum, 0);
+//        float recLossSum = loss_sum.syncHost()[0];
+//        System.out.println("recLossSum:" + recLossSum);
+//        loss = loss + recLoss;
         
+//        tensorOP.sum(lpipsOutput, loss_sum, 0);
+        
+        tensorOP.add(rec_loss, lpipsOutput, rec_loss, rec_loss.getOnceSize());
+//        rec_loss.showDM("weighted_nll_loss");
         tensorOP.sum(rec_loss, loss_sum, 0);
-        float recLoss = loss_sum.syncHost()[0] / rec_loss.dataLength;
+        float recLoss = loss_sum.syncHost()[0] / rec_loss.number;
         System.out.println("recLoss:" + recLoss);
         loss = loss + recLoss;
         
-        tensorOP.sum(lpipsOutput, loss_sum, 0);
-        float lpipsLoss = loss_sum.syncHost()[0] / bs;
-        System.out.println("lpipsLoss:" + lpipsLoss);
-        loss = loss + lpipsLoss;
+//        lpipsOutput.showDM("lpipsOutput");
+//        float lpipsLoss = loss_sum.syncHost()[0] / rec_loss.number;
+//        System.out.println("lpipsLoss:" + lpipsLoss);
+//        loss = loss + lpipsLoss;
         
+//        kl_loss.showDM("kl_loss");
         tensorOP.sum(kl_loss, loss_sum, 0);
-        float klLoss = loss_sum.syncHost()[0] / kl_loss.dataLength;
+        float klLoss = loss_sum.syncHost()[0] / bs;
         System.out.println("klLoss:" + klLoss);
         loss = loss + klLoss;
         
-        tensorOP.sum(wl_loss_l1, loss_sum, 0);
-        float l1Loss = loss_sum.syncHost()[0] / wl_loss_l1.dataLength;
-        System.out.println("l1Loss:" + l1Loss);
-        loss = loss + l1Loss;
-        
-        tensorOP.sum(wl_loss_l2, loss_sum, 0);
-        float l2Loss = loss_sum.syncHost()[0] / wl_loss_l2.dataLength;
-        System.out.println("l2Loss:" + l2Loss);
-        loss = loss + l2Loss;
+        if(encoder.getL1_coeffs() != null) {
+	        tensorOP.sum(wl_loss_l1, loss_sum, 0);
+	        float l1Loss = loss_sum.syncHost()[0] * wavelet_weight / bs;
+//	        System.out.println("l1Loss:" + l1Loss);
+	        loss = loss + l1Loss;
+	        
+	        tensorOP.sum(wl_loss_l2, loss_sum, 0);
+	        float l2Loss = loss_sum.syncHost()[0] * wavelet_weight / bs;
+//	        System.out.println("l2Loss:" + l2Loss);
+	        System.out.println("wf_loss:" + (l1Loss + l2Loss));
+	        loss = loss + l2Loss;
+        }
+
+//        System.err.println("loss:" + loss);
         
         return loss;
     }
     
     public void backward(LPIPS lpips) {
-    	int bs = encoder.getOutput().number;
+    	int bs = mean.number;
     	Tensor deltaT = rec_loss;
     	Tensor delta = decoder.getOutput();
     	if(en_l1_coeffs_delta == null || en_l1_coeffs_delta.number != bs) {
-    		en_l1_coeffs_delta = Tensor.createGPUTensor(en_l1_coeffs_delta, encoder.getL1_coeffs().shape(), true);
-    		en_l2_coeffs_delta = Tensor.createGPUTensor(en_l2_coeffs_delta, encoder.getL2_coeffs().shape(), true);
-    		de_l1_coeffs_delta = Tensor.createGPUTensor(de_l1_coeffs_delta, decoder.getL1_coeffs().shape(), true);
-    		de_l2_coeffs_delta = Tensor.createGPUTensor(de_l2_coeffs_delta, decoder.getL2_coeffs().shape(), true);
-    		lpipsLossDiff = new Tensor(bs, 1, 1, 1, MatrixUtils.val(bs, 1.0f / bs), true);
+    		if(encoder.getL1_coeffs() != null) {
+	    		en_l1_coeffs_delta = Tensor.createGPUTensor(en_l1_coeffs_delta, encoder.getL1_coeffs().shape(), true);
+	    		en_l2_coeffs_delta = Tensor.createGPUTensor(en_l2_coeffs_delta, encoder.getL2_coeffs().shape(), true);
+	    		de_l1_coeffs_delta = Tensor.createGPUTensor(de_l1_coeffs_delta, decoder.getL1_coeffs().shape(), true);
+	    		de_l2_coeffs_delta = Tensor.createGPUTensor(de_l2_coeffs_delta, decoder.getL2_coeffs().shape(), true);
+    		}
+    		lpipsLossDiff = new Tensor(dec_t.number, 1, 1, 1, MatrixUtils.val(dec_t.number, 1.0f / dec_t.number * encoder.channel * encoder.height * encoder.width), true);
     		dmean = Tensor.createGPUTensor(dmean, mean.shape(), true);
     		dlogvar = Tensor.createGPUTensor(dlogvar, logvar.shape(), true);
     	}
     	
-    	vaeKernel.l1_loss_allBack(encoder.getL1_coeffs(), encoder.getL2_coeffs(), en_l1_coeffs_delta, en_l2_coeffs_delta, wl_loss_l1.dataLength);
-    	
-    	vaeKernel.l1_loss_allBack(decoder.getL1_coeffs(), decoder.getL2_coeffs(), de_l1_coeffs_delta, de_l2_coeffs_delta, wl_loss_l2.dataLength);
+    	if(encoder.getL1_coeffs() != null) {
+    		
+    		vaeKernel.l1_loss_allBack(encoder.getL1_coeffs(), encoder.getL2_coeffs(), en_l1_coeffs_delta, en_l2_coeffs_delta, wl_loss_l1.number);
+        	vaeKernel.l1_loss_allBack(decoder.getL1_coeffs(), decoder.getL2_coeffs(), de_l1_coeffs_delta, de_l2_coeffs_delta, wl_loss_l2.number);
+        	
+        	tensorOP.mul(en_l1_coeffs_delta, wavelet_weight, en_l1_coeffs_delta);
+        	tensorOP.mul(en_l2_coeffs_delta, wavelet_weight, en_l2_coeffs_delta);
+        	tensorOP.mul(de_l1_coeffs_delta, wavelet_weight, de_l1_coeffs_delta);
+        	tensorOP.mul(de_l2_coeffs_delta, wavelet_weight, de_l2_coeffs_delta);
+    	}
 
-    	vaeKernel.kl_back(mean, logvar, 1 / mean.dataLength, dmean, dlogvar);
+    	vaeKernel.kl_back(mean, logvar, 1.0f / bs, dmean, dlogvar);
+    	
+//    	lpipsLossDiff.showDM();
     	
     	lpips.back(lpipsLossDiff);
     	
-    	vaeKernel.l1_loss_back(dec_t, input_t, deltaT, dec_t.dataLength);
-    	
+    	vaeKernel.l1_loss_back(dec_t, input_t, deltaT, dec_t.number);
+//    	lpips.lpips.diff.showDM("lpips.diff");
+//    	deltaT.showDM("deltaT");
     	tensorOP.add(deltaT, lpips.lpips.diff, deltaT);
 
     	int[] tShape = new int[] {number, 3, depth, imageSize, imageSize};
@@ -286,12 +344,12 @@ public class WFVAE extends Network {
     	
     	vaeKernel.backward(decoder.diff, r_z, logvar, dmean, dlogvar);
     	
-    	dmean.showDM();
+//    	dmean.showDM();
     	
     	tensorOP.getByChannel_back(encoder.getOutput(), dmean, new int[] {number, encoder.oChannel, 1, encoder.oDepth * encoder.oHeight * encoder.oWidth}, 0);
     	tensorOP.getByChannel_back(encoder.getOutput(), dlogvar, new int[] {number, encoder.oChannel, 1, encoder.oDepth * encoder.oHeight * encoder.oWidth}, latendDim);
     	
-    	encoder.getOutput().showDM();
+//    	encoder.getOutput().showDM();
     	
     	encoder.back(encoder.getOutput(), en_l1_coeffs_delta, en_l2_coeffs_delta);
     }
