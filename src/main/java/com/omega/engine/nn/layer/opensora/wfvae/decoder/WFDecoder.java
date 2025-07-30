@@ -1,25 +1,21 @@
 package com.omega.engine.nn.layer.opensora.wfvae.decoder;
 
-import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.active.SiLULayer;
 import com.omega.engine.nn.layer.opensora.vae.modules.GNLayer3D;
-import com.omega.engine.nn.layer.opensora.wfvae.modules.InverseHaarWaveletTransform2D;
-import com.omega.engine.nn.layer.opensora.wfvae.modules.InverseHaarWaveletTransform3D;
-import com.omega.engine.nn.layer.opensora.wfvae.modules.WFCausalConv3D;
-import com.omega.engine.nn.layer.opensora.wfvae.modules.WFConv2D;
-import com.omega.engine.nn.layer.opensora.wfvae.modules.WFResnet3DBlock;
+import com.omega.engine.nn.layer.opensora.wfvae.modules.*;
 import com.omega.engine.nn.network.CNN;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.tensor.Tensor;
 import com.omega.example.clip.utils.ClipModelUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
+
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 /**
  * WFDecoder
@@ -38,6 +34,10 @@ public class WFDecoder extends Layer {
 	public WFCausalConv3D conv_in;
 	
 	public WFDecoderMid mid;
+
+	public int getNum_resblocks() {
+		return num_resblocks;
+	}
 
 	public InverseHaarWaveletTransform2D inverse_wavelet_transform_l1;
 	public InverseHaarWaveletTransform3D inverse_wavelet_transform_l2;

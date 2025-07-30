@@ -1,5 +1,6 @@
 package com.omega.example.transformer.utils;
 
+import com.google.gson.stream.JsonReader;
 import com.omega.common.utils.JsonUtils;
 
 import java.io.*;
@@ -48,6 +49,72 @@ public class LagJsonReader {
             e.printStackTrace();
         }
         return null;
+    }
+
+    public static Map<String, Object> readJsonFileBigWeightIterator(String path) {
+        Map<String, Object> mapList = new LinkedHashMap<>();
+        try (FileInputStream fis = new FileInputStream(path);
+             JsonReader reader = new JsonReader(new InputStreamReader(fis, "UTF-8"))) {
+
+            reader.beginObject();
+            while (reader.hasNext()) {
+                String name = reader.nextName();
+                Object value = readValue(reader);
+                mapList.put(name, value);
+            }
+            reader.endObject();
+            return mapList;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    private static Object readValue(JsonReader reader) throws IOException {
+        switch (reader.peek()) {
+            case STRING:
+                return reader.nextString();
+            case NUMBER:
+                // 根据实际情况处理整数或浮点数
+                String numStr = reader.nextString();
+                if (numStr.contains(".")) {
+                    return Double.parseDouble(numStr);
+                } else {
+                    return Long.parseLong(numStr);
+                }
+            case BOOLEAN:
+                return reader.nextBoolean();
+            case NULL:
+                reader.nextNull();
+                return null;
+            case BEGIN_ARRAY:
+                return readArray(reader);
+            case BEGIN_OBJECT:
+                return readObject(reader);
+            default:
+                throw new IllegalStateException("Unexpected token: " + reader.peek());
+        }
+    }
+
+    private static List<Object> readArray(JsonReader reader) throws IOException {
+        List<Object> list = new ArrayList<>();
+        reader.beginArray();
+        while (reader.hasNext()) {
+            list.add(readValue(reader));
+        }
+        reader.endArray();
+        return list;
+    }
+
+    private static Map<String, Object> readObject(JsonReader reader) throws IOException {
+        Map<String, Object> map = new LinkedHashMap<>();
+        reader.beginObject();
+        while (reader.hasNext()) {
+            String name = reader.nextName();
+            map.put(name, readValue(reader));
+        }
+        reader.endObject();
+        return map;
     }
 
     public static Map<String, Object> readJsonFileBigWeight(String path) {
