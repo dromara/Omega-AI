@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.loss.LossType;
@@ -14,9 +13,7 @@ import com.omega.engine.nn.network.vae.WFVAE;
 import com.omega.engine.nn.network.vqgan.LPIPS;
 import com.omega.engine.optimizer.MBSGDOptimizer;
 import com.omega.engine.optimizer.lr.LearnRateUpdate;
-import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
-import com.omega.example.clip.utils.ClipModelUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
 import com.omega.example.transformer.utils.ModelUtils;
 import com.omega.example.transformer.utils.bpe.BPETokenizerEN;
@@ -62,7 +59,8 @@ public class WFVAETest {
 		
 		String csvPath = "D:\\dataset\\pexels_45k\\test.csv";
 		String filePath = "D:\\dataset\\pexels_45k\\pexels_45k\\popular_2\\";
-		String outputPath = "D:\\dataset\\pexels_45k\\train.csv";
+		String dataPath = "/root/gpufree-data/pexels/tar/pexels_45k/popular_2/";
+		String outputPath = "D:\\dataset\\pexels_45k\\train_linux.csv";
 		
 		CsvReader reader = CsvUtil.getReader();
         CsvData data = reader.read(FileUtil.file(csvPath));
@@ -79,7 +77,52 @@ public class WFVAETest {
         		String filename = file.getName();
         		CsvRow hit = findRow(rows, filename);
         		if(hit != null) {
-        			hit.set(0, filePath + filename);
+        			hit.set(0, dataPath + filename);
+        			hit.add(filename);
+        			hasList.add(hit);
+        		}
+        	}
+        	
+        	List<String> header = new ArrayList<String>();
+        	header.add("path");
+        	header.add("text");
+        	header.add("num_frames");
+        	header.add("height");
+        	header.add("width");
+        	header.add("aspect_ratio");
+        	header.add("resolution");
+         	header.add("fps");
+         	header.add("filename");
+        	CsvData outData = new CsvData(header, hasList);
+        	
+        	generateCsvWithConfig(outData, outputPath);
+        }
+        
+	}
+	
+	public static void createVideoDatasetCSV2() {
+		
+		String csvPath = "D:\\dataset\\pexels_45k\\test.csv";
+		String filePath = "D:\\dataset\\t2v_dataset\\";
+		String dataPath = "/root/gpufree-data/pexels/tar/pexels_45k/popular_2/";
+		String outputPath = "D:\\dataset\\pexels_45k\\train_linux_set.csv";
+		
+		CsvReader reader = CsvUtil.getReader();
+        CsvData data = reader.read(FileUtil.file(csvPath));
+        
+        List<CsvRow> rows = data.getRows();
+        
+        File root = new File(filePath);
+        
+        if(root.isDirectory()) {
+        	
+        	File[] files = root.listFiles();
+        	List<CsvRow> hasList = new ArrayList<CsvRow>();
+        	for(File file:files) {
+        		String filename = file.getName();
+        		CsvRow hit = findRow(rows, filename);
+        		if(hit != null) {
+        			hit.set(0, dataPath + filename);
         			hit.add(filename);
         			hasList.add(hit);
         		}
@@ -104,7 +147,7 @@ public class WFVAETest {
 	
 	public static void wf_vae_train() throws Exception {
 		
-		String dataPath = "D:\\dataset\\pexels_45k\\train.csv";
+		String dataPath = "D:\\dataset\\pexels_45k\\train_set.csv";
         String imgDirPath = "D:\\dataset\\t2v_dataset\\";
         int imgSize = 256;
         int num_frames = 9;
@@ -136,7 +179,8 @@ public class WFVAETest {
         
         MBSGDOptimizer optimizer = new MBSGDOptimizer(network, 500, 0.00001f, batchSize, LearnRateUpdate.CONSTANT, false);
 
-        optimizer.train_wfvae(dataLoader, lpips, "D:\\test\\vae\\256\\");
+        optimizer.train_wfvae(dataLoader, lpips, "D:\\test\\vae\\256\\", "/omega/models/wfvae/");
+        
         String save_model_path = "/omega/models/wfvae_256.model";
         ModelUtils.saveModel(network, save_model_path);
         
@@ -172,6 +216,7 @@ public class WFVAETest {
         try {
         	
 //        	createVideoDatasetCSV();
+//        	createVideoDatasetCSV2();
         	
         	wf_vae_train();
         	
