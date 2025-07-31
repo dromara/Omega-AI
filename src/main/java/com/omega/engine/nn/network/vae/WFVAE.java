@@ -153,6 +153,18 @@ public class WFVAE extends Network {
         posterior(encoder.getOutput());
         return z;
     }
+    
+    public Tensor encode(Tensor input, Tensor r_z) {
+        /**
+         * 设置输入数据
+         */
+        this.setInputData(input);
+        inputLayer.forward();
+        encoder.forward(input);
+//        encoder.getOutput().showDM("encoder");
+        sample(encoder.getOutput(), r_z);
+        return z;
+    }
 
     public Tensor decode(Tensor latent) {
         this.setInputData(latent);
@@ -183,7 +195,7 @@ public class WFVAE extends Network {
     }
     
     public void sample(Tensor en_out, Tensor r_z) {
-
+    	this.r_z = r_z;
     	if(z == null || z.number != en_out.number) {
     		this.number = en_out.number;
     		mean = Tensor.createGPUTensor(mean, en_out.number, latendDim * encoder.oDepth, en_out.height, en_out.width, true);
@@ -194,7 +206,7 @@ public class WFVAE extends Network {
     	tensorOP.getByChannel(en_out, mean, new int[] {number, encoder.oChannel, 1, encoder.oDepth * en_out.height * en_out.width}, 0);
     	tensorOP.getByChannel(en_out, logvar, new int[] {number, encoder.oChannel, 1, encoder.oDepth * en_out.height * en_out.width}, latendDim);
     	
-//    	tensorOP.clamp(logvar, -30.0f, 20.0f, logvar);
+    	tensorOP.clamp(logvar, -30.0f, 20.0f, logvar);
     	
     	vaeKernel.forward(mean, logvar, r_z, z);
     	
@@ -222,6 +234,7 @@ public class WFVAE extends Network {
 //        logvar.showDM("logvar");
     	if (rec_loss == null || rec_loss.number != output.number) {
     		this.number = output.number;
+            lpips.number = number * depth;
     		dec_t = Tensor.createGPUTensor(dec_t, number * depth, 3, imageSize, imageSize, true);
     		input_t = Tensor.createGPUTensor(input_t, number * depth, 3, imageSize, imageSize, true);
             this.rec_loss = Tensor.createGPUTensor(rec_loss, dec_t.shape(), true);
@@ -235,12 +248,13 @@ public class WFVAE extends Network {
     	
     	float loss = 0.0f;
         int bs = output.number;
-    	
     	int[] xShape = new int[] {number, 3, depth, imageSize, imageSize};
     	int[] tShape = new int[] {number, depth, 3, imageSize, imageSize};
     	
     	tensorOP.permute(output, dec_t, xShape, tShape, new int[] {0, 2, 1, 3, 4});
     	tensorOP.permute(label, input_t, xShape, tShape, new int[] {0, 2, 1, 3, 4});
+    	
+//    	dec_t.showDM("dec_t");
     	
         vaeKernel.l1_loss(dec_t, input_t, rec_loss);
         
@@ -251,8 +265,8 @@ public class WFVAE extends Network {
         vaeKernel.kl(mean, logvar, 1, kl_loss);
         
         if(encoder.getL1_coeffs() != null) {
-        	 vaeKernel.l1_loss(encoder.getL1_coeffs(), encoder.getL2_coeffs(), wl_loss_l1);
-             vaeKernel.l1_loss(decoder.getL1_coeffs(), decoder.getL2_coeffs(), wl_loss_l2);
+        	 vaeKernel.l1_loss(encoder.getL1_coeffs(), decoder.getL1_coeffs(), wl_loss_l1);
+             vaeKernel.l1_loss(encoder.getL2_coeffs(), decoder.getL2_coeffs(), wl_loss_l2);
         }
         
 //        tensorOP.sum(rec_loss, loss_sum, 0);
@@ -316,8 +330,8 @@ public class WFVAE extends Network {
     	
     	if(encoder.getL1_coeffs() != null) {
     		
-    		vaeKernel.l1_loss_allBack(encoder.getL1_coeffs(), encoder.getL2_coeffs(), en_l1_coeffs_delta, en_l2_coeffs_delta, wl_loss_l1.number);
-        	vaeKernel.l1_loss_allBack(decoder.getL1_coeffs(), decoder.getL2_coeffs(), de_l1_coeffs_delta, de_l2_coeffs_delta, wl_loss_l2.number);
+    		vaeKernel.l1_loss_allBack(encoder.getL1_coeffs(), decoder.getL1_coeffs(), en_l1_coeffs_delta, de_l1_coeffs_delta, wl_loss_l1.number);
+        	vaeKernel.l1_loss_allBack(encoder.getL2_coeffs(), decoder.getL2_coeffs(), en_l2_coeffs_delta, de_l2_coeffs_delta, wl_loss_l2.number);
         	
         	tensorOP.mul(en_l1_coeffs_delta, wavelet_weight, en_l1_coeffs_delta);
         	tensorOP.mul(en_l2_coeffs_delta, wavelet_weight, en_l2_coeffs_delta);
@@ -331,6 +345,8 @@ public class WFVAE extends Network {
     	
     	lpips.back(lpipsLossDiff);
     	
+//    	lpips.lpips.diff.showDM("lpips.diff");
+    	
     	vaeKernel.l1_loss_back(dec_t, input_t, deltaT, dec_t.number);
 //    	lpips.lpips.diff.showDM("lpips.diff");
 //    	deltaT.showDM("deltaT");
@@ -340,6 +356,8 @@ public class WFVAE extends Network {
     	int[] xShape = new int[] {number, depth, 3, imageSize, imageSize};
     	
     	tensorOP.permute(deltaT, delta, xShape, tShape, new int[] {0, 2, 1, 3, 4});
+    	
+//    	delta.showDM("delta");
     	
     	decoder.back(delta, de_l1_coeffs_delta, de_l2_coeffs_delta);
     	

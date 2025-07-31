@@ -131,10 +131,10 @@ public class WFResnet2DBlock extends Layer {
     	
         conv2.back(conv2.getOutput(), conv2.input);
         a2.back(conv2.diff);
-        norm2.back(a2.diff);
+        norm2.back(a2.diff, a2.diff);
         conv1.back(norm2.diff, conv1.input);
         a1.back(conv1.diff);
-        norm1.back(a1.diff);
+        norm1.back(a1.diff, a1.diff);
         if (shortcut) {
             conv_shortcut.back(conv2.getOutput(), conv_shortcut.input);
             kernel.add(norm1.diff, conv_shortcut.diff, norm1.diff);

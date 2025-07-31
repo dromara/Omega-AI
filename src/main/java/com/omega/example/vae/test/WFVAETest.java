@@ -181,6 +181,9 @@ public class WFVAETest {
         LPIPSTest.loadLPIPSWeight(LagJsonReader.readJsonFileSmallWeight(lpipsWeight), lpips, false);
         lpips.CUDNN = true;
         
+//		String vaeWeight = "D:\\models\\wfvae-s.json";
+//		ClipModelUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(vaeWeight), network, true);
+        
         MBSGDOptimizer optimizer = new MBSGDOptimizer(network, 500, 0.00001f, batchSize, LearnRateUpdate.CONSTANT, false);
 
         optimizer.train_wfvae(dataLoader, lpips, "D:\\test\\vae\\256\\", "/omega/models/wfvae/");
@@ -223,7 +226,7 @@ public class WFVAETest {
 		String dataPath = "D:\\dataset\\pexels_45k\\train_set.csv";
         String imgDirPath = "D:\\dataset\\t2v_dataset\\";
         int maxContextLen = 77;
-        int batchSize = 2;
+        int batchSize = 1;
        
         float[] mean = new float[]{0.5f, 0.5f, 0.5f};
         float[] std = new float[]{0.5f, 0.5f, 0.5f};
@@ -243,6 +246,11 @@ public class WFVAETest {
 		network.CUDNN = true;
 		network.learnRate = 0.0001f;
         network.init();
+        
+        LPIPS lpips = new LPIPS(LossType.MSE, UpdaterType.adamw, imgSize);
+        String lpipsWeight = "D:\\models\\lpips.json";
+        LPIPSTest.loadLPIPSWeight(LagJsonReader.readJsonFileSmallWeight(lpipsWeight), lpips, false);
+        lpips.CUDNN = true;
 		
 		String vaeWeight = "D:\\models\\wfvae-s.json";
 		ClipModelUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(vaeWeight), network, true);
@@ -263,20 +271,33 @@ public class WFVAETest {
 	    Map<String, Object> datas2 = LagJsonReader.readJsonFileSmallWeight(inputsPath);
 	    ClipModelUtils.loadData(input, datas2, "inputs", 5);
         
-		Tensor lantnd = network.encode(input);
-
+        String posteriors_rn_path = "D:\\models\\rn.json";
+        Map<String, Object> rn_data = LagJsonReader.readJsonFileSmallWeight(posteriors_rn_path);
+        Tensor rn = new Tensor(1, 24, 32, 32, true);
+        ClipModelUtils.loadData(rn, rn_data, "rn", 5);
+	    
+//        input.showDM("input");
+        
+		Tensor lantnd = network.encode(input, rn);
+//		lantnd.showDM("lantnd");
 		Tensor output = network.decode(lantnd);
+
+		float loss = network.totalLoss(output, input, lpips);
 		
-		/**
-         * [B, C, T, H, W] > B, T, C, H, W
-         */
-        network.tensorOP.permute(output, org_input, new int[] {batchSize, 3, num_frames, imgSize, imgSize}, new int[] {batchSize, num_frames, 3, imgSize, imgSize}, new int[] {0, 2, 1, 3, 4});
-        org_input.syncHost();
-        org_input.data = MatrixOperation.clampSelf(org_input.data, -1, 1);
+		System.err.println("loss:"+loss);
 		
-		String testPath = "D:\\test\\vae\\256\\";
+		network.backward(lpips);
 		
-		MBSGDOptimizer.showVideos(testPath, num_frames, org_input, 0+"", mean, std);
+//		/**
+//         * [B, C, T, H, W] > B, T, C, H, W
+//         */
+//        network.tensorOP.permute(output, org_input, new int[] {batchSize, 3, num_frames, imgSize, imgSize}, new int[] {batchSize, num_frames, 3, imgSize, imgSize}, new int[] {0, 2, 1, 3, 4});
+//        org_input.syncHost();
+//        org_input.data = MatrixOperation.clampSelf(org_input.data, -1, 1);
+//		
+//		String testPath = "D:\\test\\vae\\256\\";
+//		
+//		MBSGDOptimizer.showVideos(testPath, num_frames, org_input, 0+"", mean, std);
 		
 	}
 
@@ -286,9 +307,9 @@ public class WFVAETest {
 //        	createVideoDatasetCSV();
 //        	createVideoDatasetCSV2();
 
-//        	wf_vae_train();
+        	wf_vae_train();
         	
-        	test_weight();
+//        	test_weight();
         	
         } catch (Exception e) {
             // TODO: handle exception

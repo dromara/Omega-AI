@@ -2,15 +2,19 @@ package com.omega.engine.nn.layer.opensora.wfvae.modules;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.Map;
 
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.LNLayer;
+import com.omega.engine.nn.layer.opensora.wfvae.decoder.WFDecoderUp2;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
+import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
  * LNLayer3D
@@ -87,10 +91,24 @@ public class LNLayer3D extends Layer {
     		diff = Tensor.createGPUTensor(diff, number, channel * depth, height, width, true);
     	}
     }
+    
+    public void initBack(Tensor diff) {
+    	this.diff = diff;
+    }
 
     @Override
     public void initParam() {
         // TODO Auto-generated method stub
+    }
+    
+    public static void loadWeight(Map<String, Object> weightMap, LNLayer3D block, boolean showLayers) {
+        if (showLayers) {
+            for (String key : weightMap.keySet()) {
+                System.out.println(key);
+            }
+        }
+        block.norm.gamma = ClipModelUtils.loadData(block.norm.gamma, weightMap, 1, "norm.weight");
+        block.norm.beta = ClipModelUtils.loadData(block.norm.beta, weightMap, 1, "norm.bias");
     }
     
     public static void main(String[] args) {
@@ -102,11 +120,18 @@ public class LNLayer3D extends Layer {
     	
         Transformer tf = new Transformer();
         tf.CUDNN = true;
-        float[] data = RandomUtils.order(input.dataLength, 0.1f, 0.1f);
-        Tensor input2 = new Tensor(batchSize, channel * numFrames, imageSize, imageSize, data, true);
+//        float[] data = RandomUtils.order(input.dataLength, 0.1f, 0.1f);
+        String inputsPath = "D:\\models\\inputs.json";
+	    Map<String, Object> datas2 = LagJsonReader.readJsonFileSmallWeight(inputsPath);
+	    ClipModelUtils.loadData(input, datas2, "inputs", 5);
+	    
         LNLayer3D norm = new LNLayer3D(channel, numFrames, imageSize, imageSize, tf);
+        
+    	String path = "H:\\model\\LNLayer3D.json";
+    	loadWeight(LagJsonReader.readJsonFileSmallWeight(path), norm, true);
+        
         for (int i = 0; i < 10; i++) {
-        	norm.forward(input2);
+        	norm.forward(input);
         	norm.getOutput().showShape();
         	norm.getOutput().showDM();
 //            mal.back(delta);
@@ -132,33 +157,23 @@ public class LNLayer3D extends Layer {
     public void diff() {
         // TODO Auto-generated method stub
     	Tensor_OP().permute(delta, norm.getOutput(), xShape, tShape, new int[] {0, 2, 3, 4, 1});
-    	norm.back(norm.getOutput(), inputT);
-    	Tensor_OP().permute(inputT, diff, tShape, xShape, new int[] {0, 4, 1, 2, 3});
+    	norm.back(norm.getOutput());
+    	Tensor_OP().permute(norm.diff, diff, tShape, xShape, new int[] {0, 4, 1, 2, 3});
     }
     
-    public void diff(Tensor diff) {
-        // TODO Auto-generated method stub
-    	Tensor_OP().permute(delta, norm.getOutput(), xShape, tShape, new int[] {0, 2, 3, 4, 1});
-    	norm.back(norm.getOutput(), inputT);
-    	Tensor_OP().permute(inputT, diff, tShape, xShape, new int[] {0, 4, 1, 2, 3});
-    }
-
     @Override
     public void forward() {
         // TODO Auto-generated method stub
         /**
          * 参数初始化
-
          */
         this.init();
         /**
          * 设置输入
-
          */
         this.setInput();
         /**
          * 计算输出
-
          */
         this.output();
     }
@@ -169,12 +184,10 @@ public class LNLayer3D extends Layer {
         initBack();
         /**
          * 设置梯度
-
          */
         this.setDelta();
         /**
          * 计算梯度
-
          */
         this.diff();
     }
@@ -245,7 +258,7 @@ public class LNLayer3D extends Layer {
     
     public void back(Tensor delta,Tensor diff) {
         // TODO Auto-generated method stub
-        initBack();
+        initBack(diff);
         /**
          * 设置梯度
 
@@ -255,7 +268,7 @@ public class LNLayer3D extends Layer {
          * 计算梯度
 
          */
-        this.diff(diff);
+        this.diff();
     }
     
     @Override

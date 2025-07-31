@@ -363,23 +363,17 @@ public class WFDecoder extends Layer {
     	conv_in.forward(input);
 //    	conv_in.getOutput().showDM("conv_in");
     	mid.forward(conv_in.getOutput());
-    	
 //    	mid.getOutput().showDM("mid");
-    	
     	Tensor_OP().getByChannel(mid.getOutput(), connect_l2_in, new int[] {number, mid.oChannel, 1, mid.oDepth * mid.oHeight * mid.oWidth}, base_channels * 4);
     	connect_l2.forward(connect_l2_in);
     	l2_coeffs = connect_l2.getOutput();
-    	
 //    	l2_coeffs.showDM("l2_coeffs");
-    	
     	inverse_wavelet_transform_l2.forward(l2_coeffs);
     	Tensor l2 = inverse_wavelet_transform_l2.getOutput();
-    	
 //    	l2.showDM("l2");
-    	
     	Tensor_OP().getByChannel(mid.getOutput(), up2_in, new int[] {number, mid.oChannel, 1, mid.oDepth * mid.oHeight * mid.oWidth}, 0);
     	up2.forward(up2_in);
-    	
+
     	Tensor_OP().getByChannel(up2.getOutput(), connect_l1_in, new int[] {number, up2.oChannel, 1, up2.oDepth * up2.oHeight * up2.oWidth}, base_channels * 4);
     	connect_l1.forward(connect_l1_in);
     	l1_coeffs = connect_l1.getOutput();
@@ -400,11 +394,11 @@ public class WFDecoder extends Layer {
     	norm_out.forward(x);
     	act.forward(norm_out.getOutput());
     	conv_out.forward(act.getOutput());
-    	
+
     	Tensor_OP().addByChannel(conv_out.getOutput(), l1, new int[] {number, conv_out.oChannel, 1, conv_out.oDepth * conv_out.oHeight * conv_out.oWidth}, 0);  //h[:, :3] = h[:, :3] + l1
     	
     	inverse_wavelet_transform_out.forward(conv_out.getOutput());
-
+//    	inverse_wavelet_transform_out.getOutput().showDM("final");
     	this.output = inverse_wavelet_transform_out.getOutput();
     }
 
@@ -430,12 +424,12 @@ public class WFDecoder extends Layer {
     	inverse_wavelet_transform_out.back(delta);
     	
     	Tensor_OP().getByChannel(inverse_wavelet_transform_out.diff, l1_delta, new int[] {number, conv_out.oChannel, 1, conv_out.oDepth * conv_out.oHeight * conv_out.oWidth}, 0, 3);
-    	
+
     	conv_out.back(inverse_wavelet_transform_out.diff);
 //    	conv_out.diff.showDM("conv_out.diff");
     	act.back(conv_out.diff);
     	norm_out.back(act.diff);
-    	
+//    	norm_out.diff.showDM("diff1");
     	Tensor d = norm_out.diff;
     	for(int i = 1;i>=0;i--) {
     		blocks.get(i).back(d);

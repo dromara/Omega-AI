@@ -178,13 +178,13 @@ public class WFResnet3DBlock extends Layer {
     	this.tmp_diff = CUDAMemoryManager.getCache("opensora_block_tmp_diff", conv2.input.shape());
     	conv2.back(delta, tmp_diff);
     	act2.back(conv2.diff);
-    	this.tmp_norm_diff = CUDAMemoryManager.getCache("opensora_block_tmp_norm_diff", act2.input.shape());
-    	norm2.back(act2.diff, tmp_norm_diff);
+//    	this.tmp_norm_diff = CUDAMemoryManager.getCache("opensora_block_tmp_norm_diff", act2.input.shape());
+    	norm2.back(act2.diff, act2.diff);
     	
     	this.tmp_diff = CUDAMemoryManager.getCache("opensora_block_tmp_diff", conv1.input.shape());
     	conv1.back(norm2.diff, tmp_diff);
     	act1.back(conv1.diff);
-    	norm1.back(act1.diff);
+    	norm1.back(act1.diff, act1.diff);
     	
     	if(channel != oChannel) {
     		shortcut.back(delta);

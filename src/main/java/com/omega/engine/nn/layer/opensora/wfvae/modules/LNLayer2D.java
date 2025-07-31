@@ -69,7 +69,11 @@ public class LNLayer2D extends Layer {
     		diff = Tensor.createGPUTensor(diff, number, channel, height, width, true);
     	}
     }
-
+    
+    public void initBack(Tensor diff) {
+    	this.diff = diff;
+    }
+    
     @Override
     public void initParam() {
         // TODO Auto-generated method stub
@@ -115,15 +119,8 @@ public class LNLayer2D extends Layer {
     public void diff() {
         // TODO Auto-generated method stub
     	Tensor_OP().permute(delta, norm.getOutput(), xShape, tShape, new int[] {0, 2, 3, 1});
-    	norm.back(norm.getOutput(), inputT);
-    	Tensor_OP().permute(inputT, diff, tShape, xShape, new int[] {0, 3, 1, 2});
-    }
-    
-    public void diff(Tensor diff) {
-        // TODO Auto-generated method stub
-    	Tensor_OP().permute(delta, norm.getOutput(), xShape, tShape, new int[] {0, 2, 3, 1});
-    	norm.back(norm.getOutput(), inputT);
-    	Tensor_OP().permute(inputT, diff, tShape, xShape, new int[] {0, 3, 1, 2});
+    	norm.back(norm.getOutput());
+    	Tensor_OP().permute(norm.diff, diff, tShape, xShape, new int[] {0, 3, 1, 2});
     }
 
     @Override
@@ -218,7 +215,7 @@ public class LNLayer2D extends Layer {
     
     public void back(Tensor delta,Tensor diff) {
         // TODO Auto-generated method stub
-        initBack();
+        initBack(diff);
         /**
          * 设置梯度
          */
@@ -226,7 +223,7 @@ public class LNLayer2D extends Layer {
         /**
          * 计算梯度
          */
-        this.diff(diff);
+        this.diff();
     }
     
     @Override

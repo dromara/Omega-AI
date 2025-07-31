@@ -72,6 +72,23 @@ public class PoolingLayer extends Layer {
             }
         }
     }
+    
+    public void init(Tensor input) {
+        // TODO Auto-generated method stub
+        this.number = input.number;
+        if (this.output == null || this.output.number != number) {
+            this.output = Tensor.createTensor(this.output, number, oChannel, oHeight, oWidth, true);
+            //			this.output = new Tensor(number, oChannel, oHeight, oWidth, true);
+        }
+        if (kernel == null) {
+            if (this.network.CUDNN) {
+                kernel = new PoolingCudnnKernel(poolingType, channel, height, width, oHeight, oWidth, pWidth, pHeight, stride, padding, cuda());
+                //				kernel = new PoolingKernel(poolingType, channel, height, width, pHeight, pWidth, stride, padding);
+            } else {
+                kernel = new PoolingKernel(poolingType, channel, height, width, pHeight, pWidth, stride, padding, cuda());
+            }
+        }
+    }
 
     @Override
     public void initBack() {
@@ -183,21 +200,18 @@ public class PoolingLayer extends Layer {
     }
 
     @Override
-    public void forward(Tensor inpnut) {
+    public void forward(Tensor input) {
         // TODO Auto-generated method stub
         /**
          * 参数初始化
-
          */
-        this.init();
+        this.init(input);
         /**
          * 设置输入
-
          */
-        this.setInput(inpnut);
+        this.setInput(input);
         /**
          * 计算输出
-
          */
         this.output();
     }

@@ -38,6 +38,18 @@ public class AdaptiveAvgPool2DLayer extends Layer {
             kernel = new AdaptiveAvgPool2DKernel(cuda());
         }
     }
+    
+    public void init(Tensor input) {
+        // TODO Auto-generated method stub
+        this.number = input.number;
+        if (this.output == null || this.output.number != number) {
+            this.output = Tensor.createTensor(this.output, number, oChannel, oHeight, oWidth, true);
+            //			this.output = new Tensor(number, oChannel, oHeight, oWidth, true);
+        }
+        if (kernel == null) {
+            kernel = new AdaptiveAvgPool2DKernel(cuda());
+        }
+    }
 
     @Override
     public void initBack() {
@@ -114,17 +126,14 @@ public class AdaptiveAvgPool2DLayer extends Layer {
         // TODO Auto-generated method stub
         /**
          * 参数初始化
-
          */
-        this.init();
+        this.init(input);
         /**
          * 设置输入
-
          */
         this.setInput(input);
         /**
          * 计算输出
-
          */
         this.output();
     }

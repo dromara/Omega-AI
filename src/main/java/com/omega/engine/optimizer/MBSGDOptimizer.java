@@ -4078,7 +4078,7 @@ public class MBSGDOptimizer extends Optimizer {
                 }
                 this.trainIndex = i + 1;
                 int[][] indexs = trainingData.shuffle();
-                //				int[][] indexs = trainingData.order();
+//                int[][] indexs = trainingData.order();
                 this.network.RUN_MODEL = RunModel.TRAIN;
                 float train_loss = 0.0f;
                 /**
