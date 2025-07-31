@@ -149,6 +149,7 @@ public class WFVAE extends Network {
         this.setInputData(input);
         inputLayer.forward();
         encoder.forward(input);
+//        encoder.getOutput().showDM("encoder");
         posterior(encoder.getOutput());
         return z;
     }

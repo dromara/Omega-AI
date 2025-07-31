@@ -139,7 +139,7 @@ public class WFEncoderDown1 extends Layer {
     	conv.forward(input);
     	
     	Tensor x = conv.getOutput();
-//    	x.showDM("down1_1");
+
     	for(int i = 0;i<resBlocks.size();i++) {
     		WFResnet2DBlock block = resBlocks.get(i);
     		block.forward(x);
@@ -148,8 +148,6 @@ public class WFEncoderDown1 extends Layer {
     	}
     	
     	downsample.forward(x);
-    	
-//    	downsample.getOutput().showDM("down1_4");
     	
     	this.output = downsample.getOutput();
     }

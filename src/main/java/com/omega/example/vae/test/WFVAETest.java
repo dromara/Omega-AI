@@ -6,13 +6,16 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
+import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.network.vae.WFVAE;
 import com.omega.engine.nn.network.vqgan.LPIPS;
 import com.omega.engine.optimizer.MBSGDOptimizer;
 import com.omega.engine.optimizer.lr.LearnRateUpdate;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 import com.omega.example.clip.utils.ClipModelUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
@@ -213,9 +216,22 @@ public class WFVAETest {
         
 	}
 
-	public static void test_weight() {
+	public static void test_weight() throws Exception {
 		int imgSize = 256;
 		int num_frames = 9;
+		
+		String dataPath = "D:\\dataset\\pexels_45k\\train_set.csv";
+        String imgDirPath = "D:\\dataset\\t2v_dataset\\";
+        int maxContextLen = 77;
+        int batchSize = 2;
+       
+        float[] mean = new float[]{0.5f, 0.5f, 0.5f};
+        float[] std = new float[]{0.5f, 0.5f, 0.5f};
+        String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
+        String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
+        BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+		
+		VideoDataLoaderEN dataLoader = new VideoDataLoaderEN(bpe, dataPath, imgDirPath, ".png", num_frames, imgSize, imgSize, maxContextLen, batchSize, mean, std);
 
 		int latendDim = 8;
 		int base_channels = 128;
@@ -226,9 +242,42 @@ public class WFVAETest {
 		WFVAE network = new WFVAE(LossType.MSE, UpdaterType.adamw, num_frames, latendDim, imgSize, base_channels, en_energy_flow_hidden_size, de_energy_flow_hidden_size, num_res_blocks, connect_res_layer_num);
 		network.CUDNN = true;
 		network.learnRate = 0.0001f;
-
-		String vaeWeight = "c:\\temp\\wfvae.json";
+        network.init();
+		
+		String vaeWeight = "D:\\models\\wfvae-s.json";
 		ClipModelUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(vaeWeight), network, true);
+		
+		Tensor org_input = new Tensor(batchSize, dataLoader.num_frames * network.getChannel(), network.getHeight(), network.getWidth(), true);
+        Tensor input = new Tensor(batchSize, network.getChannel() * dataLoader.num_frames, network.getHeight(), network.getWidth(), true);
+		
+//        int[] index = new int[] {13, 11};
+//        
+//		dataLoader.loadData(index, org_input);
+		
+		/**
+         * [B, T, C, H, W] > B, C, T, H, W
+         */
+//        network.tensorOP.permute(org_input, input, new int[] {batchSize, num_frames, 3, imgSize, imgSize}, new int[] {batchSize, 3, num_frames, imgSize, imgSize}, new int[] {0, 2, 1, 3, 4});
+
+        String inputsPath = "D:\\models\\inputs.json";
+	    Map<String, Object> datas2 = LagJsonReader.readJsonFileSmallWeight(inputsPath);
+	    ClipModelUtils.loadData(input, datas2, "inputs", 5);
+        
+		Tensor lantnd = network.encode(input);
+
+		Tensor output = network.decode(lantnd);
+		
+		/**
+         * [B, C, T, H, W] > B, T, C, H, W
+         */
+        network.tensorOP.permute(output, org_input, new int[] {batchSize, 3, num_frames, imgSize, imgSize}, new int[] {batchSize, num_frames, 3, imgSize, imgSize}, new int[] {0, 2, 1, 3, 4});
+        org_input.syncHost();
+        org_input.data = MatrixOperation.clampSelf(org_input.data, -1, 1);
+		
+		String testPath = "D:\\test\\vae\\256\\";
+		
+		MBSGDOptimizer.showVideos(testPath, num_frames, org_input, 0+"", mean, std);
+		
 	}
 
 	public static void main(String[] args) {
@@ -237,7 +286,9 @@ public class WFVAETest {
 //        	createVideoDatasetCSV();
 //        	createVideoDatasetCSV2();
 
-        	wf_vae_train();
+//        	wf_vae_train();
+        	
+        	test_weight();
         	
         } catch (Exception e) {
             // TODO: handle exception

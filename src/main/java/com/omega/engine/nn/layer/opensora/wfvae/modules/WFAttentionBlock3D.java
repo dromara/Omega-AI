@@ -12,7 +12,6 @@ import com.omega.engine.gpu.cudnn.SoftmaxCudnnKernel;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.gpu.AttentionKernel;
-import com.omega.engine.nn.layer.opensora.vae.modules.GNLayer3D;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.nn.network.Transformer;
@@ -28,7 +27,7 @@ import com.omega.example.transformer.utils.LagJsonReader;
  */
 public class WFAttentionBlock3D extends Layer {
 	
-	public GNLayer3D norm;
+	public LNLayer3D norm;
     public WFCausalConv3D qLinerLayer;
     public WFCausalConv3D kLinerLayer;
     public WFCausalConv3D vLinerLayer;
@@ -154,7 +153,7 @@ public class WFAttentionBlock3D extends Layer {
 
     public void initLayers() {
     	
-    	this.norm = new GNLayer3D(channel, depth, height, width, 32, network);
+    	this.norm = new LNLayer3D(channel, depth, height, width, network);
     	
         this.qLinerLayer = new WFCausalConv3D(channel, channel, depth, width, height, 1, 1, bias, network);
         this.kLinerLayer = new WFCausalConv3D(channel, channel, depth, width, height, 1, 1, bias, network);

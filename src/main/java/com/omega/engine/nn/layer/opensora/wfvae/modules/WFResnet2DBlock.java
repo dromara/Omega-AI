@@ -10,8 +10,6 @@ import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.ParamsInit;
 import com.omega.engine.nn.layer.active.SiLULayer;
 import com.omega.engine.nn.layer.gpu.BasicBlockKernel;
-import com.omega.engine.nn.layer.normalization.BNType;
-import com.omega.engine.nn.layer.normalization.GNLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
@@ -28,10 +26,10 @@ public class WFResnet2DBlock extends Layer {
 	private int depth;
     private int group = 32;
     private BasicBlockKernel kernel;
-    public GNLayer norm1;
+    public LNLayer2D norm1;
     private SiLULayer a1;
     public ConvolutionLayer conv1;
-    public GNLayer norm2;
+    public LNLayer2D norm2;
     private SiLULayer a2;
     public ConvolutionLayer conv2;
     public ConvolutionLayer conv_shortcut;
@@ -57,12 +55,12 @@ public class WFResnet2DBlock extends Layer {
     }
 
     public void initLayers() {
-        norm1 = new GNLayer(group, this, BNType.conv_bn);
+        norm1 = new LNLayer2D(channel, height, width, network);
         a1 = new SiLULayer(norm1);
         conv1 = new ConvolutionLayer(channel, oChannel, width, height, 3, 3, 1, 1, true, this.network);
         conv1.setUpdater(UpdaterFactory.create(this.network));
         conv1.paramsInit = ParamsInit.silu;
-        norm2 = new GNLayer(group, conv1);
+        norm2 = new LNLayer2D(oChannel, conv1.oHeight, conv1.oWidth, network);
         a2 = new SiLULayer(norm2);
         conv2 = new ConvolutionLayer(conv1.oChannel, oChannel, conv1.oWidth, conv1.oHeight, 3, 3, 1, 1, true, this.network);
         conv2.setUpdater(UpdaterFactory.create(this.network));
@@ -244,17 +242,14 @@ public class WFResnet2DBlock extends Layer {
         // TODO Auto-generated method stub
         /**
          * 参数初始化
-
          */
         this.init();
         /**
          * 设置输入
-
          */
         this.setInput(input);
         /**
          * 计算输出
-
          */
         this.output();
     }
@@ -324,12 +319,12 @@ public class WFResnet2DBlock extends Layer {
             }
         }
 
-        block.norm1.gamma= ClipModelUtils.loadData(block.norm1.gamma, weightMap, 1, "norm1.weight");
-        block.norm1.beta = ClipModelUtils.loadData(block.norm1.beta, weightMap, 1, "norm1.bias");
+        block.norm1.norm.gamma= ClipModelUtils.loadData(block.norm1.norm.gamma, weightMap, 1, "norm1.weight");
+        block.norm1.norm.beta = ClipModelUtils.loadData(block.norm1.norm.beta, weightMap, 1, "norm1.bias");
         ClipModelUtils.loadData(block.conv1.weight, weightMap, "conv1.weight", 4);
         ClipModelUtils.loadData(block.conv1.bias, weightMap, "conv1.bias");
-        block.norm2.gamma = ClipModelUtils.loadData(block.norm2.gamma, weightMap, 1, "norm2.weight");
-        block.norm2.beta = ClipModelUtils.loadData(block.norm2.beta, weightMap, 1, "norm2.bias");
+        block.norm2.norm.gamma = ClipModelUtils.loadData(block.norm2.norm.gamma, weightMap, 1, "norm2.weight");
+        block.norm2.norm.beta = ClipModelUtils.loadData(block.norm2.norm.beta, weightMap, 1, "norm2.bias");
         ClipModelUtils.loadData(block.conv2.weight, weightMap, "conv2.weight", 4);
         ClipModelUtils.loadData(block.conv2.bias, weightMap, "conv2.bias");
         
