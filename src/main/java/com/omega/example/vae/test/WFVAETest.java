@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import com.omega.common.utils.ImageUtils;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.network.vae.WFVAE;
@@ -191,8 +192,9 @@ public class WFVAETest {
         	
 //        	createVideoDatasetCSV();
 
-			test_weight();
+//			test_weight();
 
+			ImageUtils.createGifFromFolder("C:\\Temp\\gif", "C:\\Temp\\gif\\result.gif", 500, false);
 		} catch (Exception e) {
 			// TODO: handle exception
 			e.printStackTrace();
