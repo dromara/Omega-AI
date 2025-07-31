@@ -10,6 +10,8 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
+import java.util.Comparator;
 
 public class ImageUtils {
     public static float[] mean = new float[]{0.491f, 0.482f, 0.446f};
@@ -1469,6 +1471,51 @@ public class ImageUtils {
             e.printStackTrace();
         }
         return false;
+    }
+
+    public static void createGifFromFolder(String inputFolderPath, String outputGifPath, int delay, boolean loop) {
+        File inputFolder = new File(inputFolderPath);
+
+        // 检查文件夹是否存在
+        if (!inputFolder.exists() || !inputFolder.isDirectory()) {
+            System.err.println("指定的文件夹不存在或不是一个目录: " + inputFolderPath);
+            return;
+        }
+
+        // 获取文件夹中的所有图片文件
+        File[] imageFiles = inputFolder.listFiles((dir, name) -> {
+            String lowerName = name.toLowerCase();
+            return lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg")
+                    || lowerName.endsWith(".png") || lowerName.endsWith(".bmp");
+        });
+
+        // 检查是否有图片文件
+        if (imageFiles == null || imageFiles.length == 0) {
+            System.err.println("指定的文件夹中没有找到图片文件: " + inputFolderPath);
+            return;
+        }
+
+        // 按文件名排序（假设文件名已经按顺序命名）
+        Arrays.sort(imageFiles, Comparator.comparing(File::getName));
+
+        // 创建GIF编码器
+        AnimatedGifEncoder gifEncoder = new AnimatedGifEncoder();
+        gifEncoder.start(outputGifPath);
+        gifEncoder.setDelay(delay);  // 设置帧延迟（毫秒）
+        gifEncoder.setRepeat(loop ? 0 : -1);  // 0=无限循环，-1=不循环
+
+        try {
+            // 添加每一帧到GIF
+            for (File imageFile : imageFiles) {
+                gifEncoder.addFrame(javax.imageio.ImageIO.read(imageFile));
+            }
+        } catch (IOException e) {
+            System.err.println("处理图片时出错: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            gifEncoder.finish();
+            System.out.println("GIF生成完成，保存到: " + outputGifPath);
+        }
     }
 
     static class Interpolation {
