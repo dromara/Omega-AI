@@ -1344,8 +1344,8 @@ public class DiTTest {
 
         MBSGDOptimizer optimizer = new MBSGDOptimizer(dit, 1000, 0.00001f, batchSize, LearnRateUpdate.CONSTANT, false);
         optimizer.train_DiT_ORG_iddpm_no_kl(dataLoader, vae, clip, iddpm, "D://test//dit//", "/omega/models/dit/", 0.13025f);
-//        String save_model_path = "/omega/models/dit_anime_768_256.model";
-//        ModelUtils.saveModel(dit, save_model_path);
+        String save_model_path = "/omega/models/dit_anime_768_256.model";
+        ModelUtils.saveModel(dit, save_model_path);
     }
 	
 	public static void dit_org_iddpm_amine_predict() throws Exception {

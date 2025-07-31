@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.omega.common.utils.ImageUtils;
+import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.network.vae.WFVAE;
@@ -63,24 +64,70 @@ public class WFVAETest {
 		
 		String csvPath = "D:\\dataset\\pexels_45k\\test.csv";
 		String filePath = "D:\\dataset\\pexels_45k\\pexels_45k\\popular_2\\";
-		String outputPath = "D:\\dataset\\pexels_45k\\train.csv";
-		
+		String dataPath = "/root/gpufree-data/pexels/tar/pexels_45k/popular_2/";
+		String outputPath = "D:\\dataset\\pexels_45k\\train_linux.csv";
+
 		CsvReader reader = CsvUtil.getReader();
         CsvData data = reader.read(FileUtil.file(csvPath));
-        
+
         List<CsvRow> rows = data.getRows();
-        
+
         File root = new File(filePath);
-        
+
         if(root.isDirectory()) {
-        	
+
         	File[] files = root.listFiles();
         	List<CsvRow> hasList = new ArrayList<CsvRow>();
         	for(File file:files) {
         		String filename = file.getName();
         		CsvRow hit = findRow(rows, filename);
         		if(hit != null) {
-        			hit.set(0, filePath + filename);
+        			hit.set(0, dataPath + filename);
+        			hit.add(filename);
+        			hasList.add(hit);
+        		}
+        	}
+
+        	List<String> header = new ArrayList<String>();
+        	header.add("path");
+        	header.add("text");
+        	header.add("num_frames");
+        	header.add("height");
+        	header.add("width");
+        	header.add("aspect_ratio");
+        	header.add("resolution");
+         	header.add("fps");
+         	header.add("filename");
+        	CsvData outData = new CsvData(header, hasList);
+
+        	generateCsvWithConfig(outData, outputPath);
+        }
+
+	}
+
+	public static void createVideoDatasetCSV2() {
+
+		String csvPath = "D:\\dataset\\pexels_45k\\test.csv";
+		String filePath = "D:\\dataset\\t2v_dataset\\";
+		String dataPath = "/root/gpufree-data/pexels/tar/pexels_45k/popular_2/";
+		String outputPath = "D:\\dataset\\pexels_45k\\train_linux_set.csv";
+
+		CsvReader reader = CsvUtil.getReader();
+        CsvData data = reader.read(FileUtil.file(csvPath));
+
+        List<CsvRow> rows = data.getRows();
+
+        File root = new File(filePath);
+
+        if(root.isDirectory()) {
+
+        	File[] files = root.listFiles();
+        	List<CsvRow> hasList = new ArrayList<CsvRow>();
+        	for(File file:files) {
+        		String filename = file.getName();
+        		CsvRow hit = findRow(rows, filename);
+        		if(hit != null) {
+        			hit.set(0, dataPath + filename);
         			hit.add(filename);
         			hasList.add(hit);
         		}
@@ -105,7 +152,7 @@ public class WFVAETest {
 	
 	public static void wf_vae_train() throws Exception {
 		
-		String dataPath = "D:\\dataset\\pexels_45k\\train.csv";
+		String dataPath = "D:\\dataset\\pexels_45k\\train_set.csv";
         String imgDirPath = "D:\\dataset\\t2v_dataset\\";
         int imgSize = 256;
         int num_frames = 9;
@@ -137,7 +184,8 @@ public class WFVAETest {
         
         MBSGDOptimizer optimizer = new MBSGDOptimizer(network, 500, 0.00001f, batchSize, LearnRateUpdate.CONSTANT, false);
 
-        optimizer.train_wfvae(dataLoader, lpips, "D:\\test\\vae\\256\\");
+        optimizer.train_wfvae(dataLoader, lpips, "D:\\test\\vae\\256\\", "/omega/models/wfvae/");
+
         String save_model_path = "/omega/models/wfvae_256.model";
         ModelUtils.saveModel(network, save_model_path);
 
@@ -169,9 +217,22 @@ public class WFVAETest {
 
 	}
 
-	public static void test_weight() {
+	public static void test_weight() throws Exception {
 		int imgSize = 256;
 		int num_frames = 9;
+
+		String dataPath = "D:\\dataset\\pexels_45k\\train_set.csv";
+        String imgDirPath = "D:\\dataset\\t2v_dataset\\";
+        int maxContextLen = 77;
+        int batchSize = 2;
+
+        float[] mean = new float[]{0.5f, 0.5f, 0.5f};
+        float[] std = new float[]{0.5f, 0.5f, 0.5f};
+        String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
+        String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
+        BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+
+		VideoDataLoaderEN dataLoader = new VideoDataLoaderEN(bpe, dataPath, imgDirPath, ".png", num_frames, imgSize, imgSize, maxContextLen, batchSize, mean, std);
 
 		int latendDim = 8;
 		int base_channels = 128;
@@ -182,15 +243,51 @@ public class WFVAETest {
 		WFVAE network = new WFVAE(LossType.MSE, UpdaterType.adamw, num_frames, latendDim, imgSize, base_channels, en_energy_flow_hidden_size, de_energy_flow_hidden_size, num_res_blocks, connect_res_layer_num);
 		network.CUDNN = true;
 		network.learnRate = 0.0001f;
+        network.init();
 
-		String vaeWeight = "c:\\temp\\wfvae.json";
+		String vaeWeight = "D:\\models\\wfvae-s.json";
 		ClipModelUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(vaeWeight), network, true);
+
+		Tensor org_input = new Tensor(batchSize, dataLoader.num_frames * network.getChannel(), network.getHeight(), network.getWidth(), true);
+        Tensor input = new Tensor(batchSize, network.getChannel() * dataLoader.num_frames, network.getHeight(), network.getWidth(), true);
+
+//        int[] index = new int[] {13, 11};
+//
+//		dataLoader.loadData(index, org_input);
+
+		/**
+         * [B, T, C, H, W] > B, C, T, H, W
+         */
+//        network.tensorOP.permute(org_input, input, new int[] {batchSize, num_frames, 3, imgSize, imgSize}, new int[] {batchSize, 3, num_frames, imgSize, imgSize}, new int[] {0, 2, 1, 3, 4});
+
+        String inputsPath = "D:\\models\\inputs.json";
+	    Map<String, Object> datas2 = LagJsonReader.readJsonFileSmallWeight(inputsPath);
+	    ClipModelUtils.loadData(input, datas2, "inputs", 5);
+
+		Tensor lantnd = network.encode(input);
+
+		Tensor output = network.decode(lantnd);
+
+		/**
+         * [B, C, T, H, W] > B, T, C, H, W
+         */
+        network.tensorOP.permute(output, org_input, new int[] {batchSize, 3, num_frames, imgSize, imgSize}, new int[] {batchSize, num_frames, 3, imgSize, imgSize}, new int[] {0, 2, 1, 3, 4});
+        org_input.syncHost();
+        org_input.data = MatrixOperation.clampSelf(org_input.data, -1, 1);
+
+		String testPath = "D:\\test\\vae\\256\\";
+
+		MBSGDOptimizer.showVideos(testPath, num_frames, org_input, 0+"", mean, std);
+
 	}
 
 	public static void main(String[] args) {
         try {
         	
 //        	createVideoDatasetCSV();
+//        	createVideoDatasetCSV2();
+
+//        	wf_vae_train();
 
 //			test_weight();
 

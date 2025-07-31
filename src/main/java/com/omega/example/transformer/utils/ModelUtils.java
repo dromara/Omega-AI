@@ -7,6 +7,7 @@ import java.io.RandomAccessFile;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.network.ASR;
 import com.omega.engine.nn.network.DiT_ORG;
+import com.omega.engine.nn.network.DiT_ORG2;
 import com.omega.engine.nn.network.DiT_ORG_SRA;
 import com.omega.engine.nn.network.DiffusionUNetCond2;
 import com.omega.engine.nn.network.Llama2;
@@ -42,6 +43,37 @@ public class ModelUtils {
     }
 	
 	public static void loadModel(DiT_ORG_SRA model, String inputPath) {
+        try (RandomAccessFile File = new RandomAccessFile(inputPath, "r")) {
+            System.out.println("start load model...");
+            model.loadModel(File);
+            System.out.println("model load success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void saveModel(DiT_ORG2 model, String outpath) {
+        File file = new File(outpath);
+        if (!file.exists()) {
+            try {
+                file.createNewFile();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+        try (RandomAccessFile rFile = new RandomAccessFile(file, "rw")) {
+            System.out.println("start save model...");
+            model.saveModel(rFile);
+            System.out.println("model save success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void loadModel(DiT_ORG2 model, String inputPath) {
         try (RandomAccessFile File = new RandomAccessFile(inputPath, "r")) {
             System.out.println("start load model...");
             model.loadModel(File);

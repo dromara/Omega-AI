@@ -1,5 +1,8 @@
 package com.omega.engine.nn.layer.normalization;
 
+import java.io.IOException;
+import java.io.RandomAccessFile;
+
 import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -9,9 +12,6 @@ import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.utils.ModelUtils;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
-
-import java.io.IOException;
-import java.io.RandomAccessFile;
 
 /**
  * Layer Normalization Layer
@@ -82,6 +82,20 @@ public class LNLayer extends NormalizationLayer {
             this.meanNum = this.channel * this.height * this.width;
         }
         this.setUpdater(UpdaterFactory.create(this.network));
+    }
+    
+    public LNLayer(int channel, int height, int width, BNType bnType, Network network) {
+    	this.network = network;
+		this.setUpdater(UpdaterFactory.create(this.network));
+        this.channel = channel;
+        this.height = height;
+        this.width = width;
+        this.oChannel = this.channel;
+        this.oHeight = this.height;
+        this.oWidth = this.width;
+        this.bnType = bnType;
+        this.hasParams = true;
+        this.meanNum = width;
     }
 
     public LNLayer(Layer preLayer, boolean hasBias) {
@@ -163,7 +177,7 @@ public class LNLayer extends NormalizationLayer {
 
     public void init(Tensor input) {
         this.number = input.number;
-        if (this.bnType == null) {
+        if (this.output == null && this.bnType == null) {
             this.channel = input.channel;
             this.height = input.height;
             this.width = input.width;
@@ -171,11 +185,21 @@ public class LNLayer extends NormalizationLayer {
             this.oHeight = this.height;
             this.oWidth = this.width;
             this.setBnType(BNType.fully_bn);
+        } else if(this.output == null){
+            this.channel = input.channel;
+            this.height = input.height;
+            this.width = input.width;
+            this.oChannel = this.channel;
+            this.oHeight = this.height;
+            this.oWidth = this.width;
+            this.setBnType(bnType);
         }
-        if (bnType == BNType.fully_bn) {
-            this.meanNum = this.channel * this.height * this.width;
-        } else {
-            this.meanNum = this.height * this.width;
+        if(meanNum <= 0) {
+        	 if (bnType == BNType.fully_bn) {
+                 this.meanNum = this.channel * this.height * this.width;
+             } else {
+                 this.meanNum = this.height * this.width;
+             }
         }
         if (kernel == null) {
             kernel = new LNKernel(width, bnType, cuda());
@@ -199,6 +223,7 @@ public class LNLayer extends NormalizationLayer {
         if (this.output == null || this.number != this.output.number) {
             this.output = input.createGPULike();
         }
+        
     }
     
     public void init(int channel,int height,int width, BNType bnType) {
@@ -259,6 +284,14 @@ public class LNLayer extends NormalizationLayer {
             this.diffBeta = new Tensor(1, 1, 1, meanNum, true);
         }
     }
+    
+    public void initBack(Tensor delta,Tensor diff) {
+        this.diff = diff;
+        if (this.diffGamma == null) {
+            this.diffGamma = new Tensor(1, 1, 1, meanNum, true);
+            this.diffBeta = new Tensor(1, 1, 1, meanNum, true);
+        }
+    }
 
     @Override
     public void output() {
@@ -290,7 +323,9 @@ public class LNLayer extends NormalizationLayer {
 //    	gamma.showShape("gamma");
 //    	beta.showShape("beta");
 //    	System.err.println("-------------------");
+//    	input.showDMByOffsetRed(0, 100, "ln-in");
         kernel.forward_llmc(gamma, beta, input, output);
+//        output.showDMByOffsetRed(0, 100, "ln");
         //		System.err.println("1:");
         //		output.showDMByNumber(0);
         //		System.err.println("2:");
@@ -442,17 +477,14 @@ public class LNLayer extends NormalizationLayer {
         // TODO Auto-generated method stub
         /**
          * 参数初始化
-
          */
         this.init(input);
         /**
          * 设置输入
-
          */
         this.setInput(input);
         /**
          * 计算输出
-
          */
         this.output();
     }
@@ -461,17 +493,14 @@ public class LNLayer extends NormalizationLayer {
         // TODO Auto-generated method stub
         /**
          * 参数初始化
-
          */
         this.init(input);
         /**
          * 设置输入
-
          */
         this.setInput(input);
         /**
          * 计算输出
-
          */
         this.output_llmc();
     }
@@ -534,7 +563,25 @@ public class LNLayer extends NormalizationLayer {
             this.gradientCheck();
         }
     }
+    
+    public void back(Tensor delta,Tensor diff) {
+        // TODO Auto-generated method stub
+        this.initBack(delta, diff);
+        /**
+         * 设置梯度
 
+         */
+        this.setDelta(delta);
+        /**
+         * 计算梯度
+
+         */
+        this.diff();
+        if (this.network.GRADIENT_CHECK) {
+            this.gradientCheck();
+        }
+    }
+    
     @Override
     public void backTemp() {
         // TODO Auto-generated method stub

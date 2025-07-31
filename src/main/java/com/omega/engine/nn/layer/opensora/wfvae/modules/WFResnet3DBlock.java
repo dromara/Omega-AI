@@ -10,7 +10,6 @@ import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.ParamsInit;
 import com.omega.engine.nn.layer.active.SiLULayer;
-import com.omega.engine.nn.layer.opensora.vae.modules.GNLayer3D;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
@@ -28,11 +27,11 @@ public class WFResnet3DBlock extends Layer {
 	public int depth;
 	public int oDepth;
 	
-    public GNLayer3D norm1;
+    public LNLayer3D norm1;
     public SiLULayer act1;
     public WFCausalConv3D conv1;
     
-    public GNLayer3D norm2;
+    public LNLayer3D norm2;
     public SiLULayer act2;
     public WFCausalConv3D conv2;
     
@@ -56,13 +55,13 @@ public class WFResnet3DBlock extends Layer {
 
     public void initLayers() {
     	
-    	norm1 = new GNLayer3D(channel, depth, height, width, 32, network);
+    	norm1 = new LNLayer3D(channel, depth, height, width, network);
     	act1 = new SiLULayer(norm1);
     	conv1 = new WFCausalConv3D(channel, oChannel, depth, width, height, 3, 1, 1, true, network);
     	conv1.setUpdater(UpdaterFactory.create(this.network));
     	conv1.paramsInit = ParamsInit.silu;
     	
-    	norm2 = new GNLayer3D(conv1.oChannel, conv1.oDepth, conv1.oHeight, conv1.oWidth, 32, network);
+    	norm2 = new LNLayer3D(conv1.oChannel, conv1.oDepth, conv1.oHeight, conv1.oWidth, network);
     	act2 = new SiLULayer(norm2);
     	conv2 = new WFCausalConv3D(oChannel, oChannel, conv1.oDepth, conv1.oWidth, conv1.oHeight, 3, 1, 1, true, network);
     	conv2.setUpdater(UpdaterFactory.create(this.network));

@@ -7,9 +7,9 @@ import java.util.Map;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.active.SiLULayer;
-import com.omega.engine.nn.layer.opensora.vae.modules.GNLayer3D;
 import com.omega.engine.nn.layer.opensora.wfvae.modules.HaarWaveletTransform2D;
 import com.omega.engine.nn.layer.opensora.wfvae.modules.HaarWaveletTransform3D;
+import com.omega.engine.nn.layer.opensora.wfvae.modules.LNLayer3D;
 import com.omega.engine.nn.layer.opensora.wfvae.modules.WFCausalConv3D;
 import com.omega.engine.nn.layer.opensora.wfvae.modules.WFConv2D;
 import com.omega.engine.nn.layer.opensora.wfvae.modules.WFResnet2DBlock;
@@ -44,7 +44,7 @@ public class WFEncoder extends Layer {
 	public WFConv2D connect_l1;
 	public WFConv2D connect_l2;
 	
-	public GNLayer3D norm_out;
+	public LNLayer3D norm_out;
 	private SiLULayer act;
 	public WFCausalConv3D conv_out;
 	
@@ -97,7 +97,7 @@ public class WFEncoder extends Layer {
     	
     	mid = new WFEncoderMid(base_channels * 2 + energy_flow_hidden_size, base_channels * 4, down2.oDepth, down2.oHeight, down2.oWidth, network);
     	
-    	norm_out = new GNLayer3D(base_channels * 4, mid.oDepth, mid.oHeight, mid.oWidth, 32, network);
+    	norm_out = new LNLayer3D(base_channels * 4, mid.oDepth, mid.oHeight, mid.oWidth, network);
     	
     	act = new SiLULayer(network);
     	
@@ -186,12 +186,12 @@ public class WFEncoder extends Layer {
         ClipModelUtils.loadData(block.down1.conv.conv.bias, weightMap, "down1.0.bias");
         for(int i = 0;i<block.num_resblocks;i++) {
         	WFResnet2DBlock b2d = block.down1.resBlocks.get(i);
-        	b2d.norm1.gamma = ClipModelUtils.loadData(b2d.norm1.gamma, weightMap, 1, "down1."+(i+1)+".norm1.weight");
-        	b2d.norm1.beta = ClipModelUtils.loadData(b2d.norm1.beta, weightMap, 1, "down1."+(i+1)+".norm1.bias");
+        	b2d.norm1.norm.gamma = ClipModelUtils.loadData(b2d.norm1.norm.gamma, weightMap, 1, "down1."+(i+1)+".norm1.weight");
+        	b2d.norm1.norm.beta = ClipModelUtils.loadData(b2d.norm1.norm.beta, weightMap, 1, "down1."+(i+1)+".norm1.bias");
         	ClipModelUtils.loadData(b2d.conv1.weight, weightMap, "down1."+(i+1)+".conv1.weight");
         	ClipModelUtils.loadData(b2d.conv1.bias, weightMap, "down1."+(i+1)+".conv1.bias");
-        	b2d.norm2.gamma = ClipModelUtils.loadData(b2d.norm2.gamma, weightMap, 1, "down1."+(i+1)+".norm2.weight");
-        	b2d.norm2.beta = ClipModelUtils.loadData(b2d.norm2.beta, weightMap, 1, "down1."+(i+1)+".norm2.bias");
+        	b2d.norm2.norm.gamma = ClipModelUtils.loadData(b2d.norm2.norm.gamma, weightMap, 1, "down1."+(i+1)+".norm2.weight");
+        	b2d.norm2.norm.beta = ClipModelUtils.loadData(b2d.norm2.norm.beta, weightMap, 1, "down1."+(i+1)+".norm2.bias");
         	ClipModelUtils.loadData(b2d.conv2.weight, weightMap, "down1."+(i+1)+".conv2.weight");
         	ClipModelUtils.loadData(b2d.conv2.bias, weightMap, "down1."+(i+1)+".conv2.bias");
         }
@@ -279,13 +279,13 @@ public class WFEncoder extends Layer {
 
     	Tensor l1 = connect_l1.getOutput();
     	Tensor l2 = connect_l2.getOutput();
-    	
+
     	down1.forward(wavelet_transform_in.getOutput());
-    	
+//    	down1.getOutput().showDM("down1");
     	Tensor_OP().cat(down1.getOutput(), l1, h1);
 
     	down2.forward(h1);
-
+//    	down2.getOutput().showDM("down2");
     	Tensor_OP().cat(down2.getOutput(), l2, h2);
     	
     	mid.forward(h2);

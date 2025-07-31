@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MathUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
@@ -381,7 +382,6 @@ public class VideoDataLoaderEN extends BaseDataLoader {
         // TODO Auto-generated method stub
         /**
          * 加载input数据
-         *
          */
     	if (mean != null) {
         	VideoDataLoader.load(imgDirPath, extName, datas, indexs, batchSize, num_frames, input, true, mean, std);

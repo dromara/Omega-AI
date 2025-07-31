@@ -1,5 +1,6 @@
 package com.omega.engine.optimizer;
 
+import java.io.File;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -228,9 +229,13 @@ public class MBSGDOptimizer extends Optimizer {
         }
         float[] once = new float[3 * input.height * input.width];
         for (int b = 0; b < input.number; b++) {
+        	File dir = new File(outputPath + it + "_" + b + "/");
+        	if(!dir.exists()) {
+        		dir.mkdir();
+        	}
         	for(int d = 0;d<numFrames;d++) {
-        		System.arraycopy(input.data, b * input.onceSize + d * once.length, once, 0, once.length);
-                utils.createRGBImage(outputPath + it + "_" + b + "/" + d + ".png", "png", ImageUtils.color2rgb2(once, input.channel, input.height, input.width, true, mean, std), input.height, input.width, null, null);
+        		System.arraycopy(input.data, b * input.getOnceSize() + d * once.length, once, 0, once.length);
+                utils.createRGBImage(outputPath + it + "_" + b + "/" + d + ".png", "png", ImageUtils.color2rgb2(once, 3, input.height, input.width, true, mean, std), input.height, input.width, null, null);
         	}
         }
     }
@@ -4050,7 +4055,7 @@ public class MBSGDOptimizer extends Optimizer {
         }
     }
     
-    public void train_wfvae(VideoDataLoaderEN trainingData, LPIPS lpips, String showPath) {
+    public void train_wfvae(VideoDataLoaderEN trainingData, LPIPS lpips, String showPath,String weightPath) {
         // TODO Auto-generated method stub
         try {
 
@@ -4132,15 +4137,19 @@ public class MBSGDOptimizer extends Optimizer {
                      */
                     this.network.RUN_MODEL = RunModel.TEST;
                     Tensor output = network.forward(input);
-                    output.syncHost();
-                    output.data = MatrixOperation.clampSelf(output.data, -1, 1);
+                    /**
+                     * [B, C, T, H, W] > B, T, C, H, W
+                     */
+                    network.tensorOP.permute(output, input, new int[] {batchSize, channel, depth, height, width}, new int[] {batchSize, depth, channel, height, width}, new int[] {0, 2, 1, 3, 4});
+                    input.syncHost();
+                    input.data = MatrixOperation.clampSelf(input.data, -1, 1);
                     /**
                      * print image
                      */
-                    showVideos(showPath, depth, output, i + "", trainingData.mean, trainingData.std);
+                    showVideos(showPath, depth, input, i + "", trainingData.mean, trainingData.std);
                 }
-                if (i > 0 && i % 200 == 0) {
-                    String save_model_path = "/omega/models/wfvae_256_" + i + ".model";
+                if (i > 0 && i % 100 == 0) {
+                    String save_model_path = weightPath + "wfvae_256_" + i + ".model";
                     ModelUtils.saveModel(network, save_model_path);
                 }
             }
@@ -6379,8 +6388,7 @@ public class MBSGDOptimizer extends Optimizer {
             Tensor sin = cs[1];
             
             String[] labels = new String[batchSize];
-            int T = 1000;
-            //			float scale_factor = 0.143262f;
+
             Tensor t = new Tensor(batchSize, 1, 1, 1, true);
 
             Tensor noise = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
@@ -6466,7 +6474,7 @@ public class MBSGDOptimizer extends Optimizer {
                         this.currentError = MatrixOperation.sum(this.loss.data) / this.batchSize;
                     }
                     train_loss += this.currentError;
-                    String msg = "training[" + this.trainIndex + "]{" + it + "} (lr:" + this.network.learnRate + ") train_loss:" + this.currentError + " [costTime:" + (System.nanoTime() - start) / 1e6 + "ms.]";
+                    String msg = "training[" + this.trainIndex + "]{" + it + "/" + indexs.length + "} (lr:" + this.network.learnRate + ") train_loss:" + this.currentError + " [costTime:" + (System.nanoTime() - start) / 1e6 + "ms.]";
                     System.out.println(msg);
                     this.batchIndex++;
                     /**
@@ -6495,10 +6503,10 @@ public class MBSGDOptimizer extends Optimizer {
                     System.out.println("finish create.");
                     network.RUN_MODEL = RunModel.TRAIN;
                 }
-//                if (i > 0 && i % 100 == 0) {
-//                    String save_model_path = "/omega/models/anime_dit_" + i + ".model";
-//                    ModelUtils.saveModel(network, save_model_path);
-//                }
+                if (i > 0 && i % 100 == 0) {
+                    String save_model_path = "/omega/models/anime_dit_" + i + ".model";
+                    ModelUtils.saveModel(network, save_model_path);
+                }
                 System.out.println("training[" + this.trainIndex + "] train loss:{" + train_loss / indexs.length + "} ");
             }
             /**

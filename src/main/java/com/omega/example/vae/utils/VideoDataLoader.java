@@ -135,27 +135,31 @@ public class VideoDataLoader extends RecursiveAction {
     private void load() {
         for (int i = getStart(); i <= getEnd(); i++) {
         	
-        	Map<String, String> once = getDatas().get(i);
+        	int index = getIndexs()[i];
+        	
+        	Map<String, String> once = getDatas().get(index);
         	
         	String filename = once.get("filename");
         	
         	int num_frames = Integer.parseInt(once.get("num_frames"));
         	
-        	int startDepth = RandomUtils.randomInt(0, num_frames - depth - 1);
+        	int startDepth = RandomUtils.randomInt(0, num_frames - depth - 2);
         	
         	int onceLen = depth * 3 * getInput().height * getInput().width;
         	
         	for(int idx = 0;idx<depth;idx++) {
-        		String filePath = getPath() + "/" + filename + "/" + (startDepth + idx) + extName;
-//        		System.err.println(filePath);
-        		float[] data = null;
+    			String filePath = getPath() + "/" + filename + "/" + (startDepth + idx) + extName;
+    			float[] data = null;
                 if (mean != null) {
                     data = YoloImageUtils.loadImgDataToArray(filePath, normalization, mean, std);
                 } else {
                     data = YoloImageUtils.loadImgDataToArray(filePath, normalization);
                 }
+                if(data == null) {
+                	throw new RuntimeException(filePath + " is not extis.");
+                }
                 int start = i * onceLen + idx * 3 * getInput().height * getInput().width;
-                System.arraycopy(data, 0, getInput().data, start, 3 * getInput().height * getInput().width);
+                System.arraycopy(data, 0, getInput().data, start, data.length);
         	}
         	
         }

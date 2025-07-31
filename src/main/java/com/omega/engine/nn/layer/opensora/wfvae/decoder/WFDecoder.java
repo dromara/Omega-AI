@@ -1,21 +1,25 @@
 package com.omega.engine.nn.layer.opensora.wfvae.decoder;
 
-import com.omega.engine.nn.layer.Layer;
-import com.omega.engine.nn.layer.LayerType;
-import com.omega.engine.nn.layer.active.SiLULayer;
-import com.omega.engine.nn.layer.opensora.vae.modules.GNLayer3D;
-import com.omega.engine.nn.layer.opensora.wfvae.modules.*;
-import com.omega.engine.nn.network.CNN;
-import com.omega.engine.nn.network.Network;
-import com.omega.engine.tensor.Tensor;
-import com.omega.example.clip.utils.ClipModelUtils;
-import com.omega.example.transformer.utils.LagJsonReader;
-
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
+import com.omega.engine.nn.layer.Layer;
+import com.omega.engine.nn.layer.LayerType;
+import com.omega.engine.nn.layer.active.SiLULayer;
+import com.omega.engine.nn.layer.opensora.wfvae.modules.InverseHaarWaveletTransform2D;
+import com.omega.engine.nn.layer.opensora.wfvae.modules.InverseHaarWaveletTransform3D;
+import com.omega.engine.nn.layer.opensora.wfvae.modules.LNLayer3D;
+import com.omega.engine.nn.layer.opensora.wfvae.modules.WFCausalConv3D;
+import com.omega.engine.nn.layer.opensora.wfvae.modules.WFConv2D;
+import com.omega.engine.nn.layer.opensora.wfvae.modules.WFResnet3DBlock;
+import com.omega.engine.nn.network.CNN;
+import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
+import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
  * WFDecoder
@@ -50,7 +54,7 @@ public class WFDecoder extends Layer {
 	public WFDecoderConnect connect_l1;
 	public WFDecoderConnect connect_l2;
 	
-	public GNLayer3D norm_out;
+	public LNLayer3D norm_out;
 	private SiLULayer act;
 	public WFConv2D conv_out;
 	
@@ -114,7 +118,7 @@ public class WFDecoder extends Layer {
     		iw = b.oWidth;
     	}
     	
-    	norm_out = new GNLayer3D(base_channels, id, ih, iw, 32, network);
+    	norm_out = new LNLayer3D(base_channels, id, ih, iw, network);
     	
     	act = new SiLULayer(network);
     	
