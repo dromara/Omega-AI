@@ -308,11 +308,11 @@ public class WFVAETest {
 //        	createVideoDatasetCSV();
 //        	createVideoDatasetCSV2();
 
-//        	wf_vae_train();
+        	wf_vae_train();
 
 //			test_weight();
 
-			ImageUtils.createGifFromFolder("C:\\Temp\\gif", "C:\\Temp\\gif\\result.gif", 500, false);
+//			ImageUtils.createGifFromFolder("C:\\Temp\\gif", "C:\\Temp\\gif\\result.gif", 500, false);
 		} catch (Exception e) {
 			// TODO: handle exception
 			e.printStackTrace();
