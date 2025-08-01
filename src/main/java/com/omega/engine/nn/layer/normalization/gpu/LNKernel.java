@@ -59,6 +59,7 @@ public class LNKernel extends BaseKernel {
     private CUfunction backward_llm_function;
     
     private CUfunction forward_llmc_function;
+    private CUfunction forward_llmc_function2;
     /**
      * 反向传播方法
      */
@@ -352,6 +353,10 @@ public class LNKernel extends BaseKernel {
             }
             if(forward_llmc_function == null) {
             	forward_llmc_function = getCudaManager().getLocalFunctionByModule("LNKernel.cu", "layernorm_forward_kernel3_llm");
+            }
+            
+            if(forward_llmc_function2 == null) {
+            	forward_llmc_function2 = getCudaManager().getLocalFunctionByModule("LNKernel.cu", "layernorm_forward_kernel4_llm");
             }
         } catch (Exception e) {
             // TODO: handle exception
@@ -701,6 +706,32 @@ public class LNKernel extends BaseKernel {
             e.printStackTrace();
         }
     }
+    
+    public void forward_llmc(Tensor gamma, Tensor beta, Tensor input, Tensor output, float eps) {
+        try {
+            boolean check = checkBatch(input);
+            if (!check) {
+                initKernel();
+            }
+            /**
+             * float* __restrict__ out, float* __restrict__ mean, float* __restrict__ rstd,
+               const float*  __restrict__ inp, const float*  __restrict__ weight,
+               const float* __restrict__ bias, int N, int C
+             */
+            int block_size = 256;
+            int WARP_SIZE = 32;
+            int grid_size = ceilDiv(B * WARP_SIZE, block_size);
+            forwardLLMParameters = Pointer.to(Pointer.to(output.getGpuData()), Pointer.to(aten_mean), Pointer.to(aten_var), Pointer.to(input.getGpuData()), Pointer.to(gamma.getGpuData()), Pointer.to(beta.getGpuData()), Pointer.to(new float[]{eps}), Pointer.to(new int[]{B}), Pointer.to(new int[]{W}));
+            checkCUDA(cuLaunchKernel(forward_llmc_function2, grid_size, 1, 1,      // Grid dimension
+            		block_size, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    forwardLLMParameters, null // Kernel- and extra parameters
+            ));
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
 
     public void backward_llm(Tensor input, Tensor delta, Tensor diff, Tensor gamma, Tensor dgamma, Tensor dbeta) {
         try {
@@ -711,13 +742,7 @@ public class LNKernel extends BaseKernel {
             checkCUDA(JCuda.cudaMemset(scratch, 0, (1 + 2 * W) * Sizeof.FLOAT));
             //			if(backwardLLMParameters == null) {
             /**
-             * floatX* dinp, floatX* dweight, floatX* dbias, float* scratch,
 
-             const floatX* dout, const floatX* inp, const floatX* weight, const floatX* mean, const floatX* rstd,
-
-             int B, int T, int C
-
-             */
             /**
              * float* dinp, float* dweight, float* dbias,
 

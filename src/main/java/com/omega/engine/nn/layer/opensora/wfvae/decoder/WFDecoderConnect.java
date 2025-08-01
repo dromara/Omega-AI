@@ -160,11 +160,12 @@ public class WFDecoderConnect extends Layer {
     	conv.back(delta);
     	
     	Tensor d = conv.diff;
-    	
+//    	d.showDMByOffsetRed(0, 10, "1:");
     	for(int i = resBlocks.size() - 1;i>=0;i--) {
     		WFResnet3DBlock block = resBlocks.get(i);
     		block.back(d);
     		d = block.diff;
+//    		d.showDMByOffsetRed(0, 10, "2:");
     	}
 
     	this.diff = d;

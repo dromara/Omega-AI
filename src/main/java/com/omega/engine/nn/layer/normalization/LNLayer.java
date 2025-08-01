@@ -277,6 +277,7 @@ public class LNLayer extends NormalizationLayer {
 
     public void initBack(Tensor delta) {
         if (this.diff == null) {
+//        	delta.showShape("norm_delta");
             this.diff = new Tensor(delta.number, delta.channel, delta.height, delta.width, true);
         }
         if (this.diffGamma == null) {

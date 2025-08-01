@@ -265,6 +265,8 @@ public class WFVAE extends Network {
         vaeKernel.kl(mean, logvar, 1, kl_loss);
         
         if(encoder.getL1_coeffs() != null) {
+        	encoder.getL1_coeffs().showShape();
+        	decoder.getL1_coeffs().showShape();
         	 vaeKernel.l1_loss(encoder.getL1_coeffs(), decoder.getL1_coeffs(), wl_loss_l1);
              vaeKernel.l1_loss(encoder.getL2_coeffs(), decoder.getL2_coeffs(), wl_loss_l2);
         }

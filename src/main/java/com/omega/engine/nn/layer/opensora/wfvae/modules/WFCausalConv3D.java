@@ -383,9 +383,9 @@ public class WFCausalConv3D extends Layer {
                 }
             }
         }
-        if(this.pDiff == null || this.number != this.pDiff.number) {
-        	this.pDiff = new Tensor(number, channel * pDepth, pHeight, pWidth, true);
-        }
+//        if(this.pDiff == null || this.number != this.pDiff.number) {
+//        	this.pDiff = new Tensor(number, channel * pDepth, pHeight, pWidth, true);
+//        }
     }
     
     public void initBack(Tensor diff) {
@@ -472,9 +472,9 @@ public class WFCausalConv3D extends Layer {
              * diff[ko * oh * ow]
 
              */
-            kernel.dx(delta, weight, pDiff);
+            kernel.dx(delta, weight, pOutput);
 
-            paddingKernel.padding3dGrad_self(pDiff, diff, depth, padding3d);
+            paddingKernel.padding3dGrad_self(pOutput, diff, depth, padding3d);
 
             //			System.out.println(this.index+":"+diff.isZero()+":"+delta.isZero());
         }
@@ -482,12 +482,7 @@ public class WFCausalConv3D extends Layer {
     }
 
     public void diff(Tensor diff) {
-        // TODO Auto-generated method stub
-        //		long start = System.nanoTime();
-        //		if(oWidth == 7) {
-        //			System.out.println(JsonUtils.toJson(delta.syncHost()));
-        //
-        //		}
+        // TODO Auto-generated method stub	}
         if (!freeze) {
             /**
              * 计算deltaW
@@ -496,18 +491,17 @@ public class WFCausalConv3D extends Layer {
              * im2col(input)T[oh * ow * C * kh * kw]
              */
             kernel.dw(pOutput, delta, diffW);
+//            diffW.showDMByOffsetRed(0, 10, "diffW");
         }
-        //		diffW.showDM();
-        //		System.out.println("===========");
         /**
          * 计算deltaB
          */
         if (this.hasBias) {
-            biasKernel.backwardConvBias(diffB, delta);
+            biasKernel.backwardConv3DBias(oDepth, diffB, delta);
+//            diffB.showDMByOffsetRed(0, 10, "diffB");
         }
         /**
          * 计算diff
-
          */
         if (PROPAGATE_DOWN || this.network.PROPAGATE_DOWN) {
             /**
@@ -516,15 +510,17 @@ public class WFCausalConv3D extends Layer {
              * a[c * kh * kw * oh * ow]
              * (weight)T[c * kh * kw * ko]
              * diff[ko * oh * ow]
-
              */
-            kernel.dx(delta, weight, pDiff);
+//        	output.showShape("output.shape");
+//        	delta.showShape("delta.shape");
+//        	delta.showDMByOffsetRed(0, 10, "delta");
+            kernel.dx(delta, weight, pOutput);
+//            pOutput.showDMByOffsetRed(0, 10, "pDiff");
 //            pDiff.showDM("pDiff");
-            paddingKernel.padding3dGrad_self(pDiff, diff, depth, padding3d);
-            
-            //			System.out.println(this.index+":"+diff.isZero()+":"+delta.isZero());
+            paddingKernel.padding3dGrad_self(pOutput, diff, depth, padding3d);
+
         }
-        //		System.out.println("back:"+(System.nanoTime() - start) / 1e6 + "ms.");
+
     }
 
     @Override

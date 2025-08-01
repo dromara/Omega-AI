@@ -175,9 +175,9 @@ public class BiasKernel extends BaseKernel {
              * float *bias_updates, float *delta, int batch, int n, int size
 
              */
-            backConvKernelParameters = Pointer.to(Pointer.to(diffB.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(new int[]{delta.getNumber()}), Pointer.to(new int[]{delta.getChannel()}), Pointer.to(new int[]{delta.height * delta.width}));
+            backConvKernelParameters = Pointer.to(Pointer.to(diffB.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(new int[]{delta.number}), Pointer.to(new int[]{delta.channel}), Pointer.to(new int[]{delta.height * delta.width}));
             this.N = delta.number;
-            cuLaunchKernel(back_conv_function, delta.getChannel(), 1, 1,      // Grid dimension
+            cuLaunchKernel(back_conv_function, delta.channel, 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     backConvKernelParameters, null // Kernel- and extra parameters

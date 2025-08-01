@@ -112,30 +112,31 @@ public class LNLayer3D extends Layer {
     }
     
     public static void main(String[] args) {
-    	int batchSize = 2;
-    	int channel = 3;
-    	int numFrames = 2;
-    	int imageSize = 8;
-    	Tensor input = new Tensor(batchSize, channel * numFrames, imageSize, imageSize, true);
+    	int N = 2;
+		int C = 16;
+		int D = 3;
+		int H = 32;
+		int W = 32;
+    	Tensor input = new Tensor(N, C * D, H, W, true);
     	
         Transformer tf = new Transformer();
         tf.CUDNN = true;
 //        float[] data = RandomUtils.order(input.dataLength, 0.1f, 0.1f);
-        String inputsPath = "D:\\models\\inputs.json";
+        String inputsPath = "D:\\models\\x2.json";
 	    Map<String, Object> datas2 = LagJsonReader.readJsonFileSmallWeight(inputsPath);
-	    ClipModelUtils.loadData(input, datas2, "inputs", 5);
+	    ClipModelUtils.loadData(input, datas2, "x2", 5);
 	    
-        LNLayer3D norm = new LNLayer3D(channel, numFrames, imageSize, imageSize, tf);
+        LNLayer3D norm = new LNLayer3D(C, D, H, W, tf);
         
-    	String path = "H:\\model\\LNLayer3D.json";
+    	String path = "D:\\models\\LNLayer3D.json";
     	loadWeight(LagJsonReader.readJsonFileSmallWeight(path), norm, true);
         
         for (int i = 0; i < 10; i++) {
         	norm.forward(input);
         	norm.getOutput().showShape();
         	norm.getOutput().showDM();
-//            mal.back(delta);
-//            mal.diff.showDM();
+        	norm.back(input);
+        	norm.diff.showDM();
         }
     }
     
@@ -225,7 +226,6 @@ public class LNLayer3D extends Layer {
         // TODO Auto-generated method stub
         /**
          * 参数初始化
-
          */
         this.init(input);
         /**
@@ -246,12 +246,10 @@ public class LNLayer3D extends Layer {
         initBack();
         /**
          * 设置梯度
-
          */
         this.setDelta(delta);
         /**
          * 计算梯度
-
          */
         this.diff();
     }

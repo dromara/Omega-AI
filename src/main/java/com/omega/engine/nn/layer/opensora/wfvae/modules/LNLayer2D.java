@@ -2,8 +2,8 @@ package com.omega.engine.nn.layer.opensora.wfvae.modules;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.Map;
 
-import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.normalization.BNType;
@@ -11,6 +11,8 @@ import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
+import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
  * LNLayer2D
@@ -79,24 +81,41 @@ public class LNLayer2D extends Layer {
         // TODO Auto-generated method stub
     }
     
+    public static void loadWeight(Map<String, Object> weightMap, LNLayer2D block, boolean showLayers) {
+        if (showLayers) {
+            for (String key : weightMap.keySet()) {
+                System.out.println(key);
+            }
+        }
+        block.norm.gamma = ClipModelUtils.loadData(block.norm.gamma, weightMap, 1, "norm.weight");
+        block.norm.beta = ClipModelUtils.loadData(block.norm.beta, weightMap, 1, "norm.bias");
+    }
+    
     public static void main(String[] args) {
-    	int batchSize = 2;
-    	int channel = 3;
-    	int numFrames = 2;
-    	int imageSize = 8;
-    	Tensor input = new Tensor(batchSize, channel * numFrames, imageSize, imageSize, true);
+    	int N = 2;
+		int C = 16;
+		int H = 32;
+		int W = 32;
+    	Tensor input = new Tensor(N, C, H, W, true);
     	
         Transformer tf = new Transformer();
         tf.CUDNN = true;
-        float[] data = RandomUtils.order(input.dataLength, 0.1f, 0.1f);
-        Tensor input2 = new Tensor(batchSize, channel * numFrames, imageSize, imageSize, data, true);
-        LNLayer2D norm = new LNLayer2D(channel, imageSize, imageSize, tf);
+//        float[] data = RandomUtils.order(input.dataLength, 0.1f, 0.1f);
+        String inputsPath = "D:\\models\\x2.json";
+	    Map<String, Object> datas2 = LagJsonReader.readJsonFileSmallWeight(inputsPath);
+	    ClipModelUtils.loadData(input, datas2, "x2");
+	    
+        LNLayer2D norm = new LNLayer2D(C, H, W, tf);
+        
+    	String path = "D:\\models\\LNLayer3D.json";
+    	loadWeight(LagJsonReader.readJsonFileSmallWeight(path), norm, true);
+        
         for (int i = 0; i < 10; i++) {
-        	norm.forward(input2);
+        	norm.forward(input);
         	norm.getOutput().showShape();
         	norm.getOutput().showDM();
-//            mal.back(delta);
-//            mal.diff.showDM();
+        	norm.back(input);
+        	norm.diff.showDM();
         }
     }
     

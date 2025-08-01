@@ -360,6 +360,7 @@ public class WFDecoder extends Layer {
     public void output() {
         // TODO Auto-generated method stub
 //    	input.showDM("input");
+//    	input.showShape("input");
     	conv_in.forward(input);
 //    	conv_in.getOutput().showDM("conv_in");
     	mid.forward(conv_in.getOutput());
@@ -376,8 +377,11 @@ public class WFDecoder extends Layer {
 
     	Tensor_OP().getByChannel(up2.getOutput(), connect_l1_in, new int[] {number, up2.oChannel, 1, up2.oDepth * up2.oHeight * up2.oWidth}, base_channels * 4);
     	connect_l1.forward(connect_l1_in);
+    	
     	l1_coeffs = connect_l1.getOutput();
 
+//    	l1_coeffs.showShape("l1_coeffs");
+    	
     	Tensor_OP().addByChannel(l1_coeffs, l2, new int[] {number, connect_l1.oChannel, 1, connect_l1.oDepth * connect_l1.oHeight * connect_l1.oWidth}, 0);  //l1_coeffs[:, :3] = l1_coeffs[:, :3] + l2
     	inverse_wavelet_transform_l1.forward(l1_coeffs);
     	Tensor l1 = inverse_wavelet_transform_l1.getOutput();
@@ -400,6 +404,7 @@ public class WFDecoder extends Layer {
     	inverse_wavelet_transform_out.forward(conv_out.getOutput());
 //    	inverse_wavelet_transform_out.getOutput().showDM("final");
     	this.output = inverse_wavelet_transform_out.getOutput();
+//    	this.output.showShape("out");
     }
 
     @Override

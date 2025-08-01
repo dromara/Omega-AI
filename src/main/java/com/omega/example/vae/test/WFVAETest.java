@@ -150,6 +150,67 @@ public class WFVAETest {
         
 	}
 	
+	public static void checkDataset() {
+		String dataPath = "D:\\dataset\\pexels_45k\\train_set.csv";
+        String imgDirPath = "D:\\dataset\\t2v_dataset\\";
+        CsvReader reader = CsvUtil.getReader();
+        CsvData data = reader.read(FileUtil.file(dataPath));
+
+        List<CsvRow> rows = data.getRows();
+
+        File root = new File(imgDirPath);
+        
+        if(root.isDirectory()) {
+
+        	File[] files = root.listFiles();
+
+        	for(File file:files) {
+        		String filename = file.getName();
+        		CsvRow hit = findRow(rows, filename);
+        		if(hit != null) {
+        			File once = new File(imgDirPath + filename);
+        			if(once.isDirectory()) {
+        				Integer num_frames = Integer.parseInt(hit.get(2));
+//        				System.err.println(num_frames+":"+once.listFiles().length);
+        				if(num_frames != once.listFiles().length) {
+        					System.err.println(filename);
+        				}
+        			}
+        		}
+        	}
+        }
+        System.out.println("check finish.");
+	}
+	
+	public static void checkDataset2() {
+		String dataPath = "D:\\dataset\\pexels_45k\\train_set.csv";
+        String imgDirPath = "D:\\dataset\\t2v_dataset\\";
+        CsvReader reader = CsvUtil.getReader();
+        CsvData data = reader.read(FileUtil.file(dataPath));
+
+        List<CsvRow> rows = data.getRows();
+
+        File root = new File(imgDirPath);
+        
+        if(root.isDirectory()) {
+        	File[] files = root.listFiles();
+        	for(CsvRow row:rows) {
+        		String fn = row.get(0);
+        		boolean extis = false;
+        		for(File file:files) {
+        			if(fn.contains(file.getName())) {
+        				extis = true;
+        			}
+        		}
+        		if(!extis) {
+        			System.err.println(row.get(8));
+        		}
+        	}
+        	
+        }
+        System.out.println("check finish.");
+	}
+	
 	public static void wf_vae_train() throws Exception {
 		
 		String dataPath = "D:\\dataset\\pexels_45k\\train_set.csv";
@@ -227,7 +288,7 @@ public class WFVAETest {
 		String dataPath = "D:\\dataset\\pexels_45k\\train_set.csv";
         String imgDirPath = "D:\\dataset\\t2v_dataset\\";
         int maxContextLen = 77;
-        int batchSize = 2;
+        int batchSize = 1;
        
         float[] mean = new float[]{0.5f, 0.5f, 0.5f};
         float[] std = new float[]{0.5f, 0.5f, 0.5f};
@@ -308,9 +369,12 @@ public class WFVAETest {
 //        	createVideoDatasetCSV();
 //        	createVideoDatasetCSV2();
 
-        	wf_vae_train();
+//        	wf_vae_train();
 
-//			test_weight();
+//        	checkDataset();
+//        	checkDataset2();
+        	
+			test_weight();
 
 //			ImageUtils.createGifFromFolder("C:\\Temp\\gif", "C:\\Temp\\gif\\result.gif", 500, false);
 		} catch (Exception e) {

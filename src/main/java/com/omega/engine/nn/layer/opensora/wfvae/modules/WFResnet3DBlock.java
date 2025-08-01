@@ -5,7 +5,6 @@ import java.io.RandomAccessFile;
 import java.util.Map;
 
 import com.omega.common.utils.RandomUtils;
-import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.ParamsInit;
@@ -175,14 +174,17 @@ public class WFResnet3DBlock extends Layer {
     @Override
     public void diff() {
         // TODO Auto-generated method stub
-    	this.tmp_diff = CUDAMemoryManager.getCache("opensora_block_tmp_diff", conv2.input.shape());
-    	conv2.back(delta, tmp_diff);
+//    	this.tmp_diff = CUDAMemoryManager.getCache("opensora_block_tmp_diff", conv2.input.shape());
+//    	delta.showShape("delta---->");
+    	conv2.back(delta, conv2.input);
+//    	conv2.diff.showDMByOffsetRed(0, 10, "conv2:");
     	act2.back(conv2.diff);
 //    	this.tmp_norm_diff = CUDAMemoryManager.getCache("opensora_block_tmp_norm_diff", act2.input.shape());
+//    	act2.diff.showDMByOffsetRed(0, 10, "act2:");
     	norm2.back(act2.diff, act2.diff);
     	
-    	this.tmp_diff = CUDAMemoryManager.getCache("opensora_block_tmp_diff", conv1.input.shape());
-    	conv1.back(norm2.diff, tmp_diff);
+//    	this.tmp_diff = CUDAMemoryManager.getCache("opensora_block_tmp_diff", conv1.input.shape());
+    	conv1.back(norm2.diff, conv1.input);
     	act1.back(conv1.diff);
     	norm1.back(act1.diff, act1.diff);
     	

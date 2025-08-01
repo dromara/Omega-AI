@@ -9,7 +9,9 @@ import java.util.Map;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
+import com.omega.engine.nn.layer.dit.modules.DiTSimpleHeadLayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
@@ -44,6 +46,11 @@ public class DiTOrgMoudue2 extends Layer {
     private Tensor dtext;
     
     private float y_drop_prob = 0.0f;
+    
+    private boolean sra = false;
+    public DiTSimpleHeadLayer ap_head;
+    private int ad = 0;
+    public Tensor xr;
     
     public DiTOrgMoudue2(int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio, boolean learnSigma, float y_drop_prob, Network network) {
 		this.network = network;
@@ -88,6 +95,11 @@ public class DiTOrgMoudue2 extends Layer {
         if(learnSigma) {
         	os = inChannel * 2;
         }
+        
+        if(sra) {
+        	this.ap_head = new DiTSimpleHeadLayer(hiddenSize, hiddenSize, true, network);
+        }
+
         this.oChannel = os;
         finalLayer = new DiTFinalLayer(patchSize, hiddenSize, os, patchEmbd.oChannel, true, network);
 
@@ -202,6 +214,16 @@ public class DiTOrgMoudue2 extends Layer {
     		DiTOrgBlock block = blocks.get(i);
     		block.forward(x, timeEmbd.getOutput(), labelEmbd.getOutput());
     		x = block.getOutput();
+    		if(sra) {
+    			if(i + 1 == ad){
+        			if(network.RUN_MODEL == RunModel.TRAIN) {
+        				ap_head.forward(x);
+            			xr = ap_head.getOutput();
+        			}else {
+            			xr = x;
+        			}
+        		}
+    		}
     	}
 
     	finalLayer.forward(x, timeEmbd.getOutput());
@@ -234,6 +256,16 @@ public class DiTOrgMoudue2 extends Layer {
     		block.forward(x, timeEmbd.getOutput(), labelEmbd.getOutput(), cos, sin);
     		x = block.getOutput();
 //    		x.showDM("x["+i+"]");
+    		if(sra) {
+    			if(i + 1 == ad){
+        			if(network.RUN_MODEL == RunModel.TRAIN) {
+        				ap_head.forward(x);
+            			xr = ap_head.getOutput();
+        			}else {
+            			xr = x;
+        			}
+        		}
+    		}
     	}
     	
     	finalLayer.forward(x, timeEmbd.getOutput());
@@ -459,6 +491,10 @@ public class DiTOrgMoudue2 extends Layer {
     	
     	labelEmbd.update();
     	
+    	if(sra) {
+    		ap_head.update();
+    	}
+    	
     	for(int i = 0;i<depth;i++) {
     		blocks.get(i).update();
     	}
@@ -500,6 +536,10 @@ public class DiTOrgMoudue2 extends Layer {
 
     	labelEmbd.saveModel(outputStream);
     	
+    	if(sra) {
+    		labelEmbd.saveModel(outputStream);
+    	}
+    	
     	for(int i = 0;i<depth;i++) {
     		blocks.get(i).saveModel(outputStream);
     	}
@@ -513,6 +553,10 @@ public class DiTOrgMoudue2 extends Layer {
     	timeEmbd.loadModel(inputStream);
     	
     	labelEmbd.loadModel(inputStream);
+    	
+    	if(sra) {
+    		labelEmbd.loadModel(inputStream);
+    	}
     	
     	for(int i = 0;i<depth;i++) {
     		blocks.get(i).loadModel(inputStream);
