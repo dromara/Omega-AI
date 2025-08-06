@@ -10,7 +10,7 @@ import com.omega.engine.loss.gpu.SmoothL1Kernel;
 import com.omega.engine.nn.layer.InputLayer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.SoftmaxWithCrossEntropyLayer;
-import com.omega.engine.nn.layer.dit.DiTOrgMoudue2;
+import com.omega.engine.nn.layer.dit.mmdit.MMDiTMoudueRoPE;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 
@@ -22,7 +22,7 @@ import jcuda.runtime.JCuda;
  *
  * @author Administrator
  */
-public class DiT_ORG2 extends Network {
+public class MMDiT_RoPE extends Network {
 	
     public int inChannel;
     public int width;
@@ -40,36 +40,13 @@ public class DiT_ORG2 extends Network {
     private float y_drop_prob = 0.0f;
     
     private InputLayer inputLayer;
-    public DiTOrgMoudue2 main;
-    
-    private int ad = 0;
+    public MMDiTMoudueRoPE main;
     
     private SmoothL1Kernel smoothL1Kernel;
     
-    public DiT_ORG2(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio,boolean learnSigma, float y_drop_prob) {
+    public MMDiT_RoPE(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio,boolean learnSigma, float y_drop_prob) {
         this.lossFunction = LossFactory.create(lossType, this);
         this.updater = updater;
-        this.inChannel = inChannel;
-        this.width = width;
-        this.height = height;
-        this.patchSize = patchSize;
-        this.headNum = headNum;
-        this.hiddenSize = hiddenSize;
-        this.depth = depth;
-        this.timeSteps = timeSteps;
-        this.textEmbedDim = textEmbedDim;
-        this.maxContextLen = maxContextLen;
-        this.mlpRatio = mlpRatio;
-        this.learnSigma = learnSigma;
-        this.y_drop_prob = y_drop_prob;
-        this.time = (width / patchSize) * (height / patchSize);
-        initLayers();
-    }
-    
-    public DiT_ORG2(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio,boolean learnSigma, float y_drop_prob, int ad) {
-        this.lossFunction = LossFactory.create(lossType, this);
-        this.updater = updater;
-        this.ad = ad;
         this.inChannel = inChannel;
         this.width = width;
         this.height = height;
@@ -91,22 +68,10 @@ public class DiT_ORG2 extends Network {
     	
         this.inputLayer = new InputLayer(inChannel, height, width);
         
-        if(ad > 0) {
-        	main = new DiTOrgMoudue2(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, maxContextLen, textEmbedDim, mlpRatio, learnSigma, y_drop_prob, true, ad, this);
-        }else {
-            main = new DiTOrgMoudue2(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, maxContextLen, textEmbedDim, mlpRatio, learnSigma, y_drop_prob, this);
-        }
+        main = new MMDiTMoudueRoPE(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, maxContextLen, textEmbedDim, mlpRatio, learnSigma, y_drop_prob, this);
         
         this.addLayer(inputLayer);
         this.addLayer(main);
-    }
-    
-    public Tensor getXR() {
-    	return main.xr;
-    }
-    
-    public void setXRDelta(Tensor xrDelta) {
-    	main.ap_head.back(xrDelta);
     }
     
     @Override
@@ -153,16 +118,7 @@ public class DiT_ORG2 extends Network {
         return null;
     }
 
-    public Tensor forward(Tensor input, Tensor t, Tensor context) {
-        /**
-         * 设置输入数据
-         */
-        this.setInputData(input);
-        this.main.forward(input, t, context);
-        return this.main.getOutput();
-    }
-    
-    public Tensor forward(Tensor input, Tensor t, Tensor context,Tensor cos,Tensor sin) {
+    public Tensor forward(Tensor input, Tensor t, Tensor context, Tensor cos, Tensor sin) {
         /**
          * 设置输入数据
          */
@@ -177,41 +133,31 @@ public class DiT_ORG2 extends Network {
     @Override
     public void back(Tensor lossDiff) {
         // TODO Auto-generated method stub
-        //		lossDiff.showDMByNumber(0);
         initBack();
         /**
          * 设置误差
          * 将误差值输入到最后一层
          */
-        //		lossDiff.showDMByOffset(0, 100, "lossDiff");
         this.setLossDiff(lossDiff);
-        //		lossDiff.showDM("lossDiff");
         this.main.back(lossDiff);
-        //		this.unet.diff.showDMByOffset(0, 100, "unet.diff");
     }
     
-    public void back(Tensor lossDiff,Tensor cos, Tensor sin) {
+    public void back(Tensor lossDiff, Tensor cos, Tensor sin) {
         // TODO Auto-generated method stub
-        //		lossDiff.showDMByNumber(0);
         initBack();
         /**
          * 设置误差
          * 将误差值输入到最后一层
          */
-        //		lossDiff.showDMByOffset(0, 100, "lossDiff");
         this.setLossDiff(lossDiff);
-        //		lossDiff.showDM("lossDiff");
         this.main.back(lossDiff, cos, sin);
-        //		this.unet.diff.showDMByOffset(0, 100, "unet.diff");
     }
-
+    
     @Override
     public Tensor loss(Tensor output, Tensor label) {
         // TODO Auto-generated method stub
         switch (this.getLastLayer().getLayerType()) {
             case softmax:
-                //			SoftmaxLayer softmaxLayer = (SoftmaxLayer)this.getLastLayer();
-                //			softmaxLayer.setCurrentLabel(label);
                 break;
             case softmax_cross_entropy:
                 SoftmaxWithCrossEntropyLayer softmaxWithCrossEntropyLayer = (SoftmaxWithCrossEntropyLayer) this.getLastLayer();

@@ -1,4 +1,4 @@
-package com.omega.engine.nn.layer.dit;
+package com.omega.engine.nn.layer.dit.mmdit;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -6,12 +6,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
-import com.omega.engine.nn.layer.dit.modules.DiTSimpleHeadLayer;
+import com.omega.engine.nn.layer.dit.DiTCaptionEmbeddingLayer;
+import com.omega.engine.nn.layer.dit.DiTFinalLayer;
+import com.omega.engine.nn.layer.dit.DiTPatchEmbeddingLayer;
+import com.omega.engine.nn.layer.dit.DiTTimeEmbeddingLayer;
 import com.omega.engine.nn.network.Network;
-import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
@@ -19,7 +22,7 @@ import com.omega.engine.updater.UpdaterFactory;
  * DiT_Block
  * @author Administrator
  */
-public class DiTOrgMoudue2 extends Layer {
+public class MMDiTMoudue extends Layer {
 	
 	public int inChannel;
     public int width;
@@ -35,24 +38,18 @@ public class DiTOrgMoudue2 extends Layer {
     private boolean learnSigma = true;
     
     public DiTPatchEmbeddingLayer patchEmbd;
-    public DiTOrgTimeEmbeddingLayer timeEmbd;
+    public DiTTimeEmbeddingLayer timeEmbd;
     public DiTCaptionEmbeddingLayer labelEmbd;
-    public List<DiTOrgBlock> blocks;
+    public List<DiTJoinBlock> blocks;
     public DiTFinalLayer finalLayer;
     
     private Tensor posEmbd;
     
     private Tensor dtc;
-    private Tensor dtext;
-    
+
     private float y_drop_prob = 0.0f;
     
-    private boolean sra = false;
-    public DiTSimpleHeadLayer ap_head;
-    private int ad = 0;
-    public Tensor xr;
-    
-    public DiTOrgMoudue2(int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio, boolean learnSigma, float y_drop_prob, Network network) {
+    public MMDiTMoudue(int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio, boolean learnSigma, float y_drop_prob, Network network) {
 		this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
@@ -76,57 +73,29 @@ public class DiTOrgMoudue2 extends Layer {
 		this.oHeight = height;
 		this.oWidth = width;
     }
-    
-    public DiTOrgMoudue2(int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio, boolean learnSigma, float y_drop_prob,boolean sra, int ad, Network network) {
-		this.network = network;
-        if (this.updater == null) {
-            this.setUpdater(UpdaterFactory.create(network));
-        }
-        this.sra = sra;
-        this.ad = ad;
-        this.y_drop_prob = y_drop_prob;
-    	this.inChannel = inChannel;
-		this.width = width;
-		this.height = height;
-		this.patchSize = patchSize;
-		this.headNum = headNum;
-		this.hiddenSize = hiddenSize;
-		this.depth = depth;
-		this.timeSteps = timeSteps;
-		this.textEmbedDim = textEmbedDim;
-		this.maxContextLen = maxContextLen;
-		this.mlpRatio = mlpRatio;
-		this.learnSigma = learnSigma;
-		this.headNum = headNum;
-//		this.bias = bias;
-		this.initLayers();
-		this.oHeight = height;
-		this.oWidth = width;
-    }
-    
+
     public void initLayers() {
     	
     	patchEmbd = new DiTPatchEmbeddingLayer(inChannel, width, hiddenSize, patchSize, true, network);
          
-        timeEmbd = new DiTOrgTimeEmbeddingLayer(timeSteps, 256, hiddenSize, true, network);
+        timeEmbd = new DiTTimeEmbeddingLayer(timeSteps, 256, hiddenSize, true, network);
         
         labelEmbd = new DiTCaptionEmbeddingLayer(textEmbedDim, hiddenSize, maxContextLen, y_drop_prob, true, network);
         
-        blocks = new ArrayList<DiTOrgBlock>();
+        blocks = new ArrayList<DiTJoinBlock>();
          
         for(int i = 0;i<depth;i++) {
-        	DiTOrgBlock block = new DiTOrgBlock(hiddenSize, hiddenSize, hiddenSize, patchEmbd.oChannel, maxContextLen, mlpRatio * hiddenSize, headNum, true, true, network);
+        	boolean pre_only = false;
+        	if(i == depth - 1) {
+        		pre_only = true;
+        	}
+        	DiTJoinBlock block = new DiTJoinBlock(hiddenSize, hiddenSize, mlpRatio, headNum, patchEmbd.oChannel, maxContextLen, false, false, pre_only, network);
 	        blocks.add(block);
         }
         int os = inChannel;
         if(learnSigma) {
         	os = inChannel * 2;
         }
-        
-        if(sra) {
-        	this.ap_head = new DiTSimpleHeadLayer(hiddenSize, hiddenSize, true, false, network);
-        }
-
         this.oChannel = os;
         finalLayer = new DiTFinalLayer(patchSize, hiddenSize, os, patchEmbd.oChannel, true, network);
 
@@ -208,9 +177,7 @@ public class DiTOrgMoudue2 extends Layer {
         // TODO Auto-generated method stub
     	if(dtc == null || dtc.number != timeEmbd.getOutput().number) {
     		dtc = Tensor.createGPUTensor(dtc, timeEmbd.getOutput().shape(), true);
-    		dtext = Tensor.createGPUTensor(dtext, timeEmbd.getOutput().number * maxContextLen, 1, 1, hiddenSize, true);
     	}else {
-    		dtext.clearGPU();
     		dtc.clearGPU();
     	}
     }
@@ -237,20 +204,14 @@ public class DiTOrgMoudue2 extends Layer {
 
     	Tensor x = patchEmbd.getOutput().view(patchEmbd.getOutput().number * patchEmbd.getOutput().channel, 1, 1, patchEmbd.getOutput().width);
     	
+    	Tensor context = labelEmbd.getOutput();
+    	
     	for(int i = 0;i<depth;i++) {
-    		DiTOrgBlock block = blocks.get(i);
-    		block.forward(x, timeEmbd.getOutput(), labelEmbd.getOutput());
+    		DiTJoinBlock block = blocks.get(i);
+    		block.forward(x, context, timeEmbd.getOutput());
     		x = block.getOutput();
-    		if(sra) {
-    			if(i + 1 == ad){
-        			if(network.RUN_MODEL == RunModel.TRAIN) {
-        				ap_head.forward(x);
-            			xr = ap_head.getOutput();
-        			}else {
-            			xr = x;
-        			}
-        		}
-    		}
+    		context = block.context_block.getOutput();
+//    		System.out.println(context);
     	}
 
     	finalLayer.forward(x, timeEmbd.getOutput());
@@ -268,49 +229,6 @@ public class DiTOrgMoudue2 extends Layer {
     	
     }
     
-    public void output(Tensor tc,Tensor text,Tensor cos,Tensor sin) {
-    	
-    	patchEmbd.forward(input);
-
-    	timeEmbd.forward(tc);
-    	
-    	labelEmbd.forward(text);
-    	
-    	Tensor x = patchEmbd.getOutput().view(patchEmbd.getOutput().number * patchEmbd.getOutput().channel, 1, 1, patchEmbd.getOutput().width);
-    	
-    	for(int i = 0;i<depth;i++) {
-    		DiTOrgBlock block = blocks.get(i);
-    		block.forward(x, timeEmbd.getOutput(), labelEmbd.getOutput(), cos, sin);
-    		x = block.getOutput();
-//    		x.showDM("x["+i+"]");
-    		if(sra) {
-    			if(i + 1 == ad){
-        			if(network.RUN_MODEL == RunModel.TRAIN) {
-        				ap_head.forward(x);
-            			xr = ap_head.getOutput();
-        			}else {
-            			xr = x;
-        			}
-        		}
-    		}
-    	}
-    	
-    	finalLayer.forward(x, timeEmbd.getOutput());
-    	
-    	/**
-    	 * unpatchify
-    	 * x: (N, T, patch_size**2 * C)
-         * imgs: (N, C, H, W)
-    	 */
-    	int h = height/patchSize;
-    	int w = width/patchSize;
-
-    	int[] xShape = new int[] {number, h, w, patchSize, patchSize, oChannel};
-    	int[] yShape = new int[] {number, oChannel, h, patchSize, w, patchSize};
-    	Tensor_OP().permute(finalLayer.getOutput(), this.output, xShape, yShape, new int[] {0, 5, 1, 3, 2, 4});
-    	
-    }
-
     @Override
     public Tensor getOutput() {
         // TODO Auto-generated method stub
@@ -319,7 +237,6 @@ public class DiTOrgMoudue2 extends Layer {
 
     @Override
     public void diff() {
-
     	/**
     	 * unpatchify back
     	 */
@@ -332,17 +249,16 @@ public class DiTOrgMoudue2 extends Layer {
     	finalLayer.back(finalLayer.getOutput(), dtc);
 
     	Tensor dy = finalLayer.diff;
-
+    	Tensor dcx = null;
+    	
      	for(int i = depth - 1;i>=0;i--) {
-     		if(i + 1 == ad) {
-     			Tensor_OP().add(dy, ap_head.diff, dy);
-     		}
-     		DiTOrgBlock block = blocks.get(i);
-    		block.back(dy, dtc, dtext);
+     		DiTJoinBlock block = blocks.get(i);
+    		block.back(dy, dcx, dtc);
     		dy = block.diff;
+    		dcx = block.context_block.diff;
     	}
      	
-     	labelEmbd.back(dtext);
+     	labelEmbd.back(dcx);
      	
 //     	dtc.showDM("dtc");
      	timeEmbd.back(dtc);
@@ -350,40 +266,6 @@ public class DiTOrgMoudue2 extends Layer {
      	patchEmbd.back(dy);
     }
     
-    public void diff(Tensor cos,Tensor sin) {
-        // TODO Auto-generated method stub
-//    	delta.showDM("total-delta");
-    	/**
-    	 * unpatchify back
-    	 */
-    	int h = height/patchSize;
-    	int w = width/patchSize;
-    	int[] yShape = new int[] {number, oChannel, h, patchSize, w, patchSize};
-    	int[] xShape = new int[] {number, h, w, patchSize, patchSize, oChannel};
-    	Tensor_OP().permute(delta, finalLayer.getOutput(), yShape, xShape, new int[] {0, 2, 4, 3, 5, 1});
-    	
-    	finalLayer.back(finalLayer.getOutput(), dtc);
-    	
-    	Tensor dy = finalLayer.diff;
-//    	dy.showDM("in-block-diff");
-     	for(int i = depth - 1;i>=0;i--) {
-     		if(i + 1 == ad) {
-     			Tensor_OP().add(dy, ap_head.diff, dy);
-     		}
-     		DiTOrgBlock block = blocks.get(i);
-    		block.back(dy, dtc, dtext, cos, sin);
-    		dy = block.diff;
-//    		dy.showDM("in-block-diff");
-    	}
-     	
-     	labelEmbd.back(dtext);
-     	
-     	timeEmbd.back(dtc);
-//     	dy.showDM("block-diff");
-     	patchEmbd.back(dy);
-     	
-    }
-
     @Override
     public void forward() {
         // TODO Auto-generated method stub
@@ -456,28 +338,6 @@ public class DiTOrgMoudue2 extends Layer {
          */
         this.output(tc, text);
     }
-    
-    /**
-     * 
-     * @param input
-     * @param tc time cond
-     * @param text
-     */
-    public void forward(Tensor input,Tensor tc,Tensor text, Tensor cos, Tensor sin) {
-        // TODO Auto-generated method stub
-        /**
-         * 设置输入
-         */
-        this.setInput(input);
-        /**
-         * 参数初始化
-         */
-        this.init(input);
-        /**
-         * 计算输出
-         */
-        this.output(tc, text, cos, sin);
-    }
 
     @Override
     public void back(Tensor delta) {
@@ -498,23 +358,6 @@ public class DiTOrgMoudue2 extends Layer {
         }
     }
     
-    public void back(Tensor delta,Tensor cos,Tensor sin) {
-        // TODO Auto-generated method stub
-        this.initBack();
-        /**
-         * 设置梯度
-
-         */
-        this.setDelta(delta);
-        /**
-         * 计算梯度
-         */
-        this.diff(cos, sin);
-        if (this.network.GRADIENT_CHECK) {
-            this.gradientCheck();
-        }
-    }
-    
     @Override
     public void update() {
         // TODO Auto-generated method stub
@@ -523,10 +366,6 @@ public class DiTOrgMoudue2 extends Layer {
     	timeEmbd.update();
     	
     	labelEmbd.update();
-    	
-    	if(sra) {
-    		ap_head.update();
-    	}
     	
     	for(int i = 0;i<depth;i++) {
     		blocks.get(i).update();
@@ -569,10 +408,6 @@ public class DiTOrgMoudue2 extends Layer {
 
     	labelEmbd.saveModel(outputStream);
     	
-    	if(sra) {
-    		ap_head.saveModel(outputStream);
-    	}
-    	
     	for(int i = 0;i<depth;i++) {
     		blocks.get(i).saveModel(outputStream);
     	}
@@ -586,10 +421,6 @@ public class DiTOrgMoudue2 extends Layer {
     	timeEmbd.loadModel(inputStream);
     	
     	labelEmbd.loadModel(inputStream);
-    	
-    	if(sra) {
-    		ap_head.loadModel(inputStream);
-    	}
     	
     	for(int i = 0;i<depth;i++) {
     		blocks.get(i).loadModel(inputStream);
@@ -607,10 +438,6 @@ public class DiTOrgMoudue2 extends Layer {
 
     	labelEmbd.accGrad(scale);
     	
-    	if(sra) {
-    		ap_head.accGrad(scale);
-    	}
-    	
     	for(int i = 0;i<depth;i++) {
     		blocks.get(i).accGrad(scale);
     	}
@@ -618,7 +445,7 @@ public class DiTOrgMoudue2 extends Layer {
     	finalLayer.accGrad(scale);
     }
     
-    public static void loadWeight(Map<String, Object> weightMap, DiTOrgMoudue2 block, boolean showLayers) {
+    public static void loadWeight(Map<String, Object> weightMap, MMDiTMoudue block, boolean showLayers) {
         if (showLayers) {
             for (String key : weightMap.keySet()) {
                 System.out.println(key);
@@ -628,8 +455,8 @@ public class DiTOrgMoudue2 extends Layer {
     }
     
     public static void main(String[] args) {
-    	int embed_dim = 8;
-    	int grid_size = 4;
+    	int embed_dim = 768;
+    	int grid_size = 16;
     	get_2d_cossin_pos_embed(embed_dim, grid_size);
     	
     }

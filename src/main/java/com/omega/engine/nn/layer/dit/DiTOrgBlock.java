@@ -113,7 +113,7 @@ public class DiTOrgBlock extends Layer {
 
     public void initLayers() {
     	
-        this.norm1 = new LNLayer(network);
+        this.norm1 = new LNLayer(1, 1, embedDim, BNType.fully_bn, network);
         
         this.modulationAct = new SiLULayer(network);
 
@@ -137,9 +137,9 @@ public class DiTOrgBlock extends Layer {
         this.modulation_gate_mlp.bias.clearGPU();
         
         this.attn = new DiTAttentionLayer2(embedDim, headNum, time, bias, qkNorm, network);
-        this.norm2 = new LNLayer(network);
+        this.norm2 = new LNLayer(1, 1, embedDim, BNType.fully_bn, network);
         this.cross_attn = new DiTCrossAttentionLayer2(embedDim, textStateDim, headNum, time, textTime, bias, qkNorm, network);
-        this.norm3 = new LNLayer(network);
+        this.norm3 = new LNLayer(1, 1, embedDim, BNType.fully_bn, network);
        
         this.mlp = new DiTMLPLayer(embedDim, mlpHiddenDim, bias, network);
     }

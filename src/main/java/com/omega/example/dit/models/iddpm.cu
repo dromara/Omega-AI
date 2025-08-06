@@ -371,3 +371,22 @@ __global__ void q_sample(
 	   target[idx] = d_alpha_t * latend[idx] + d_sigma_t * noise[idx];
     }
 }
+
+extern "C"
+__global__ void q_sample_no_target(
+    float* latend,
+    float* noise,
+    float* t,
+    float* output,
+    int N, int W
+) {
+    int idx = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (idx < N) {
+       int n = idx / W;
+       float tf = t[n];
+       float alpha_t = 1 - tf;
+       float sigma_t = tf;
+       
+	   output[idx] = alpha_t * latend[idx] + sigma_t * noise[idx];
+    }
+}

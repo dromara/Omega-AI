@@ -4,7 +4,6 @@ import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 
 import java.io.Serializable;
 
-import com.omega.common.utils.JsonUtils;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.tensor.Tensor;
@@ -282,6 +281,24 @@ public class OPKernel extends BaseKernel implements Serializable {
     }
     
     public void copy_channel_gpu(Tensor a, Tensor b, int[] shape, int start, int cpy) {
+        try {
+            /**
+             * int N,  float *X, float *Y, int n,int c,int h,int w,int start
+             */
+//        	System.err.println(JsonUtils.toJson(shape));
+            Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{b.getDataLength()}), Pointer.to(a.getGpuData()), Pointer.to(b.getGpuData()), Pointer.to(new int[]{shape[0]}), Pointer.to(new int[]{shape[1]}), Pointer.to(new int[]{shape[2]}), Pointer.to(new int[]{shape[3]}), Pointer.to(new int[]{start}), Pointer.to(new int[]{cpy}));
+            checkCUDA(cuLaunchKernel(copy_channel_gpu_function, CAFFE_GET_BLOCKS(b.getDataLength()), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameter, null // Kernel- and extra parameters
+            ));
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void copy_channel_gpu_set(Tensor a, Tensor b, int[] shape, int start, int cpy) {
         try {
             /**
              * int N,  float *X, float *Y, int n,int c,int h,int w,int start

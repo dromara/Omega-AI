@@ -687,7 +687,7 @@ public class ClipModelUtils {
                 int C = dataA.get(0).size();
                 int H = dataA.get(0).get(0).size();
                 int W = dataA.get(0).get(0).get(0).size();
-                if(!x.checkShape(N , C, H, W)) {
+                if(!x.checkShape(N, C, H, W)) {
                 	throw new RuntimeException("the tensor shape" + JsonUtils.toJson(x.shape())+" is not shape:["+ N + "," + C + "," + H + "," + W +"]。");
                 }
                 for (int n = 0; n < N; n++) {
@@ -725,8 +725,21 @@ public class ClipModelUtils {
                     }
                 }
             } else if (dim == 3) {
-                float[][][] data = (float[][][]) meta;
-                x.data = MatrixUtils.transform(data);
+            	 List<List<List<Double>>> dataA = (List<List<List<Double>>>) meta;
+            	 int N = dataA.size();
+                 int C = dataA.get(0).size();
+                 int W = dataA.get(0).get(0).size();
+                 if(!x.checkShape(N, C, 1, W)) {
+                 	throw new RuntimeException("the tensor shape" + JsonUtils.toJson(x.shape())+" is not shape:["+ N + "," + C + "," + 1 + "," + W +"]。");
+                 }
+            	 int tw = dataA.get(0).size() * dataA.get(0).get(0).size();
+            	 for (int n = 0; n < dataA.size(); n++) {
+            		 for(int t = 0;t < dataA.get(n).size();t++) {
+            			 for (int w = 0; w < dataA.get(n).get(t).size(); w++) {
+                             x.data[n * tw + t * dataA.get(0).get(0).size() + w] = dataA.get(n).get(t).get(w).floatValue();
+                         }
+            		 }
+                 }
             } else if (dim == 5) {
             	List<List<List<List<List<Double>>>>> data = (List<List<List<List<List<Double>>>>>) meta;
                 x.data = MatrixUtils.transform(data);

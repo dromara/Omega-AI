@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -146,7 +147,7 @@ public class DiTOrgMoudue extends Layer {
     	float[] emb_w = get_1d_sincos_pos_embed_from_grid(embed_dim/2, grid_w);
     	
     	float[] emb = cat(emb_h, emb_w, embed_dim/2);
-//    	System.err.println("emb:"+JsonUtils.toJson(emb));
+    	System.err.println("emb:"+JsonUtils.toJson(emb));
     	return emb;
     }
     
@@ -547,8 +548,8 @@ public class DiTOrgMoudue extends Layer {
     }
     
     public static void main(String[] args) {
-    	int embed_dim = 8;
-    	int grid_size = 4;
+    	int embed_dim = 768;
+    	int grid_size = 16;
     	get_2d_cossin_pos_embed(embed_dim, grid_size);
     	
     }

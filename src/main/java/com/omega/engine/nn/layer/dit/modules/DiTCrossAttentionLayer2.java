@@ -188,8 +188,8 @@ public class DiTCrossAttentionLayer2 extends Layer {
     public void initLayers() {
     	
     	if(qkNorm) {
-        	qNorm = new LNLayer(network);
-        	kNorm = new LNLayer(network);
+        	qNorm = new LNLayer(1, 1, embedDim, BNType.fully_bn, network);
+        	kNorm = new LNLayer(1, 1, kvDim, BNType.fully_bn, network);
         }
     	
         this.qLinerLayer = new FullyLayer(embedDim, embedDim, bias, this.network);

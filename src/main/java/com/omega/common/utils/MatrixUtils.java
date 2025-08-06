@@ -683,7 +683,7 @@ public class MatrixUtils {
         }
         return result;
     }
-    
+
     public static float[] transform(List<List<List<List<List<Double>>>>> x) {
     	int d1 = x.size();
     	int d2 = x.get(0).size();

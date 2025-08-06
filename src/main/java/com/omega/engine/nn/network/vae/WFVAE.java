@@ -132,13 +132,12 @@ public class WFVAE extends Network {
     public Tensor forward(Tensor input) {
         /**
          * 设置输入数据
-
          */
         this.setInputData(input);
         inputLayer.forward();
         encoder.forward(input);
         posterior(encoder.getOutput());
-        decoder.forward(z);
+        decoder.forward(z);  //decoder_diff + (kl_mean_diff cat kl_std_diff)
         return this.getOutput();
     }
 
@@ -189,7 +188,7 @@ public class WFVAE extends Network {
     	tensorOP.getByChannel(en_out, logvar, new int[] {number, encoder.oChannel, 1, encoder.oDepth * en_out.height * en_out.width}, latendDim);
     	
     	RandomUtils.gaussianRandom(r_z);
-    	
+    	//mean + std * rnd
     	vaeKernel.forward(mean, logvar, r_z, z);
     	
     }
@@ -255,20 +254,22 @@ public class WFVAE extends Network {
     	tensorOP.permute(label, input_t, xShape, tShape, new int[] {0, 2, 1, 3, 4});
     	
 //    	dec_t.showDM("dec_t");
-    	
+    	//l1 = abs(x - p)
+    	//重建损失
         vaeKernel.l1_loss(dec_t, input_t, rec_loss);
-        
+        //lpips质量损失
         Tensor lpipsOutput = lpips.forward(dec_t, input_t);
 
 //        lpipsOutput.showDM();
-
+        //kl散度损失
         vaeKernel.kl(mean, logvar, 1, kl_loss);
         
+        //wf_loss
         if(encoder.getL1_coeffs() != null) {
         	encoder.getL1_coeffs().showShape();
         	decoder.getL1_coeffs().showShape();
-        	 vaeKernel.l1_loss(encoder.getL1_coeffs(), decoder.getL1_coeffs(), wl_loss_l1);
-             vaeKernel.l1_loss(encoder.getL2_coeffs(), decoder.getL2_coeffs(), wl_loss_l2);
+        	vaeKernel.l1_loss(encoder.getL1_coeffs(), decoder.getL1_coeffs(), wl_loss_l1);
+            vaeKernel.l1_loss(encoder.getL2_coeffs(), decoder.getL2_coeffs(), wl_loss_l2);
         }
         
 //        tensorOP.sum(rec_loss, loss_sum, 0);
@@ -340,7 +341,9 @@ public class WFVAE extends Network {
         	tensorOP.mul(de_l1_coeffs_delta, wavelet_weight, de_l1_coeffs_delta);
         	tensorOP.mul(de_l2_coeffs_delta, wavelet_weight, de_l2_coeffs_delta);
     	}
-
+    	
+    	//y = x^2 x‘=2x^2-1 = 2x
+    	// 0.5f * (-1 + logvar[i] + powf(mu[i], 2) + expf(logvar[i])) * kl_weight;
     	vaeKernel.kl_back(mean, logvar, 1.0f / bs, dmean, dlogvar);
     	
 //    	lpipsLossDiff.showDM();
@@ -362,7 +365,7 @@ public class WFVAE extends Network {
 //    	delta.showDM("delta");
     	
     	decoder.back(delta, de_l1_coeffs_delta, de_l2_coeffs_delta);
-    	
+    	//sample backward
     	vaeKernel.backward(decoder.diff, r_z, logvar, dmean, dlogvar);
     	
 //    	dmean.showDM();

@@ -64,6 +64,23 @@ public class FullyLayer extends Layer {
         network.paramLayers.add(this);
         this.setUpdater(UpdaterFactory.create(network));
     }
+    
+    public FullyLayer(int inputNum, int outputNum, boolean hasBias, boolean addParamLayer, Network network) {
+        this.network = network;
+        this.channel = 1;
+        this.height = 1;
+        this.width = inputNum;
+        this.oChannel = channel;
+        this.oHeight = height;
+        this.oWidth = outputNum;
+        this.hasBias = hasBias;
+        this.hasParams = true;
+        this.initParam();
+        if(addParamLayer) {
+        	network.paramLayers.add(this);
+        }
+        this.setUpdater(UpdaterFactory.create(network));
+    }
 
     public FullyLayer(int inputNum, int outputNum, int time, boolean hasBias, Network network) {
         this.network = network;
@@ -204,6 +221,7 @@ public class FullyLayer extends Layer {
         //		}
         if (this.input != null) {
             //			input.showDMByNumber(0);
+//        	input.showDM("input");
             GPU_OP().multiplyFloatEX(cublasOperation.CUBLAS_OP_N, cublasOperation.CUBLAS_OP_T, this.number, this.oWidth, this.width, 1, input.getGpuData(), this.width, weight.getGpuData(), this.width, 0, output.getGpuData(), this.oWidth);
             //			GPU_OP().multiplyFloat(number, oWidth, width, input.getGpuData(), weight.getGpuData(), output.getGpuData(),
             //					cublasOperation.CUBLAS_OP_N, cublasOperation.CUBLAS_OP_N, 1.0f, 0.0f);
@@ -258,7 +276,6 @@ public class FullyLayer extends Layer {
          * number * w
          * number * ow
          * m = w,k = number,n = ow
-
          */
         //		GPUOP.checkCUBLASResult(JCublas2.cublasSetStream(GPU_OP().getHandle(), dwStream));
         GPU_OP().multiplyFloatEX(cublasOperation.CUBLAS_OP_T, cublasOperation.CUBLAS_OP_N, this.oWidth, this.width, this.number, 1, delta.getGpuData(), this.oWidth, input.getGpuData(), this.width, 0, diffW.getGpuData(), this.width);
@@ -267,7 +284,6 @@ public class FullyLayer extends Layer {
          * number * ow
          * w * ow
          * m = number,k = ow,n = w
-
          */
         //		GPUOP.checkCUBLASResult(JCublas2.cublasSetStream(GPU_OP().getHandle(), dxStream));
         GPU_OP().multiplyFloatEX(cublasOperation.CUBLAS_OP_N, cublasOperation.CUBLAS_OP_N, this.number, this.width, this.oWidth, 1, delta.getGpuData(), this.oWidth, weight.getGpuData(), this.width, 0, diff.getGpuData(), this.width);
@@ -590,17 +606,14 @@ public class FullyLayer extends Layer {
         // TODO Auto-generated method stub
         /**
          * 参数初始化
-
          */
         this.init(input);
         /**
          * 设置输入
-
          */
         this.setInput(input);
         /**
          * 计算输出
-
          */
         this.output();
     }

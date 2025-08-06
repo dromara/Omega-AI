@@ -288,7 +288,7 @@ public class WFVAETest {
 		String dataPath = "D:\\dataset\\pexels_45k\\train_set.csv";
         String imgDirPath = "D:\\dataset\\t2v_dataset\\";
         int maxContextLen = 77;
-        int batchSize = 1;
+        int batchSize = 2;
        
         float[] mean = new float[]{0.5f, 0.5f, 0.5f};
         float[] std = new float[]{0.5f, 0.5f, 0.5f};
@@ -320,46 +320,50 @@ public class WFVAETest {
 		Tensor org_input = new Tensor(batchSize, dataLoader.num_frames * network.getChannel(), network.getHeight(), network.getWidth(), true);
         Tensor input = new Tensor(batchSize, network.getChannel() * dataLoader.num_frames, network.getHeight(), network.getWidth(), true);
 		
-//        int[] index = new int[] {13, 11};
-//        
-//		dataLoader.loadData(index, org_input);
+        int[] index = new int[] {13, 11};
+        
+		dataLoader.loadData(index, org_input);
 		
 		/**
          * [B, T, C, H, W] > B, C, T, H, W
          */
-//        network.tensorOP.permute(org_input, input, new int[] {batchSize, num_frames, 3, imgSize, imgSize}, new int[] {batchSize, 3, num_frames, imgSize, imgSize}, new int[] {0, 2, 1, 3, 4});
+        network.tensorOP.permute(org_input, input, new int[] {batchSize, num_frames, 3, imgSize, imgSize}, new int[] {batchSize, 3, num_frames, imgSize, imgSize}, new int[] {0, 2, 1, 3, 4});
 
-        String inputsPath = "D:\\models\\inputs.json";
-	    Map<String, Object> datas2 = LagJsonReader.readJsonFileSmallWeight(inputsPath);
-	    ClipModelUtils.loadData(input, datas2, "inputs", 5);
+//        String inputsPath = "D:\\models\\inputs.json";
+//	    Map<String, Object> datas2 = LagJsonReader.readJsonFileSmallWeight(inputsPath);
+//	    ClipModelUtils.loadData(input, datas2, "inputs", 5);
+//        
+//        String posteriors_rn_path = "D:\\models\\rn.json";
+//        Map<String, Object> rn_data = LagJsonReader.readJsonFileSmallWeight(posteriors_rn_path);
+//        Tensor rn = new Tensor(1, 24, 32, 32, true);
+//        ClipModelUtils.loadData(rn, rn_data, "rn", 5);
+//
+////        input.showDM("input");
+//
+//		Tensor lantnd = network.encode(input, rn);
+////		lantnd.showDM("lantnd");
+//		Tensor output = network.decode(lantnd);
+//
+//		float loss = network.totalLoss(output, input, lpips);
+//
+//		System.err.println("loss:"+loss);
+//
+//		network.backward(lpips);
+
+        Tensor lantnd = network.encode(input);
         
-        String posteriors_rn_path = "D:\\models\\rn.json";
-        Map<String, Object> rn_data = LagJsonReader.readJsonFileSmallWeight(posteriors_rn_path);
-        Tensor rn = new Tensor(1, 24, 32, 32, true);
-        ClipModelUtils.loadData(rn, rn_data, "rn", 5);
+        Tensor output = network.decode(lantnd);
+        
+		/**
+         * [B, C, T, H, W] > B, T, C, H, W
+         */
+        network.tensorOP.permute(output, org_input, new int[] {batchSize, 3, num_frames, imgSize, imgSize}, new int[] {batchSize, num_frames, 3, imgSize, imgSize}, new int[] {0, 2, 1, 3, 4});
+        org_input.syncHost();
+        org_input.data = MatrixOperation.clampSelf(org_input.data, -1, 1);
 
-//        input.showDM("input");
+		String testPath = "D:\\test\\vae\\256\\";
 
-		Tensor lantnd = network.encode(input, rn);
-//		lantnd.showDM("lantnd");
-		Tensor output = network.decode(lantnd);
-
-		float loss = network.totalLoss(output, input, lpips);
-
-		System.err.println("loss:"+loss);
-
-		network.backward(lpips);
-
-//		/**
-//         * [B, C, T, H, W] > B, T, C, H, W
-//         */
-//        network.tensorOP.permute(output, org_input, new int[] {batchSize, 3, num_frames, imgSize, imgSize}, new int[] {batchSize, num_frames, 3, imgSize, imgSize}, new int[] {0, 2, 1, 3, 4});
-//        org_input.syncHost();
-//        org_input.data = MatrixOperation.clampSelf(org_input.data, -1, 1);
-//
-//		String testPath = "D:\\test\\vae\\256\\";
-//
-//		MBSGDOptimizer.showVideos(testPath, num_frames, org_input, 0+"", mean, std);
+		MBSGDOptimizer.showVideos(testPath, num_frames, org_input, 0+"", mean, std);
 		
 	}
 

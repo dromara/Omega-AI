@@ -69,7 +69,7 @@ public class DiTFinalLayer extends Layer {
 
     public void initLayers() {
         //		NanoGPT net = (NanoGPT) this.network;
-    	this.finalNorm = new LNLayer(network);
+    	this.finalNorm = new LNLayer(1, 1, hidden_size, BNType.fully_bn, network);
         this.finalLinear = new FullyLayer(hidden_size, oWidth, bias, network);
         this.finalLinear.weight.clearGPU();
         this.finalLinear.bias.clearGPU();

@@ -25,6 +25,7 @@ public class IDDPMKernel extends CUDAKernel {
     private CUfunction mean_function;
     private CUfunction get_score_from_velocity_function;
     private CUfunction q_sample_function;
+    private CUfunction q_sample_no_target_function;
     private CUfunction p_sample_function;
     private CUfunction p_sample_last_function;
     
@@ -81,6 +82,9 @@ public class IDDPMKernel extends CUDAKernel {
             }
             if(q_sample_function == null) {
             	q_sample_function = getCudaManager().getLocalFunctionByModule("iddpm.cu", "q_sample"); 
+            }
+            if(q_sample_no_target_function == null) {
+            	q_sample_no_target_function = getCudaManager().getLocalFunctionByModule("iddpm.cu", "q_sample_no_target"); 
             }
             if(p_sample_function == null) {
             	p_sample_function = getCudaManager().getLocalFunctionByModule("iddpm.cu", "p_sample"); 
@@ -401,6 +405,29 @@ public class IDDPMKernel extends CUDAKernel {
             kernelParameters = Pointer.to(Pointer.to(latend.getGpuData()),Pointer.to(noise.getGpuData()),Pointer.to(t.getGpuData()),Pointer.to(output.getGpuData()),Pointer.to(target.getGpuData()),
             		Pointer.to(new int[]{latend.dataLength}), Pointer.to(new int[]{latend.getOnceSize()}));
             cuLaunchKernel(q_sample_function, this.CAFFE_GET_BLOCKS(latend.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameters, null // Kernel- and extra parameters
+            );
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void q_sample(Tensor latend,Tensor noise,Tensor t,Tensor output) {
+        try {
+            /**
+             * 设置入参
+             *  float* latend,
+			    float* noise,
+			    float* t,
+			    float output,
+			    int N, int W
+             */
+            kernelParameters = Pointer.to(Pointer.to(latend.getGpuData()),Pointer.to(noise.getGpuData()),Pointer.to(t.getGpuData()),Pointer.to(output.getGpuData()),
+            		Pointer.to(new int[]{latend.dataLength}), Pointer.to(new int[]{latend.getOnceSize()}));
+            cuLaunchKernel(q_sample_no_target_function, this.CAFFE_GET_BLOCKS(latend.dataLength), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameters, null // Kernel- and extra parameters

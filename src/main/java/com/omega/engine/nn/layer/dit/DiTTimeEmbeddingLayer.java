@@ -120,7 +120,7 @@ public class DiTTimeEmbeddingLayer extends Layer {
     public void output() {
         // TODO Auto-generated method stub
     	emb.forward(input);
-    	emb.getOutput().showDM("emb");
+//    	emb.getOutput().showDM("emb");
         linear1.forward(emb.getOutput());
         //		linear1.getOutput().showDM();
         act.forward(linear1.getOutput());

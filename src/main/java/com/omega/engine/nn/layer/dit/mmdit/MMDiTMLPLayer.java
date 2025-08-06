@@ -1,54 +1,57 @@
-package com.omega.engine.nn.layer.dit.modules;
+package com.omega.engine.nn.layer.dit.mmdit;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
 import com.omega.common.utils.RandomUtils;
+import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.active.GeluLayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 /**
- * DiTSimpleHeadLayer
+ * DiT_PoswiseFeedForward Layer
  *
  * @author Administrator
  */
-public class DiTSimpleHeadLayer extends Layer {
-    private int inDim = 0;
-    private int outDim = 1;
+public class MMDiTMLPLayer extends Layer {
+    private int embedDim = 0;
+    private int nChannel = 1;
     private boolean bias = false;
-    private boolean addParamLayer = true;
 
     public FullyLayer linear1;
     private GeluLayer active;
     public FullyLayer linear2;
+    
+    private Tensor tmp1;
+    private Tensor tmp2;
 
-    public DiTSimpleHeadLayer(int inDim, int outDim, boolean bias) {
-        this.inDim = inDim;
-        this.outDim = outDim;
+    public MMDiTMLPLayer(int embedDim, int nChannel, boolean bias) {
+        this.embedDim = embedDim;
+        this.nChannel = nChannel;
         this.bias = bias;
         this.oChannel = 1;
         this.oHeight = 1;
-        this.oWidth = outDim;
+        this.oWidth = embedDim;
         this.initLayers();
     }
 
-    public DiTSimpleHeadLayer(int inDim, int outDim, boolean bias, boolean addParamLayer, Network network) {
+    public MMDiTMLPLayer(int embedDim, int nChannel, boolean bias, Network network) {
         this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
         }
-        this.inDim = inDim;
-        this.outDim = outDim;
+        this.embedDim = embedDim;
+        this.nChannel = nChannel;
         this.bias = bias;
         this.oChannel = 1;
         this.oHeight = 1;
-        this.oWidth = outDim;
-        this.addParamLayer = addParamLayer;
+        this.oWidth = embedDim;
         this.initLayers();
     }
 
@@ -56,14 +59,14 @@ public class DiTSimpleHeadLayer extends Layer {
     }
 
     public void initLayers() {
-        this.linear1 = new FullyLayer(inDim, inDim + outDim, bias, addParamLayer, network);
-        this.linear1.weight.setData(RandomUtils.xavierUniform(inDim * (inDim + outDim), inDim, (inDim + outDim), 1.0f));
+        this.linear1 = new FullyLayer(embedDim, nChannel, bias, network);
+        this.linear1.weight.setData(RandomUtils.xavierUniform(embedDim * nChannel, embedDim, nChannel, 1.0f));
         if(this.linear1.bias != null) {
         	this.linear1.bias.clearGPU();
         }
         this.active = new GeluLayer(linear1);
-        this.linear2 = new FullyLayer((inDim + outDim), outDim, bias, addParamLayer, network);
-        this.linear2.weight.setData(RandomUtils.xavierUniform((inDim + outDim) * outDim, (inDim + outDim), outDim, 1.0f));
+        this.linear2 = new FullyLayer(nChannel, embedDim, bias, network);
+        this.linear2.weight.setData(RandomUtils.xavierUniform(embedDim * nChannel, nChannel, embedDim, 1.0f));
         if(this.linear2.bias != null) {
         	this.linear2.bias.clearGPU();
         }
@@ -73,6 +76,10 @@ public class DiTSimpleHeadLayer extends Layer {
     public void init() {
         // TODO Auto-generated method stub
         this.number = this.input.number;
+        if(network.RUN_MODEL == RunModel.EVAL) {
+        	this.tmp1 =  CUDAMemoryManager.getCache("dit_block_mlp_tmp1", number, linear1.oChannel, linear1.oHeight, linear1.oWidth);
+        	this.tmp2 =  CUDAMemoryManager.getCache("dit_block_mlp_tmp2", number, linear2.oChannel, linear2.oHeight, linear2.oWidth);
+        }
     }
 
     @Override
@@ -93,7 +100,15 @@ public class DiTSimpleHeadLayer extends Layer {
         linear2.forward(active.getOutput());
         this.output = linear2.getOutput();
     }
-
+    
+    public void output_eval() {
+        // TODO Auto-generated method stub
+        linear1.forward(input, tmp1);
+        active.forward(linear1.getOutput(), tmp1);
+        linear2.forward(active.getOutput(), tmp2);
+        this.output = linear2.getOutput();
+    }
+    
     @Override
     public Tensor getOutput() {
         // TODO Auto-generated method stub
@@ -159,7 +174,11 @@ public class DiTSimpleHeadLayer extends Layer {
         /**
          * 计算输出
          */
-        this.output();
+        if(network.RUN_MODEL == RunModel.EVAL) {
+        	this.output_eval();
+        }else {
+        	this.output();
+        }
     }
 
     @Override

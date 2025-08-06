@@ -113,8 +113,8 @@ public class DiTAttentionLayer2 extends Layer {
     public void initLayers() {
        
     	if(qkNorm) {
-        	qNorm = new LNLayer(network);
-        	kNorm = new LNLayer(network);
+        	qNorm = new LNLayer(1, 1, embedDim, BNType.fully_bn, network);
+        	kNorm = new LNLayer(1, 1, embedDim, BNType.fully_bn, network);
         }
     	
         this.setqLinerLayer(new FullyLayer(embedDim, embedDim, bias, this.network));

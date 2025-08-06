@@ -91,7 +91,7 @@ public class DiTMoudue_SRA extends Layer {
 	        blocks.add(block);
         }
         
-        this.ap_head = new DiTSimpleHeadLayer(hiddenSize, hiddenSize, true, network);
+        this.ap_head = new DiTSimpleHeadLayer(hiddenSize, hiddenSize, true, false, network);
         
         int os = inChannel;
         if(learnSigma) {
