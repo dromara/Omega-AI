@@ -2052,6 +2052,7 @@ public class OPKernel extends BaseKernel implements Serializable {
     public void checkCUDA(int code) {
         if (code != cudaError.cudaSuccess) {
             System.err.println("Error code " + code + ":" + cudaError.stringFor(code));
+            System.exit(1);
         }
     }
 }

@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Map;
 
-import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.gpu.cudnn.SoftmaxCudnnKernel;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -29,7 +28,7 @@ public class DiTJoinBlockRoPE extends Layer {
     
     private int batchSize = 1;
     
-    private float mlp_ratio;
+    private int mlp_ratio;
     private int time;
     private int imgTime;
     private int textTime;
@@ -72,7 +71,7 @@ public class DiTJoinBlockRoPE extends Layer {
     private int[] shape;
     private int[] t_shape;
 
-    public DiTJoinBlockRoPE(int embedDim, int cEmbedDim, float mlp_ratio, int headNum, int imgTime, int textTime, boolean bias, boolean qkNorm, boolean pre_only) {
+    public DiTJoinBlockRoPE(int embedDim, int cEmbedDim, int mlp_ratio, int headNum, int imgTime, int textTime, boolean bias, boolean qkNorm, boolean pre_only) {
         this.bias = bias;
         this.mlp_ratio = mlp_ratio;
         this.imgTime = imgTime;
@@ -97,7 +96,7 @@ public class DiTJoinBlockRoPE extends Layer {
         this.initLayers();
     }
 
-    public DiTJoinBlockRoPE(int embedDim, int cEmbedDim, float mlp_ratio, int headNum, int imgTime, int textTime, boolean bias, boolean qkNorm, boolean pre_only, Network network) {
+    public DiTJoinBlockRoPE(int embedDim, int cEmbedDim, int mlp_ratio, int headNum, int imgTime, int textTime, boolean bias, boolean qkNorm, boolean pre_only, Network network) {
         this.bias = bias;
         this.mlp_ratio = mlp_ratio;
         this.network = network;
@@ -126,7 +125,7 @@ public class DiTJoinBlockRoPE extends Layer {
         this.initLayers();
     }
     public void initLayers() {
-       
+        
     	x_block = new DiTJoinBlockHead(embedDim, cEmbedDim, mlp_ratio, imgTime, bias, qkNorm, false, network);
     	
     	context_block = new DiTJoinBlockHead(embedDim, cEmbedDim, mlp_ratio, textTime, bias, qkNorm, pre_only, network);
@@ -153,12 +152,17 @@ public class DiTJoinBlockRoPE extends Layer {
         this.number = input.number;
         this.batchSize = this.number / imgTime;
         if (this.qt != null) {
-            this.output.viewOrg();
+            this.x_rq.viewOrg();
+            this.x_rk.viewOrg();
+            this.q.viewOrg();
+            this.k.viewOrg();
+            this.v.viewOrg();
             this.qt.viewOrg();
             this.kt.viewOrg();
             this.vt.viewOrg();
         }
         if (this.qt == null || this.qt.number != this.batchSize || this.qt.height != this.time) {
+//        	System.err.println("in init-shape");
         	shape = new int[] {batchSize, time, headNum, dk};
         	t_shape = new int[] {batchSize, headNum, time, dk};
             // [batch_size，time，head_num，d_k]
@@ -185,23 +189,23 @@ public class DiTJoinBlockRoPE extends Layer {
         }
     }
     
-    public void init_eval(Tensor input) {
-        // TODO Auto-generated method stub
-        this.number = input.number;
-        this.batchSize = this.number / imgTime;
-    	this.qt = CUDAMemoryManager.getCache("dit_block_attn_qt", batchSize, headNum, time, dk);
-    	this.kt = CUDAMemoryManager.getCache("dit_block_attn_kt", batchSize, headNum, time, dk);
-    	this.vt = CUDAMemoryManager.getCache("dit_block_attn_vt", batchSize, headNum, time, dk);
-    }
+//    public void init_eval(Tensor input) {
+//        // TODO Auto-generated method stub
+//        this.number = input.number;
+//        this.batchSize = this.number / imgTime;
+//    	this.qt = CUDAMemoryManager.getCache("dit_block_attn_qt", batchSize, headNum, time, dk);
+//    	this.kt = CUDAMemoryManager.getCache("dit_block_attn_kt", batchSize, headNum, time, dk);
+//    	this.vt = CUDAMemoryManager.getCache("dit_block_attn_vt", batchSize, headNum, time, dk);
+//    }
 
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
-        if (this.dattn == null || dattn.number != batchSize) {
+        if (this.dattn == null) {
             this.dattn = Tensor.createGPUTensor(this.dattn, batchSize, headNum, time, time, true);
             if(pre_only) {
-            	dattn_cx = Tensor.createGPUTensor(this.dattn_cx, batchSize, textTime, 1, embedDim, true);
-            	cx_diff = Tensor.createGPUTensor(this.cx_diff, batchSize, textTime, 1, embedDim, true);
+            	dattn_cx = Tensor.createGPUTensor(this.dattn_cx, batchSize * textTime, 1, 1, embedDim, true);
+            	cx_diff = Tensor.createGPUTensor(this.cx_diff, batchSize * textTime, 1, 1, embedDim, true);
             }
         } else {
             dattn.viewOrg();
@@ -220,7 +224,6 @@ public class DiTJoinBlockRoPE extends Layer {
     }
     
     public void output(Tensor context, Tensor c, Tensor cos, Tensor sin) {
-    	
     	x_block.pre_attention(input, c);
         /**
          * apply RoPE
@@ -233,14 +236,10 @@ public class DiTJoinBlockRoPE extends Layer {
     	attentionKernel.concat_channel_forward(context_block.q(), x_rq, q, batchSize, textTime, imgTime, 1, embedDim);
     	attentionKernel.concat_channel_forward(context_block.k(), x_rk, k, batchSize, textTime, imgTime, 1, embedDim);
     	attentionKernel.concat_channel_forward(context_block.v(), x_block.v(), v, batchSize, textTime, imgTime, 1, embedDim);
-    	
-    	Tensor query = q.view(batchSize, time, headNum, dk);
-        Tensor key = k.view(batchSize, time, headNum, dk);
-        Tensor value = v.view(batchSize, time, headNum, dk);
-        
-        Tensor_OP().permute(query, qt, shape, t_shape, new int[]{0, 2, 1, 3});
-        Tensor_OP().permute(key, kt, shape, t_shape, new int[]{0, 2, 1, 3});
-        Tensor_OP().permute(value, vt, shape, t_shape, new int[]{0, 2, 1, 3});
+
+        Tensor_OP().permute(q, qt, shape, t_shape, new int[]{0, 2, 1, 3});
+        Tensor_OP().permute(k, kt, shape, t_shape, new int[]{0, 2, 1, 3});
+        Tensor_OP().permute(v, vt, shape, t_shape, new int[]{0, 2, 1, 3});
         
         scaledDotProductAttention(qt, kt, vt);
         
@@ -316,15 +315,23 @@ public class DiTJoinBlockRoPE extends Layer {
     
     public void diff(Tensor dcx,Tensor dc, Tensor cos, Tensor sin) {
         // TODO Auto-generated method stub
-        Tensor x_diff = x_block.post_attention_back(delta);
+        Tensor x_diff = x_block.post_attention_back(delta, "x_diff");
         Tensor dattn = x_block.oLinerLayer.diff;
+//        dattn.showDMByOffsetRed(0, 10, "dattn");
         if(!pre_only) {
-        	cx_diff = context_block.post_attention_back(dcx);
+//        	System.err.println("in-----------pre_only");
+        	cx_diff = context_block.post_attention_back(dcx, "cx_diff");
         	dattn_cx = context_block.oLinerLayer.diff;
         }
+//        dattn_cx.showDMByOffsetRed(0, 10, "dattn_cx");
 
         attentionKernel.concat_channel_forward(dattn_cx, dattn, oi, batchSize, textTime, imgTime, 1, embedDim);
+        
+//        oi.showDMByOffsetRed(0, 10, "oi");
+        
         attentionKernel.unpermute_backward(temp, oi, batchSize, time, headNum, dk);
+        
+//        temp.showDMByOffsetRed(0, 10, "temp");
         
         scaledDotProductAttentionBackward();
         
@@ -459,11 +466,13 @@ public class DiTJoinBlockRoPE extends Layer {
     }
 
     public void saveModel(RandomAccessFile outputStream) throws IOException {
-
+    	x_block.saveModel(outputStream);
+    	context_block.saveModel(outputStream);
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
-
+    	x_block.loadModel(inputStream);
+    	context_block.loadModel(inputStream);
     }
 
     @Override
@@ -487,8 +496,9 @@ public class DiTJoinBlockRoPE extends Layer {
         	 ClipModelUtils.loadData(block.context_block.oLinerLayer.weight, weightMap, "context_block.attn.proj.weight");
              ClipModelUtils.loadData(block.context_block.oLinerLayer.bias, weightMap, "context_block.attn.proj.bias");
         }
-        block.context_block.norm2.gamma = ClipModelUtils.loadData(block.context_block.norm2.gamma, weightMap, 1, "context_block.norm2.weight"); 
+        
         if(block.context_block.mlp != null) {
+        	 block.context_block.norm2.gamma = ClipModelUtils.loadData(block.context_block.norm2.gamma, weightMap, 1, "context_block.norm2.weight"); 
         	 ClipModelUtils.loadData(block.context_block.mlp.linear1.weight, weightMap, "context_block.mlp.fc1.weight");
              ClipModelUtils.loadData(block.context_block.mlp.linear1.bias, weightMap, "context_block.mlp.fc1.bias");
              ClipModelUtils.loadData(block.context_block.mlp.linear2.weight, weightMap, "context_block.mlp.fc2.weight");

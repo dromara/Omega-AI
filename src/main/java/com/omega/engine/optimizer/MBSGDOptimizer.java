@@ -6861,7 +6861,7 @@ public class MBSGDOptimizer extends Optimizer {
                     network.RUN_MODEL = RunModel.TRAIN;
                 }
                 if (i > 0 && i % 100 == 0) {
-                    String save_model_path = "/omega/models/anime_dit_" + i + ".model";
+                    String save_model_path = "/omega/models/anime_mmdit_" + i + ".model";
                     ModelUtils.saveModel(network, save_model_path);
                 }
                 System.out.println("training[" + this.trainIndex + "] train loss:{" + train_loss / indexs.length + "} ");

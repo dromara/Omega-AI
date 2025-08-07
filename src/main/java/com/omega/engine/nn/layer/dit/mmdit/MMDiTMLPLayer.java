@@ -118,9 +118,13 @@ public class MMDiTMLPLayer extends Layer {
     @Override
     public void diff() {
         // TODO Auto-generated method stub
+//    	delta.showDMByOffsetRed(0, 10, "mlp:delta");
     	this.linear2.back(this.delta);
+//    	linear2.diff.showDMByOffsetRed(0, 10, "linear2.diff");
         active.back(this.linear2.diff);
+//        active.diff.showDMByOffsetRed(0, 10, "active.diff");
         linear1.back(active.diff);
+//        linear1.diff.showDMByOffsetRed(0, 10, "linear1.diff");
         this.diff = this.linear1.diff;
         //		System.out.println("mlp diff:");
         //		diff.showDMByNumber(0);
@@ -174,11 +178,12 @@ public class MMDiTMLPLayer extends Layer {
         /**
          * 计算输出
          */
-        if(network.RUN_MODEL == RunModel.EVAL) {
-        	this.output_eval();
-        }else {
-        	this.output();
-        }
+//        if(network.RUN_MODEL == RunModel.EVAL) {
+//        	this.output_eval();
+//        }else {
+//        	this.output();
+//        }
+        this.output();
     }
 
     @Override

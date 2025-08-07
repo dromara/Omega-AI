@@ -53,7 +53,6 @@ public class BaseKernel {
             }
             /**
              *  const float* x1, const float* x2,float* out,int B, int C1, int C2, int H, int W
-
              */
             Pointer kernelParameter = Pointer.to(Pointer.to(x1.getGpuData()), Pointer.to(x2.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{B}), Pointer.to(new int[]{C1}), Pointer.to(new int[]{C2}), Pointer.to(new int[]{H}), Pointer.to(new int[]{W}));
             int N = B * (int) Math.max(C1, C2) * H * W;
@@ -415,6 +414,7 @@ public class BaseKernel {
     public void checkCUDA(int code) {
         if (code != cudaError.cudaSuccess) {
             System.err.println("Error code " + code + ":" + cudaError.stringFor(code));
+            System.exit(1);
         }
     }
 

@@ -193,7 +193,7 @@ public class DiTMoudue extends Layer {
     public void output(Tensor tc,Tensor text) {
     	
     	patchEmbd.forward(input);
-    	Tensor_OP().addAxis(patchEmbd.getOutput(), posEmbd, patchEmbd.getOutput(), patchEmbd.getOutput().number, patchEmbd.getOutput().channel, 1, patchEmbd.getOutput().getWidth(), 1);
+    	Tensor_OP().addAxis(patchEmbd.getOutput(), posEmbd, patchEmbd.getOutput(), posEmbd.channel * posEmbd.width);
 
     	timeEmbd.forward(tc);
     	

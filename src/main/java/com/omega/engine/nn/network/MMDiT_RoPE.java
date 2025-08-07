@@ -44,7 +44,7 @@ public class MMDiT_RoPE extends Network {
     
     private SmoothL1Kernel smoothL1Kernel;
     
-    public MMDiT_RoPE(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio,boolean learnSigma, float y_drop_prob) {
+    public MMDiT_RoPE(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio, boolean learnSigma, float y_drop_prob) {
         this.lossFunction = LossFactory.create(lossType, this);
         this.updater = updater;
         this.inChannel = inChannel;

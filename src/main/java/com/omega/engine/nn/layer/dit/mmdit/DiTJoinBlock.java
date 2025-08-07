@@ -30,7 +30,7 @@ public class DiTJoinBlock extends Layer {
     
     private int batchSize = 1;
     
-    private float mlp_ratio;
+    private int mlp_ratio;
     private int time;
     private int imgTime;
     private int textTime;
@@ -70,7 +70,7 @@ public class DiTJoinBlock extends Layer {
     private int[] shape;
     private int[] t_shape;
 
-    public DiTJoinBlock(int embedDim, int cEmbedDim, float mlp_ratio, int headNum, int imgTime, int textTime, boolean bias, boolean qkNorm, boolean pre_only) {
+    public DiTJoinBlock(int embedDim, int cEmbedDim, int mlp_ratio, int headNum, int imgTime, int textTime, boolean bias, boolean qkNorm, boolean pre_only) {
         this.bias = bias;
         this.mlp_ratio = mlp_ratio;
         this.imgTime = imgTime;
@@ -95,7 +95,7 @@ public class DiTJoinBlock extends Layer {
         this.initLayers();
     }
 
-    public DiTJoinBlock(int embedDim, int cEmbedDim, float mlp_ratio, int headNum, int imgTime, int textTime, boolean bias, boolean qkNorm, boolean pre_only, Network network) {
+    public DiTJoinBlock(int embedDim, int cEmbedDim, int mlp_ratio, int headNum, int imgTime, int textTime, boolean bias, boolean qkNorm, boolean pre_only, Network network) {
         this.bias = bias;
         this.mlp_ratio = mlp_ratio;
         this.network = network;
@@ -305,13 +305,13 @@ public class DiTJoinBlock extends Layer {
         // TODO Auto-generated method stub
 //    	delta.showDM("x");
 //    	dcx.showDM("dcx");
-        Tensor x_diff = x_block.post_attention_back(delta);
+        Tensor x_diff = x_block.post_attention_back(delta, "x");
         Tensor dattn = x_block.oLinerLayer.diff;
         if(!pre_only) {
-        	cx_diff = context_block.post_attention_back(dcx);
+        	cx_diff = context_block.post_attention_back(dcx, "cx");
         	dattn_cx = context_block.oLinerLayer.diff;
         }
-
+        
         attentionKernel.concat_channel_forward(dattn_cx, dattn, oi, batchSize, textTime, imgTime, 1, embedDim);
         attentionKernel.unpermute_backward(temp, oi, batchSize, time, headNum, dk);
         
@@ -326,8 +326,9 @@ public class DiTJoinBlock extends Layer {
         attentionKernel.concat_channel_backward(vt, context_block.v(), x_block.v(), batchSize, textTime, imgTime, 1, embedDim);
         
         x_block.pre_attention_back(x_diff, dtc);
+//        x_block.diff.showDMByOffsetRed(0, 10, "x_diff");
         context_block.pre_attention_back(cx_diff, dtc);
-        
+//        context_block.diff.showDMByOffsetRed(0, 10, "cx_diff");
         this.diff = x_block.diff;
     }
     
@@ -506,7 +507,7 @@ public class DiTJoinBlock extends Layer {
     	
     	int TT = 3;
     	
-    	float mlp_ratio = 4.0f;
+    	int mlp_ratio = 4;
     	
     	CNN nn = new CNN(null);
         nn.CUDNN = true;

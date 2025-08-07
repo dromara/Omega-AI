@@ -212,17 +212,21 @@ public class MMDiTMoudueRoPE extends Layer {
     	int[] yShape = new int[] {number, oChannel, h, patchSize, w, patchSize};
     	int[] xShape = new int[] {number, h, w, patchSize, patchSize, oChannel};
     	Tensor_OP().permute(delta, finalLayer.getOutput(), yShape, xShape, new int[] {0, 2, 4, 3, 5, 1});
-    	
+//    	delta.showDMByOffsetRed(0, 10, "delta");
     	finalLayer.back(finalLayer.getOutput(), dtc);
 
     	Tensor dy = finalLayer.diff;
     	Tensor dcx = null;
-    	
+//    	dy.showDMByOffsetRed(0, 10, "dy");
      	for(int i = depth - 1;i>=0;i--) {
      		DiTJoinBlockRoPE block = blocks.get(i);
     		block.back(dy, dcx, dtc, cos, sin);
     		dy = block.diff;
     		dcx = block.context_block.diff;
+//        	dy.showDMByOffsetRed(0, 10, "dy["+i+"]");
+//        	dy.showShape("dy["+i+"]");
+//        	dcx.showDMByOffsetRed(0, 10, "dcx["+i+"]");
+//        	dcx.showShape("dcx["+i+"]");
     	}
      	
      	labelEmbd.back(dcx);

@@ -6,17 +6,19 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixOperation;
+import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
-import com.omega.engine.nn.layer.dit.DiTCaptionEmbeddingLayer;
 import com.omega.engine.nn.layer.dit.DiTFinalLayer;
 import com.omega.engine.nn.layer.dit.DiTPatchEmbeddingLayer;
 import com.omega.engine.nn.layer.dit.DiTTimeEmbeddingLayer;
+import com.omega.engine.nn.network.CNN;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
+import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
  * DiT_Block
@@ -39,7 +41,7 @@ public class MMDiTMoudue extends Layer {
     
     public DiTPatchEmbeddingLayer patchEmbd;
     public DiTTimeEmbeddingLayer timeEmbd;
-    public DiTCaptionEmbeddingLayer labelEmbd;
+    public FullyLayer labelEmbd;
     public List<DiTJoinBlock> blocks;
     public DiTFinalLayer finalLayer;
     
@@ -47,14 +49,11 @@ public class MMDiTMoudue extends Layer {
     
     private Tensor dtc;
 
-    private float y_drop_prob = 0.0f;
-    
-    public MMDiTMoudue(int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio, boolean learnSigma, float y_drop_prob, Network network) {
+    public MMDiTMoudue(int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio, boolean learnSigma, Network network) {
 		this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
         }
-        this.y_drop_prob = y_drop_prob;
     	this.inChannel = inChannel;
 		this.width = width;
 		this.height = height;
@@ -80,7 +79,7 @@ public class MMDiTMoudue extends Layer {
          
         timeEmbd = new DiTTimeEmbeddingLayer(timeSteps, 256, hiddenSize, true, network);
         
-        labelEmbd = new DiTCaptionEmbeddingLayer(textEmbedDim, hiddenSize, maxContextLen, y_drop_prob, true, network);
+        labelEmbd = new FullyLayer(textEmbedDim, hiddenSize, true, network);
         
         blocks = new ArrayList<DiTJoinBlock>();
          
@@ -196,21 +195,32 @@ public class MMDiTMoudue extends Layer {
     public void output(Tensor tc,Tensor text) {
     	
     	patchEmbd.forward(input);
-    	Tensor_OP().addAxis(patchEmbd.getOutput(), posEmbd, patchEmbd.getOutput(), patchEmbd.getOutput().number, patchEmbd.getOutput().channel, 1, patchEmbd.getOutput().getWidth(), 1);
+    	Tensor_OP().addAxis(patchEmbd.getOutput(), posEmbd, patchEmbd.getOutput(), posEmbd.channel * posEmbd.width);
 
     	timeEmbd.forward(tc);
     	
     	labelEmbd.forward(text);
-
+    	
     	Tensor x = patchEmbd.getOutput().view(patchEmbd.getOutput().number * patchEmbd.getOutput().channel, 1, 1, patchEmbd.getOutput().width);
     	
     	Tensor context = labelEmbd.getOutput();
+    	
+//    	x.showDM("x");
+
+//    	timeEmbd.getOutput().showDM("t_out");
+
+//    	context.showDM("context");
     	
     	for(int i = 0;i<depth;i++) {
     		DiTJoinBlock block = blocks.get(i);
     		block.forward(x, context, timeEmbd.getOutput());
     		x = block.getOutput();
     		context = block.context_block.getOutput();
+//    		x.showDM("x:"+i);
+//    		if(context != null) {
+//    			context.showDM("context:"+i);
+//    		}
+    		
 //    		System.out.println(context);
     	}
 
@@ -237,6 +247,7 @@ public class MMDiTMoudue extends Layer {
 
     @Override
     public void diff() {
+//    	delta.showDM("delta");
     	/**
     	 * unpatchify back
     	 */
@@ -250,20 +261,23 @@ public class MMDiTMoudue extends Layer {
 
     	Tensor dy = finalLayer.diff;
     	Tensor dcx = null;
-    	
+
      	for(int i = depth - 1;i>=0;i--) {
      		DiTJoinBlock block = blocks.get(i);
     		block.back(dy, dcx, dtc);
     		dy = block.diff;
     		dcx = block.context_block.diff;
+//    		dy.showDM("dx_"+i);
+//    		dy.showDMByOffsetRed(10 * 384, 384, "dx_"+i);
     	}
-     	
-     	labelEmbd.back(dcx);
-     	
-//     	dtc.showDM("dtc");
-     	timeEmbd.back(dtc);
 
+     	labelEmbd.back(dcx);
+
+     	timeEmbd.back(dtc);
+//     	dy.showDM("dx");
      	patchEmbd.back(dy);
+//     	dy.showDM("dx");
+     	this.diff = patchEmbd.patchEmbedding.diff;
     }
     
     @Override
@@ -452,13 +466,131 @@ public class MMDiTMoudue extends Layer {
             }
         }
         
+        ClipModelUtils.loadData(block.patchEmbd.patchEmbedding.weight, weightMap, "x_embedder.proj.weight");
+        ClipModelUtils.loadData(block.patchEmbd.patchEmbedding.bias, weightMap, "x_embedder.proj.bias");
+        
+        ClipModelUtils.loadData(block.timeEmbd.linear1.weight, weightMap, "t_embedder.mlp.0.weight");
+        ClipModelUtils.loadData(block.timeEmbd.linear1.bias, weightMap, "t_embedder.mlp.0.bias");
+        ClipModelUtils.loadData(block.timeEmbd.linear2.weight, weightMap, "t_embedder.mlp.2.weight");
+        ClipModelUtils.loadData(block.timeEmbd.linear2.bias, weightMap, "t_embedder.mlp.2.bias");
+        
+        ClipModelUtils.loadData(block.labelEmbd.weight, weightMap, "context_embedder.weight");
+        ClipModelUtils.loadData(block.labelEmbd.bias, weightMap, "context_embedder.bias");
+        
+        for(int i = 0;i<block.depth;i++) {
+        	DiTJoinBlock jb = block.blocks.get(i);
+        	
+        	jb.context_block.norm1.gamma = ClipModelUtils.loadData(jb.context_block.norm1.gamma, weightMap, 1, "joint_blocks."+i+".context_block.norm1.weight"); 
+        	jb.context_block.norm1.beta = ClipModelUtils.loadData(jb.context_block.norm1.beta, weightMap, 1, "joint_blocks."+i+".context_block.norm1.bias"); 
+        	
+        	ClipModelUtils.loadData(jb.context_block.qLinerLayer.weight, weightMap, "joint_blocks."+i+".context_block.attn.ql.weight");
+            ClipModelUtils.loadData(jb.context_block.kLinerLayer.weight, weightMap, "joint_blocks."+i+".context_block.attn.kl.weight");
+            ClipModelUtils.loadData(jb.context_block.vLinerLayer.weight, weightMap, "joint_blocks."+i+".context_block.attn.vl.weight");
+             
+            if(jb.context_block.oLinerLayer != null) {
+            	ClipModelUtils.loadData(jb.context_block.oLinerLayer.weight, weightMap, "joint_blocks."+i+".context_block.attn.proj.weight");
+                ClipModelUtils.loadData(jb.context_block.oLinerLayer.bias, weightMap, "joint_blocks."+i+".context_block.attn.proj.bias");
+            }
+            
+            if(jb.context_block.mlp != null) {
+            	jb.context_block.norm2.gamma = ClipModelUtils.loadData(jb.context_block.norm2.gamma, weightMap, 1, "joint_blocks."+i+".context_block.norm2.weight"); 
+            	jb.context_block.norm2.beta = ClipModelUtils.loadData(jb.context_block.norm2.beta, weightMap, 1, "joint_blocks."+i+".context_block.norm2.bias");
+           	 	ClipModelUtils.loadData(jb.context_block.mlp.linear1.weight, weightMap, "joint_blocks."+i+".context_block.mlp.fc1.weight");
+                ClipModelUtils.loadData(jb.context_block.mlp.linear1.bias, weightMap, "joint_blocks."+i+".context_block.mlp.fc1.bias");
+                ClipModelUtils.loadData(jb.context_block.mlp.linear2.weight, weightMap, "joint_blocks."+i+".context_block.mlp.fc2.weight");
+                ClipModelUtils.loadData(jb.context_block.mlp.linear2.bias, weightMap, "joint_blocks."+i+".context_block.mlp.fc2.bias");
+            }
+            ClipModelUtils.loadData(jb.context_block.adaLN_modulation.weight, weightMap, "joint_blocks."+i+".context_block.adaLN_modulation.1.weight");
+            ClipModelUtils.loadData(jb.context_block.adaLN_modulation.bias, weightMap, "joint_blocks."+i+".context_block.adaLN_modulation.1.bias");
+            
+            jb.x_block.norm1.gamma = ClipModelUtils.loadData(jb.x_block.norm1.gamma, weightMap, 1, "joint_blocks."+i+".x_block.norm1.weight"); 
+            jb.x_block.norm1.beta = ClipModelUtils.loadData(jb.x_block.norm1.beta, weightMap, 1, "joint_blocks."+i+".x_block.norm1.bias"); 
+            ClipModelUtils.loadData(jb.x_block.qLinerLayer.weight, weightMap, "joint_blocks."+i+".x_block.attn.ql.weight");
+            ClipModelUtils.loadData(jb.x_block.kLinerLayer.weight, weightMap, "joint_blocks."+i+".x_block.attn.kl.weight");
+            ClipModelUtils.loadData(jb.x_block.vLinerLayer.weight, weightMap, "joint_blocks."+i+".x_block.attn.vl.weight");
+            ClipModelUtils.loadData(jb.x_block.oLinerLayer.weight, weightMap, "joint_blocks."+i+".x_block.attn.proj.weight");
+            ClipModelUtils.loadData(jb.x_block.oLinerLayer.bias, weightMap, "joint_blocks."+i+".x_block.attn.proj.bias");
+            jb.x_block.norm2.gamma = ClipModelUtils.loadData(jb.x_block.norm2.gamma, weightMap, 1, "joint_blocks."+i+".x_block.norm2.weight"); 
+            jb.x_block.norm2.beta = ClipModelUtils.loadData(jb.x_block.norm2.beta, weightMap, 1, "joint_blocks."+i+".x_block.norm2.bias"); 
+            ClipModelUtils.loadData(jb.x_block.mlp.linear1.weight, weightMap, "joint_blocks."+i+".x_block.mlp.fc1.weight");
+            ClipModelUtils.loadData(jb.x_block.mlp.linear1.bias, weightMap, "joint_blocks."+i+".x_block.mlp.fc1.bias");
+            ClipModelUtils.loadData(jb.x_block.mlp.linear2.weight, weightMap, "joint_blocks."+i+".x_block.mlp.fc2.weight");
+            ClipModelUtils.loadData(jb.x_block.mlp.linear2.bias, weightMap, "joint_blocks."+i+".x_block.mlp.fc2.bias");
+            ClipModelUtils.loadData(jb.x_block.adaLN_modulation.weight, weightMap, "joint_blocks."+i+".x_block.adaLN_modulation.1.weight");
+            ClipModelUtils.loadData(jb.x_block.adaLN_modulation.bias, weightMap, "joint_blocks."+i+".x_block.adaLN_modulation.1.bias");
+        }
+        
+        block.finalLayer.finalNorm.gamma = ClipModelUtils.loadData(block.finalLayer.finalNorm.gamma, weightMap, 1, "final_layer.norm_final.weight"); 
+        block.finalLayer.finalNorm.beta = ClipModelUtils.loadData(block.finalLayer.finalNorm.beta, weightMap, 1, "final_layer.norm_final.bias"); 
+        ClipModelUtils.loadData(block.finalLayer.finalLinear.weight, weightMap, "final_layer.linear.weight");
+        ClipModelUtils.loadData(block.finalLayer.finalLinear.bias, weightMap, "final_layer.linear.bias");
+        ClipModelUtils.loadData(block.finalLayer.m_linear1.weight, weightMap, "final_layer.adaLN_modulation_l1.weight");
+        ClipModelUtils.loadData(block.finalLayer.m_linear1.bias, weightMap, "final_layer.adaLN_modulation_l1.bias");
+        ClipModelUtils.loadData(block.finalLayer.m_linear2.weight, weightMap, "final_layer.adaLN_modulation_l2.weight");
+        ClipModelUtils.loadData(block.finalLayer.m_linear2.bias, weightMap, "final_layer.adaLN_modulation_l2.bias");
     }
     
     public static void main(String[] args) {
-    	int embed_dim = 768;
+    	int embed_dim = 384;
     	int grid_size = 16;
     	get_2d_cossin_pos_embed(embed_dim, grid_size);
     	
+    	int N = 2;
+    	int C = 4;
+    	int H = 32;
+    	int W = 32;
+    	
+    	int TT = 77;
+    	int TEM = 512;
+    	
+    	int patchSize = 2;
+    	int hiddenSize = 384;
+    	int headNum = 6;
+    	int depth = 6;
+    	
+    	CNN nn = new CNN(null);
+        nn.CUDNN = true;
+        nn.number = N;
+    	
+        MMDiTMoudue jb = new MMDiTMoudue(C, W, H, patchSize, hiddenSize, headNum, depth, 1000, TT, TEM, 4, false, nn);
+    	
+        String weight = "D:\\models\\mmdit.json";
+        loadWeight(LagJsonReader.readJsonFileSmallWeight(weight), jb, true);
+        
+	    String inputPath = "D:\\models\\img_x.json";
+	    Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
+	    Tensor input = new Tensor(N, C, H, W, true);
+	    ClipModelUtils.loadData(input, datas, "img_x");
+      
+	    String txtPath = "D:\\models\\txt.json";
+	    Map<String, Object> txt_datas = LagJsonReader.readJsonFileSmallWeight(txtPath);
+	    Tensor txt = new Tensor(N, TT, 1, TEM, true);
+	    ClipModelUtils.loadData(txt, txt_datas, "txt", 3);
+	    txt.view(N * TT, 1, 1, TEM);
+	    
+	    Tensor t = new Tensor(N, 1, 1, 1, new float[] {1, 20}, true);
+	    
+	    jb.forward(input, t, txt);
+	    
+	    jb.getOutput().showDM("output");
+	    
+	    String deltaPath = "D:\\models\\delta.json";
+	    Map<String, Object> deltaDatas = LagJsonReader.readJsonFileSmallWeight(deltaPath);
+	    Tensor delta = new Tensor(N, C, H, W, true);
+	    ClipModelUtils.loadData(delta, deltaDatas, "delta");
+	    
+	    jb.back(delta);
+	    
+	    jb.diff.showDM("diff");
+	    
+	    jb.forward(input, t, txt);
+	    
+	    jb.getOutput().showDM("output");
+	    
+	    jb.back(delta);
+	    
+	    jb.diff.showDM("diff");
+	    
     }
 }
 
