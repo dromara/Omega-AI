@@ -48,6 +48,27 @@ public class CLIPTextTransformer extends Layer {
         this.initLayers();
     }
 
+    public CLIPTextTransformer(int vocabSize, int maxPositionEmbeddings, int intermediateSize, int n_layers, int headNum, int time, int embedDim, boolean bias, boolean dropout, Network network) {
+        this.vocabSize = vocabSize;
+        this.maxPositionEmbeddings = maxPositionEmbeddings;
+        this.intermediateSize = intermediateSize;
+        this.headNum = headNum;
+        this.n_layers = n_layers;
+        this.network = network;
+        if (this.updater == null) {
+            this.setUpdater(UpdaterFactory.create(network));
+        }
+        this.time = time;
+        this.embedDim = embedDim;
+        this.bias = bias;
+        this.height = 1;
+        this.width = embedDim;
+        this.oChannel = 1;
+        this.oHeight = 1;
+        this.oWidth = embedDim;
+        this.initLayers();
+    }
+    
     public CLIPTextTransformer(int vocabSize, int maxPositionEmbeddings, int n_layers, int headNum, int time, int embedDim, boolean bias, boolean dropout, Network network) {
         this.vocabSize = vocabSize;
         this.maxPositionEmbeddings = maxPositionEmbeddings;

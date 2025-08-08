@@ -121,7 +121,6 @@ __global__ void copy_number_kernel(int N,  float *X, float *Y, int n,int c,int h
 
 
 extern "C"
-
 __global__ void copy_channel_kernel(int N,  float *X, float *Y, int n,int c,int h,int w,int start,int cp)
 
 {
@@ -158,7 +157,25 @@ __global__ void copy_channel_kernel(int N,  float *X, float *Y, int n,int c,int 
 
 }
 
+extern "C"
+__global__ void get_by_channel_kenel(int N, float *X, float *Y, int C,int H,int W, float *ids)
+{
 
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+
+    if(i < N){
+		
+		int n = i / H / W;
+		int c = (int) ids[n];
+		int hw = i % (H * W);
+		
+		int index = n * C * H * W + c * H * W + hw;
+
+    	Y[i] = X[index];
+
+    }
+
+}
 
 extern "C"
 

@@ -793,6 +793,12 @@ public class TensorOP {
         }
     }
     
+    public void getByChannel(Tensor org, Tensor target,int[] shape, Tensor ids) {
+        if (org.isHasGPU()) {
+            this.op.get_by_channel(org, target, shape, ids);
+        }
+    }
+    
     public void setByChannel(Tensor org, Tensor target,int[] shape, int start) {
         if (org.isHasGPU()) {
             this.op.copy_channel_gpu_set(org, target, shape, start, 1);

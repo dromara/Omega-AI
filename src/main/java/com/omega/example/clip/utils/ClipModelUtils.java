@@ -531,6 +531,64 @@ public class ClipModelUtils {
         network.clip.getFinalLayerNorm().gamma = loadData(network.clip.getFinalLayerNorm().gamma, weightMap, 1, "text_model.final_layer_norm.weight");
         network.clip.getFinalLayerNorm().beta = loadData(network.clip.getFinalLayerNorm().beta, weightMap, 1, "text_model.final_layer_norm.bias");
     }
+    
+    public static void loadWeight(Map<String, Object> weightMap, ClipTextModel network, String modelKey, boolean showLayers) {
+        if (showLayers) {
+            for (String key : weightMap.keySet()) {
+                System.out.println(key);
+            }
+        }
+        /**
+         * embeddings
+
+         */
+        loadData(network.clip.getEmbeddings().getTokenEmbedding().weight, weightMap, "embeddings.token_embedding.weight");
+        loadData(network.clip.getEmbeddings().getPositionEmbedding().weight, weightMap, "embeddings.position_embedding.weight");
+        /**
+         * encoders
+
+         */
+        for (int i = 0; i < 12; i++) {
+            /**
+             * self attention
+
+             */
+            loadData(network.clip.getEncoders().get(i).getAttn().getqLinerLayer().weight, weightMap, modelKey + "encoder.layers." + i + ".self_attn.q_proj.weight");
+            loadData(network.clip.getEncoders().get(i).getAttn().getqLinerLayer().bias, weightMap, modelKey + "encoder.layers." + i + ".self_attn.q_proj.bias");
+            loadData(network.clip.getEncoders().get(i).getAttn().getkLinerLayer().weight, weightMap, modelKey + "encoder.layers." + i + ".self_attn.k_proj.weight");
+            loadData(network.clip.getEncoders().get(i).getAttn().getkLinerLayer().bias, weightMap, modelKey + "encoder.layers." + i + ".self_attn.k_proj.bias");
+            loadData(network.clip.getEncoders().get(i).getAttn().getvLinerLayer().weight, weightMap, modelKey + "encoder.layers." + i + ".self_attn.v_proj.weight");
+            loadData(network.clip.getEncoders().get(i).getAttn().getvLinerLayer().bias, weightMap, modelKey + "encoder.layers." + i + ".self_attn.v_proj.bias");
+            loadData(network.clip.getEncoders().get(i).getAttn().getoLinerLayer().weight, weightMap, modelKey + "encoder.layers." + i + ".self_attn.out_proj.weight");
+            loadData(network.clip.getEncoders().get(i).getAttn().getoLinerLayer().bias, weightMap, modelKey + "encoder.layers." + i + ".self_attn.out_proj.bias");
+            /**
+             * layer norm1
+
+             */
+            network.clip.getEncoders().get(i).getNorm1().gamma = loadData(network.clip.getEncoders().get(i).getNorm1().gamma, weightMap, 1, modelKey + "encoder.layers." + i + ".layer_norm1.weight");
+            network.clip.getEncoders().get(i).getNorm1().beta = loadData(network.clip.getEncoders().get(i).getNorm1().beta, weightMap, 1, modelKey + "encoder.layers." + i + ".layer_norm1.bias");
+            /**
+             * mlp
+
+             */
+            loadData(network.clip.getEncoders().get(i).getMlp().getLinear1().weight, weightMap, modelKey + "encoder.layers." + i + ".mlp.fc1.weight");
+            loadData(network.clip.getEncoders().get(i).getMlp().getLinear1().bias, weightMap, modelKey + "encoder.layers." + i + ".mlp.fc1.bias");
+            loadData(network.clip.getEncoders().get(i).getMlp().getLinear2().weight, weightMap, modelKey + "encoder.layers." + i + ".mlp.fc2.weight");
+            loadData(network.clip.getEncoders().get(i).getMlp().getLinear2().bias, weightMap, modelKey + "encoder.layers." + i + ".mlp.fc2.bias");
+            /**
+             * layer norm2
+
+             */
+            network.clip.getEncoders().get(i).getNorm2().gamma = loadData(network.clip.getEncoders().get(i).getNorm2().gamma, weightMap, 1, modelKey + "encoder.layers." + i + ".layer_norm2.weight");
+            network.clip.getEncoders().get(i).getNorm2().beta = loadData(network.clip.getEncoders().get(i).getNorm2().beta, weightMap, 1, modelKey + "encoder.layers." + i + ".layer_norm2.bias");
+        }
+        /**
+         * post_layernorm
+
+         */
+        network.clip.getFinalLayerNorm().gamma = loadData(network.clip.getFinalLayerNorm().gamma, weightMap, 1, modelKey + "final_layer_norm.weight");
+        network.clip.getFinalLayerNorm().beta = loadData(network.clip.getFinalLayerNorm().beta, weightMap, 1, modelKey + "final_layer_norm.bias");
+    }
 
     public static void loadWeight(Map<String, Object> weightMap, ClipVision network, boolean showLayers) {
         if (showLayers) {

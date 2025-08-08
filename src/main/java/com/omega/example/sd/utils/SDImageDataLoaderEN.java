@@ -33,7 +33,7 @@ public class SDImageDataLoaderEN extends BaseDataLoader {
     private String labelPath;
     private String imgDirPath;
     private String extName = ".png";
-    private int maxContextLen;
+    public int maxContextLen;
     private boolean horizontalFilp;
     private List<Map<String, Object>> datas;
     private String[] idxSet;
@@ -210,6 +210,26 @@ public class SDImageDataLoaderEN extends BaseDataLoader {
         label.hostToDevice();
     }
     
+    public void loadData(int[] indexs, Tensor input, Tensor label, Tensor noise, String[] labels, Tensor eosIds) {
+        // TODO Auto-generated method stub
+        /**
+         * 加载input数据
+         */
+        if (mean != null) {
+            SegImageLoader.load(imgDirPath, extName, idxSet, indexs, input.number, input, false, true, mean, std);
+        } else {
+            SegImageLoader.load(imgDirPath, extName, idxSet, indexs, input.number, input, false, true);
+        }
+        loadLabels(indexs, label, labels, eosIds);
+        RandomUtils.gaussianRandom(noise, 0, 1);
+        /**
+         * copy data to gpu.
+         */
+        input.hostToDevice();
+        label.hostToDevice();
+        eosIds.hostToDevice();
+    }
+    
     public void loadData(int[] indexs, Tensor input, Tensor label, String[] labels) {
         // TODO Auto-generated method stub
         /**
@@ -322,6 +342,23 @@ public class SDImageDataLoaderEN extends BaseDataLoader {
         label.hostToDevice();
     }
     
+    public void loadLabel_offset(Tensor label, int index, String labelStr, Tensor eosIds) {
+    	int[] ids = tokenizer.encodeInt(labelStr, maxContextLen);
+    	float eos_id = 0;
+        for (int j = 0; j < maxContextLen; j++) {
+            if (j < ids.length) {
+                label.data[index * maxContextLen + j] = ids[j];
+            } else {
+                label.data[index * maxContextLen + j] = 0;
+            }if(label.data[index * maxContextLen + j] == tokenizer.eos() && eos_id == 0) {
+            	eos_id = j;
+            }
+        }
+        eosIds.data[index] = eos_id;
+        label.hostToDevice();
+        eosIds.hostToDevice();
+    }
+    
     public void loadLabels(int[] indexs, Tensor label, String[] labels) {
         for (int i = 0; i < indexs.length; i++) {
             int idx = indexs[i];
@@ -336,6 +373,54 @@ public class SDImageDataLoaderEN extends BaseDataLoader {
                     label.data[i * maxContextLen + j] = 0;
                 }
             }
+        }
+        //		System.out.println(JsonUtils.toJson(label.data));
+    }
+    
+    public void loadLabels(int[] indexs, Tensor label, String[] labels, int[] eos_idx) {
+        for (int i = 0; i < indexs.length; i++) {
+            int idx = indexs[i];
+            String text = datas.get(idx).get("en").toString();
+            labels[i] = text;
+            //			System.out.println(text);
+            int[] ids = tokenizer.encodeInt(text, maxContextLen);
+            int eos_id = 0;
+            for (int j = 0; j < maxContextLen; j++) {
+                if (j < ids.length) {
+                    label.data[i * maxContextLen + j] = ids[j];
+                } else {
+                    label.data[i * maxContextLen + j] = tokenizer.eos();
+                }
+                //获取第一个结束符位置
+                if(label.data[i * maxContextLen + j] == tokenizer.eos() && eos_id == 0) {
+                	eos_id = j;
+                }
+            }
+            eos_idx[i] = eos_id;
+        }
+        //		System.out.println(JsonUtils.toJson(label.data));
+    }
+    
+    public void loadLabels(int[] indexs, Tensor label, String[] labels, Tensor eos_idx) {
+        for (int i = 0; i < indexs.length; i++) {
+            int idx = indexs[i];
+            String text = datas.get(idx).get("en").toString();
+            labels[i] = text;
+            //			System.out.println(text);
+            int[] ids = tokenizer.encodeInt(text, maxContextLen);
+            float eos_id = 0;
+            for (int j = 0; j < maxContextLen; j++) {
+                if (j < ids.length) {
+                    label.data[i * maxContextLen + j] = ids[j];
+                } else {
+                    label.data[i * maxContextLen + j] = tokenizer.eos();
+                }
+                //获取第一个结束符位置
+                if(label.data[i * maxContextLen + j] == tokenizer.eos() && eos_id == 0) {
+                	eos_id = j;
+                }
+            }
+            eos_idx.data[i] = eos_id;
         }
         //		System.out.println(JsonUtils.toJson(label.data));
     }

@@ -29,6 +29,7 @@ public class OPKernel extends BaseKernel implements Serializable {
     private CUfunction copy_gpu_function;
     private CUfunction copy_number_gpu_function;
     private CUfunction copy_channel_gpu_function;
+    private CUfunction get_by_channel_gpu_function;
     private CUfunction add_gpu_function;
     private CUfunction add_axis_function;
     private CUfunction add_axis_function2;
@@ -113,6 +114,7 @@ public class OPKernel extends BaseKernel implements Serializable {
         copy_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "copy_kernel");
         copy_number_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "copy_number_kernel");
         copy_channel_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "copy_channel_kernel");
+        get_by_channel_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "get_by_channel_kenel");
         add_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "add_kernel");
         add_axis_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "add_axis_kernel");
         add_axis_function2 = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "add_axis_kernel2");
@@ -288,6 +290,24 @@ public class OPKernel extends BaseKernel implements Serializable {
 //        	System.err.println(JsonUtils.toJson(shape));
             Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{b.getDataLength()}), Pointer.to(a.getGpuData()), Pointer.to(b.getGpuData()), Pointer.to(new int[]{shape[0]}), Pointer.to(new int[]{shape[1]}), Pointer.to(new int[]{shape[2]}), Pointer.to(new int[]{shape[3]}), Pointer.to(new int[]{start}), Pointer.to(new int[]{cpy}));
             checkCUDA(cuLaunchKernel(copy_channel_gpu_function, CAFFE_GET_BLOCKS(b.getDataLength()), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameter, null // Kernel- and extra parameters
+            ));
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void get_by_channel(Tensor a, Tensor b, int[] shape, Tensor ids) {
+        try {
+            /**
+             * int N, float *X, float *Y, int C,int H,int W,int *ids
+             */
+//        	System.err.println(JsonUtils.toJson(shape));
+            Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{b.getDataLength()}), Pointer.to(a.getGpuData()), Pointer.to(b.getGpuData()), Pointer.to(new int[]{shape[1]}), Pointer.to(new int[]{shape[2]}), Pointer.to(new int[]{shape[3]}), Pointer.to(ids.getGpuData()));
+            checkCUDA(cuLaunchKernel(get_by_channel_gpu_function, CAFFE_GET_BLOCKS(b.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameter, null // Kernel- and extra parameters
