@@ -102,7 +102,7 @@ public class MMDiT_RoPE extends Network {
     @Override
     public NetworkType getNetworkType() {
         // TODO Auto-generated method stub
-        return NetworkType.DUFFSION_UNET_COND;
+        return NetworkType.DiT;
     }
 
     @Override
