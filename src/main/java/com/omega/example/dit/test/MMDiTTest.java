@@ -266,10 +266,10 @@ public class MMDiTTest {
     }
 	
 	public static void mmdit_iddpm_amine_train_by_latend() throws Exception {
-		String dataPath = "D:\\dataset\\amine\\amine_latend.bin";
-        String clipDataPath = "D:\\dataset\\amine\\amine_clip.bin";
+		String dataPath = "D:\\dataset\\amine\\dalle_latend.bin";
+        String clipDataPath = "D:\\dataset\\amine\\dalle_clip.bin";
 
-        int batchSize = 32;
+        int batchSize = 24;
         int latendDim = 4;
         int height = 32;
         int width = 32;
@@ -279,7 +279,7 @@ public class MMDiTTest {
         
         int ditHeadNum = 12;
         int latendSize = 32;
-        int depth = 12;
+        int depth = 24;
         int timeSteps = 1000;
         int mlpRatio = 4;
         int patchSize = 2;
@@ -326,7 +326,7 @@ public class MMDiTTest {
         IDDPM iddpm = new IDDPM(timeSteps, BetaType.linear, dit.cudaManager);
 
         MBSGDOptimizer optimizer = new MBSGDOptimizer(dit, 1000, 0.00001f, batchSize, LearnRateUpdate.CONSTANT, false);
-        optimizer.train_MMDiT_RoPE_iddpm(dataLoader, iddpm, "D://test//dit4//", "/omega/models/dit/", 0.13025f);
+        optimizer.train_MMDiT_RoPE_iddpm(dataLoader, iddpm, "/omega/models/dit/", 0.13025f);
         String save_model_path = "/omega/models/dit_anime_768_256.model";
         ModelUtils.saveModel(dit, save_model_path);
     }
@@ -409,7 +409,9 @@ public class MMDiTTest {
         	
 //        	testClip();
         	
-        	mmdit_rope_iddpm_amine_train_by_latend();
+//        	mmdit_rope_iddpm_amine_train_by_latend();
+        	
+        	mmdit_iddpm_amine_train_by_latend();
         	
         } catch (Exception e) {
             // TODO: handle exception

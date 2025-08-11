@@ -7296,7 +7296,7 @@ public class MBSGDOptimizer extends Optimizer {
         }
     }
     
-    public void train_MMDiT_RoPE_iddpm(LatendDataset trainingData, IDDPM iddpm, String testPath, String weightPath, float scale_factor) {
+    public void train_MMDiT_RoPE_iddpm(LatendDataset trainingData, IDDPM iddpm, String weightPath, float scale_factor) {
         // TODO Auto-generated method stub
         try {
 
