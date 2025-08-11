@@ -214,9 +214,9 @@ public class DiTJoinBlock extends Layer {
     
     public void output(Tensor context, Tensor c) {
     	
-    	x_block.pre_attention(input, c);
-    	context_block.pre_attention(context, c);
-
+    	x_block.pre_attention(input, c); //[batchSize, imgTime, embedDim]
+    	context_block.pre_attention(context, c);  //[batchSize, textTime, embedDim]
+    	
     	attentionKernel.concat_channel_forward(context_block.q(), x_block.q(), q, batchSize, textTime, imgTime, 1, embedDim);
     	attentionKernel.concat_channel_forward(context_block.k(), x_block.k(), k, batchSize, textTime, imgTime, 1, embedDim);
     	attentionKernel.concat_channel_forward(context_block.v(), x_block.v(), v, batchSize, textTime, imgTime, 1, embedDim);

@@ -39,7 +39,17 @@ public class ModelUtils {
             data.hostToDevice();
         }
     }
-
+    
+    public static void readFloat(RandomAccessFile inputStream, float[] data) throws IOException {
+        for (int i = 0; i < data.length; i++) {
+            float v = readFloat(inputStream);
+            data[i] = v;
+            if (v == Float.NaN) {
+                System.err.println(v);
+            }
+        }
+    }
+    
     public static void readInt(RandomAccessFile inputStream, int[] data) throws IOException {
         for (int i = 0; i < data.length; i++) {
             int v = readInt(inputStream);
@@ -64,7 +74,6 @@ public class ModelUtils {
         }
         /**
          * padding
-
          */
         for (int j = idx; j < data.length; j++) {
             data[j] = 0;

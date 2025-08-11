@@ -48,6 +48,7 @@ import com.omega.engine.nn.network.vqgan.PatchGANDiscriminator;
 import com.omega.engine.optimizer.lr.LearnRateUpdate;
 import com.omega.engine.tensor.Tensor;
 import com.omega.example.diffusion.utils.DiffusionImageDataLoader;
+import com.omega.example.dit.dataset.LatendDataset;
 import com.omega.example.dit.models.IDDPM;
 import com.omega.example.rnn.data.OneHotDataLoader;
 import com.omega.example.rnn.data.RNNDataLoader;
@@ -6724,6 +6725,272 @@ public class MBSGDOptimizer extends Optimizer {
         }
     }
     
+    public void train_MMDiT_iddpm2(SDImageDataLoaderEN trainingData, SD_VAE vae, ClipTextModel clip,IDDPM iddpm,String testPath,String weightPath, float scale_factor) {
+        // TODO Auto-generated method stub
+        try {
+
+        	MMDiT network = (MMDiT) this.network;
+            
+            this.dataSize = trainingData.number;
+            if (isWarmUp()) {
+                this.network.learnRate = (float) (this.lr * Math.pow(batchIndex * 1.0f / burnIn * 1.0f, power));
+            }
+            Tensor input = new Tensor(batchSize, 3, trainingData.img_h, trainingData.img_w, true);
+            Tensor label = new Tensor(batchSize * trainingData.maxContextLen, 1, 1, 1, true);
+            Tensor eosIds = new Tensor(batchSize, 1, 1, 1, true);
+            
+            Tensor xt = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+            Tensor target = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+            
+            String[] labels = new String[batchSize];
+
+            Tensor t = new Tensor(batchSize, 1, 1, 1, true);
+
+            Tensor noise = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+            Tensor score = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+            
+            Tensor condInput = new Tensor(batchSize, 1, 1, network.textEmbedDim, true);
+            Tensor latend = null;
+
+            for (int i = 0; i < this.trainTime; i++) {
+                if (this.trainIndex >= this.minTrainTime) {
+                    break;
+                }
+                this.trainIndex = i + 1;
+                int[][] indexs = trainingData.shuffle();
+                //				int[][] indexs = trainingData.order();
+                this.network.RUN_MODEL = RunModel.TRAIN;
+                float train_loss = 0.0f;
+                /**
+                 * 遍历整个训练集
+                 */
+                for (int it = 0; it < indexs.length; it++) {
+                    long start = System.nanoTime();
+                    if (Math.abs(this.currentError) <= this.error) {
+                        break;
+                    }
+                    
+                    RandomUtils.uniform(t);
+
+                    trainingData.loadData(indexs[it], input, label, noise, labels, eosIds);
+                    JCudaDriver.cuCtxSynchronize();
+
+                    /**
+                     * get latend
+                     */
+                    latend = vae.encode(input);
+                    JCudaDriver.cuCtxSynchronize();
+//                    latend.showShape();
+                    network.tensorOP.mul(latend, scale_factor, latend);
+                    /**
+                     * get context embd
+                     */
+                    condInput = clip.get_clip_prompt_embeds(label, eosIds, condInput);
+//                    condInput.showShape();
+                    JCudaDriver.cuCtxSynchronize();
+                    
+                    /**
+                     * latend add noise
+                     */
+                    iddpm.q_sample(latend, noise, t, xt, target);
+
+                    /**
+                     * forward
+                     */
+                    Tensor output = network.forward(xt, t, condInput);
+                    
+                    /**
+                     * loss
+                     */
+                    this.loss = network.loss(output, target);
+                    
+                    /**
+                     * loss diff
+                     */
+                    this.lossDiff = network.lossDiff(output, target);
+
+                    /**
+                     * back
+                     */
+                    network.back(this.lossDiff);
+                    /**
+                     * update
+                     */
+                    network.update();
+                    JCudaDriver.cuCtxSynchronize();
+                    /**
+                     * current time error
+                     */
+                    if (this.loss.isHasGPU()) {
+                    	float mse_loss = MatrixOperation.sum(this.loss.syncHost()) / this.batchSize;
+                        this.currentError = mse_loss;
+//                        t.showDM("t:");
+                    } else {
+                        this.currentError = MatrixOperation.sum(this.loss.data) / this.batchSize;
+                    }
+                    train_loss += this.currentError;
+                    String msg = "training[" + this.trainIndex + "]{" + it + "/" + indexs.length + "} (lr:" + this.network.learnRate + ") train_loss:" + this.currentError + " [costTime:" + (System.nanoTime() - start) / 1e6 + "ms.]";
+                    System.out.println(msg);
+                    this.batchIndex++;
+                    /**
+                     * update learning rate
+                     */
+                    this.updateLR(this.lr_step);
+                    updateLRDynamic(i * trainingData.count_it + it, this.trainTime * trainingData.count_it, 1e-6f);
+                }
+                if (i % 10 == 0) {
+                    network.RUN_MODEL = RunModel.TEST;
+                    System.out.println("start create test images.");
+                    labels[0] = "A young girl in cap and shorts with letter 'W' swing in the bule water, surrounded by a dynamic energy.";
+                    labels[1] = "a vibrant anime mountain lands";
+                    labels[2] = "A woman fly in the sky, wearing a red top with a sheer overlay and blue jeans.";
+                    labels[3] = "a 3d close-up of stylized white flowers with intricate details, lush leaves, and foliage, bathed in dramatic chiaroscuro lighting against a dark background, high resolution, sharp focus.";
+                    labels[4] = "a majestic tiger face in a lush, natural landscape, with intricate fur details and rich textures, bathed in soft golden hour light, high resolution, photorealistic.";
+                    labels[5] = "A lovely corgi was walking on the bottom of the sea. There was a turtle swimming beside him. There were many colorful fish around";
+                    trainingData.loadLabel_offset(label, 0, labels[0], eosIds);
+                    trainingData.loadLabel_offset(label, 1, labels[1], eosIds);
+                    trainingData.loadLabel_offset(label, 2, labels[2], eosIds);
+                    trainingData.loadLabel_offset(label, 3, labels[3], eosIds);
+                    trainingData.loadLabel_offset(label, 4, labels[4], eosIds);
+                    trainingData.loadLabel_offset(label, 5, labels[5], eosIds);
+                    condInput = clip.get_clip_prompt_embeds(label, eosIds, condInput);
+                    testDiT_IDDPM(i + "", latend, noise, t, condInput, score, network, vae, iddpm, labels, testPath, scale_factor);
+                    System.out.println("finish create.");
+                    network.RUN_MODEL = RunModel.TRAIN;
+                }
+                if (i > 0 && i % 100 == 0) {
+                    String save_model_path = "/omega/models/anime_dit_" + i + ".model";
+                    ModelUtils.saveModel(network, save_model_path);
+                }
+                System.out.println("training[" + this.trainIndex + "] train loss:{" + train_loss / indexs.length + "} ");
+            }
+            /**
+             * 停止训练
+             */
+            System.out.println("training finish. [" + this.trainIndex + "] finalError:" + this.currentError);
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void train_MMDiT_iddpm(LatendDataset trainingData,IDDPM iddpm,String weightPath, float scale_factor) {
+        // TODO Auto-generated method stub
+        try {
+
+        	MMDiT network = (MMDiT) this.network;
+            
+            this.dataSize = trainingData.number;
+            if (isWarmUp()) {
+                this.network.learnRate = (float) (this.lr * Math.pow(batchIndex * 1.0f / burnIn * 1.0f, power));
+            }
+            Tensor latend = new Tensor(batchSize, trainingData.channel, trainingData.height, trainingData.width, true);
+            Tensor condInput = new Tensor(batchSize , 1, 1, trainingData.clipEmbd, true);
+            
+            float[] tmpInput = new float[latend.dataLength];
+            float[] tmpLabel = new float[condInput.dataLength];
+            
+            Tensor xt = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+            Tensor target = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+            
+            Tensor t = new Tensor(batchSize, 1, 1, 1, true);
+
+            Tensor noise = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+            
+            trainingData.loadData(latend, condInput, tmpInput, tmpLabel, 0);
+            
+            for (int i = 0; i < this.trainTime; i++) {
+                if (this.trainIndex >= this.minTrainTime) {
+                    break;
+                }
+                this.trainIndex = i + 1;
+
+                this.network.RUN_MODEL = RunModel.TRAIN;
+                float train_loss = 0.0f;
+                /**
+                 * 遍历整个训练集
+                 */
+                for (int it = 0; it < trainingData.count_it; it++) {
+                    long start = System.nanoTime();
+                    if (Math.abs(this.currentError) <= this.error) {
+                        break;
+                    }
+                    
+                    RandomUtils.uniform(t);
+
+                    RandomUtils.gaussianRandom(noise, 0, 1);
+                    
+                    trainingData.loadData(latend, condInput, tmpInput, tmpLabel, it);
+                    JCudaDriver.cuCtxSynchronize();
+//                    latend.showShape();
+                    network.tensorOP.mul(latend, scale_factor, latend);
+                    
+                    /**
+                     * latend add noise
+                     */
+                    iddpm.q_sample(latend, noise, t, xt, target);
+
+                    /**
+                     * forward
+                     */
+                    Tensor output = network.forward(xt, t, condInput);
+                    
+                    /**
+                     * loss
+                     */
+                    this.loss = network.loss(output, target);
+                    
+                    /**
+                     * loss diff
+                     */
+                    this.lossDiff = network.lossDiff(output, target);
+
+                    /**
+                     * back
+                     */
+                    network.back(this.lossDiff);
+                    /**
+                     * update
+                     */
+                    network.update();
+                    JCudaDriver.cuCtxSynchronize();
+                    /**
+                     * current time error
+                     */
+                    if (this.loss.isHasGPU()) {
+                    	float mse_loss = MatrixOperation.sum(this.loss.syncHost()) / this.batchSize;
+                        this.currentError = mse_loss;
+//                        t.showDM("t:");
+                    } else {
+                        this.currentError = MatrixOperation.sum(this.loss.data) / this.batchSize;
+                    }
+                    train_loss += this.currentError;
+                    String msg = "training[" + this.trainIndex + "]{" + it + "/" + trainingData.count_it + "} (lr:" + this.network.learnRate + ") train_loss:" + this.currentError + " [costTime:" + (System.nanoTime() - start) / 1e6 + "ms.]";
+                    System.out.println(msg);
+                    this.batchIndex++;
+                    /**
+                     * update learning rate
+                     */
+                    this.updateLR(this.lr_step);
+                    updateLRDynamic(i * trainingData.count_it + it, this.trainTime * trainingData.count_it, 1e-6f);
+                }
+                
+                if (i > 0 && i % 100 == 0) {
+                    String save_model_path = "/omega/models/anime_dit_" + i + ".model";
+                    ModelUtils.saveModel(network, save_model_path);
+                }
+                System.out.println("training[" + this.trainIndex + "] train loss:{" + train_loss / trainingData.count_it + "} ");
+            }
+            /**
+             * 停止训练
+             */
+            System.out.println("training finish. [" + this.trainIndex + "] finalError:" + this.currentError);
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
     public void train_MMDiT_RoPE_iddpm(SDImageDataLoaderEN trainingData, SD_VAE vae, ClipTextModel clip,IDDPM iddpm,String testPath,String weightPath, float scale_factor) {
         // TODO Auto-generated method stub
         try {
@@ -7018,6 +7285,127 @@ public class MBSGDOptimizer extends Optimizer {
                     ModelUtils.saveModel(network, save_model_path);
                 }
                 System.out.println("training[" + this.trainIndex + "] train loss:{" + train_loss / indexs.length + "} ");
+            }
+            /**
+             * 停止训练
+             */
+            System.out.println("training finish. [" + this.trainIndex + "] finalError:" + this.currentError);
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void train_MMDiT_RoPE_iddpm(LatendDataset trainingData, IDDPM iddpm, String testPath, String weightPath, float scale_factor) {
+        // TODO Auto-generated method stub
+        try {
+
+        	MMDiT_RoPE network = (MMDiT_RoPE) this.network;
+            
+            this.dataSize = trainingData.number;
+            if (isWarmUp()) {
+                this.network.learnRate = (float) (this.lr * Math.pow(batchIndex * 1.0f / burnIn * 1.0f, power));
+            }
+            Tensor latend = new Tensor(batchSize, trainingData.channel, trainingData.height, trainingData.width, true);
+            Tensor condInput = new Tensor(batchSize, 1, 1, trainingData.clipEmbd, true);
+            
+            float[] tmpInput = new float[latend.dataLength];
+            float[] tmpLabel = new float[condInput.dataLength];
+            
+            Tensor xt = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+            Tensor target = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+            
+            Tensor t = new Tensor(batchSize, 1, 1, 1, true);
+
+            Tensor noise = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+    
+            Tensor[] cs = RoPEKernel.getCosAndSin2D(network.time, network.hiddenSize, network.headNum);
+            Tensor cos = cs[0];
+            Tensor sin = cs[1];
+            
+            trainingData.loadData(latend, condInput, tmpInput, tmpLabel, 0);
+            
+            for (int i = 0; i < this.trainTime; i++) {
+                if (this.trainIndex >= this.minTrainTime) {
+                    break;
+                }
+                this.trainIndex = i + 1;
+
+                this.network.RUN_MODEL = RunModel.TRAIN;
+                float train_loss = 0.0f;
+                /**
+                 * 遍历整个训练集
+                 */
+                for (int it = 0; it < trainingData.count_it; it++) {
+                    long start = System.nanoTime();
+                    if (Math.abs(this.currentError) <= this.error) {
+                        break;
+                    }
+                    
+                    RandomUtils.uniform(t);
+                    
+                    RandomUtils.gaussianRandom(noise, 0, 1);
+                    
+                    trainingData.loadData(latend, condInput, tmpInput, tmpLabel, it);
+                    JCudaDriver.cuCtxSynchronize();
+
+                    network.tensorOP.mul(latend, scale_factor, latend);
+                   
+                    /**
+                     * latend add noise
+                     */
+                    iddpm.q_sample(latend, noise, t, xt, target);
+
+                    /**
+                     * forward
+                     */
+                    Tensor output = network.forward(xt, t, condInput, cos, sin);
+                    
+                    /**
+                     * loss
+                     */
+                    this.loss = network.loss(output, target);
+                    
+                    /**
+                     * loss diff
+                     */
+                    this.lossDiff = network.lossDiff(output, target);
+
+                    /**
+                     * back
+                     */
+                    network.back(this.lossDiff, cos, sin);
+                    /**
+                     * update
+                     */
+                    network.update();
+                    JCudaDriver.cuCtxSynchronize();
+                    /**
+                     * current time error
+                     */
+                    if (this.loss.isHasGPU()) {
+                    	float mse_loss = MatrixOperation.sum(this.loss.syncHost()) / this.batchSize;
+                        this.currentError = mse_loss;
+//                        t.showDM("t:");
+                    } else {
+                        this.currentError = MatrixOperation.sum(this.loss.data) / this.batchSize;
+                    }
+                    train_loss += this.currentError;
+                    String msg = "training[" + this.trainIndex + "]{" + it + "/" + trainingData.count_it + "} (lr:" + this.network.learnRate + ") train_loss:" + this.currentError + " [costTime:" + (System.nanoTime() - start) / 1e6 + "ms.]";
+                    System.out.println(msg);
+                    this.batchIndex++;
+                    /**
+                     * update learning rate
+                     */
+                    this.updateLR(this.lr_step);
+                    updateLRDynamic(i * trainingData.count_it + it, this.trainTime * trainingData.count_it, 1e-6f);
+                }
+              
+                if (i > 0 && i % 100 == 0) {
+                    String save_model_path = "/omega/models/anime_mmdit_" + i + ".model";
+                    ModelUtils.saveModel(network, save_model_path);
+                }
+                System.out.println("training[" + this.trainIndex + "] train loss:{" + train_loss / trainingData.count_it + "} ");
             }
             /**
              * 停止训练

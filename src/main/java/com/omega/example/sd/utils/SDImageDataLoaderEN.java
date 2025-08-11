@@ -210,6 +210,25 @@ public class SDImageDataLoaderEN extends BaseDataLoader {
         label.hostToDevice();
     }
     
+    public void loadData(int[] indexs, Tensor input, Tensor label, String[] labels, Tensor eosIds) {
+        // TODO Auto-generated method stub
+        /**
+         * 加载input数据
+         */
+        if (mean != null) {
+            SegImageLoader.load(imgDirPath, extName, idxSet, indexs, input.number, input, false, true, mean, std);
+        } else {
+            SegImageLoader.load(imgDirPath, extName, idxSet, indexs, input.number, input, false, true);
+        }
+        loadLabels(indexs, label, labels, eosIds);
+        /**
+         * copy data to gpu.
+         */
+        input.hostToDevice();
+        label.hostToDevice();
+        eosIds.hostToDevice();
+    }
+    
     public void loadData(int[] indexs, Tensor input, Tensor label, Tensor noise, String[] labels, Tensor eosIds) {
         // TODO Auto-generated method stub
         /**

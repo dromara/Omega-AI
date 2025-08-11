@@ -33,7 +33,7 @@ public class MMDiT extends Network {
     private int depth;
     private int timeSteps;
     public int headNum;
-    private int textEmbedDim;
+    public int textEmbedDim;
     private int mlpRatio = 4;
     private boolean learnSigma = true;
     
