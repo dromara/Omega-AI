@@ -157,7 +157,7 @@ public class DiTFinalLayer extends Layer {
     public void diff(Tensor dtc) {
         // TODO Auto-generated method stub
     	finalLinear.back(this.delta);
-    	
+
         Tensor_OP().addAxisBack(dShift, finalLinear.diff, batchSize, time, 1, finalNorm.getOutput().width, 1);
 
     	Tensor_OP().mul_right_back(finalNorm.getOutput(), finalLinear.diff, dScale, batchSize, time, 1, finalNorm.getOutput().width, 1);

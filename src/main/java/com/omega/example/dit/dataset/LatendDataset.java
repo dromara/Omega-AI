@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.concurrent.CompletableFuture;
 
+import com.omega.common.utils.JsonUtils;
+import com.omega.common.utils.MathUtils;
 import com.omega.engine.nn.network.utils.ModelUtils;
 import com.omega.engine.tensor.Tensor;
 import com.omega.example.transformer.utils.BaseTokenizer;
@@ -97,8 +99,8 @@ public class LatendDataset extends BaseTokenizer {
                     ModelUtils.readFloat(file, cache);
                     ModelUtils.readFloat(clipFile, clip_cache);
                 }
-                file.seek(file.getFilePointer() - byteUnit);
-                clipFile.seek(clipFile.getFilePointer() - byteUnit);
+                file.seek(file.getFilePointer());
+                clipFile.seek(clipFile.getFilePointer());
                 index++;
             } else {
                 initBinReader();
@@ -110,29 +112,26 @@ public class LatendDataset extends BaseTokenizer {
         }
         return cache;
     }
-
-    public void loadData2(Tensor input, Tensor label, float[] tmpInput, float[] tmpLabel, int it) {
+    
+    public float[] loadData(int idx) {
         try {
-            //			System.out.println(it);
-            if (isBin && it == count_it - 2) {
-                initBinReader();
-            }
-            if (cf != null) {
-                boolean success = cf.get();
-                //				System.err.println(it+"/"+count_it+":"+success);
-                //				System.out.println(JsonUtils.toJson(input.data));
-                input.hostToDevice(tmpInput);
-                label.hostToDevice(tmpLabel);
-                JCuda.cudaDeviceSynchronize();
-                //				System.out.println(JsonUtils.toJson(tmpLabel));
-                cf = loadAsyncData(tmpInput, tmpLabel);
+            if (idx * max_len * byteUnit <= file.length()) {
+            	file.seek(idx * max_len * byteUnit);
+                clipFile.seek(idx * clipEmbd * byteUnit);
+                if (dataType == BinDataType.float32) {
+                    ModelUtils.readFloat(file, cache);
+                    ModelUtils.readFloat(clipFile, clip_cache);
+                }
+                
             } else {
-                cf = loadAsyncData(tmpInput, tmpLabel);
+                initBinReader();
+                return loadData();
             }
         } catch (Exception e) {
             // TODO: handle exception
             e.printStackTrace();
         }
+        return cache;
     }
 
     public void loadData(Tensor input, Tensor label, float[] tmpInput, float[] tmpLabel, int it) {
@@ -158,15 +157,63 @@ public class LatendDataset extends BaseTokenizer {
         }
     }
     
+    public void loadData(int[] index,Tensor input, Tensor label, int it) {
+        try {
+            //			System.out.println(it);
+            if (isBin && it == count_it - 2) {
+                initBinReader();
+            }
+            if (cf != null) {
+                boolean success = cf.get();
+                input.hostToDevice();
+                label.hostToDevice();
+                JCuda.cudaDeviceSynchronize();
+                cf = loadAsyncData(index, input, label);
+            } else {
+                cf = loadAsyncData(index, input, label);
+            }
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
     public float[] readIdxData() throws IOException {
     	 return loadData();
     }
+    
+    public float[] readIdxData(int idx) throws IOException {
+   	 return loadData(idx);
+   }
     
     public CompletableFuture<Boolean> loadAsyncData(Tensor input, Tensor label) {
         CompletableFuture<Boolean> cf = CompletableFuture.supplyAsync(() -> {
             try {
                 for (int b = 0; b < batchSize; b++) {
                     float[] onceToken = readIdxData();
+                    float[] clipToken = clip_cache;
+                    for (int t = 0; t < max_len; t++) {
+                        formatNotHeadToIdx(b, t, max_len, onceToken, input);
+                    }
+                    for(int t = 0;t < clipEmbd;t++) {
+                    	formatNotHeadToIdx(b, t, clipEmbd, clipToken, label);
+                    }
+                }
+            } catch (Exception e) {
+                // TODO: handle exception
+                e.printStackTrace();
+            }
+            return true;
+        });
+        return cf;
+    }
+    
+    public CompletableFuture<Boolean> loadAsyncData(int[] index,Tensor input, Tensor label) {
+        CompletableFuture<Boolean> cf = CompletableFuture.supplyAsync(() -> {
+            try {
+                for (int b = 0; b < batchSize; b++) {
+                	int idx = index[b];
+                    float[] onceToken = readIdxData(idx);
                     float[] clipToken = clip_cache;
                     for (int t = 0; t < max_len; t++) {
                         formatNotHeadToIdx(b, t, max_len, onceToken, input);
@@ -229,4 +276,10 @@ public class LatendDataset extends BaseTokenizer {
             input[b * max_len + t] = onceToken[t];
         }
     }
+    
+    public int[][] shuffle() {
+        // TODO Auto-generated method stub
+        return MathUtils.randomInts(this.number, this.batchSize);
+    }
+    
 }

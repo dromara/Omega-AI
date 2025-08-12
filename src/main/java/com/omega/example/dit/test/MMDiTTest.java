@@ -269,7 +269,7 @@ public class MMDiTTest {
 		String dataPath = "D:\\dataset\\amine\\dalle_latend.bin";
         String clipDataPath = "D:\\dataset\\amine\\dalle_clip.bin";
 
-        int batchSize = 24;
+        int batchSize = 8;
         int latendDim = 4;
         int height = 32;
         int width = 32;
@@ -277,7 +277,7 @@ public class MMDiTTest {
         
         LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, textEmbedDim, BinDataType.float32);
         
-        int ditHeadNum = 12;
+        int ditHeadNum = 24;
         int latendSize = 32;
         int depth = 24;
         int timeSteps = 1000;
@@ -298,10 +298,10 @@ public class MMDiTTest {
     }
 	
 	public static void mmdit_rope_iddpm_amine_train_by_latend() throws Exception {
-		String dataPath = "D:\\dataset\\amine\\amine_latend.bin";
-        String clipDataPath = "D:\\dataset\\amine\\amine_clip.bin";
+		String dataPath = "D:\\dataset\\amine\\dalle_latend.bin";
+        String clipDataPath = "D:\\dataset\\amine\\dalle_clip.bin";
 
-        int batchSize = 32;
+        int batchSize = 10;
         int latendDim = 4;
         int height = 32;
         int width = 32;
@@ -309,9 +309,9 @@ public class MMDiTTest {
         
         LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, textEmbedDim, BinDataType.float32);
         
-        int ditHeadNum = 12;
+        int ditHeadNum = 24;
         int latendSize = 32;
-        int depth = 12;
+        int depth = 24;
         int timeSteps = 1000;
         int mlpRatio = 4;
         int patchSize = 2;

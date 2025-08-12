@@ -256,7 +256,7 @@ public class MMDiTMoudue extends Layer {
     	int[] yShape = new int[] {number, oChannel, h, patchSize, w, patchSize};
     	int[] xShape = new int[] {number, h, w, patchSize, patchSize, oChannel};
     	Tensor_OP().permute(delta, finalLayer.getOutput(), yShape, xShape, new int[] {0, 2, 4, 3, 5, 1});
-    	
+
     	finalLayer.back(finalLayer.getOutput(), dtc);
 
     	Tensor dy = finalLayer.diff;
@@ -531,17 +531,17 @@ public class MMDiTMoudue extends Layer {
     }
     
     public static void main(String[] args) {
-    	int embed_dim = 384;
-    	int grid_size = 16;
-    	get_2d_cossin_pos_embed(embed_dim, grid_size);
+//    	int embed_dim = 384;
+//    	int grid_size = 16;
+//    	get_2d_cossin_pos_embed(embed_dim, grid_size);
     	
     	int N = 2;
     	int C = 4;
     	int H = 32;
     	int W = 32;
     	
-    	int TT = 77;
-    	int TEM = 512;
+    	int TT = 1;
+    	int TEM = 768;
     	
     	int patchSize = 2;
     	int hiddenSize = 384;
@@ -554,8 +554,8 @@ public class MMDiTMoudue extends Layer {
     	
         MMDiTMoudue jb = new MMDiTMoudue(C, W, H, patchSize, hiddenSize, headNum, depth, 1000, TT, TEM, 4, false, nn);
     	
-        String weight = "D:\\models\\mmdit.json";
-        loadWeight(LagJsonReader.readJsonFileSmallWeight(weight), jb, true);
+        String weight = "D:\\models\\mmdit_small.json";
+        loadWeight(LagJsonReader.readJsonFileBigWeightIterator(weight), jb, true);
         
 	    String inputPath = "D:\\models\\img_x.json";
 	    Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);

@@ -6887,9 +6887,6 @@ public class MBSGDOptimizer extends Optimizer {
             Tensor latend = new Tensor(batchSize, trainingData.channel, trainingData.height, trainingData.width, true);
             Tensor condInput = new Tensor(batchSize , 1, 1, trainingData.clipEmbd, true);
             
-            float[] tmpInput = new float[latend.dataLength];
-            float[] tmpLabel = new float[condInput.dataLength];
-            
             Tensor xt = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
             Tensor target = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
             
@@ -6897,14 +6894,16 @@ public class MBSGDOptimizer extends Optimizer {
 
             Tensor noise = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
             
-            trainingData.loadData(latend, condInput, tmpInput, tmpLabel, 0);
-            
             for (int i = 0; i < this.trainTime; i++) {
                 if (this.trainIndex >= this.minTrainTime) {
                     break;
                 }
                 this.trainIndex = i + 1;
+                
+                int[][] indexs = trainingData.shuffle();
 
+                trainingData.loadData(indexs[0], latend, condInput, 0);
+                
                 this.network.RUN_MODEL = RunModel.TRAIN;
                 float train_loss = 0.0f;
                 /**
@@ -6920,11 +6919,11 @@ public class MBSGDOptimizer extends Optimizer {
 
                     RandomUtils.gaussianRandom(noise, 0, 1);
                     
-                    trainingData.loadData(latend, condInput, tmpInput, tmpLabel, it);
+                    trainingData.loadData(indexs[it], latend, condInput, it);
                     JCudaDriver.cuCtxSynchronize();
 //                    latend.showShape();
                     network.tensorOP.mul(latend, scale_factor, latend);
-                    
+
                     /**
                      * latend add noise
                      */
@@ -6934,7 +6933,7 @@ public class MBSGDOptimizer extends Optimizer {
                      * forward
                      */
                     Tensor output = network.forward(xt, t, condInput);
-                    
+
                     /**
                      * loss
                      */
@@ -7309,9 +7308,6 @@ public class MBSGDOptimizer extends Optimizer {
             Tensor latend = new Tensor(batchSize, trainingData.channel, trainingData.height, trainingData.width, true);
             Tensor condInput = new Tensor(batchSize, 1, 1, trainingData.clipEmbd, true);
             
-            float[] tmpInput = new float[latend.dataLength];
-            float[] tmpLabel = new float[condInput.dataLength];
-            
             Tensor xt = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
             Tensor target = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
             
@@ -7322,15 +7318,17 @@ public class MBSGDOptimizer extends Optimizer {
             Tensor[] cs = RoPEKernel.getCosAndSin2D(network.time, network.hiddenSize, network.headNum);
             Tensor cos = cs[0];
             Tensor sin = cs[1];
-            
-            trainingData.loadData(latend, condInput, tmpInput, tmpLabel, 0);
-            
+
             for (int i = 0; i < this.trainTime; i++) {
                 if (this.trainIndex >= this.minTrainTime) {
                     break;
                 }
                 this.trainIndex = i + 1;
-
+                
+                int[][] indexs = trainingData.shuffle();
+                
+                trainingData.loadData(indexs[0], latend, condInput, 0);
+                
                 this.network.RUN_MODEL = RunModel.TRAIN;
                 float train_loss = 0.0f;
                 /**
@@ -7346,7 +7344,7 @@ public class MBSGDOptimizer extends Optimizer {
                     
                     RandomUtils.gaussianRandom(noise, 0, 1);
                     
-                    trainingData.loadData(latend, condInput, tmpInput, tmpLabel, it);
+                    trainingData.loadData(indexs[it], latend, condInput, it);
                     JCudaDriver.cuCtxSynchronize();
 
                     network.tensorOP.mul(latend, scale_factor, latend);
@@ -7375,6 +7373,7 @@ public class MBSGDOptimizer extends Optimizer {
                      * back
                      */
                     network.back(this.lossDiff, cos, sin);
+                    
                     /**
                      * update
                      */
