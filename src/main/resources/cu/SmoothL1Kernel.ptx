@@ -21,7 +21,7 @@
 )
 {
 	.reg .pred 	%p<3>;
-	.reg .f32 	%f<10>;
+	.reg .f32 	%f<9>;
 	.reg .b32 	%r<9>;
 	.reg .b64 	%rd<11>;
 
@@ -59,8 +59,7 @@
 $L__BB0_3:
 	mul.f32 	%f7, %f1, 0f3F000000;
 	mul.f32 	%f8, %f1, %f7;
-	div.rn.f32 	%f9, %f8, %f3;
-	st.global.f32 	[%rd1], %f9;
+	st.global.f32 	[%rd1], %f8;
 	bra.uni 	$L__BB0_4;
 
 $L__BB0_2:
@@ -80,9 +79,9 @@ $L__BB0_4:
 	.param .f32 loss_back_param_4
 )
 {
-	.reg .pred 	%p<5>;
-	.reg .f32 	%f<11>;
-	.reg .b32 	%r<10>;
+	.reg .pred 	%p<7>;
+	.reg .f32 	%f<12>;
+	.reg .b32 	%r<11>;
 	.reg .b64 	%rd<11>;
 
 
@@ -99,7 +98,7 @@ $L__BB0_4:
 	mov.u32 	%r8, %tid.x;
 	mad.lo.s32 	%r1, %r6, %r7, %r8;
 	setp.ge.s32 	%p1, %r1, %r2;
-	@%p1 bra 	$L__BB1_8;
+	@%p1 bra 	$L__BB1_12;
 
 	cvta.to.global.u64 	%rd5, %rd4;
 	cvta.to.global.u64 	%rd6, %rd2;
@@ -119,10 +118,14 @@ $L__BB0_4:
 	bra.uni 	$L__BB1_2;
 
 $L__BB1_7:
-	mul.f32 	%f9, %f2, %f1;
-	div.rn.f32 	%f10, %f9, %f3;
-	st.global.f32 	[%rd1], %f10;
+	setp.gt.f32 	%p5, %f1, 0f00000000;
+	@%p5 bra 	$L__BB1_11;
 	bra.uni 	$L__BB1_8;
+
+$L__BB1_11:
+	mul.f32 	%f11, %f2, %f1;
+	st.global.f32 	[%rd1], %f11;
+	bra.uni 	$L__BB1_12;
 
 $L__BB1_2:
 	setp.gt.f32 	%p3, %f1, 0f00000000;
@@ -131,7 +134,17 @@ $L__BB1_2:
 
 $L__BB1_6:
 	st.global.f32 	[%rd1], %f2;
-	bra.uni 	$L__BB1_8;
+	bra.uni 	$L__BB1_12;
+
+$L__BB1_8:
+	setp.eq.f32 	%p6, %f1, 0f00000000;
+	@%p6 bra 	$L__BB1_10;
+	bra.uni 	$L__BB1_9;
+
+$L__BB1_10:
+	mov.u32 	%r10, 0;
+	st.global.u32 	[%rd1], %r10;
+	bra.uni 	$L__BB1_12;
 
 $L__BB1_3:
 	setp.eq.f32 	%p4, %f1, 0f00000000;
@@ -141,13 +154,19 @@ $L__BB1_3:
 $L__BB1_5:
 	mov.u32 	%r9, 0;
 	st.global.u32 	[%rd1], %r9;
-	bra.uni 	$L__BB1_8;
+	bra.uni 	$L__BB1_12;
+
+$L__BB1_9:
+	mul.f32 	%f9, %f2, %f1;
+	neg.f32 	%f10, %f9;
+	st.global.f32 	[%rd1], %f10;
+	bra.uni 	$L__BB1_12;
 
 $L__BB1_4:
 	neg.f32 	%f8, %f2;
 	st.global.f32 	[%rd1], %f8;
 
-$L__BB1_8:
+$L__BB1_12:
 	ret;
 
 }

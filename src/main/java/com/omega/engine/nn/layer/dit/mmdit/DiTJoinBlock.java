@@ -32,7 +32,7 @@ public class DiTJoinBlock extends Layer {
     
     private int mlp_ratio;
     private int time;
-    private int imgTime;
+    public int imgTime;
     private int textTime;
     private int headNum = 1;
     private int embedDim = 0;
@@ -443,11 +443,13 @@ public class DiTJoinBlock extends Layer {
     }
 
     public void saveModel(RandomAccessFile outputStream) throws IOException {
-
+    	x_block.saveModel(outputStream);
+    	context_block.saveModel(outputStream);
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
-
+    	x_block.loadModel(inputStream);
+    	context_block.loadModel(inputStream);
     }
 
     @Override
@@ -494,8 +496,7 @@ public class DiTJoinBlock extends Layer {
         ClipModelUtils.loadData(block.x_block.mlp.linear2.bias, weightMap, "x_block.mlp.fc2.bias");
         ClipModelUtils.loadData(block.x_block.adaLN_modulation.weight, weightMap, "x_block.adaLN_modulation.1.weight");
         ClipModelUtils.loadData(block.x_block.adaLN_modulation.bias, weightMap, "x_block.adaLN_modulation.1.bias");
-        
-        
+
     }
     
     public static void main(String[] args) {

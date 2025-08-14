@@ -30,7 +30,7 @@ public class DiTJoinBlockRoPE extends Layer {
     
     private int mlp_ratio;
     private int time;
-    private int imgTime;
+    public int imgTime;
     private int textTime;
     private int headNum = 1;
     private int embedDim = 0;

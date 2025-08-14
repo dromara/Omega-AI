@@ -2,36 +2,41 @@ package com.omega.engine.nn.layer.opensora.dit.moudles;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.Map;
 
-import com.omega.common.utils.RandomUtils;
-import com.omega.engine.nn.layer.ConvolutionLayer;
+import com.omega.engine.nn.layer.Convolution3DLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
+import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
- * DiT_PatchEmbeddingLayer
+ * DiTPatchEmbed3D
  *
  * @author Administrator
  */
-public class DiTPatchEmbed2D extends Layer {
+public class DiTPatchEmbed3D extends Layer {
 	
     private int embedDim = 0;
-
-    public ConvolutionLayer patchEmbedding;
+    public int depth = 0;
+    public int[] patchSize;
+    
+    public Convolution3DLayer patchEmbedding;
     
     private int[] shape;
     private int[] t_shape;
 
-    public DiTPatchEmbed2D(int channel, int imageSize, int embedDim, int patchSize, boolean bias, Network network) {
+    public DiTPatchEmbed3D(int channel, int embedDim, int depth, int imageSize, int[] patchSize, boolean bias, Network network) {
         this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
         }
         this.channel = channel;
+        this.depth = depth;
         this.height = imageSize;
         this.width = imageSize;
         this.embedDim = embedDim;
@@ -39,19 +44,52 @@ public class DiTPatchEmbed2D extends Layer {
 
     }
 
+    public static void loadWeight(Map<String, Object> weightMap, DiTPatchEmbed3D block, boolean showLayers) {
+        if (showLayers) {
+            for (String key : weightMap.keySet()) {
+                System.out.println(key);
+            }
+        }
+        
+        ClipModelUtils.loadData(block.patchEmbedding.weight, weightMap, "proj.weight", 5);
+        ClipModelUtils.loadData(block.patchEmbedding.bias, weightMap, "proj.bias");
+//        block.patchEmbedding.bias.showDM("bias");
+    }
+    
     public static void main(String[] args) {
-        int batchSize = 2;
-        int embedDim = 6;
-        int imgSize = 224;
-        int patchSize = 32;
+        int N = 2;
+        int C = 4;
+        int T = 16;
+        int H = 32;
+        int W = 32;
+        int embedDim = 64;
+        int[] patchSize = new int[] {1, 2, 2};
         Transformer tf = new Transformer();
-        tf.number = batchSize;
-        DiTPatchEmbed2D layer = new DiTPatchEmbed2D(3, embedDim, imgSize, patchSize, false, tf);
-        float[] data = RandomUtils.order(batchSize * 3 * imgSize * imgSize, 1f, 0f);
-        Tensor input = new Tensor(batchSize, 3, imgSize, imgSize, data, true);
+        tf.number = N;
+        tf.CUDNN = true;
+        DiTPatchEmbed3D layer = new DiTPatchEmbed3D(C, embedDim, T, W, patchSize, true, tf);
+        
+        String weight = "D:\\models\\PatchEmbed3D.json";
+        loadWeight(LagJsonReader.readJsonFileBigWeightIterator(weight), layer, true);
+        
+        String inputPath = "D:\\models\\sora_x.json";
+        Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
+        Tensor input = new Tensor(N, C * T, H, W, true);
+        ClipModelUtils.loadData(input, datas, "x", 5);
+        
         layer.forward(input);
         layer.getOutput().showShape();
         layer.getOutput().showDM();
+        
+        String dxPath = "D:\\models\\sora_dx.json";
+        Map<String, Object> dxDatas = LagJsonReader.readJsonFileSmallWeight(dxPath);
+        Tensor dx = new Tensor(N, layer.getOutput().channel, layer.getOutput().height, layer.getOutput().width, true);
+        ClipModelUtils.loadData(dx, dxDatas, "dx", 3);
+        
+        layer.back(dx);
+        layer.diff.showShape();
+        layer.diff.showDM();
+        
     }
 
     @Override
@@ -59,8 +97,10 @@ public class DiTPatchEmbed2D extends Layer {
         // TODO Auto-generated method stub
         this.number = network.number;
         if (output == null || output.number != this.number) {
-            int pChannel = this.getPatchEmbedding().oHeight * this.getPatchEmbedding().oWidth;
+        	int pChannel = patchEmbedding.oDepth * patchEmbedding.oHeight * patchEmbedding.oWidth;
             output = Tensor.createGPUTensor(output, this.number, pChannel, 1, embedDim, true);
+            shape = new int[] {number, patchEmbedding.oChannel, 1, pChannel};
+            t_shape = new int[] {number, pChannel, 1, patchEmbedding.oChannel};
         }
     }
 
@@ -68,20 +108,21 @@ public class DiTPatchEmbed2D extends Layer {
         // TODO Auto-generated method stub
         this.number = input.number;
         if (output == null || output.number != this.number) {
-            int pChannel = this.getPatchEmbedding().oHeight * this.getPatchEmbedding().oWidth;
+            int pChannel = patchEmbedding.oDepth * patchEmbedding.oHeight * patchEmbedding.oWidth;
             output = Tensor.createGPUTensor(output, this.number, pChannel, 1, embedDim, true);
-            shape = new int[] {number, this.getPatchEmbedding().oChannel, 1, pChannel};
-            t_shape = new int[] {number, pChannel, 1, this.getPatchEmbedding().oChannel};
+            shape = new int[] {number, patchEmbedding.oChannel, 1, pChannel};
+            t_shape = new int[] {number, pChannel, 1, patchEmbedding.oChannel};
         }
     }
 
-    public void initLayers(int inChannel, int height, int width, int patchSize, boolean bias) {
-        this.patchEmbedding = new ConvolutionLayer(inChannel, embedDim, height, width, patchSize, patchSize, 0, patchSize, bias, network);
-        this.patchEmbedding.weight.setData(RandomUtils.xavierUniform(this.patchEmbedding.weight.dataLength, inChannel * patchSize * patchSize, embedDim * patchSize * patchSize, 1));
-        if(this.patchEmbedding.bias != null) {
-        	this.patchEmbedding.bias.clearGPU();
-        }
-        int pChannel = this.getPatchEmbedding().oHeight * this.getPatchEmbedding().oWidth;
+    public void initLayers(int inChannel, int height, int width, int[] patchSize, boolean bias) {
+    	int[] padding = new int[] {0, 0, 0};
+        this.patchEmbedding = new Convolution3DLayer(inChannel, embedDim, depth, width, height, patchSize[0], patchSize[1], patchSize[2], padding, patchSize, bias, network);
+//        this.patchEmbedding.weight.setData(RandomUtils.xavierUniform(this.patchEmbedding.weight.dataLength, inChannel * patchSize[0] * patchSize[1] * patchSize[2], embedDim * patchSize[0] * patchSize[1] * patchSize[2], 1));
+//        if(this.patchEmbedding.bias != null) {
+//        	this.patchEmbedding.bias.clearGPU();
+//        }
+        int pChannel = patchEmbedding.oDepth * patchEmbedding.oHeight * patchEmbedding.oWidth;
         this.oChannel = pChannel;
         this.oHeight = 1;
         this.oWidth = embedDim;
@@ -100,8 +141,10 @@ public class DiTPatchEmbed2D extends Layer {
     @Override
     public void output() {
         // TODO Auto-generated method stub
-        getPatchEmbedding().forward(this.input);
-        Tensor_OP().permute(getPatchEmbedding().getOutput(), output, shape, t_shape, new int[]{0, 3, 2, 1});
+//    	input.showDM("input");
+    	patchEmbedding.forward(this.input);
+//    	patchEmbedding.getOutput().showDM("patchEmbedding");
+        Tensor_OP().permute(patchEmbedding.getOutput(), output, shape, t_shape, new int[]{0, 3, 2, 1});
     }
 
     @Override
@@ -113,9 +156,9 @@ public class DiTPatchEmbed2D extends Layer {
     @Override
     public void diff() {
         // TODO Auto-generated method stub
-    	Tensor_OP().permute(delta, getPatchEmbedding().getOutput(), t_shape, shape, new int[]{0, 3, 2, 1});
-    	getPatchEmbedding().back(getPatchEmbedding().getOutput());
-    	this.diff =  getPatchEmbedding().diff;
+    	Tensor_OP().permute(delta, patchEmbedding.getOutput(), t_shape, shape, new int[]{0, 3, 2, 1});
+    	patchEmbedding.back(patchEmbedding.getOutput());
+    	this.diff =  patchEmbedding.diff;
 //    	diff.showDM("dx");
     }
 
@@ -186,7 +229,7 @@ public class DiTPatchEmbed2D extends Layer {
     @Override
     public void update() {
         // TODO Auto-generated method stub
-    	getPatchEmbedding().update();
+    	patchEmbedding.update();
     }
 
     @Override
@@ -217,21 +260,17 @@ public class DiTPatchEmbed2D extends Layer {
     }
 
     public void saveModel(RandomAccessFile outputStream) throws IOException {
-    	getPatchEmbedding().saveModel(outputStream);
+    	patchEmbedding.saveModel(outputStream);
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
-    	getPatchEmbedding().loadModel(inputStream);
+    	patchEmbedding.loadModel(inputStream);
     }
 
     @Override
     public void accGrad(float scale) {
         // TODO Auto-generated method stub
-    	getPatchEmbedding().accGrad(scale);
-    }
-
-    public ConvolutionLayer getPatchEmbedding() {
-        return patchEmbedding;
+    	patchEmbedding.accGrad(scale);
     }
 
 }

@@ -72,7 +72,7 @@ public class MMDiTMoudue extends Layer {
 		this.oHeight = height;
 		this.oWidth = width;
     }
-
+    
     public void initLayers() {
     	
     	patchEmbd = new DiTPatchEmbeddingLayer(inChannel, width, hiddenSize, patchSize, true, network);

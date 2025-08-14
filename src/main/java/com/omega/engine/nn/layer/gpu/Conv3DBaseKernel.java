@@ -18,6 +18,8 @@ public abstract class Conv3DBaseKernel extends BaseKernel {
     public abstract void conv(Tensor input, Tensor kernel, Tensor output);
     
     public abstract void conv(Tensor input, Tensor kernel, Tensor output, int[] pad);
+    
+    public abstract void conv(Tensor input, Tensor kernel, Tensor output, int[] pad, int[] s);
 
     public abstract void convTranspose(Tensor input, Tensor kernel, Tensor output);
 
