@@ -227,6 +227,27 @@ public class VideoDataLoaderEN extends BaseDataLoader {
         label.hostToDevice();
     }
 
+    /**
+     * 加载数据集
+     *
+     * @param indexs 数据集数据索引
+     * @param input 保存数据的Tensor
+     * @param label 保存label的Tensor
+     * @param labels labels数组
+     * @param eosIdx 每条数据第一个结束符位置
+     */
+    public void loadData(int[] indexs, Tensor input, Tensor label, String[] labels, Tensor eosIdx) {
+        if (mean != null) {
+            VideoDataLoader.load(imgDirPath, extName, datas, indexs, batchSize, num_frames, input, true, mean, std);
+        } else {
+            VideoDataLoader.load(imgDirPath, extName, datas, indexs, batchSize, num_frames, input, true);
+        }
+        loadLabels(indexs, label, labels, eosIdx);
+        input.hostToDevice();
+        label.hostToDevice();
+        eosIdx.hostToDevice();
+    }
+
 
     public void loadData_uncond(int[] indexs, Tensor input, Tensor noise) {
         // TODO Auto-generated method stub
@@ -335,6 +356,28 @@ public class VideoDataLoaderEN extends BaseDataLoader {
             }
         }
         //		System.out.println(JsonUtils.toJson(label.data));
+    }
+
+    public void loadLabels(int[] indexs, Tensor label, String[] labels, Tensor eosIdx) {
+        for (int i = 0; i < indexs.length; i++) {
+            int idx = indexs[i];
+            String text = datas.get(idx).get("text").toString();
+            labels[i] = text;
+            int[] ids = tokenizer.encodeInt(text, maxContextLen);
+            float eos_id = 0;
+            for (int j = 0; j < maxContextLen; j++) {
+                if (j < ids.length) {
+                    label.data[i * maxContextLen + j] = ids[j];
+                } else {
+                    label.data[i * maxContextLen + j] = 0;
+                }
+                //获取第一个结束符位置
+                if(label.data[i * maxContextLen + j] == tokenizer.eos() && eos_id == 0) {
+                    eos_id = j;
+                }
+            }
+            eosIdx.data[i] = eos_id;
+        }
     }
 
     public void loadLabels(int[] indexs, Tensor label, Tensor mask, String[] labels) {
