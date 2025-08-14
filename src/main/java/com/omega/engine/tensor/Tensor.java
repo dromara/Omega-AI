@@ -372,10 +372,10 @@ public class Tensor implements Serializable {
         this.height = height;
         this.width = width;
         this.dataLength = number * channel * height * width;
-        this.orgShape[0] = number;
-        this.orgShape[1] = channel;
-        this.orgShape[2] = height;
-        this.orgShape[3] = width;
+        this.getOrgShape()[0] = number;
+        this.getOrgShape()[1] = channel;
+        this.getOrgShape()[2] = height;
+        this.getOrgShape()[3] = width;
         return this;
     }
 
@@ -388,13 +388,13 @@ public class Tensor implements Serializable {
     }
 
     public Tensor viewOrg() {
-        this.number = orgShape[0];
-        this.channel = orgShape[1];
-        this.height = orgShape[2];
-        this.width = orgShape[3];
+        this.number = getOrgShape()[0];
+        this.channel = getOrgShape()[1];
+        this.height = getOrgShape()[2];
+        this.width = getOrgShape()[3];
         return this;
     }
-
+    
     public int[] shape() {
         return new int[]{this.number, this.channel, this.height, this.width};
     }
@@ -1042,4 +1042,8 @@ public class Tensor implements Serializable {
     //		}
     //		Graph.backward();
     //	}
+
+	public int[] getOrgShape() {
+		return orgShape;
+	}
 }

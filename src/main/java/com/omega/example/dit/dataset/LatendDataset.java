@@ -168,7 +168,9 @@ public class LatendDataset extends BaseTokenizer {
                 input.hostToDevice();
                 label.hostToDevice();
                 JCuda.cudaDeviceSynchronize();
+                
                 cf = loadAsyncData(index, input, label);
+                
             } else {
                 cf = loadAsyncData(index, input, label);
             }

@@ -250,5 +250,10 @@ public class Conv3DTransposeCudnnKernel extends Conv3DBaseKernel {
 		// TODO Auto-generated method stub
 		
 	}
+	
+	@Override
+    public void conv(Tensor input, Tensor kernel, Tensor output, int[] padA, int[] stride) {
+       
+    }
 }
 

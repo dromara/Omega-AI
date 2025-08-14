@@ -32,7 +32,10 @@ public class Convolution3DLayer extends Layer {
     public int oDepth = 0;
     private Conv3DBaseKernel kernel;
     private BiasKernel biasKernel;
-
+    
+    private int[] strideA;
+    private int[] paddingA;
+    
     /**
      * ConvolutionLayer
      *
@@ -124,7 +127,41 @@ public class Convolution3DLayer extends Layer {
         this.hasParams = true;
         this.initParam();
     }
-
+    
+    /**
+     * ConvolutionLayer
+     *
+     * @param channel
+     * @param kernelNum
+     * @param width
+     * @param height
+     * @param kWidth
+     * @param kHeight
+     * @param padding
+     * @param stride
+     * @param activeFunction
+     * @param updater
+     */
+    public Convolution3DLayer(int channel, int kernelNum, int depth, int width, int height, int kDepth, int kWidth, int kHeight, int[] paddingA, int[] strideA, boolean hasBias, Network network) {
+        this.kernelNum = kernelNum;
+        this.channel = channel;
+        this.depth = depth;
+        this.width = width;
+        this.height = height;
+        this.kDepth = kDepth;
+        this.kWidth = kWidth;
+        this.kHeight = kHeight;
+        this.paddingA = paddingA;
+        this.padding = paddingA[2];
+        this.strideA = strideA;
+        this.stride = strideA[2];
+        this.hasBias = hasBias;
+        this.network = network;
+        this.setUpdater(UpdaterFactory.create(this.network));
+        this.hasParams = true;
+        this.initParam();
+    }
+    
     /**
      * ConvolutionLayer
      *
@@ -271,9 +308,15 @@ public class Convolution3DLayer extends Layer {
         // TODO Auto-generated method stub
         int dataLength = kernelNum * channel * kHeight * kWidth;
         this.oChannel = this.kernelNum;
-        this.oDepth = (this.depth + this.padding * 2 - kDepth) / this.stride + 1;
-        this.oWidth = (this.width + this.padding * 2 - kWidth) / this.stride + 1;
-        this.oHeight = (this.height + this.padding * 2 - kHeight) / this.stride + 1;
+        if(paddingA != null && strideA != null) {
+        	this.oDepth = (this.depth + this.paddingA[0] * 2 - kDepth) / this.strideA[0] + 1;
+            this.oWidth = (this.width + this.paddingA[1] * 2 - kWidth) / this.strideA[1] + 1;
+            this.oHeight = (this.height + this.paddingA[2] * 2 - kHeight) / this.strideA[2] + 1;
+        }else {
+        	this.oDepth = (this.depth + this.padding * 2 - kDepth) / this.stride + 1;
+            this.oWidth = (this.width + this.padding * 2 - kWidth) / this.stride + 1;
+            this.oHeight = (this.height + this.padding * 2 - kHeight) / this.stride + 1;
+        }
         //		this.weight = new Tensor(kernelNum, channel, kHeight, kWidth, RandomUtils.xavierUniform(dataLength, channel, kernelNum, 1.0f), true);
         this.weight = new Tensor(kernelNum, channel * kDepth, kHeight, kWidth, RandomUtils.kaiming_uniform(dataLength, this.channel * kDepth * kHeight * kWidth, this.paramsInit), true);
         //		this.weight = new Tensor(kernelNum, channel, kHeight, kWidth, RandomUtils.kaiming_normal(dataLength, this.oChannel * this.oHeight * this.oWidth, this.paramsInit), true);
@@ -347,9 +390,13 @@ public class Convolution3DLayer extends Layer {
     @Override
     public void output() {
         // TODO Auto-generated method stub
-        kernel.conv(input, weight, output);
+    	if(paddingA != null && strideA != null) {
+    		kernel.conv(input, weight, output, paddingA, strideA);
+    	}else {
+    		kernel.conv(input, weight, output);
+    	}
         if (this.hasBias) {
-            biasKernel.addConvBiasFast(output, bias);
+            biasKernel.addConvBiasFast(output, bias, oChannel, oDepth);
         }
     }
 
@@ -420,7 +467,6 @@ public class Convolution3DLayer extends Layer {
              * 20220816: dw = diff * im2col(input)T
              * diff[knumber * oh * ow]
              * im2col(input)T[oh * ow * C * kh * kw]
-
              */
             kernel.dw(input, delta, diffW);
         }
@@ -428,10 +474,9 @@ public class Convolution3DLayer extends Layer {
         //		System.out.println("===========");
         /**
          * 计算deltaB
-
          */
         if (this.hasBias) {
-            biasKernel.backwardConvBias(diffB, delta);
+        	biasKernel.backwardConv3DBias(oDepth, diffB, delta);
         }
         /**
          * 计算diff

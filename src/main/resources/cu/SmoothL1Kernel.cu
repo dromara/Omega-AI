@@ -8,7 +8,7 @@ __global__ void loss(int N,float *input, float *label, float *output, float beta
 	float x = input[id] - label[id];
 	float abs_x = abs(x);
 	if(abs_x < beta){
-		output[id] = 0.5f * x * x / beta;
+		output[id] = 0.5f * x * x;
 	}else{
 		output[id] = abs_x - 0.5f * beta;
 	}
@@ -22,8 +22,15 @@ __global__ void loss_back(int N,float *input, float *label, float *diff, float b
   	float x = input[id] - label[id];
 	float abs_x = abs(x);
 	float delta = 1.0f / N;
+	
 	if(abs_x < beta){
-		diff[id] = x * delta / beta;
+		if(x > 0){
+			diff[id] = x * delta;
+		}else if(x == 0){
+			diff[id] = 0;
+		}else{
+			diff[id] = -x * delta;
+		}
 	}else{
 		if(x > 0){
 			diff[id] = 1 * delta;

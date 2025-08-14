@@ -105,7 +105,6 @@ public class BiasKernel extends BaseKernel {
                 /**
                  * 设置入参
                  * float *output, float *biases, int n, int size
-
                  */
                 biasConvKernelParameters = Pointer.to(Pointer.to(output.getGpuData()), Pointer.to(bias.getGpuData()), Pointer.to(new int[]{output.channel}), Pointer.to(new int[]{output.height * output.width}));
                 this.N = output.number;
