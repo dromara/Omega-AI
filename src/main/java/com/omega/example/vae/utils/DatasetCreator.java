@@ -168,7 +168,7 @@ public class DatasetCreator {
     /**
      *
      * @param args 0 "create", "test", "dataset"
-     *             1 配置文件路径
+     *             1 配置文件路径 resources/dataset/video/video_data.properties
      */
     public static void main(String[] args) {
         Props props = new Props(args[1]);

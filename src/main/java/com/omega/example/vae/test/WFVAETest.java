@@ -1,9 +1,9 @@
 package com.omega.example.vae.test;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -38,8 +38,8 @@ public class WFVAETest {
 	 */
 	public static void generateCsvWithConfig(CsvData data, String path){
 	    // 可以通过设置FileWriter的编码来控制输出文件的编码格式
-	    try(FileWriter fileWriter = new FileWriter(path, StandardCharsets.UTF_8);
-	        CsvWriter csvWriter = CsvUtil.getWriter(fileWriter)){
+	    try(OutputStreamWriter fileWriter = new OutputStreamWriter(Files.newOutputStream(Paths.get(path)), "UTF-8");
+            CsvWriter csvWriter = CsvUtil.getWriter(fileWriter)){
 	    	csvWriter.write(data);
 	        csvWriter.flush();
 	    } catch (IOException e) {
