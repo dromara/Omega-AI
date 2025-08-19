@@ -41,6 +41,8 @@ public class LNLayer extends NormalizationLayer {
      * mean dims = W
      */
     private int meanNum = 0;
+    
+    private float eps = 1e-6f;
 
     public LNLayer() {
         //		initParam();
@@ -97,6 +99,20 @@ public class LNLayer extends NormalizationLayer {
         this.hasParams = true;
         this.meanNum = width;
     }
+    
+    public LNLayer(int channel, int height, int width, boolean hasParams, BNType bnType, Network network) {
+    	this.network = network;
+		this.setUpdater(UpdaterFactory.create(this.network));
+        this.channel = channel;
+        this.height = height;
+        this.width = width;
+        this.oChannel = this.channel;
+        this.oHeight = this.height;
+        this.oWidth = this.width;
+        this.bnType = bnType;
+        this.hasParams = hasParams;
+        this.meanNum = width;
+    }
 
     public LNLayer(Layer preLayer, boolean hasBias) {
         this.setPreLayer(preLayer);
@@ -108,6 +124,7 @@ public class LNLayer extends NormalizationLayer {
     public LNLayer(Network network) {
         this.network = network;
         network.paramLayers.add(this);
+        this.hasParams = true;
         this.setUpdater(UpdaterFactory.create(this.network));
     }
 
@@ -115,6 +132,7 @@ public class LNLayer extends NormalizationLayer {
         this.network = network;
         network.paramLayers.add(this);
         this.hasBias = true;
+        this.hasParams = true;
         this.setUpdater(UpdaterFactory.create(this.network));
     }
 
@@ -153,7 +171,7 @@ public class LNLayer extends NormalizationLayer {
         if (kernel == null) {
             kernel = new LNKernel(width, bnType, cuda());
         }
-        if (this.gamma == null) {
+        if (this.gamma == null && hasParams) {
             this.gamma = new Tensor(1, 1, 1, meanNum, MatrixUtils.one(this.meanNum), true);
             this.diffGamma = new Tensor(1, 1, 1, meanNum, true);
             //			if(network != null) {
@@ -162,7 +180,7 @@ public class LNLayer extends NormalizationLayer {
             //				this.diffGamma = new Tensor(1, 1, 1, meanNum, true);
             //			}
         }
-        if (this.beta == null && hasBias) {
+        if (this.beta == null && hasBias && hasParams) {
             this.beta = new Tensor(1, 1, 1, meanNum, true);
             if (network != null) {
                 this.diffBeta = this.network.createParamterGrad(1, 1, 1, this.meanNum, true);
@@ -303,7 +321,11 @@ public class LNLayer extends NormalizationLayer {
         //		System.out.println(JsonUtils.toJson(beta.shape()));
         //		kernel.forward(gamma, beta, input, output);
         //		kernel.forwardAten(gamma, beta, input, output);
-        kernel.forward_llm(gamma, beta, input, output);
+    	if(hasParams){
+    		 kernel.forward_llm(gamma, beta, input, output);
+    	}else {
+    		 kernel.forward_llm(input, output, eps);
+    	}
         //		System.err.println("1:");
         //		output.showDMByNumber(0);
         //		System.err.println("2:");
@@ -325,7 +347,7 @@ public class LNLayer extends NormalizationLayer {
 //    	beta.showShape("beta");
 //    	System.err.println("-------------------");
 //    	input.showDMByOffsetRed(0, 100, "ln-in");
-        kernel.forward_llmc(gamma, beta, input, output);
+    	kernel.forward_llmc(gamma, beta, input, output);
 //        output.showDMByOffsetRed(0, 100, "ln");
         //		System.err.println("1:");
         //		output.showDMByNumber(0);
@@ -388,7 +410,11 @@ public class LNLayer extends NormalizationLayer {
         //		System.out.println(index);
         //		kernel.backward(input, delta, diff, gamma, diffGamma, diffBeta);
         //		kernel.backwardAten(input, delta, diff, gamma, diffGamma, diffBeta);
-        kernel.backward_llm(input, delta, diff, gamma, diffGamma, diffBeta);
+    	if(hasParams) {
+    		kernel.backward_llm(input, delta, diff, gamma, diffGamma, diffBeta);
+    	}else {
+    		kernel.backward_llm(input, delta, diff);
+    	}
         //		diff.showDMByNumber(0);
         //		diff2.showDMByNumber(0);
         //		System.out.println((System.nanoTime() - start) / 1e6 + "ms.");
@@ -589,43 +615,51 @@ public class LNLayer extends NormalizationLayer {
     }
 
     public void saveModel(RandomAccessFile outputStream) throws IOException {
-        ModelUtils.saveParams(outputStream, gamma);
-        if (hasBias) {
-            ModelUtils.saveParams(outputStream, beta);
-        }
+    	if(hasParams) {
+	        ModelUtils.saveParams(outputStream, gamma);
+	        if (hasBias) {
+	            ModelUtils.saveParams(outputStream, beta);
+	        }
+    	}
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
-        init();
-        ModelUtils.loadParams(inputStream, gamma);
-        if (hasBias) {
-            ModelUtils.loadParams(inputStream, beta);
-        }
+    	if(hasParams) {
+    		init();
+	        ModelUtils.loadParams(inputStream, gamma);
+	        if (hasBias) {
+	            ModelUtils.loadParams(inputStream, beta);
+	        }	
+    	}
     }
     
     public void loadModel(RandomAccessFile inputStream, int channel, int height, int width, BNType bnType) throws IOException {
-        init(channel, height, width, bnType);
-        ModelUtils.loadParams(inputStream, gamma);
-        if (hasBias) {
-            ModelUtils.loadParams(inputStream, beta);
-        }
+    	if(hasParams) {
+	        init(channel, height, width, bnType);
+	        ModelUtils.loadParams(inputStream, gamma);
+	        if (hasBias) {
+	            ModelUtils.loadParams(inputStream, beta);
+	        }
+    	}
     }
 
     @Override
     public void accGrad(float scale) {
         // TODO Auto-generated method stub
-        if (accDW == null) {
-            accDW = diffGamma.copyGPU();
-        } else {
-            kernel.axpy_gpu(diffGamma, accDW, accDW.dataLength, scale, 1, 1);
-        }
-        if (hasBias) {
-            if (accDB == null) {
-                accDB = diffBeta.copyGPU();
-            } else {
-                kernel.axpy_gpu(diffBeta, accDB, accDB.dataLength, scale, 1, 1);
-            }
-        }
+    	if(hasParams) {
+	        if (accDW == null) {
+	            accDW = diffGamma.copyGPU();
+	        } else {
+	            kernel.axpy_gpu(diffGamma, accDW, accDW.dataLength, scale, 1, 1);
+	        }
+	        if (hasBias) {
+	            if (accDB == null) {
+	                accDB = diffBeta.copyGPU();
+	            } else {
+	                kernel.axpy_gpu(diffBeta, accDB, accDB.dataLength, scale, 1, 1);
+	            }
+	        }
+    	}
     }
 }
 

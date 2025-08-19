@@ -19,7 +19,6 @@ import com.omega.engine.nn.network.DiT_ORG;
 import com.omega.engine.nn.network.DiT_ORG2;
 import com.omega.engine.nn.network.DiT_ORG_SRA;
 import com.omega.engine.nn.network.DiT_SRA;
-import com.omega.engine.nn.network.MMDiT;
 import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.nn.network.vae.SD_VAE;
 import com.omega.engine.nn.network.vae.VQVAE2;

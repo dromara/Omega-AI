@@ -38,7 +38,7 @@ public class DiTJoinBlockRoPE extends Layer {
     private int dk = 0;
 
     private boolean bias = false;
-    
+    private boolean normParams = true;
     private boolean pre_only = false;
     
     public DiTJoinBlockHead x_block;
@@ -71,32 +71,7 @@ public class DiTJoinBlockRoPE extends Layer {
     private int[] shape;
     private int[] t_shape;
 
-    public DiTJoinBlockRoPE(int embedDim, int cEmbedDim, int mlp_ratio, int headNum, int imgTime, int textTime, boolean bias, boolean qkNorm, boolean pre_only) {
-        this.bias = bias;
-        this.mlp_ratio = mlp_ratio;
-        this.imgTime = imgTime;
-        this.textTime = textTime;
-        this.time = imgTime + textTime;
-        this.embedDim = embedDim;
-        this.cEmbedDim = cEmbedDim;
-        this.headNum = headNum;
-        if (embedDim % headNum != 0) {
-            throw new RuntimeException("embedDim % headNum must be zero.");
-        }
-        this.qkNorm = qkNorm;
-        this.pre_only = pre_only;
-        this.dk = embedDim / headNum;
-        this.bias = bias;
-        this.channel = time;
-        this.height = 1;
-        this.width = embedDim;
-        this.oChannel = channel;
-        this.oHeight = height;
-        this.oWidth = width;
-        this.initLayers();
-    }
-
-    public DiTJoinBlockRoPE(int embedDim, int cEmbedDim, int mlp_ratio, int headNum, int imgTime, int textTime, boolean bias, boolean qkNorm, boolean pre_only, Network network) {
+    public DiTJoinBlockRoPE(int embedDim, int cEmbedDim, int mlp_ratio, int headNum, int imgTime, int textTime, boolean bias, boolean qkNorm, boolean pre_only, boolean normParams, Network network) {
         this.bias = bias;
         this.mlp_ratio = mlp_ratio;
         this.network = network;
@@ -113,6 +88,7 @@ public class DiTJoinBlockRoPE extends Layer {
             throw new RuntimeException("embedDim % headNum must be zero.");
         }
         this.qkNorm = qkNorm;
+        this.normParams = normParams;
         this.pre_only = pre_only;
         this.dk = embedDim / headNum;
         this.bias = bias;
@@ -124,11 +100,12 @@ public class DiTJoinBlockRoPE extends Layer {
         this.oWidth = width;
         this.initLayers();
     }
+    
     public void initLayers() {
         
-    	x_block = new DiTJoinBlockHead(embedDim, cEmbedDim, mlp_ratio, imgTime, bias, qkNorm, false, network);
+    	x_block = new DiTJoinBlockHead(embedDim, cEmbedDim, mlp_ratio, imgTime, bias, qkNorm, false, normParams, network);
     	
-    	context_block = new DiTJoinBlockHead(embedDim, cEmbedDim, mlp_ratio, textTime, bias, qkNorm, pre_only, network);
+    	context_block = new DiTJoinBlockHead(embedDim, cEmbedDim, mlp_ratio, textTime, bias, qkNorm, pre_only, normParams, network);
     	
         if (attentionKernel == null) {
             attentionKernel = new AttentionKernel(cuda());

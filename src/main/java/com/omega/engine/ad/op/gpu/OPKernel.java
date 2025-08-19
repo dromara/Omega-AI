@@ -394,7 +394,6 @@ public class OPKernel extends BaseKernel implements Serializable {
         try {
             /**
              * int N, float *X, float *Y, float *R,int axis
-
              */
             Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{a.getDataLength()}), Pointer.to(a.getGpuData()), Pointer.to(b.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(new int[]{axis}));
             checkCUDA(cuLaunchKernel(add_axis_function2, CAFFE_GET_BLOCKS(a.getDataLength()), 1, 1,      // Grid dimension

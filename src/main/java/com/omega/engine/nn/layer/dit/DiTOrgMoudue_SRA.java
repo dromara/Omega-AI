@@ -100,7 +100,7 @@ public class DiTOrgMoudue_SRA extends Layer {
         this.ap_head = new DiTSimpleHeadLayer(hiddenSize, hiddenSize, true, false, network);
         
         this.oChannel = os;
-        finalLayer = new DiTFinalLayer(patchSize, hiddenSize, os, patchEmbd.oChannel, hasBias, network);
+        finalLayer = new DiTFinalLayer(patchSize, hiddenSize, os, patchEmbd.oChannel, hasBias, true, network);
 
     }
 

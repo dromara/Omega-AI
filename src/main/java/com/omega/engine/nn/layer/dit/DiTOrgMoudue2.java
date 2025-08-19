@@ -128,7 +128,7 @@ public class DiTOrgMoudue2 extends Layer {
         }
 
         this.oChannel = os;
-        finalLayer = new DiTFinalLayer(patchSize, hiddenSize, os, patchEmbd.oChannel, true, network);
+        finalLayer = new DiTFinalLayer(patchSize, hiddenSize, os, patchEmbd.oChannel, true, true, network);
 
     }
 

@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.concurrent.CompletableFuture;
 
-import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MathUtils;
 import com.omega.engine.nn.network.utils.ModelUtils;
 import com.omega.engine.tensor.Tensor;
@@ -113,11 +112,14 @@ public class LatendDataset extends BaseTokenizer {
         return cache;
     }
     
-    public float[] loadData(int idx) {
+    public float[] loadData(long idx) {
         try {
             if (idx * max_len * byteUnit <= file.length()) {
-            	file.seek(idx * max_len * byteUnit);
-                clipFile.seek(idx * clipEmbd * byteUnit);
+            	long fi = idx * max_len * byteUnit;
+            	long cfi = idx * clipEmbd * byteUnit;
+//            	System.err.println(fi);
+            	file.seek(fi);
+                clipFile.seek(cfi);
                 if (dataType == BinDataType.float32) {
                     ModelUtils.readFloat(file, cache);
                     ModelUtils.readFloat(clipFile, clip_cache);
@@ -160,20 +162,20 @@ public class LatendDataset extends BaseTokenizer {
     public void loadData(int[] index,Tensor input, Tensor label, int it) {
         try {
             //			System.out.println(it);
+//        	long start = System.nanoTime();
             if (isBin && it == count_it - 2) {
                 initBinReader();
             }
             if (cf != null) {
+//            	long start22 = System.nanoTime();
                 boolean success = cf.get();
                 input.hostToDevice();
                 label.hostToDevice();
-                JCuda.cudaDeviceSynchronize();
-                
                 cf = loadAsyncData(index, input, label);
-                
             } else {
                 cf = loadAsyncData(index, input, label);
             }
+//            System.out.println("load cost:"+(System.nanoTime() - start)/1e6+"ms.");
         } catch (Exception e) {
             // TODO: handle exception
             e.printStackTrace();

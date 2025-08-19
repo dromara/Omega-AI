@@ -67,33 +67,12 @@ public class DiTJoinBlockHead extends Layer {
     private int n_mods = 6;
     
     private boolean qkNorm = false;
-    
+    private boolean normParams = true;
     private boolean pre_only = false;
     
     private int[] shape;
 
-    public DiTJoinBlockHead(int embedDim, int cEmbedDim, int mlp_ratio, int time, boolean bias, boolean qkNorm, boolean pre_only) {
-    	this.pre_only = pre_only;
-        if(pre_only) {
-        	n_mods = 2;
-        }
-        this.mlp_ratio = mlp_ratio;
-        this.bias = bias;
-        this.time = time;
-        this.embedDim = embedDim;
-        this.cEmbedDim = cEmbedDim;
-        this.qkNorm = qkNorm;
-        this.bias = bias;
-        this.channel = time;
-        this.height = 1;
-        this.width = embedDim;
-        this.oChannel = channel;
-        this.oHeight = height;
-        this.oWidth = width;
-        this.initLayers();
-    }
-
-    public DiTJoinBlockHead(int embedDim, int cEmbedDim, int mlp_ratio, int time, boolean bias, boolean qkNorm, boolean pre_only, Network network) {
+    public DiTJoinBlockHead(int embedDim, int cEmbedDim, int mlp_ratio, int time, boolean bias, boolean qkNorm, boolean pre_only, boolean normParams, Network network) {
     	this.pre_only = pre_only;
         if(pre_only) {
         	n_mods = 2;
@@ -108,6 +87,7 @@ public class DiTJoinBlockHead extends Layer {
         this.embedDim = embedDim;
         this.cEmbedDim = cEmbedDim;
         this.qkNorm = qkNorm;
+        this.normParams = normParams;
         this.bias = bias;
         this.channel = time;
         this.height = 1;
@@ -132,7 +112,7 @@ public class DiTJoinBlockHead extends Layer {
 	    	kNorm = new LNLayer(1, 1, embedDim, BNType.fully_bn, network);
 	    }
     	
-    	this.norm1 = new LNLayer(1, 1, embedDim, BNType.fully_bn, network);
+    	this.norm1 = new LNLayer(1, 1, embedDim, normParams, BNType.fully_bn, network);
     	
         this.modulationAct = new SiLULayer(network);
         
@@ -160,7 +140,7 @@ public class DiTJoinBlockHead extends Layer {
         
         if(!pre_only) {
         	
-        	this.norm2 = new LNLayer(1, 1, embedDim, BNType.fully_bn, network);
+        	this.norm2 = new LNLayer(1, 1, embedDim, normParams, BNType.fully_bn, network);
         	
 	        this.setoLinerLayer(new FullyLayer(embedDim, embedDim, true, this.network));
 	        this.oLinerLayer.weight.setData(RandomUtils.xavierUniform(this.embedDim * this.embedDim, this.embedDim, this.embedDim,  1.0f));
