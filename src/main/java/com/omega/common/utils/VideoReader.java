@@ -1,9 +1,6 @@
 package com.omega.common.utils;
 
-import org.bytedeco.javacv.FFmpegFrameGrabber;
-import org.bytedeco.javacv.Frame;
-import org.bytedeco.javacv.FrameGrabber;
-import org.bytedeco.javacv.OpenCVFrameConverter;
+import org.bytedeco.javacv.*;
 import org.bytedeco.opencv.global.opencv_imgproc;
 import org.bytedeco.opencv.opencv_core.Mat;
 
@@ -99,7 +96,19 @@ public class VideoReader implements Closeable {
     }
 
     public float[][][][] nextBatch4D(int batchFrames) throws FrameGrabber.Exception {
+        return nextBatch4D(batchFrames, null, null);
+    }
+
+    public float[][][][] nextBatch4D(int batchFrames, float[] mean, float[] std) throws FrameGrabber.Exception {
         if (batchFrames <= 0) throw new IllegalArgumentException("batchFrames 必须 > 0");
+
+        if (null != mean && mean.length != 3) {
+            throw new IllegalArgumentException("mean count error");
+        }
+
+        if (null != std && std.length != 3) {
+            throw new IllegalArgumentException("std count error");
+        }
 
         int T = 0;
         float[][][][] batchData = new float[batchFrames][3][targetWidth][targetHeight];
@@ -120,7 +129,7 @@ public class VideoReader implements Closeable {
 
             Mat usedMat = matRGB;
             if (matRGB.cols() != targetWidth || matRGB.rows() != targetHeight) {
-                opencv_imgproc.resize(matRGB, resized, new org.bytedeco.opencv.opencv_core.Size(targetWidth, targetHeight));
+                opencv_imgproc.resize(matRGB, resized, new org.bytedeco.opencv.opencv_core.Size(targetWidth, targetHeight), 0, 0, opencv_imgproc.INTER_AREA);
                 usedMat = resized;
             }
 
@@ -131,7 +140,11 @@ public class VideoReader implements Closeable {
                 for (int x = 0; x < W; x++) {
                     for (int y = 0; y < H; y++) {
                         int pos = (y * W + x) * 3 + c;
-                        batchData[T][c][x][y] = (buf.get(pos) & 0xFF) * scaleFactor;
+                        if (null != mean) {
+                            batchData[T][c][x][y] = ((buf.get(pos) & 0xFF) * scaleFactor - mean[c]) / std[c];
+                        } else {
+                            batchData[T][c][x][y] = (buf.get(pos) & 0xFF) * scaleFactor;
+                        }
                     }
                 }
             }

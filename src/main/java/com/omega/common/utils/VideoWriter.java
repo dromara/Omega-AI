@@ -131,10 +131,14 @@ public class VideoWriter implements Closeable {
         recorder.start();
     }
 
+    public void writeBatch(float[][][][] data) throws FrameRecorder.Exception {
+        writeBatch(data, null, null);
+    }
+
     /**
      * 写入一个 4D 张量批次，布局 (T,C,W,H)，C 必须为 3（RGB）。
      */
-    public void writeBatch(float[][][][] data) throws FrameRecorder.Exception {
+    public void writeBatch(float[][][][] data, float[] mean, float[] std) throws FrameRecorder.Exception {
         int T = data.length;
         if (T == 0) {
             return;
@@ -156,6 +160,9 @@ public class VideoWriter implements Closeable {
                 for (int x = 0; x < W; x++) {
                     for (int c = 0; c < 3; c++) {
                         float v = data[t][c][x][y] * scaleFactor;
+                        if (null != mean) {
+                            v = (data[t][c][x][y] * std[c] + mean[c]) * scaleFactor;
+                        }
                         int iv = Math.max(0, Math.min(255, Math.round(v)));
                         bufferRGB.put((byte) (iv & 0xFF));
                     }
