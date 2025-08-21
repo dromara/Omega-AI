@@ -37,6 +37,7 @@ public class MMDiT_RoPE extends Network {
     public int textEmbedDim;
     private int mlpRatio = 4;
     private boolean learnSigma = true;
+    private boolean normParams = true;
     
     private float y_drop_prob = 0.0f;
     
@@ -53,7 +54,7 @@ public class MMDiT_RoPE extends Network {
     private SmoothL1Kernel smoothL1Kernel;
     private DispLossKernel dispLossKernel;
     
-    public MMDiT_RoPE(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio, boolean learnSigma, float y_drop_prob) {
+    public MMDiT_RoPE(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio, boolean learnSigma, boolean normParams, float y_drop_prob) {
         this.lossFunction = LossFactory.create(lossType, this);
         this.updater = updater;
         this.inChannel = inChannel;
@@ -68,6 +69,7 @@ public class MMDiT_RoPE extends Network {
         this.maxContextLen = maxContextLen;
         this.mlpRatio = mlpRatio;
         this.learnSigma = learnSigma;
+        this.normParams = normParams;
         this.y_drop_prob = y_drop_prob;
         this.time = (width / patchSize) * (height / patchSize);
         initLayers();
@@ -77,7 +79,7 @@ public class MMDiT_RoPE extends Network {
     	
         this.inputLayer = new InputLayer(inChannel, height, width);
         
-        main = new MMDiTMoudueRoPE(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, maxContextLen, textEmbedDim, mlpRatio, learnSigma, y_drop_prob, this);
+        main = new MMDiTMoudueRoPE(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, maxContextLen, textEmbedDim, mlpRatio, learnSigma, normParams, y_drop_prob, this);
         
         this.addLayer(inputLayer);
         this.addLayer(main);

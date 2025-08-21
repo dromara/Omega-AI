@@ -208,12 +208,10 @@ public class SDVAEAttentionLayer extends Layer {
         this.init(input);
         /**
          * 设置输入
-
          */
         this.setInput(input);
         /**
          * 计算输出
-
          */
         this.output();
     }

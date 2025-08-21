@@ -37,6 +37,7 @@ public class MMDiT extends Network {
     public int textEmbedDim;
     private int mlpRatio = 4;
     private boolean learnSigma = true;
+    private boolean normParams = true;
     
     private Tensor pdist;
     private Tensor pdistDelta;
@@ -51,7 +52,7 @@ public class MMDiT extends Network {
     private SmoothL1Kernel smoothL1Kernel;
     private DispLossKernel dispLossKernel;
     
-    public MMDiT(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio, boolean learnSigma) {
+    public MMDiT(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio, boolean learnSigma, boolean normParams) {
         this.lossFunction = LossFactory.create(lossType, this);
         this.updater = updater;
         this.inChannel = inChannel;
@@ -66,6 +67,7 @@ public class MMDiT extends Network {
         this.maxContextLen = maxContextLen;
         this.learnSigma = learnSigma;
         this.mlpRatio = mlpRatio;
+        this.normParams = normParams;
         this.time = (width / patchSize) * (height / patchSize);
         initLayers();
     }
@@ -74,7 +76,7 @@ public class MMDiT extends Network {
     	
         this.inputLayer = new InputLayer(inChannel, height, width);
         
-        main = new MMDiTMoudue(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, maxContextLen, textEmbedDim, mlpRatio, learnSigma, this);
+        main = new MMDiTMoudue(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, maxContextLen, textEmbedDim, mlpRatio, learnSigma, normParams, this);
         
         this.addLayer(inputLayer);
         this.addLayer(main);

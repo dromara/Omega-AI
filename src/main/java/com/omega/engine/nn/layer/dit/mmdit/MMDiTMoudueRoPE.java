@@ -34,6 +34,7 @@ public class MMDiTMoudueRoPE extends Layer {
     private int textEmbedDim;
     private int mlpRatio = 4;
     private boolean learnSigma = true;
+    private boolean normParams = true;
     
     public DiTPatchEmbeddingLayer patchEmbd;
     public DiTTimeEmbeddingLayer timeEmbd;
@@ -45,7 +46,7 @@ public class MMDiTMoudueRoPE extends Layer {
 
     private float y_drop_prob = 0.0f;
     
-    public MMDiTMoudueRoPE(int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio, boolean learnSigma, float y_drop_prob, Network network) {
+    public MMDiTMoudueRoPE(int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio, boolean learnSigma, boolean normParams, float y_drop_prob, Network network) {
 		this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
@@ -64,7 +65,7 @@ public class MMDiTMoudueRoPE extends Layer {
 		this.mlpRatio = mlpRatio;
 		this.learnSigma = learnSigma;
 		this.headNum = headNum;
-//		this.bias = bias;
+		this.normParams = normParams;
 		this.initLayers();
 		this.oHeight = height;
 		this.oWidth = width;
@@ -85,7 +86,7 @@ public class MMDiTMoudueRoPE extends Layer {
         	if(i == depth - 1) {
         		pre_only = true;
         	}
-        	DiTJoinBlockRoPE block = new DiTJoinBlockRoPE(hiddenSize, hiddenSize, mlpRatio, headNum, patchEmbd.oChannel, maxContextLen, false, false, pre_only, network);
+        	DiTJoinBlockRoPE block = new DiTJoinBlockRoPE(hiddenSize, hiddenSize, mlpRatio, headNum, patchEmbd.oChannel, maxContextLen, false, false, pre_only, normParams, network);
 	        blocks.add(block);
         }
         int os = inChannel;
@@ -93,7 +94,7 @@ public class MMDiTMoudueRoPE extends Layer {
         	os = inChannel * 2;
         }
         this.oChannel = os;
-        finalLayer = new DiTFinalLayer(patchSize, hiddenSize, os, patchEmbd.oChannel, true, network);
+        finalLayer = new DiTFinalLayer(patchSize, hiddenSize, os, patchEmbd.oChannel, true, normParams, network);
 
     }
 

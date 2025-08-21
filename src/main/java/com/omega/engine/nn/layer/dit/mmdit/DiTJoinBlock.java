@@ -40,7 +40,7 @@ public class DiTJoinBlock extends Layer {
     private int dk = 0;
 
     private boolean bias = false;
-    
+    private boolean normParams = true;
     private boolean pre_only = false;
     
     public DiTJoinBlockHead x_block;
@@ -70,32 +70,7 @@ public class DiTJoinBlock extends Layer {
     private int[] shape;
     private int[] t_shape;
 
-    public DiTJoinBlock(int embedDim, int cEmbedDim, int mlp_ratio, int headNum, int imgTime, int textTime, boolean bias, boolean qkNorm, boolean pre_only) {
-        this.bias = bias;
-        this.mlp_ratio = mlp_ratio;
-        this.imgTime = imgTime;
-        this.textTime = textTime;
-        this.time = imgTime + textTime;
-        this.embedDim = embedDim;
-        this.cEmbedDim = cEmbedDim;
-        this.headNum = headNum;
-        if (embedDim % headNum != 0) {
-            throw new RuntimeException("embedDim % headNum must be zero.");
-        }
-        this.qkNorm = qkNorm;
-        this.pre_only = pre_only;
-        this.dk = embedDim / headNum;
-        this.bias = bias;
-        this.channel = time;
-        this.height = 1;
-        this.width = embedDim;
-        this.oChannel = channel;
-        this.oHeight = height;
-        this.oWidth = width;
-        this.initLayers();
-    }
-
-    public DiTJoinBlock(int embedDim, int cEmbedDim, int mlp_ratio, int headNum, int imgTime, int textTime, boolean bias, boolean qkNorm, boolean pre_only, Network network) {
+    public DiTJoinBlock(int embedDim, int cEmbedDim, int mlp_ratio, int headNum, int imgTime, int textTime, boolean bias, boolean qkNorm, boolean pre_only, boolean normParams, Network network) {
         this.bias = bias;
         this.mlp_ratio = mlp_ratio;
         this.network = network;
@@ -112,6 +87,7 @@ public class DiTJoinBlock extends Layer {
             throw new RuntimeException("embedDim % headNum must be zero.");
         }
         this.qkNorm = qkNorm;
+        this.normParams = normParams;
         this.pre_only = pre_only;
         this.dk = embedDim / headNum;
         this.bias = bias;
@@ -123,11 +99,12 @@ public class DiTJoinBlock extends Layer {
         this.oWidth = width;
         this.initLayers();
     }
+    
     public void initLayers() {
        
-    	x_block = new DiTJoinBlockHead(embedDim, cEmbedDim, mlp_ratio, imgTime, bias, qkNorm, false, network);
+    	x_block = new DiTJoinBlockHead(embedDim, cEmbedDim, mlp_ratio, imgTime, bias, qkNorm, false, normParams, network);
     	
-    	context_block = new DiTJoinBlockHead(embedDim, cEmbedDim, mlp_ratio, textTime, bias, qkNorm, pre_only, network);
+    	context_block = new DiTJoinBlockHead(embedDim, cEmbedDim, mlp_ratio, textTime, bias, qkNorm, pre_only, normParams, network);
     	
         if (attentionKernel == null) {
             attentionKernel = new AttentionKernel(cuda());
@@ -191,10 +168,13 @@ public class DiTJoinBlock extends Layer {
     public void initBack() {
         // TODO Auto-generated method stub
         if (this.dattn == null || dattn.number != batchSize) {
-            this.dattn = Tensor.createGPUTensor(this.dattn, batchSize, headNum, time, time, true);
+//            this.dattn = Tensor.createGPUTensor(this.dattn, batchSize, headNum, time, time, true);
+            this.dattn = CUDAMemoryManager.getCache("dit_block_dattn", batchSize, headNum, time, time);
             if(pre_only) {
-            	dattn_cx = Tensor.createGPUTensor(this.dattn_cx, batchSize, textTime, 1, embedDim, true);
-            	cx_diff = Tensor.createGPUTensor(this.cx_diff, batchSize, textTime, 1, embedDim, true);
+//            	dattn_cx = Tensor.createGPUTensor(this.dattn_cx, batchSize, textTime, 1, embedDim, true);
+//            	cx_diff = Tensor.createGPUTensor(this.cx_diff, batchSize, textTime, 1, embedDim, true);
+            	this.dattn_cx = CUDAMemoryManager.getCache("dit_block_dattn_cx", batchSize, textTime, 1, embedDim);
+            	this.cx_diff = CUDAMemoryManager.getCache("dit_block_cx_diff", batchSize, textTime, 1, embedDim);
             }
         } else {
             dattn.viewOrg();
@@ -514,7 +494,7 @@ public class DiTJoinBlock extends Layer {
         nn.CUDNN = true;
         nn.number = N;
     	
-    	DiTJoinBlock jb = new DiTJoinBlock(W, W, mlp_ratio, hd, T, TT, false, false, true, nn);
+    	DiTJoinBlock jb = new DiTJoinBlock(W, W, mlp_ratio, hd, T, TT, false, false, true, true, nn);
     	
         String weight = "D:\\models\\JointBlock.json";
         loadWeight(LagJsonReader.readJsonFileSmallWeight(weight), jb, true);

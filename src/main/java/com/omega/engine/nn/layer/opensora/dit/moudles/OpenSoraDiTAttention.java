@@ -21,7 +21,7 @@ import com.omega.engine.updater.UpdaterFactory;
  *
  * @author Administrator
  */
-public class DiTAttention extends Layer {
+public class OpenSoraDiTAttention extends Layer {
 	
     public FullyLayer qkvLinerLayer;
     public FullyLayer oLinerLayer;
@@ -46,7 +46,7 @@ public class DiTAttention extends Layer {
     private Tensor dattn;
     private int batchSize = 1;
     
-    public DiTAttention(int embedDim, int headNum, int time, boolean bias) {
+    public OpenSoraDiTAttention(int embedDim, int headNum, int time, boolean bias) {
         this.bias = bias;
         this.time = time;
         this.embedDim = embedDim;
@@ -62,7 +62,7 @@ public class DiTAttention extends Layer {
         this.initLayers();
     }
 
-    public DiTAttention(int embedDim, int headNum, int time, boolean bias, Network network) {
+    public OpenSoraDiTAttention(int embedDim, int headNum, int time, boolean bias, Network network) {
         this.bias = bias;
         this.network = network;
         if (this.updater == null) {

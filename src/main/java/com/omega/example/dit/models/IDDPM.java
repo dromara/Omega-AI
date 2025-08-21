@@ -206,6 +206,46 @@ public class IDDPM {
 		return noiseInput;
 	}
 	
+	public Tensor p_sample(MMDiT_RoPE network, Tensor cos, Tensor sin, Tensor noiseInput, Tensor noise, Tensor condInput, Tensor t, Tensor predMean, Tensor predVar) {
+		
+		if(pred_xstart == null) {
+			pred_xstart = Tensor.createGPUTensor(pred_xstart, predMean.shape(), true);
+		}
+		
+		RandomUtils.gaussianRandom(noiseInput, 0, 1);
+		
+		Tensor xt = noiseInput;
+		
+		for(int time = diffusion_steps - 1;time>=0;time--) {
+	        for (int i = 0; i < noiseInput.number; i++) {
+	            t.data[i] = time;
+	        }
+	        t.hostToDevice();
+	        Tensor pred = network.forward(xt, t, condInput, cos, sin);
+//	        pred.showDM("pred");
+	        network.tensorOP.getByChannel(pred, predMean, 0, 4);
+            network.tensorOP.getByChannel(pred, predVar, 4, 4);
+            
+            p_mean_variance(predMean, predVar, t, xt, pred_xstart, predMean, predVar);
+            
+            network.tensorOP.mul(predVar, 0.5f, noiseInput);
+        	network.tensorOP.exp(noiseInput, noiseInput);
+            
+            if(time > 0) {
+            	RandomUtils.gaussianRandom(noise, 0, 1);
+            	network.tensorOP.mul(noiseInput, noise, noiseInput);
+            	network.tensorOP.add(predMean, noiseInput, noiseInput);
+            }else {
+            	network.tensorOP.add(predMean, noiseInput, noiseInput);
+            }
+            
+            xt = noiseInput;
+            System.err.println("p_sample:" + time);
+		}
+		
+		return noiseInput;
+	}
+	
 	public Tensor p_sample(DiT_ORG_SRA network, Tensor cos, Tensor sin, Tensor noiseInput, Tensor noise, Tensor condInput, Tensor t, Tensor predMean, Tensor predVar) {
 		
 		RandomUtils.gaussianRandom(noiseInput, 0, 1);
@@ -597,6 +637,7 @@ public class IDDPM {
 	}
 
 	public void predict_xstart_from_eps(Tensor xt,Tensor t,Tensor eps,Tensor output) {
+//		System.err.println(output);
 		iddpmKernel.sub_mul(sqrt_recip_alphas_cumprod_t, sqrt_recipm1_alphas_cumprod_t, xt, eps, t, output);
 	}
 	

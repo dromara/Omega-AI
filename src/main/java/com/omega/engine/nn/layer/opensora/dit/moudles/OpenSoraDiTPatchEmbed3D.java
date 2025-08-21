@@ -19,10 +19,11 @@ import com.omega.example.transformer.utils.LagJsonReader;
  *
  * @author Administrator
  */
-public class DiTPatchEmbed3D extends Layer {
+public class OpenSoraDiTPatchEmbed3D extends Layer {
 	
     private int embedDim = 0;
     public int depth = 0;
+    public int oDepth = 0;
     public int[] patchSize;
     
     public Convolution3DLayer patchEmbedding;
@@ -30,7 +31,7 @@ public class DiTPatchEmbed3D extends Layer {
     private int[] shape;
     private int[] t_shape;
 
-    public DiTPatchEmbed3D(int channel, int embedDim, int depth, int imageSize, int[] patchSize, boolean bias, Network network) {
+    public OpenSoraDiTPatchEmbed3D(int channel, int embedDim, int depth, int imageSize, int[] patchSize, boolean bias, Network network) {
         this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
@@ -44,7 +45,7 @@ public class DiTPatchEmbed3D extends Layer {
 
     }
 
-    public static void loadWeight(Map<String, Object> weightMap, DiTPatchEmbed3D block, boolean showLayers) {
+    public static void loadWeight(Map<String, Object> weightMap, OpenSoraDiTPatchEmbed3D block, boolean showLayers) {
         if (showLayers) {
             for (String key : weightMap.keySet()) {
                 System.out.println(key);
@@ -67,7 +68,7 @@ public class DiTPatchEmbed3D extends Layer {
         Transformer tf = new Transformer();
         tf.number = N;
         tf.CUDNN = true;
-        DiTPatchEmbed3D layer = new DiTPatchEmbed3D(C, embedDim, T, W, patchSize, true, tf);
+        OpenSoraDiTPatchEmbed3D layer = new OpenSoraDiTPatchEmbed3D(C, embedDim, T, W, patchSize, true, tf);
         
         String weight = "D:\\models\\PatchEmbed3D.json";
         loadWeight(LagJsonReader.readJsonFileBigWeightIterator(weight), layer, true);
@@ -124,6 +125,7 @@ public class DiTPatchEmbed3D extends Layer {
 //        }
         int pChannel = patchEmbedding.oDepth * patchEmbedding.oHeight * patchEmbedding.oWidth;
         this.oChannel = pChannel;
+        this.oDepth = patchEmbedding.oDepth;
         this.oHeight = 1;
         this.oWidth = embedDim;
     }

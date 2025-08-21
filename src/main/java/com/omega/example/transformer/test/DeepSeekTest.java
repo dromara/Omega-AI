@@ -107,7 +107,7 @@ public class DeepSeekTest {
             BPETokenizer3 tokenizer = new BPETokenizer3(vocabPath, mergesPath);
             SFTBinDataset trainData = new SFTBinDataset(trainPath, max_len, batchSize, tokenizer, BinDataType.unint16);
             ParallelDataLoader pdl = new ParallelDataLoader(trainData, deviceIds);
-            Llama3Parameters parameters = new Llama3Parameters(LossType.softmax_with_cross_entropy_idx, UpdaterType.adamw, headNum, nKVHeadNum, decoderNum, vocabSize, max_len, embedDim, false, false, false, lr);
+            Llama3Parameters parameters = new Llama3Parameters(LossType.softmax_with_cross_entropy_idx, UpdaterType.adamw, headNum, nKVHeadNum, decoderNum, vocabSize, max_len, embedDim, true, false, false, lr);
             DP dp = new DP(deviceIds, 0, networkType, parameters, pdl, 2);
             dp.train();
             String save_model_path = "/omega/models/llama3-26-base-zh.model";

@@ -122,12 +122,15 @@ public class SDVAEDecoder extends Layer {
     @Override
     public void output() {
         // TODO Auto-generated method stub
+    	this.input.showDMByOffsetRed(0, 100, "----vae-in");
         convIn.forward(this.input);
         Tensor x = convIn.getOutput();
+    	x.showDMByOffsetRed(0, 100, "----vae-x");
         for (int i = 0; i < up.size(); i++) {
             Layer l = up.get(i);
             l.forward(x);
             x = l.getOutput();
+        	x.showDMByOffsetRed(0, 100, "----vae-x["+i+"]");
             //			System.err.println(l);
             //			x.showDMByOffsetRed(0, 100, "x"+i);
         }

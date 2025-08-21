@@ -1,4 +1,4 @@
-package com.omega.engine.nn.layer.dit;
+package com.omega.engine.nn.layer.opensora.dit.moudles;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -23,15 +23,13 @@ import com.omega.example.transformer.utils.LagJsonReader;
  *
  * @author Administrator
  */
-public class DiTFinalLayer extends Layer {
+public class OpenSoraDiTFinalLayer extends Layer {
 	
 	private int batchSize;
 	private int time;
     private int hidden_size = 1;
     private boolean bias = false;
-    
-    private boolean normParams = true;
-    
+
     public LNLayer finalNorm;
 //    public RMSLayer finalNorm;
     public FullyLayer finalLinear;
@@ -45,7 +43,7 @@ public class DiTFinalLayer extends Layer {
     private Tensor dShift;
     private Tensor dScale;
 
-    public DiTFinalLayer(int patch_size, int hidden_size,int out_channels, int time, boolean bias) {
+    public OpenSoraDiTFinalLayer(int patch_size, int hidden_size,int out_channels, int time, boolean bias) {
         this.hidden_size = hidden_size;
         this.bias = bias;
         this.oChannel = 1;
@@ -55,7 +53,7 @@ public class DiTFinalLayer extends Layer {
         this.initLayers();
     }
 
-    public DiTFinalLayer(int patch_size, int hidden_size,int out_channels, int time, boolean bias, boolean normParams, Network network) {
+    public OpenSoraDiTFinalLayer(int patch_size, int hidden_size,int out_channels, int time, boolean bias, Network network) {
         this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
@@ -66,13 +64,12 @@ public class DiTFinalLayer extends Layer {
         this.oHeight = 1;
         this.oWidth = patch_size * patch_size * out_channels;
         this.time = time;
-        this.normParams = normParams;
         this.initLayers();
     }
 
     public void initLayers() {
         //		NanoGPT net = (NanoGPT) this.network;
-    	this.finalNorm = new LNLayer(1, 1, hidden_size, normParams, BNType.fully_bn, network);
+    	this.finalNorm = new LNLayer(1, 1, hidden_size, false, BNType.fully_bn, network);
         this.finalLinear = new FullyLayer(hidden_size, oWidth, bias, network);
         this.finalLinear.weight.clearGPU();
         this.finalLinear.bias.clearGPU();
@@ -343,7 +340,7 @@ public class DiTFinalLayer extends Layer {
     	m_linear2.accGrad(scale);
     }
     
-    public static void loadWeight(Map<String, Object> weightMap, DiTFinalLayer block, boolean showLayers) {
+    public static void loadWeight(Map<String, Object> weightMap, OpenSoraDiTFinalLayer block, boolean showLayers) {
         if (showLayers) {
             for (String key : weightMap.keySet()) {
                 System.out.println(key);
@@ -390,7 +387,7 @@ public class DiTFinalLayer extends Layer {
         
         Tensor dcond = new Tensor(batchSize, 1, 1, embedDim, true);
 
-        DiTFinalLayer finalLayer = new DiTFinalLayer(patch_size, embedDim, outChannel, time, true, true, tf);
+        OpenSoraDiTFinalLayer finalLayer = new OpenSoraDiTFinalLayer(patch_size, embedDim, outChannel, time, true, tf);
         
         loadWeight(datas, finalLayer, true);
         
