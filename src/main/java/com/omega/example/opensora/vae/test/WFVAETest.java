@@ -8,10 +8,14 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.bytedeco.ffmpeg.global.avcodec;
+import org.bytedeco.ffmpeg.global.avutil;
+import org.bytedeco.javacpp.Loader;
+
 import com.omega.common.utils.MatrixOperation;
-import cn.hutool.core.io.FileUtil;
-import cn.hutool.core.text.csv.*;
-import com.omega.common.utils.*;
+import com.omega.common.utils.MatrixShape;
+import com.omega.common.utils.VideoReader;
+import com.omega.common.utils.VideoWriter;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.network.vae.WFVAE;
@@ -26,17 +30,13 @@ import com.omega.example.transformer.utils.LagJsonReader;
 import com.omega.example.transformer.utils.ModelUtils;
 import com.omega.example.transformer.utils.bpe.BPETokenizerEN;
 import com.omega.example.vae.test.LPIPSTest;
-import org.bytedeco.ffmpeg.global.avcodec;
-import org.bytedeco.ffmpeg.global.avutil;
-import org.bytedeco.javacpp.Loader;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
+import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.text.csv.CsvData;
+import cn.hutool.core.text.csv.CsvReader;
+import cn.hutool.core.text.csv.CsvRow;
+import cn.hutool.core.text.csv.CsvUtil;
+import cn.hutool.core.text.csv.CsvWriter;
 
 public class WFVAETest {
 
