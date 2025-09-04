@@ -389,14 +389,14 @@ public class WFVAETest {
 		}
 
 		// 计算采样间隔
-		double interval = (double)(totalFrames - 1) / (numFrames - 1);
-
+		// double interval = (double)(totalFrames - 1) / (numFrames - 1);
+		double interval = 1;
 		for (int i = 0; i < numFrames; i++) {
 			// 计算每帧位置并四舍五入
-			int frameIndex = (int)Math.round(i * interval);
+//			int frameIndex = (int)Math.round(i * interval);
 			// 确保不超过总帧数范围
-			frameIndex = Math.min(frameIndex, totalFrames - 1);
-			sampledFrames.add(frameIndex);
+//			frameIndex = Math.min(frameIndex, totalFrames - 1);
+			sampledFrames.add(i);
 		}
 
 		return sampledFrames;
@@ -469,8 +469,8 @@ public class WFVAETest {
 	/**
 	 *  vae生成视频
 	 *
-	 * @param videoPath
-	 * @param numFrames
+	 * @param videoPath 原视频地址
+	 * @param numFrames 需要的总帧数 17 的倍数
 	 * @throws Exception
 	 */
 	public static void reconVideo(String videoPath, int numFrames) throws Exception {
