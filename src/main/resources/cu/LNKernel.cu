@@ -226,6 +226,64 @@ __global__ void layernorm_forward_kernel5(float* __restrict__ out, float* __rest
 }
 
 extern "C"
+__global__ void layernorm_forward_np_kernel5(float* __restrict__ out, float* __restrict__ mean, float* __restrict__ rstd,
+                                    const float*  __restrict__ inp, int N, int C, float eps) {
+    namespace cg = cooperative_groups;
+    cg::thread_block block = cg::this_thread_block();
+    cg::thread_block_tile<32> warp = cg::tiled_partition<32>(block);
+    __shared__ float shared_sum[32]; // block_size max is 1024 = 32 * 32 warps
+    __shared__ float shared_sum2[32]; // warps will be writing into shared memeory after warp-reduce
+    int num_warps = blockDim.x / 32;
+    int warp_id = threadIdx.x / 32;
+    int lane_id = threadIdx.x % 32;
+    int idx = blockIdx.x; // simpoy one block per row
+    // the row of input that this group of threads is responsible for
+    const float* x = inp + idx * C;
+    // thread coarsening through the row, reduce the sum in series
+    float thread_sum = 0.0; // stores sum(x)
+    float thread_sum2 = 0.0; // stores sum(x**2)
+    // for (int i = C + threadIdx.x - blockDim.x; i >= 0; i -= blockDim.x) {
+    for (int i = threadIdx.x; i < C; i += blockDim.x) {
+        float xi = x[i];
+        thread_sum += xi;
+        thread_sum2 += xi * xi;
+    }
+    // warp-level reduction
+    float warp_sum = cg::reduce(warp, thread_sum, cg::plus<float>{}); // sum(x)
+    float warp_sum2 = cg::reduce(warp, thread_sum2, cg::plus<float>{}); // sum(x**2)
+    // store the warp-level reduction in shared memory (we could have lane_id == 0 guard but not needed)
+    shared_sum[warp_id] = warp_sum;
+    shared_sum2[warp_id] = warp_sum2;
+    __syncthreads();
+    // load results from shared memory to threads, pad with zeros for threads that are out of bounds
+    warp_sum = (lane_id < num_warps) ? shared_sum[lane_id] : 0.0f;
+    warp_sum2 = (lane_id < num_warps) ? shared_sum2[lane_id] : 0.0f;
+    // now reduce the warp-level reductions
+    float block_sum = cg::reduce(warp, warp_sum, cg::plus<float>{}); // sum(x)
+    float block_sum2 = cg::reduce(warp, warp_sum2, cg::plus<float>{}); // sum(x**2)
+    // mean, var, rstd
+    block_sum /= C; // mean(x)
+    block_sum2 /= C; // mean(x**2)
+    float m = block_sum;
+    float var = block_sum2 - m * m;
+    float s = rsqrtf(var + eps);
+    // store the mean, no need to cache it
+    if(threadIdx.x == 0 && mean != nullptr) {
+        __stcs(mean + idx, m);
+    }
+    // store the rstd, no need to cache it
+    if(threadIdx.x == 0 && rstd != nullptr) {
+        __stcs(rstd + idx, s);
+    }
+    // final normalization
+    float* o = out + idx * C;
+    for (int i = threadIdx.x; i < C; i += blockDim.x) {
+        float n = s * (__ldcs(x+i) - m);
+        __stcs(o+i, n);
+    }
+}
+
+extern "C"
 __global__ void layernorm_backward_kernel3(float* dinp, float* dweight, float* dbias,
                         const float* dout, const float* inp, const float* weight, const float* mean, const float* rstd,
                         int B, int T, int C) {
@@ -434,6 +492,59 @@ __global__ void layernorm_backward_kernel7(float* dinp, float* dweight, float* d
             dweight[i] = (float)scratch_dweight[i];
         }
     }
+}
+
+extern "C"
+__global__ void layernorm_backward_np_kernel7(float* dinp, float* scratch,
+                        const float* dout, const float* inp, const float* mean, const float* rstd,
+                        int B, int T, int C) {
+    int warpId = threadIdx.x / warpSize; // warp index within a block
+    int warpsInBlock = blockDim.x / warpSize;
+    int base_idx = blockIdx.x * warpsInBlock + warpId;
+    int warpThreadIdx = threadIdx.x % warpSize; // Thread index within the warp
+    int warps_in_grid = gridDim.x * warpsInBlock;
+
+    // init shared memory to zero
+    for (int idx = base_idx; idx < B * T; idx += warps_in_grid) {
+        int b = idx / T;
+        int t = idx % T;
+
+        const float* dout_bt = dout + b * T * C + t * C;
+        const float* inp_bt = inp + b * T * C + t * C;
+        float* dinp_bt = dinp + b * T * C + t * C;
+        const float mean_bt = (float)mean[b * T + t];
+        const float rstd_bt = (float)rstd[b * T + t];
+
+        // first: two reduce operations
+        float dnorm_mean = 0.0f;
+        float dnorm_norm_mean = 0.0f;
+        for (int i = warpThreadIdx; i < C; i  += warpSize) {
+            float norm_bti = ((float)inp_bt[i] - mean_bt) * rstd_bt;
+            float dnorm_i = (float)dout_bt[i];
+            dnorm_mean += dnorm_i;
+            dnorm_norm_mean += dnorm_i * norm_bti;
+        }
+        dnorm_mean = warpReduceSum(dnorm_mean);
+        dnorm_norm_mean = warpReduceSum(dnorm_norm_mean);
+
+        dnorm_mean = dnorm_mean / C;
+        dnorm_norm_mean = dnorm_norm_mean / C;
+
+        // now iterate again and accumulate all the gradients
+        for (int i = warpThreadIdx; i < C; i += warpSize) {
+            float dout_i = (float)__ldcs(&dout_bt[i]);
+            float norm_bti = ((float)__ldcs(&inp_bt[i]) - mean_bt) * rstd_bt;
+            float dnorm_i = dout_i;
+            // gradient contribution to input
+            float dval = 0.0f;
+            dval += dnorm_i; // term 1
+            dval -= dnorm_mean; // term 2
+            dval -= norm_bti * dnorm_norm_mean; // term 3
+            dval *= rstd_bt; // final scale
+            dinp_bt[i] = (float)((float)dinp_bt[i] + dval);
+        }
+    }
+
 }
 
 extern "C"
