@@ -80,10 +80,10 @@ public class DiTFinalLayer extends Layer {
         this.m_active = new SiLULayer(network);
         this.m_linear1 = new FullyLayer(hidden_size, hidden_size, bias, network);
         this.m_linear2 = new FullyLayer(hidden_size, hidden_size, bias, network);
-//        this.m_linear1.weight.clearGPU();
-//        this.m_linear1.bias.clearGPU();
-//        this.m_linear2.weight.clearGPU();
-//        this.m_linear2.bias.clearGPU();
+        this.m_linear1.weight.clearGPU();
+        this.m_linear1.bias.clearGPU();
+        this.m_linear2.weight.clearGPU();
+        this.m_linear2.bias.clearGPU();
         //		this.linear2.weight = new Tensor(1, 1, nChannel, embedDim, RandomUtils.uniform(this.embedDim * nChannel, 0.0f, 0.02f), true);
         //		this.linear2.weight = new Tensor(1, 1, nChannel, embedDim, RandomUtils.uniform(this.embedDim * nChannel, 0.0f, (0.02f / (float) Math.sqrt(2 * net.decoderNum))), true);
     }
@@ -130,7 +130,7 @@ public class DiTFinalLayer extends Layer {
     	m_linear1.forward(m_active.getOutput());
     	m_linear2.forward(m_active.getOutput());
     	
-    	finalNorm.forward_llmc(input);
+    	finalNorm.forward(input);
     	
     	/**
     	 * modulate

@@ -187,7 +187,7 @@ public class FullyKernel extends BaseKernel {
 //            System.err.println(delta.number * delta.channel * delta.height);
             kernelBackParameters = Pointer.to(Pointer.to(diffB.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(new int[]{delta.number * delta.channel * delta.height}), Pointer.to(new int[]{diffB.dataLength}));
 //            }
-            cuLaunchKernel(back_function, this.CAFFE_GET_BLOCKS(delta.getWidth()), 1, 1,      // Grid dimension
+            cuLaunchKernel(back_function, this.CAFFE_GET_BLOCKS(diffB.dataLength), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelBackParameters, null // Kernel- and extra parameters

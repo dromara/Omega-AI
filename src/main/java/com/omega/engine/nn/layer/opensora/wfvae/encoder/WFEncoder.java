@@ -100,7 +100,7 @@ public class WFEncoder extends Layer {
     	norm_out = new LNLayer3D(base_channels * 4, mid.oDepth, mid.oHeight, mid.oWidth, network);
     	
     	act = new SiLULayer(network);
-    	
+
     	conv_out = new WFCausalConv3D(base_channels * 4, latent_dim * 2, norm_out.oDepth, norm_out.oWidth, norm_out.oHeight, 3, 1, 1, true, network);
     	
     }

@@ -13,10 +13,12 @@ import jcuda.jcublas.cublasOperation;
 
 public class TensorOP {
     public OPKernel op;
-    private NormalizeKernel normalizeKernel;
+    public CUDAManager cudaManager;
+    public NormalizeKernel normalizeKernel;
 
     public TensorOP(CUDAManager cudaManager) {
         this.op = new OPKernel(cudaManager);
+        this.cudaManager = cudaManager;
         this.normalizeKernel = new NormalizeKernel(cudaManager);
     }
 

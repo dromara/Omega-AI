@@ -348,28 +348,32 @@ public class Llama3Test {
             int nKVHeadNum = 8;
             int decoderNum = 8;
             int vocab_size = 6400;
-            String vocabPath = "H:\\transformer_dataset\\6400\\vocab.json";
-            String mergesPath = "H:\\transformer_dataset\\6400\\merges.txt";
+            //加载BPE Tokenizer
+            String vocabPath = "D:\\test\\models\\mmdit\\6400_tokenizer\\vocab.json";
+            String mergesPath = "D:\\test\\models\\mmdit\\6400_tokenizer\\merges.txt";
             BPETokenizer3 tokenizer = new BPETokenizer3(vocabPath, mergesPath);
+            //定义LLM模型结构
             Llama3 network = new Llama3(LossType.softmax_with_cross_entropy_idx, UpdaterType.adamw, head_num, nKVHeadNum, decoderNum, vocab_size, max_len, embedDim, bias, dropout, flashAttention);
-            String model_path = "H:\\model\\llama3-26m-chinese-sft-med.model";
+            //加载预训练模型
+            String model_path = "D:\\test\\models\\mmdit\\llama3-26m-chinese-sft-med.model";
             ModelUtils.loadModel(network, model_path);
+            //开启模型推理模式
             network.RUN_MODEL = RunModel.TEST;
             Scanner scanner = new Scanner(System.in);
             Tensor testInput = null;
             while (true) {
-                System.out.println("请输入中文:");
+                System.out.println("请输入您的问题:");
                 String input_txt = scanner.nextLine();
                 if (input_txt.equals("exit")) {
                     break;
                 }
                 input_txt = input_txt.toLowerCase();
                 String qaStr = tokenizer.sos_str() + "user\n" + input_txt + tokenizer.eos_str() + "\n";
-                //				System.out.println(qaStr);
+
                 int[] idx = tokenizer.encodeInt(qaStr);
                 int startLen = idx.length;
                 Tensor input = loadByTxtToIdx(testInput, idx);
-                //				input.showDM();
+
                 Tensor[] pos = RoPEKernel.getCosAndSin(input.number, network.embedDim, network.headNum);
                 for (int t = 0; t < max_len - startLen; t++) {
                     network.time = input.number;
@@ -377,12 +381,13 @@ public class Llama3Test {
                     Tensor sin = pos[1];
                     Tensor output = network.forward(cos, sin, input);
                     output.syncHost();
-                    int nextIDX = output2NextIDXTopN(output, idx.length - 1, 8, network.cudaManager);
+                    int nextIDX = output2NextIDXTopN(output, idx.length - 1, 5, network.cudaManager);
                     idx = Arrays.copyOf(idx, idx.length + 1);
                     idx[idx.length - 1] = nextIDX;
                     if (nextIDX == tokenizer.eos) {
                         break;
                     }
+//                    System.out.print(tokenizer.decode(idx));
                     input = loadByTxtToIdx(testInput, idx);
                     RoPEKernel.getCosAndSin(input.number, network.embedDim, network.headNum, pos);
                 }
@@ -815,12 +820,12 @@ public class Llama3Test {
         try {
             //			CUDAModules.initContext();
             //			llama3_dp();
-            llama3_monkey();
+//            llama3_monkey();
             //			llama3_monkey_chatglm();
             //			llama3_monkey_sft();
             //			llama3_monkey_sft_test();
             //			llama3_monkey_med_sft();
-            //			llama3_monkey_med_predict();
+            			llama3_monkey_med_predict();
             //			llama3_monkey_sql_sft();
             //			llama3_monkey_sql_predict();
         } catch (Exception e) {

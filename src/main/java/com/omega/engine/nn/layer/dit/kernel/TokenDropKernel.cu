@@ -15,6 +15,21 @@ __global__ void token_drop(const size_t size, const float *x, float *param, floa
 }
 
 extern "C"
+__global__ void token_drop_class(const size_t size, const float *x, float param, float *mask, float *out, const int len, float prob)
+{
+
+    for (size_t pos = blockIdx.x * blockDim.x + threadIdx.x; pos < (size); pos += blockDim.x * gridDim.x) {
+    	int b = pos / len;
+    	if(mask[b] < prob){
+			out[pos] = param;
+		}else{
+			out[pos] = x[pos];
+		}
+  	}
+
+}
+
+extern "C"
 __global__ void timestep_embedding(int N, const float *t, float *freqs, float *out, const int d_model) {
     int idx = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
     if (idx < N) {

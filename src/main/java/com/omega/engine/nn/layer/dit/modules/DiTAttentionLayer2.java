@@ -15,7 +15,7 @@ import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.gpu.AttentionKernel;
 import com.omega.engine.nn.layer.gpu.RoPEKernel;
 import com.omega.engine.nn.layer.normalization.BNType;
-import com.omega.engine.nn.layer.normalization.LNLayer;
+import com.omega.engine.nn.layer.normalization.RMSLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.tensor.Tensor;
@@ -28,8 +28,8 @@ import com.omega.engine.updater.UpdaterFactory;
  */
 public class DiTAttentionLayer2 extends Layer {
 	
-    public LNLayer qNorm;
-    public LNLayer kNorm;
+    public RMSLayer qNorm;
+    public RMSLayer kNorm;
 	
     public FullyLayer qLinerLayer;
     public FullyLayer kLinerLayer;
@@ -113,8 +113,8 @@ public class DiTAttentionLayer2 extends Layer {
     public void initLayers() {
        
     	if(qkNorm) {
-        	qNorm = new LNLayer(1, 1, embedDim, BNType.fully_bn, network);
-        	kNorm = new LNLayer(1, 1, embedDim, BNType.fully_bn, network);
+        	qNorm = new RMSLayer(1, 1, dk, true, BNType.fully_bn, network);
+        	kNorm = new RMSLayer(1, 1, dk, true, BNType.fully_bn, network);
         }
     	
         this.setqLinerLayer(new FullyLayer(embedDim, embedDim, bias, this.network));
@@ -453,10 +453,12 @@ public class DiTAttentionLayer2 extends Layer {
           */
          ropeKernel.backward2d(cos, sin, qt, rq, time, headNum, dk);
          ropeKernel.backward2d(cos, sin, kt, rk, time, headNum, dk);
-         Tensor queryDelta = rq.view(this.getqLinerLayer().getOutput().shape());
-         Tensor keyDelta = rk.view(this.getkLinerLayer().getOutput().shape());
-         Tensor valueDelta = vt.view(this.getvLinerLayer().getOutput().shape());
+         Tensor queryDelta = rq.view(this.getqLinerLayer().getOutput().getOrgShape());
+         Tensor keyDelta = rk.view(this.getkLinerLayer().getOutput().getOrgShape());
+         Tensor valueDelta = vt.view(this.getvLinerLayer().getOutput().getOrgShape());
          this.getqLinerLayer().back(queryDelta);
+//         keyDelta.showShape("keyDelta");
+//         this.getkLinerLayer().bias.showShape();
          this.getkLinerLayer().back(keyDelta);
          this.getvLinerLayer().back(valueDelta);
          Tensor_OP().add(this.getqLinerLayer().diff, this.getkLinerLayer().diff, this.getqLinerLayer().diff);

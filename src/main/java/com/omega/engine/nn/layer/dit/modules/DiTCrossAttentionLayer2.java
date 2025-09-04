@@ -18,6 +18,7 @@ import com.omega.engine.nn.layer.gpu.AttentionKernel;
 import com.omega.engine.nn.layer.gpu.RoPEKernel;
 import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.LNLayer;
+import com.omega.engine.nn.layer.normalization.RMSLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.nn.network.Transformer;
@@ -36,8 +37,8 @@ public class DiTCrossAttentionLayer2 extends Layer {
 	
     private int batchSize = 1;
 	
-    public LNLayer qNorm;
-    public LNLayer kNorm;
+    public RMSLayer qNorm;
+    public RMSLayer kNorm;
 	
     public FullyLayer qLinerLayer;
     public FullyLayer kLinerLayer;
@@ -188,8 +189,8 @@ public class DiTCrossAttentionLayer2 extends Layer {
     public void initLayers() {
     	
     	if(qkNorm) {
-        	qNorm = new LNLayer(1, 1, embedDim, BNType.fully_bn, network);
-        	kNorm = new LNLayer(1, 1, kvDim, BNType.fully_bn, network);
+        	qNorm = new RMSLayer(1, 1, dk, true, BNType.fully_bn, network);
+        	kNorm = new RMSLayer(1, 1, dk, true, BNType.fully_bn, network);
         }
     	
         this.qLinerLayer = new FullyLayer(embedDim, embedDim, bias, this.network);

@@ -6,16 +6,19 @@ import java.io.RandomAccessFile;
 
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.network.ASR;
-import com.omega.engine.nn.network.DiT_ORG;
-import com.omega.engine.nn.network.DiT_ORG2;
-import com.omega.engine.nn.network.DiT_ORG_SRA;
 import com.omega.engine.nn.network.DiffusionUNetCond2;
 import com.omega.engine.nn.network.Llama2;
 import com.omega.engine.nn.network.Llama3;
 import com.omega.engine.nn.network.Llava;
-import com.omega.engine.nn.network.MMDiT;
-import com.omega.engine.nn.network.MMDiT_RoPE;
 import com.omega.engine.nn.network.NanoGPT;
+import com.omega.engine.nn.network.OpenSoraDIT;
+import com.omega.engine.nn.network.Yolo;
+import com.omega.engine.nn.network.dit.DiT_ORG;
+import com.omega.engine.nn.network.dit.DiT_ORG2;
+import com.omega.engine.nn.network.dit.DiT_ORG_SRA;
+import com.omega.engine.nn.network.dit.MMDiT;
+import com.omega.engine.nn.network.dit.MMDiT_RoPE;
+import com.omega.engine.nn.network.dit.PixArtDiT;
 import com.omega.engine.nn.network.vae.TinyVQVAE;
 import com.omega.engine.nn.network.vae.TinyVQVAE2;
 import com.omega.engine.nn.network.vae.VQVAE2;
@@ -23,6 +26,99 @@ import com.omega.engine.nn.network.vae.WFVAE;
 import com.omega.engine.tensor.Tensor;
 
 public class ModelUtils {
+	
+	public static void saveModel(Yolo model, String outpath) {
+        File file = new File(outpath);
+        if (!file.exists()) {
+            try {
+                file.createNewFile();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+        try (RandomAccessFile rFile = new RandomAccessFile(file, "rw")) {
+            System.out.println("start save model...");
+            model.saveModel(rFile);
+            System.out.println("model save success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void loadModel(Yolo model, String inputPath) {
+        try (RandomAccessFile File = new RandomAccessFile(inputPath, "r")) {
+            System.out.println("start load model...");
+            model.loadModel(File);
+            System.out.println("model load success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void saveModel(PixArtDiT model, String outpath) {
+        File file = new File(outpath);
+        if (!file.exists()) {
+            try {
+                file.createNewFile();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+        try (RandomAccessFile rFile = new RandomAccessFile(file, "rw")) {
+            System.out.println("start save model...");
+            model.saveModel(rFile);
+            System.out.println("model save success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void loadModel(PixArtDiT model, String inputPath) {
+        try (RandomAccessFile File = new RandomAccessFile(inputPath, "r")) {
+            System.out.println("start load model...");
+            model.loadModel(File);
+            System.out.println("model load success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void saveModel(OpenSoraDIT model, String outpath) {
+        File file = new File(outpath);
+        if (!file.exists()) {
+            try {
+                file.createNewFile();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+        try (RandomAccessFile rFile = new RandomAccessFile(file, "rw")) {
+            System.out.println("start save model...");
+            model.saveModel(rFile);
+            System.out.println("model save success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void loadModel(OpenSoraDIT model, String inputPath) {
+        try (RandomAccessFile File = new RandomAccessFile(inputPath, "r")) {
+            System.out.println("start load model...");
+            model.loadModel(File);
+            System.out.println("model load success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
 	
 	public static void saveModel(MMDiT model, String outpath) {
         File file = new File(outpath);

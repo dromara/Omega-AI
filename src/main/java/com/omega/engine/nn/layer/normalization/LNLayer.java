@@ -442,7 +442,7 @@ public class LNLayer extends NormalizationLayer {
     @Override
     public void update() {
         // TODO Auto-generated method stub
-        if (!this.freeze) {
+        if (!this.freeze && hasParams) {
             if (accDW != null) {
                 this.accDW.copy(diffGamma);
                 if (hasBias) {

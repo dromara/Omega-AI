@@ -1,5 +1,8 @@
 package com.omega.example.clip.utils;
 
+import java.util.List;
+import java.util.Map;
+
 import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.nn.layer.Layer;
@@ -12,17 +15,17 @@ import com.omega.engine.nn.layer.sd_vae.moudles.SDVAEAttentionLayer;
 import com.omega.engine.nn.layer.sd_vae.moudles.SDVAEDownsample;
 import com.omega.engine.nn.layer.sd_vae.moudles.SDVAEResidual;
 import com.omega.engine.nn.layer.sd_vae.moudles.SDVAEUpsample;
+import com.omega.engine.nn.layer.va_vae.VAVAEAttentionLayer;
 import com.omega.engine.nn.network.ClipText;
 import com.omega.engine.nn.network.ClipTextModel;
 import com.omega.engine.nn.network.ClipVision;
 import com.omega.engine.nn.network.vae.SD_VAE;
+import com.omega.engine.nn.network.vae.VA_VAE;
 import com.omega.engine.nn.network.vae.WFVAE;
 import com.omega.engine.tensor.Tensor;
 
-import java.util.List;
-import java.util.Map;
-
 public class ClipModelUtils {
+	
     public static void loadWeight(Map<String, Object> weightMap, WFVAE network, boolean showLayers) {
         if (showLayers) {
             for (String key : weightMap.keySet()) {
@@ -463,6 +466,236 @@ public class ClipModelUtils {
         
         network.decoder.convNormOut.gamma = loadData(network.decoder.convNormOut.gamma, weightMap, 1, "decoder.conv_norm_out.weight");
         network.decoder.convNormOut.beta = loadData(network.decoder.convNormOut.beta, weightMap, 1, "decoder.conv_norm_out.bias");
+        loadData(network.decoder.convOut.weight, weightMap, "decoder.conv_out.weight");
+        loadData(network.decoder.convOut.bias, weightMap, "decoder.conv_out.bias");
+        
+        network.pre_quant_conv.weight = loadData(network.pre_quant_conv.weight, weightMap, 4, "quant_conv.weight");
+        loadData(network.pre_quant_conv.bias, weightMap, "quant_conv.bias");
+        
+        network.post_quant_conv.weight = loadData(network.post_quant_conv.weight, weightMap, 4, "post_quant_conv.weight");
+        loadData(network.post_quant_conv.bias, weightMap, "post_quant_conv.bias");
+        
+    }
+    
+    public static void loadWeight(Map<String, Object> weightMap, VA_VAE network, boolean showLayers) {
+        if (showLayers) {
+            for (String key : weightMap.keySet()) {
+                System.out.println(key);
+            }
+        }
+        
+        /**
+         * encoders
+         */
+        loadData(network.encoder.convIn.weight, weightMap, "encoder.conv_in.weight");
+        loadData(network.encoder.convIn.bias, weightMap, "encoder.conv_in.bias");
+        
+        int idx = 0;
+        
+        for (int i = 0; i < network.ch_mult.length; i++) {
+            for (int ri = 0; ri < network.num_res_blocks; ri++) {
+            	Layer layer = network.encoder.down.get(idx);
+            	if(layer instanceof SDVAEResidual) {
+            		SDVAEResidual vr = (SDVAEResidual) layer;
+            		vr.norm1.gamma = loadData(vr.norm1.gamma, weightMap, 1, "encoder.down."+i+".block."+ri+".norm1.weight");
+            		vr.norm1.beta = loadData(vr.norm1.beta, weightMap, 1, "encoder.down."+i+".block."+ri+".norm1.bias");
+            		loadData(vr.conv1.weight, weightMap, "encoder.down."+i+".block."+ri+".conv1.weight");
+                    loadData(vr.conv1.bias, weightMap, "encoder.down."+i+".block."+ri+".conv1.bias");
+            		vr.norm2.gamma = loadData(vr.norm2.gamma, weightMap, 1, "encoder.down."+i+".block."+ri+".norm2.weight");
+            		vr.norm2.beta = loadData(vr.norm2.beta, weightMap, 1, "encoder.down."+i+".block."+ri+".norm2.bias");
+            		loadData(vr.conv2.weight, weightMap, "encoder.down."+i+".block."+ri+".conv2.weight");
+                    loadData(vr.conv2.bias, weightMap, "encoder.down."+i+".block."+ri+".conv2.bias");
+                    if(vr.conv_shortcut != null) {
+                    	vr.conv_shortcut.weight = loadData(vr.conv_shortcut.weight, weightMap, 4, "encoder.down."+i+".block.0.nin_shortcut.weight");
+                        loadData(vr.conv_shortcut.bias, weightMap, "encoder.down."+i+".block.0.nin_shortcut.bias");
+                    }
+                    idx++;
+            	}
+            	
+            	if (network.encoder.hasAttn && i == network.ch_mult.length - 1) {
+            		VAVAEAttentionLayer attn = (VAVAEAttentionLayer) network.encoder.down.get(idx);
+            		attn.gn.gamma = loadData(attn.gn.gamma, weightMap, 1, "encoder.down."+i+".attn."+ri+".norm.weight");
+            		attn.gn.beta = loadData(attn.gn.beta, weightMap, 1, "encoder.down."+i+".attn."+ri+".norm.bias");
+                	loadData(attn.attn.qLinerLayer.weight, weightMap, "encoder.down."+i+".attn."+ri+".q.weight", 4);
+                    loadData(attn.attn.qLinerLayer.bias, weightMap, "encoder.down."+i+".attn."+ri+".q.bias");
+                	loadData(attn.attn.kLinerLayer.weight, weightMap, "encoder.down."+i+".attn."+ri+".k.weight", 4);
+                    loadData(attn.attn.kLinerLayer.bias, weightMap, "encoder.down."+i+".attn."+ri+".k.bias");
+                	loadData(attn.attn.vLinerLayer.weight, weightMap, "encoder.down."+i+".attn."+ri+".v.weight", 4);
+                    loadData(attn.attn.vLinerLayer.bias, weightMap, "encoder.down."+i+".attn."+ri+".v.bias");
+                	loadData(attn.attn.oLinerLayer.weight, weightMap, "encoder.down."+i+".attn."+ri+".proj_out.weight", 4);
+                    loadData(attn.attn.oLinerLayer.bias, weightMap, "encoder.down."+i+".attn."+ri+".proj_out.bias");
+                    idx++;
+                }
+
+            }
+
+            if (i != network.ch_mult.length - 1) {
+            	Layer layer = network.encoder.down.get(idx);
+            	if(layer instanceof SDVAEDownsample) {
+            		SDVAEDownsample downsample = (SDVAEDownsample) layer;
+            		loadData(downsample.conv.weight, weightMap, "encoder.down."+i+".downsample.conv.weight");
+                    loadData(downsample.conv.bias, weightMap, "encoder.down."+i+".downsample.conv.bias");
+            	}
+            	idx++;
+            }
+            
+        }
+        
+        /**
+         * encoder mids
+         */
+        Layer layer = network.encoder.down.get(idx);
+        if(layer instanceof SDVAEResidual) {
+        	SDVAEResidual vr = (SDVAEResidual) layer;
+    		vr.norm1.gamma = loadData(vr.norm1.gamma, weightMap, 1, "encoder.mid.block_1.norm1.weight");
+    		vr.norm1.beta = loadData(vr.norm1.beta, weightMap, 1, "encoder.mid.block_1.norm1.bias");
+    		loadData(vr.conv1.weight, weightMap, "encoder.mid.block_1.conv1.weight");
+            loadData(vr.conv1.bias, weightMap, "encoder.mid.block_1.conv1.bias");
+    		vr.norm2.gamma = loadData(vr.norm2.gamma, weightMap, 1, "encoder.mid.block_1.norm2.weight");
+    		vr.norm2.beta = loadData(vr.norm2.beta, weightMap, 1, "encoder.mid.block_1.norm2.bias");
+    		loadData(vr.conv2.weight, weightMap, "encoder.mid.block_1.conv2.weight");
+            loadData(vr.conv2.bias, weightMap, "encoder.mid.block_1.conv2.bias");
+            idx++;
+        }
+        
+        Layer layer2 = network.encoder.down.get(idx);
+        
+        if(layer2 instanceof VAVAEAttentionLayer) {
+        	VAVAEAttentionLayer va = (VAVAEAttentionLayer) layer2;
+        	va.gn.gamma = loadData(va.gn.gamma, weightMap, 1, "encoder.mid.attn_1.norm.weight");
+    		va.gn.beta = loadData(va.gn.beta, weightMap, 1, "encoder.mid.attn_1.norm.bias");
+        	loadData(va.attn.qLinerLayer.weight, weightMap, "encoder.mid.attn_1.q.weight", 4);
+            loadData(va.attn.qLinerLayer.bias, weightMap, "encoder.mid.attn_1.q.bias");
+        	loadData(va.attn.kLinerLayer.weight, weightMap, "encoder.mid.attn_1.k.weight", 4);
+            loadData(va.attn.kLinerLayer.bias, weightMap, "encoder.mid.attn_1.k.bias");
+        	loadData(va.attn.vLinerLayer.weight, weightMap, "encoder.mid.attn_1.v.weight", 4);
+            loadData(va.attn.vLinerLayer.bias, weightMap, "encoder.mid.attn_1.v.bias");
+        	loadData(va.attn.oLinerLayer.weight, weightMap, "encoder.mid.attn_1.proj_out.weight", 4);
+            loadData(va.attn.oLinerLayer.bias, weightMap, "encoder.mid.attn_1.proj_out.bias");
+            idx++;
+        }
+        
+        Layer layer3 = network.encoder.down.get(idx);
+        if(layer3 instanceof SDVAEResidual) {
+        	SDVAEResidual vr = (SDVAEResidual) layer3;
+    		vr.norm1.gamma = loadData(vr.norm1.gamma, weightMap, 1, "encoder.mid.block_2.norm1.weight");
+    		vr.norm1.beta = loadData(vr.norm1.beta, weightMap, 1, "encoder.mid.block_2.norm1.bias");
+    		loadData(vr.conv1.weight, weightMap, "encoder.mid.block_2.conv1.weight");
+            loadData(vr.conv1.bias, weightMap, "encoder.mid.block_2.conv1.bias");
+    		vr.norm2.gamma = loadData(vr.norm2.gamma, weightMap, 1, "encoder.mid.block_2.norm2.weight");
+    		vr.norm2.beta = loadData(vr.norm2.beta, weightMap, 1, "encoder.mid.block_2.norm2.bias");
+    		loadData(vr.conv2.weight, weightMap, "encoder.mid.block_2.conv2.weight");
+            loadData(vr.conv2.bias, weightMap, "encoder.mid.block_2.conv2.bias");
+            idx++;
+        }
+        
+        network.encoder.convNormOut.gamma = loadData(network.encoder.convNormOut.gamma, weightMap, 1, "encoder.norm_out.weight");
+        network.encoder.convNormOut.beta = loadData(network.encoder.convNormOut.beta, weightMap, 1, "encoder.norm_out.bias");
+        loadData(network.encoder.convOut.weight, weightMap, "encoder.conv_out.weight");
+        loadData(network.encoder.convOut.bias, weightMap, "encoder.conv_out.bias");
+        
+        /**
+         * decoder
+         */
+        loadData(network.decoder.convIn.weight, weightMap, "decoder.conv_in.weight");
+        loadData(network.decoder.convIn.bias, weightMap, "decoder.conv_in.bias");
+        
+        int idx_up = 0;
+        
+        /**
+         * decoder mids
+         */
+        Layer layer_up1 = network.decoder.up.get(idx_up);
+        if(layer_up1 instanceof SDVAEResidual) {
+        	SDVAEResidual vr = (SDVAEResidual) layer_up1;
+    		vr.norm1.gamma = loadData(vr.norm1.gamma, weightMap, 1, "decoder.mid.block_1.norm1.weight");
+    		vr.norm1.beta = loadData(vr.norm1.beta, weightMap, 1, "decoder.mid.block_1.norm1.bias");
+    		loadData(vr.conv1.weight, weightMap, "decoder.mid.block_1.conv1.weight");
+            loadData(vr.conv1.bias, weightMap, "decoder.mid.block_1.conv1.bias");
+    		vr.norm2.gamma = loadData(vr.norm2.gamma, weightMap, 1, "decoder.mid.block_1.norm2.weight");
+    		vr.norm2.beta = loadData(vr.norm2.beta, weightMap, 1, "decoder.mid.block_1.norm2.bias");
+    		loadData(vr.conv2.weight, weightMap, "decoder.mid.block_1.conv2.weight");
+            loadData(vr.conv2.bias, weightMap, "decoder.mid.block_1.conv2.bias");
+            idx_up++;
+        }
+        
+        Layer layer_up2 = network.decoder.up.get(idx_up);
+        if(layer_up2 instanceof VAVAEAttentionLayer) {
+        	VAVAEAttentionLayer va = (VAVAEAttentionLayer) layer_up2;
+        	va.gn.gamma = loadData(va.gn.gamma, weightMap, 1, "decoder.mid.attn_1.norm.weight");
+    		va.gn.beta = loadData(va.gn.beta, weightMap, 1, "decoder.mid.attn_1.norm.bias");
+        	loadData(va.attn.qLinerLayer.weight, weightMap, "decoder.mid.attn_1.q.weight", 4);
+            loadData(va.attn.qLinerLayer.bias, weightMap, "decoder.mid.attn_1.q.bias");
+        	loadData(va.attn.kLinerLayer.weight, weightMap, "decoder.mid.attn_1.k.weight", 4);
+            loadData(va.attn.kLinerLayer.bias, weightMap, "decoder.mid.attn_1.k.bias");
+        	loadData(va.attn.vLinerLayer.weight, weightMap, "decoder.mid.attn_1.v.weight", 4);
+            loadData(va.attn.vLinerLayer.bias, weightMap, "decoder.mid.attn_1.v.bias");
+        	loadData(va.attn.oLinerLayer.weight, weightMap, "decoder.mid.attn_1.proj_out.weight", 4);
+            loadData(va.attn.oLinerLayer.bias, weightMap, "decoder.mid.attn_1.proj_out.bias");
+            idx_up++;
+        }
+        
+        Layer layer_up3 = network.decoder.up.get(idx_up);
+        if(layer_up3 instanceof SDVAEResidual) {
+        	SDVAEResidual vr = (SDVAEResidual) layer_up3;
+    		vr.norm1.gamma = loadData(vr.norm1.gamma, weightMap, 1, "decoder.mid.block_2.norm1.weight");
+    		vr.norm1.beta = loadData(vr.norm1.beta, weightMap, 1, "decoder.mid.block_2.norm1.bias");
+    		loadData(vr.conv1.weight, weightMap, "decoder.mid.block_2.conv1.weight");
+            loadData(vr.conv1.bias, weightMap, "decoder.mid.block_2.conv1.bias");
+    		vr.norm2.gamma = loadData(vr.norm2.gamma, weightMap, 1, "decoder.mid.block_2.norm2.weight");
+    		vr.norm2.beta = loadData(vr.norm2.beta, weightMap, 1, "decoder.mid.block_2.norm2.bias");
+    		loadData(vr.conv2.weight, weightMap, "decoder.mid.block_2.conv2.weight");
+            loadData(vr.conv2.bias, weightMap, "decoder.mid.block_2.conv2.bias");
+            idx_up++;
+        }
+
+        for (int i = network.ch_mult.length - 1; i >= 0; i--) {
+            for (int ri = 0; ri < network.num_res_blocks + 1; ri++) {
+            	Layer layer_up = network.decoder.up.get(idx_up);
+            	if(layer_up instanceof SDVAEResidual) {
+            		SDVAEResidual vr = (SDVAEResidual) layer_up;
+                	vr.norm1.gamma = loadData(vr.norm1.gamma, weightMap, 1, "decoder.up."+i+".block."+ri+".norm1.weight");
+            		vr.norm1.beta = loadData(vr.norm1.beta, weightMap, 1, "decoder.up."+i+".block."+ri+".norm1.bias");
+            		loadData(vr.conv1.weight, weightMap, "decoder.up."+i+".block."+ri+".conv1.weight");
+                    loadData(vr.conv1.bias, weightMap, "decoder.up."+i+".block."+ri+".conv1.bias");
+            		vr.norm2.gamma = loadData(vr.norm2.gamma, weightMap, 1, "decoder.up."+i+".block."+ri+".norm2.weight");
+            		vr.norm2.beta = loadData(vr.norm2.beta, weightMap, 1, "decoder.up."+i+".block."+ri+".norm2.bias");
+            		loadData(vr.conv2.weight, weightMap, "decoder.up."+i+".block."+ri+".conv2.weight");
+                    loadData(vr.conv2.bias, weightMap, "decoder.up."+i+".block."+ri+".conv2.bias");
+                    if(vr.conv_shortcut != null) {
+                    	vr.conv_shortcut.weight = loadData(vr.conv_shortcut.weight, weightMap, 4, "decoder.up."+i+".block."+ri+".nin_shortcut.weight");
+                        loadData(vr.conv_shortcut.bias, weightMap, "decoder.up."+i+".block."+ri+".nin_shortcut.bias");
+                    }
+                	idx_up++;
+            	}
+            	if (network.decoder.hasAttn && i == network.ch_mult.length - 1) {
+            		VAVAEAttentionLayer attn = (VAVAEAttentionLayer) network.decoder.up.get(idx_up);
+            		attn.gn.gamma = loadData(attn.gn.gamma, weightMap, 1, "decoder.up."+i+".attn."+ri+".norm.weight");
+            		attn.gn.beta = loadData(attn.gn.beta, weightMap, 1, "decoder.up."+i+".attn."+ri+".norm.bias");
+                	loadData(attn.attn.qLinerLayer.weight, weightMap, "decoder.up."+i+".attn."+ri+".q.weight", 4);
+                    loadData(attn.attn.qLinerLayer.bias, weightMap, "decoder.up."+i+".attn."+ri+".q.bias");
+                	loadData(attn.attn.kLinerLayer.weight, weightMap, "decoder.up."+i+".attn."+ri+".k.weight", 4);
+                    loadData(attn.attn.kLinerLayer.bias, weightMap, "decoder.up."+i+".attn."+ri+".k.bias");
+                	loadData(attn.attn.vLinerLayer.weight, weightMap, "decoder.up."+i+".attn."+ri+".v.weight", 4);
+                    loadData(attn.attn.vLinerLayer.bias, weightMap, "decoder.up."+i+".attn."+ri+".v.bias");
+                	loadData(attn.attn.oLinerLayer.weight, weightMap, "decoder.up."+i+".attn."+ri+".proj_out.weight", 4);
+                    loadData(attn.attn.oLinerLayer.bias, weightMap, "decoder.up."+i+".attn."+ri+".proj_out.bias");
+                    idx_up++;
+            	}
+            }
+            if (i != 0) {
+            	Layer layer_up = network.decoder.up.get(idx_up);
+            	if(layer_up instanceof SDVAEUpsample) {
+            		SDVAEUpsample upsample = (SDVAEUpsample) layer_up;
+	                loadData(upsample.conv.weight, weightMap, "decoder.up."+i+".upsample.conv.weight");
+	                loadData(upsample.conv.bias, weightMap, "decoder.up."+i+".upsample.conv.bias");
+	                idx_up++;
+            	}
+            }
+        }
+        
+        network.decoder.convNormOut.gamma = loadData(network.decoder.convNormOut.gamma, weightMap, 1, "decoder.norm_out.weight");
+        network.decoder.convNormOut.beta = loadData(network.decoder.convNormOut.beta, weightMap, 1, "decoder.norm_out.bias");
         loadData(network.decoder.convOut.weight, weightMap, "decoder.conv_out.weight");
         loadData(network.decoder.convOut.bias, weightMap, "decoder.conv_out.bias");
         

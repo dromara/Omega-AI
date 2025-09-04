@@ -1,7 +1,8 @@
-package com.omega.example.vae.test;
+package com.omega.example.opensora.vae.test;
 
-import java.io.*;
-import java.nio.charset.StandardCharsets;
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -17,10 +18,11 @@ import com.omega.engine.optimizer.lr.LearnRateUpdate;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.opensora.vae.dataset.VideoDataLoaderEN;
 import com.omega.example.transformer.utils.LagJsonReader;
 import com.omega.example.transformer.utils.ModelUtils;
 import com.omega.example.transformer.utils.bpe.BPETokenizerEN;
-import com.omega.example.vae.dataset.VideoDataLoaderEN;
+import com.omega.example.vae.test.LPIPSTest;
 
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.text.csv.CsvData;

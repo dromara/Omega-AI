@@ -37,7 +37,7 @@ public class EmbeddingKernel extends BaseKernel {
         CUDAManager cudaManager = new CUDAManager(0);
         for (int i = 0; i < 4; i++) {
             String txt = txts[i];
-            System.err.println(txt);
+//            System.err.println(txt);
             int[] ids = bpe.encodeInt(txt, 77);
             for (int j = 0; j < 77; j++) {
                 if (j < ids.length) {

@@ -4,6 +4,7 @@ import java.util.Map;
 import java.util.Scanner;
 
 import com.omega.common.utils.ImageUtils;
+import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
@@ -14,12 +15,12 @@ import com.omega.engine.nn.layer.dit.DiTSkipBlock;
 import com.omega.engine.nn.layer.gpu.RoPEKernel;
 import com.omega.engine.nn.network.ClipText;
 import com.omega.engine.nn.network.ClipTextModel;
-import com.omega.engine.nn.network.DiT;
-import com.omega.engine.nn.network.DiT_ORG;
-import com.omega.engine.nn.network.DiT_ORG2;
-import com.omega.engine.nn.network.DiT_ORG_SRA;
-import com.omega.engine.nn.network.DiT_SRA;
 import com.omega.engine.nn.network.RunModel;
+import com.omega.engine.nn.network.dit.DiT;
+import com.omega.engine.nn.network.dit.DiT_ORG;
+import com.omega.engine.nn.network.dit.DiT_ORG2;
+import com.omega.engine.nn.network.dit.DiT_ORG_SRA;
+import com.omega.engine.nn.network.dit.DiT_SRA;
 import com.omega.engine.nn.network.vae.SD_VAE;
 import com.omega.engine.nn.network.vae.VQVAE2;
 import com.omega.engine.optimizer.MBSGDOptimizer;
@@ -28,14 +29,16 @@ import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 import com.omega.example.clip.utils.ClipModelUtils;
 import com.omega.example.diffusion.utils.DiffusionImageDataLoader;
+import com.omega.example.dit.dataset.LatendDataset;
 import com.omega.example.dit.models.BetaType;
+import com.omega.example.dit.models.ICPlan;
 import com.omega.example.dit.models.IDDPM;
 import com.omega.example.sd.utils.SDImageDataLoader;
 import com.omega.example.sd.utils.SDImageDataLoaderEN;
 import com.omega.example.transformer.utils.LagJsonReader;
 import com.omega.example.transformer.utils.ModelUtils;
 import com.omega.example.transformer.utils.bpe.BPETokenizerEN;
-
+import com.omega.example.transformer.utils.bpe.BinDataType;import cn.hutool.json.JSONUtil;
 import jcuda.driver.JCudaDriver;
 import jcuda.runtime.JCuda;
 
@@ -165,10 +168,10 @@ public class DiTTest {
             ClipModelUtils.loadData(block.cross_attn.oLinerLayer.bias, weightMap, "blocks."+i+".attn2.out_proj.bias");
             block.norm3.gamma = ClipModelUtils.loadData(block.norm3.gamma, weightMap, 1, "blocks."+i+".norm3.weight");
             block.norm3.beta = ClipModelUtils.loadData(block.norm3.beta, weightMap, 1, "blocks."+i+".norm3.bias");
-            ClipModelUtils.loadData(block.mlp.linear1.weight, weightMap, "blocks."+i+".mlp.fc1.weight");
-            ClipModelUtils.loadData(block.mlp.linear1.bias, weightMap, "blocks."+i+".mlp.fc1.bias");
-        	ClipModelUtils.loadData(block.mlp.linear2.weight, weightMap, "blocks."+i+".mlp.fc2.weight");
-            ClipModelUtils.loadData(block.mlp.linear2.bias, weightMap, "blocks."+i+".mlp.fc2.bias");
+//            ClipModelUtils.loadData(block.mlp.linear1.weight, weightMap, "blocks."+i+".mlp.fc1.weight");
+//            ClipModelUtils.loadData(block.mlp.linear1.bias, weightMap, "blocks."+i+".mlp.fc1.bias");
+//        	ClipModelUtils.loadData(block.mlp.linear2.weight, weightMap, "blocks."+i+".mlp.fc2.weight");
+//            ClipModelUtils.loadData(block.mlp.linear2.bias, weightMap, "blocks."+i+".mlp.fc2.bias");
         }
         
         ClipModelUtils.loadData(network.main.ap_head.linear1.weight, weightMap, "ap_head.linear1.weight");
@@ -1459,13 +1462,13 @@ public class DiTTest {
         String vqvae_model_path = "D:\\models\\anime_vqvae2_256.model";
         ModelUtils.loadModel(vae, vqvae_model_path);
         
-        int ditHeadNum = 12;
+        int ditHeadNum = 16;
         int latendSize = 32;
-        int depth = 12;
+        int depth = 24;
         int timeSteps = 1000;
         int mlpRatio = 4;
         int patchSize = 2;
-        int hiddenSize = 768;
+        int hiddenSize = 1024;
         
         float y_prob = 0;
         
@@ -1476,7 +1479,7 @@ public class DiTTest {
         
         IDDPM iddpm = new IDDPM(timeSteps, BetaType.linear, dit.cudaManager);
         
-        String model_path = "D:\\models\\dit\\anime_dit_800.model";
+        String model_path = "D:\\test\\models\\mmdit\\dit_xl2_6.model";
         ModelUtils.loadModel(dit, model_path);
         
         Tensor[] cs = RoPEKernel.getCosAndSin2D(dit.time, dit.hiddenSize, dit.headNum);
@@ -1553,6 +1556,223 @@ public class DiTTest {
             utils.createRGBImage(outputPath + "_" + b + ".png", "png", ImageUtils.color2rgb2(once, input.channel, input.height, input.width, true, mean, std), input.height, input.width, null, null);
         }
     }
+    
+	public static void dit_xl2_iddpm_train() throws Exception {
+//		String dataPath = "/omega/dataset/txt2img_latend.bin";
+//        String clipDataPath = "/omega/dataset/txt2img_clip.bin";
+		String dataPath = "D:\\dataset\\amine\\amine_latend.bin";
+        String clipDataPath = "D:\\dataset\\amine\\amine_clip.bin";
+
+        int batchSize = 10;
+        int latendDim = 4;
+        int height = 32;
+        int width = 32;
+        int textEmbedDim = 768;
+        
+        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, textEmbedDim, BinDataType.float32);
+        
+        int ditHeadNum = 16;
+        int latendSize = 32;
+        int depth = 24;
+        int timeSteps = 1000;
+        int mlpRatio = 4;
+        int patchSize = 2;
+        int hiddenSize = 1024;
+        
+        float y_prob = 0.0f;
+        
+        DiT_ORG dit = new DiT_ORG(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, 1, textEmbedDim, mlpRatio, true, y_prob);
+        dit.CUDNN = true;
+        dit.learnRate = 0.0001f;
+        
+        IDDPM iddpm = new IDDPM(timeSteps, BetaType.linear, dit.cudaManager);
+
+        MBSGDOptimizer optimizer = new MBSGDOptimizer(dit, 200, 0.00001f, batchSize, LearnRateUpdate.CONSTANT, false);
+
+        optimizer.train_DiT_ORG_iddpm(dataLoader, iddpm, "/omega/models/dit/", 0.13025f);
+        String save_model_path = "/omega/models/dit_xl2.model";
+        ModelUtils.saveModel(dit, save_model_path);
+    }
+	
+	public static void complate_ms() throws Exception {
+
+		String dataPath = "D:\\dataset\\amine\\dalle_latend.bin";
+        String clipDataPath = "D:\\dataset\\amine\\dalle_clip.bin";
+
+        int batchSize = 1000;
+        int latendDim = 4;
+        int height = 32;
+        int width = 32;
+        int textEmbedDim = 768;
+        
+        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, textEmbedDim, BinDataType.float32);
+        
+        int[][] indexs = dataLoader.shuffle();
+
+        Tensor latend = new Tensor(batchSize, dataLoader.channel, dataLoader.height, dataLoader.width, true);
+        Tensor condInput = new Tensor(batchSize , 1, 1, dataLoader.clipEmbd, true);
+        
+        int count = 10000;
+        
+        int tmp = count * height * width - 1;
+        
+        float[] mean = new float[] {0.0f, 0.0f, 0.0f, 0.0f};
+        float[] std = new float[] {0.0f, 0.0f, 0.0f, 0.0f};
+        
+//        int N2 = 2;
+//        int C2 = 3;
+//        int H2 = 2;
+//        int W2 = 2;
+//        int len = N2 * C2 * H2 * W2;
+//        float[] data = RandomUtils.order(len, 1.0f, 1.0f);
+//        float[] mean3 = new float[3];
+//        float[] mean4 = new float[3];
+//        for(int i = 0;i<len;i++) {
+//        	int c = i / H2 / W2 % C2;
+//        	mean3[c] += data[i] / (N2 * H2 * W2);
+//        	mean4[c] += data[i] / (N2 * H2 * W2 - 1);
+//        }
+//        System.out.println(JsonUtils.toJson(data));
+//        System.out.println(JsonUtils.toJson(mean3));
+//        
+//        float[] std4 = new float[3];
+//        for(int i = 0;i<len;i++) {
+//        	int c = i / H2 / W2 % C2;
+//        	std4[c] += Math.pow(data[i] - mean3[c], 2) / (N2 * H2 * W2 - 1);
+//        }
+//        for(int c = 0;c<C2;c++) {
+//        	std4[c] = (float) Math.sqrt(std4[c]);
+//        }
+//        System.out.println(JsonUtils.toJson(std4));
+        /**
+         * 遍历整个训练集
+         */
+        for (int it = 0; it < 10; it++) {
+            System.out.println("mean:"+it);
+            dataLoader.loadData(indexs[it], latend, condInput, it);
+            
+            for(int i = 0;i<latend.dataLength;i++) {
+            	int c = i / latend.height / latend.width % latend.channel;
+            	mean[c] += latend.data[i] / (tmp + 1);
+            }
+
+        }
+        System.out.println("mean finish.");
+        System.out.println(JsonUtils.toJson(mean));
+        for (int it = 0; it < 10; it++) {
+            System.out.println("std:"+it);
+            dataLoader.loadData(indexs[it], latend, condInput, it);
+            
+            for(int i = 0;i<latend.dataLength;i++) {
+            	int c = i / latend.height / latend.width % latend.channel;
+            	std[c] += Math.pow(latend.data[i] - mean[c], 2) / tmp;
+            }
+
+        }
+        
+        for(int c = 0;c<4;c++) {
+        	std[c] = (float) Math.sqrt(std[c]);
+        }
+        
+        System.out.println(JsonUtils.toJson(mean));
+        System.out.println(JsonUtils.toJson(std));
+	}
+	
+	public static void complate_ms2() throws Exception {
+
+		String dataPath = "D:\\dataset\\amine\\amine_latend.bin";
+        String clipDataPath = "D:\\dataset\\amine\\amine_clip.bin";
+
+        int batchSize = 1000;
+        int latendDim = 4;
+        int height = 32;
+        int width = 32;
+        int textEmbedDim = 768;
+        
+        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, textEmbedDim, BinDataType.float32);
+        
+        int[][] indexs = dataLoader.shuffle();
+
+        Tensor latend = new Tensor(batchSize, dataLoader.channel, dataLoader.height, dataLoader.width, true);
+        Tensor condInput = new Tensor(batchSize , 1, 1, dataLoader.clipEmbd, true);
+        
+        int count = 10000;
+        
+        int tmp = count * height * width - 1;
+        
+        float[] mean = new float[] {0.0f, 0.0f, 0.0f, 0.0f};
+        float[] std = new float[] {0.0f, 0.0f, 0.0f, 0.0f};
+
+        /**
+         * 遍历整个训练集
+         */
+        for (int it = 0; it < 10; it++) {
+            System.out.println("mean:"+it);
+            dataLoader.loadData(indexs[it], latend, condInput, it);
+            
+            for(int i = 0;i<latend.dataLength;i++) {
+            	int c = i / latend.height / latend.width % latend.channel;
+            	mean[c] += latend.data[i] / (tmp + 1);
+            }
+
+        }
+        System.out.println("mean finish.");
+        System.out.println(JsonUtils.toJson(mean));
+        for (int it = 0; it < 10; it++) {
+            System.out.println("std:"+it);
+            dataLoader.loadData(indexs[it], latend, condInput, it);
+            
+            for(int i = 0;i<latend.dataLength;i++) {
+            	int c = i / latend.height / latend.width % latend.channel;
+            	std[c] += Math.pow(latend.data[i] - mean[c], 2) / tmp;
+            }
+
+        }
+        
+        for(int c = 0;c<4;c++) {
+        	std[c] = (float) Math.sqrt(std[c]);
+        }
+        
+        System.out.println(JsonUtils.toJson(mean));
+        System.out.println(JsonUtils.toJson(std));
+	}
+	
+	public static void dit_b2_iddpm_train() throws Exception {
+//		String dataPath = "/omega/dataset/txt2img_latend.bin";
+//        String clipDataPath = "/omega/dataset/txt2img_clip.bin";
+		String dataPath = "D:\\dataset\\amine\\dalle_latend.bin";
+        String clipDataPath = "D:\\dataset\\amine\\dalle_clip.bin";
+
+        int batchSize = 24;
+        int latendDim = 4;
+        int height = 32;
+        int width = 32;
+        int textEmbedDim = 768;
+        
+        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, textEmbedDim, BinDataType.float32);
+        
+        int ditHeadNum = 12;
+        int latendSize = 32;
+        int depth = 12;
+        int timeSteps = 1000;
+        int mlpRatio = 4;
+        int patchSize = 2;
+        int hiddenSize = 768;
+        
+        float y_prob = 0.3f;
+        
+        DiT_ORG dit = new DiT_ORG(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, 1, textEmbedDim, mlpRatio, false, y_prob);
+        dit.CUDNN = true;
+        dit.learnRate = 0.0002f;
+        
+        ICPlan icplan = new ICPlan(dit.tensorOP);
+
+        MBSGDOptimizer optimizer = new MBSGDOptimizer(dit, 200, 0.00001f, batchSize, LearnRateUpdate.CONSTANT, false);
+
+        optimizer.train_DiT_ICPlan(dataLoader, icplan, "D://models//", 1f);
+        String save_model_path = "/omega/models/dit_xl2.model";
+        ModelUtils.saveModel(dit, save_model_path);
+    }
 	
 	public static void main(String[] args) {
 		 
@@ -1589,6 +1809,14 @@ public class DiTTest {
 //	        	dit_org_iddpm_amine_train4();
 	        	
 //	        	dit_org_sra_amine_train2();
+	        	
+//	        	dit_xl2_iddpm_train();
+	        	
+//	        	dit_b2_iddpm_train();
+	        	
+//	        	complate_ms();
+	        	
+	        	complate_ms2();
 	        	
 	        } catch (Exception e) {
 	            // TODO: handle exception

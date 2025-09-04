@@ -199,7 +199,7 @@ public class ImageUtils {
                     }
                 }
                 int interpolatedRgb = (newPixelR << 16) | (newPixelG << 8) | newPixelB;
-                System.err.println(interpolatedRgb);
+//                System.err.println(interpolatedRgb);
                 outputImage.setRGB(nx, ny, interpolatedRgb);
             }
         }

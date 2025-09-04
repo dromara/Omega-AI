@@ -1,4 +1,4 @@
-package com.omega.example.vae.utils;
+package com.omega.example.opensora.vae.utils;
 
 import java.util.List;
 import java.util.Map;

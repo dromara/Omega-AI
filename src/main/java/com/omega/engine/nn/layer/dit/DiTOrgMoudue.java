@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -90,7 +89,7 @@ public class DiTOrgMoudue extends Layer {
         	os = inChannel * 2;
         }
         this.oChannel = os;
-        finalLayer = new DiTFinalLayer(patchSize, hiddenSize, os, patchEmbd.oChannel, true, true, network);
+        finalLayer = new DiTFinalLayer(patchSize, hiddenSize, os, patchEmbd.oChannel, true, false, network);
 
     }
 
@@ -147,7 +146,7 @@ public class DiTOrgMoudue extends Layer {
     	float[] emb_w = get_1d_sincos_pos_embed_from_grid(embed_dim/2, grid_w);
     	
     	float[] emb = cat(emb_h, emb_w, embed_dim/2);
-    	System.err.println("emb:"+JsonUtils.toJson(emb));
+//    	System.err.println("emb:"+JsonUtils.toJson(emb));
     	return emb;
     }
     
@@ -234,7 +233,7 @@ public class DiTOrgMoudue extends Layer {
     		DiTOrgBlock block = blocks.get(i);
     		block.forward(x, timeEmbd.getOutput(), labelEmbd.getOutput(), cos, sin);
     		x = block.getOutput();
-//    		x.showDM("x["+i+"]");
+//    		x.showDMByOffsetRed(0,100, i+"");
     	}
     	
     	finalLayer.forward(x, timeEmbd.getOutput());
@@ -270,7 +269,7 @@ public class DiTOrgMoudue extends Layer {
     	int[] yShape = new int[] {number, oChannel, h, patchSize, w, patchSize};
     	int[] xShape = new int[] {number, h, w, patchSize, patchSize, oChannel};
     	Tensor_OP().permute(delta, finalLayer.getOutput(), yShape, xShape, new int[] {0, 2, 4, 3, 5, 1});
-    	
+
     	finalLayer.back(finalLayer.getOutput(), dtc);
 
     	Tensor dy = finalLayer.diff;
@@ -292,6 +291,7 @@ public class DiTOrgMoudue extends Layer {
     public void diff(Tensor cos,Tensor sin) {
         // TODO Auto-generated method stub
 //    	delta.showDM("total-delta");
+//    	delta.showDMByOffsetRed(0,10, "delta");
     	/**
     	 * unpatchify back
     	 */
@@ -300,16 +300,18 @@ public class DiTOrgMoudue extends Layer {
     	int[] yShape = new int[] {number, oChannel, h, patchSize, w, patchSize};
     	int[] xShape = new int[] {number, h, w, patchSize, patchSize, oChannel};
     	Tensor_OP().permute(delta, finalLayer.getOutput(), yShape, xShape, new int[] {0, 2, 4, 3, 5, 1});
-    	
+
     	finalLayer.back(finalLayer.getOutput(), dtc);
     	
     	Tensor dy = finalLayer.diff;
+//    	dy.showDMByOffsetRed(0,10, "dy");
 //    	dy.showDM("in-block-diff");
      	for(int i = depth - 1;i>=0;i--) {
      		DiTOrgBlock block = blocks.get(i);
     		block.back(dy, dtc, dtext, cos, sin);
     		dy = block.diff;
 //    		dy.showDM("in-block-diff");
+//    		dy.showDMByOffsetRed(0,10, i+"");
     	}
      	
      	labelEmbd.back(dtext);

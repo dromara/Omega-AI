@@ -259,9 +259,11 @@ public class GNKernel extends BaseKernel {
 
          */
         if (this.d_mean != null) {
+//            System.err.println("in-clear");
             CUDAMemoryManager.free(this.d_mean);
             CUDAMemoryManager.free(this.d_var);
         }
+//        System.err.println(B * G);
         this.d_mean = CUDAMemoryManager.getDevice(B * G);
         this.d_var = CUDAMemoryManager.getDevice(B * G);
         if (this.d_scale != null) {

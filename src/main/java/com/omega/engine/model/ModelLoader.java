@@ -41,6 +41,7 @@ public class ModelLoader {
             String layerType = cfg.get("layerType").toString();
             Layer layer = null;
             int[] shape = null;
+//            System.err.println(layerType);
             switch (layerType) {
                 case "fully":
                     shape = addFullyLayers(cfg, nn);

@@ -1,19 +1,23 @@
-package com.omega.engine.nn.network;
+package com.omega.engine.nn.network.dit;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.loss.LossFactory;
 import com.omega.engine.loss.LossType;
-import com.omega.engine.loss.gpu.SmoothL1Kernel;
 import com.omega.engine.nn.layer.InputLayer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.SoftmaxWithCrossEntropyLayer;
-import com.omega.engine.nn.layer.dit.mmdit.MMDiTMoudueRoPE;
+import com.omega.engine.nn.layer.dit.DiTMoudue;
+import com.omega.engine.nn.layer.dit.modules.DiTRouteLayer;
+import com.omega.engine.nn.network.Network;
+import com.omega.engine.nn.network.NetworkType;
+import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
-import com.omega.example.dit.loss.DispLossKernel;
 
 import jcuda.Sizeof;
 import jcuda.runtime.JCuda;
@@ -23,7 +27,7 @@ import jcuda.runtime.JCuda;
  *
  * @author Administrator
  */
-public class MMDiT_RoPE extends Network {
+public class DiT extends Network {
 	
     public int inChannel;
     public int width;
@@ -34,27 +38,16 @@ public class MMDiT_RoPE extends Network {
     private int depth;
     private int timeSteps;
     public int headNum;
-    public int textEmbedDim;
+    private int textEmbedDim;
     private int mlpRatio = 4;
     private boolean learnSigma = true;
-    private boolean normParams = true;
-    
-    private float y_drop_prob = 0.0f;
     
     private InputLayer inputLayer;
-    public MMDiTMoudueRoPE main;
+    public DiTMoudue main;
     
-    private Tensor pdist;
-    private Tensor pdistDelta;
-    private Tensor pdistBuffer;
-    private Tensor dispLoss;
-    private Tensor dispLossTmp;
-    private Tensor xrDelta; 
-    
-    private SmoothL1Kernel smoothL1Kernel;
-    private DispLossKernel dispLossKernel;
-    
-    public MMDiT_RoPE(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio, boolean learnSigma, boolean normParams, float y_drop_prob) {
+    private List<DiTRouteLayer> skipLayers;
+
+    public DiT(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio,boolean learnSigma) {
         this.lossFunction = LossFactory.create(lossType, this);
         this.updater = updater;
         this.inChannel = inChannel;
@@ -69,8 +62,6 @@ public class MMDiT_RoPE extends Network {
         this.maxContextLen = maxContextLen;
         this.mlpRatio = mlpRatio;
         this.learnSigma = learnSigma;
-        this.normParams = normParams;
-        this.y_drop_prob = y_drop_prob;
         this.time = (width / patchSize) * (height / patchSize);
         initLayers();
     }
@@ -79,12 +70,12 @@ public class MMDiT_RoPE extends Network {
     	
         this.inputLayer = new InputLayer(inChannel, height, width);
         
-        main = new MMDiTMoudueRoPE(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, maxContextLen, textEmbedDim, mlpRatio, learnSigma, normParams, y_drop_prob, this);
+        main = new DiTMoudue(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, maxContextLen, textEmbedDim, mlpRatio, learnSigma, this);
         
         this.addLayer(inputLayer);
         this.addLayer(main);
     }
-    
+
     @Override
     public void init() throws Exception {
         // TODO Auto-generated method stub
@@ -104,19 +95,13 @@ public class MMDiT_RoPE extends Network {
         if ((layerList.get(layerList.size() - 1).getLayerType() == LayerType.softmax || layerList.get(layerList.size() - 1).getLayerType() == LayerType.softmax_cross_entropy) && this.lossFunction.getLossType() != LossType.cross_entropy) {
             throw new Exception("The softmax function support only cross entropy loss function now.");
         }
-        if(smoothL1Kernel == null) {
-        	smoothL1Kernel = new SmoothL1Kernel(this.cudaManager);
-        }
-        if(dispLossKernel == null) {
-        	dispLossKernel = new DispLossKernel(cudaManager);
-        }
         System.out.println("the network is ready.");
     }
 
     @Override
     public NetworkType getNetworkType() {
         // TODO Auto-generated method stub
-        return NetworkType.DiT;
+        return NetworkType.DUFFSION_UNET_COND;
     }
 
     @Override
@@ -132,7 +117,16 @@ public class MMDiT_RoPE extends Network {
         return null;
     }
 
-    public Tensor forward(Tensor input, Tensor t, Tensor context, Tensor cos, Tensor sin) {
+    public Tensor forward(Tensor input, Tensor t, Tensor context) {
+        /**
+         * 设置输入数据
+         */
+        this.setInputData(input);
+        this.main.forward(input, t, context);
+        return this.main.getOutput();
+    }
+    
+    public Tensor forward(Tensor input, Tensor t, Tensor context,Tensor cos,Tensor sin) {
         /**
          * 设置输入数据
          */
@@ -147,31 +141,41 @@ public class MMDiT_RoPE extends Network {
     @Override
     public void back(Tensor lossDiff) {
         // TODO Auto-generated method stub
+        //		lossDiff.showDMByNumber(0);
         initBack();
         /**
          * 设置误差
          * 将误差值输入到最后一层
          */
+        //		lossDiff.showDMByOffset(0, 100, "lossDiff");
         this.setLossDiff(lossDiff);
+        //		lossDiff.showDM("lossDiff");
         this.main.back(lossDiff);
+        //		this.unet.diff.showDMByOffset(0, 100, "unet.diff");
     }
     
-    public void back(Tensor lossDiff, Tensor cos, Tensor sin) {
+    public void back(Tensor lossDiff,Tensor cos, Tensor sin) {
         // TODO Auto-generated method stub
+        //		lossDiff.showDMByNumber(0);
         initBack();
         /**
          * 设置误差
          * 将误差值输入到最后一层
          */
+        //		lossDiff.showDMByOffset(0, 100, "lossDiff");
         this.setLossDiff(lossDiff);
+        //		lossDiff.showDM("lossDiff");
         this.main.back(lossDiff, cos, sin);
+        //		this.unet.diff.showDMByOffset(0, 100, "unet.diff");
     }
-    
+
     @Override
     public Tensor loss(Tensor output, Tensor label) {
         // TODO Auto-generated method stub
         switch (this.getLastLayer().getLayerType()) {
             case softmax:
+                //			SoftmaxLayer softmaxLayer = (SoftmaxLayer)this.getLastLayer();
+                //			softmaxLayer.setCurrentLabel(label);
                 break;
             case softmax_cross_entropy:
                 SoftmaxWithCrossEntropyLayer softmaxWithCrossEntropyLayer = (SoftmaxWithCrossEntropyLayer) this.getLastLayer();
@@ -192,50 +196,6 @@ public class MMDiT_RoPE extends Network {
         return t;
     }
 
-    public Tensor getXR(int depth_idx) {
-    	return main.blocks.get(depth_idx).getOutput().view(number, main.blocks.get(depth_idx).imgTime, 1, hiddenSize);
-    }
-    
-    public void setXR_delta(int depth_idx, Tensor delta) {
-    	main.blocks.get(depth_idx).cache_delta = delta;
-    }
-    
-    public float disp_loss(int depthIdx, float lamda) {
-    	Tensor xr = getXR(depthIdx);
-    	if(pdist == null) {
-    		int ow = DispLossKernel.get_pdist_dim(number);
-    		pdist = new Tensor(1, 1, 1, ow, true);
-    		dispLoss = new Tensor(1, 1, 1, 1, true);
-    		dispLossTmp = new Tensor(1, 1, 1, 1, true);
-    	}
-//    	xr.showDMByOffsetRed(0, 10, "xr");
-    	dispLossKernel.p_dist(xr, pdist, 2);
-//    	pdist.showDM("pdist");
-    	dispLossKernel.log_exp(pdist, dispLoss, dispLossTmp, number, xr.getOnceSize());
-    	xr.viewOrg();
-//    	dispLossTmp.showDM("dispLossTmp");
-//    	dispLoss.showDM("dispLoss");
-    	return dispLoss.syncHost()[0] * lamda;
-    }
-    
-    public void disp_loss_back(int depthIdx, float lamda) {
-    	Tensor xr = getXR(depthIdx);
-    	if(pdistDelta == null) {
-    		int ow = DispLossKernel.get_pdist_dim(number);
-    		pdistDelta = Tensor.createGPUTensor(pdistDelta, 1, 1, 1, ow, true);
-    		pdistBuffer = Tensor.createGPUTensor(pdistBuffer, number, 1, 1, xr.dataLength, true);
-    		xrDelta = Tensor.createGPUTensor(xrDelta, xr.getOrgShape(), true);
-    	}
-    	dispLossKernel.log_exp_back(pdist, pdistDelta, dispLossTmp, number, xr.getOnceSize());
-//    	pdistDelta.showDM("pdistDelta");
-    	dispLossKernel.p_dist_back(xr, pdist, pdistDelta, pdistBuffer, xrDelta, 2);
-//    	xr.showShape();
-    	xr.viewOrg();
-//    	xrDelta.showDM("xrDelta");
-    	tensorOP.mul(xrDelta, lamda, xrDelta);
-    	setXR_delta(depthIdx, xrDelta);
-    }
-    
     public void update() {
         this.train_time += 1;
         this.main.update();
@@ -248,6 +208,7 @@ public class MMDiT_RoPE extends Network {
          * forward
          */
         JCuda.cudaMemset(CUDAMemoryManager.workspace.getPointer(), 0, CUDAMemoryManager.workspace.getSize() * Sizeof.FLOAT);
+        this.clearSkip();
         JCuda.cudaDeviceSynchronize();
     }
 
@@ -294,15 +255,19 @@ public class MMDiT_RoPE extends Network {
         // TODO Auto-generated method stub
     }
     
-    public Tensor smoothL1(Tensor s,Tensor t,Tensor alignLoss,float beta) {
-    	smoothL1Kernel.forward(s, t, alignLoss, beta);
-    	return alignLoss;
+    public void addSkip(DiTRouteLayer route) {
+    	if(skipLayers == null) {
+    		skipLayers = new ArrayList<DiTRouteLayer>();
+    	}
+    	skipLayers.add(route);
     }
     
-    public Tensor smoothL1Back(Tensor s,Tensor t,Tensor sxrDiff,float beta) {
-    	smoothL1Kernel.backward(s, t, sxrDiff, beta);
-    	return sxrDiff;
+    public void clearSkip() {
+    	if(skipLayers != null) {
+	    	for(DiTRouteLayer layer:skipLayers) {
+	    		layer.clearCacheDelta();
+	    	}
+    	}
     }
-    
 }
 

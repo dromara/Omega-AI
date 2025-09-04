@@ -2,7 +2,7 @@ package com.omega.engine.nn.layer.dit.modules;
 
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
-import com.omega.engine.nn.network.DiT;
+import com.omega.engine.nn.network.dit.DiT;
 import com.omega.engine.tensor.Tensor;
 
 /**

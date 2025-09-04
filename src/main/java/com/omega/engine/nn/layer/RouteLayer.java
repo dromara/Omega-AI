@@ -309,7 +309,7 @@ public class RouteLayer extends Layer {
 
     public void clearCacheDelta() {
         for (Layer layer : getLayers()) {
-        	System.err.println("in");
+//        	System.err.println("in");
             if (layer.cache_delta != null) {
                 layer.cache_delta.clearGPU();
             }

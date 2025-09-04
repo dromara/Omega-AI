@@ -5,8 +5,11 @@ import java.io.RandomAccessFile;
 import java.util.concurrent.CompletableFuture;
 
 import com.omega.common.utils.MathUtils;
+import com.omega.engine.gpu.BaseKernel;
+import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.nn.network.utils.ModelUtils;
 import com.omega.engine.tensor.Tensor;
+import com.omega.example.dit.models.ICPlanKernel;
 import com.omega.example.transformer.utils.BaseTokenizer;
 import com.omega.example.transformer.utils.bpe.BinDataType;
 import com.omega.example.transformer.utils.tokenizers.Tokenizer;
@@ -40,6 +43,10 @@ public class LatendDataset extends BaseTokenizer {
     private CompletableFuture<Boolean> cf;
     private BinDataType dataType = BinDataType.float32;
     private int byteUnit = 4;
+    
+    private BaseKernel kernel;
+    
+	private ICPlanKernel icplan;
 
     public LatendDataset(String dataPath, String clipDataPath, int batchSize, int channel, int height, int width, int clipEmbd, BinDataType dataType) {
         this.dataType = dataType;
@@ -286,4 +293,25 @@ public class LatendDataset extends BaseTokenizer {
         return MathUtils.randomInts(this.number, this.batchSize);
     }
     
+    public void addNoise(Tensor a, Tensor b, Tensor input, Tensor noise, CUDAManager cudaManager) {
+        if (kernel == null) {
+            kernel = new BaseKernel(cudaManager);
+        }
+        kernel.add_mul(a, b, input, noise, input);
+    }
+    
+	public void latend_norm(Tensor x,Tensor mean,Tensor std, CUDAManager cudaManager) {
+		 if(icplan == null) {
+			 icplan = new ICPlanKernel(cudaManager);
+		 }
+		 icplan.latend_norm(x, mean, std);
+	}
+    
+	public void latend_un_norm(Tensor x,Tensor mean,Tensor std, CUDAManager cudaManager) {
+		 if(icplan == null) {
+			 icplan = new ICPlanKernel(cudaManager);
+		 }
+		 icplan.latend_un_norm(x, mean, std);
+	}
+	
 }

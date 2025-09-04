@@ -20,6 +20,7 @@ public class EncodeExMaxLen extends RecursiveAction {
     private int start = 0;
     private int end = 0;
     private int maxLen;
+    private boolean keep = true;
     private List<String> txtList;
     private Tokenizer tokenizer;
     private String[] idxList;
@@ -29,6 +30,16 @@ public class EncodeExMaxLen extends RecursiveAction {
         this.setEnd(end);
         this.setIdxList(idxList);
         this.setMaxLen(maxLen);
+        this.txtList = txtList;
+        this.tokenizer = tokenizer;
+    }
+    
+    public EncodeExMaxLen(List<String> txtList, String[] idxList, Tokenizer tokenizer, int maxLen, boolean keep, int start, int end) {
+        this.setStart(start);
+        this.setEnd(end);
+        this.setIdxList(idxList);
+        this.setMaxLen(maxLen);
+        this.setKeep(keep);
         this.txtList = txtList;
         this.tokenizer = tokenizer;
     }
@@ -49,10 +60,35 @@ public class EncodeExMaxLen extends RecursiveAction {
         }
         return job;
     }
+    
+    public static EncodeExMaxLen getInstance(List<String> txtList, String[] idxList, Tokenizer tokenizer, int maxLen, boolean keep, int start, int end) {
+        if (job == null) {
+            job = new EncodeExMaxLen(txtList, idxList, tokenizer, maxLen, keep, start, end);
+        } else {
+            if (txtList != job.getTxtList()) {
+                job.setTxtList(txtList);
+            }
+            job.setIdxList(idxList);
+            job.setTokenizer(tokenizer);
+            job.setMaxLen(maxLen);
+            job.setStart(0);
+            job.setEnd(end);
+            job.setKeep(keep);
+            job.reinitialize();
+        }
+        return job;
+    }
 
     public static void encode(List<String> txtList, String[] idxList, Tokenizer tokenizer, int maxLen) {
         //		System.out.println("encoding.");
         EncodeExMaxLen job = getInstance(txtList, idxList, tokenizer, maxLen, 0, txtList.size() - 1);
+        ForkJobEngine.run(job);
+        //		System.out.println("encode finish.");
+    }
+    
+    public static void encode(List<String> txtList, String[] idxList, Tokenizer tokenizer, int maxLen, boolean keep) {
+        //		System.out.println("encoding.");
+        EncodeExMaxLen job = getInstance(txtList, idxList, tokenizer, maxLen, keep, 0, txtList.size() - 1);
         ForkJobEngine.run(job);
         //		System.out.println("encode finish.");
     }
@@ -76,12 +112,23 @@ public class EncodeExMaxLen extends RecursiveAction {
 
     private void load() {
         for (int i = getStart(); i <= getEnd(); i++) {
-            int[] ids = tokenizer.encodeInt(txtList.get(i), maxLen);
+        	int[] ids;
+        	if(keep) {
+        		ids = tokenizer.encodeInt(txtList.get(i), maxLen);
+        	}else {
+        		ids = tokenizer.encodeInt(txtList.get(i));
+        	}
             String txt = "";
             for (int id : ids) {
                 txt += id + " ";
             }
-            idxList[i] = txt;
+            if(keep) {
+            	idxList[i] = txt;
+            }else if(ids.length > maxLen){
+            	idxList[i] = "-1";
+            }else {
+            	idxList[i] = txt;
+            }
             //			System.out.println("encode["+i+"]finish.");
         }
     }
@@ -129,5 +176,13 @@ public class EncodeExMaxLen extends RecursiveAction {
     public void setMaxLen(int maxLen) {
         this.maxLen = maxLen;
     }
+
+	public boolean isKeep() {
+		return keep;
+	}
+
+	public void setKeep(boolean keep) {
+		this.keep = keep;
+	}
 }
 

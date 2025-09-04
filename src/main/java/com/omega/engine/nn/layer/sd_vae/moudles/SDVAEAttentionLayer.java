@@ -140,7 +140,7 @@ public class SDVAEAttentionLayer extends Layer {
     @Override
     public void output() {
         // TODO Auto-generated method stub
-        Tensor x = this.input;
+        Tensor x = this.input.viewOrg();
         if (gn != null) {
             gn.forward(x);
             x = gn.getOutput();

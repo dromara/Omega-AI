@@ -1,4 +1,4 @@
-package com.omega.example.vae.dataset;
+package com.omega.example.opensora.vae.dataset;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -11,8 +11,8 @@ import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.tensor.Tensor;
+import com.omega.example.opensora.vae.utils.VideoDataLoader;
 import com.omega.example.transformer.utils.bpe.BPETokenizerEN;
-import com.omega.example.vae.utils.VideoDataLoader;
 import com.omega.example.yolo.data.BaseDataLoader;
 
 import cn.hutool.core.io.FileUtil;
