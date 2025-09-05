@@ -17,7 +17,7 @@ import java.io.RandomAccessFile;
  */
 public class VQVAEUpsample extends Layer {
     private UPSampleLayer up;
-    private ConvolutionLayer conv;
+    public ConvolutionLayer conv;
 
     public VQVAEUpsample(int channel, int height, int width, Network network) {
         this.network = network;

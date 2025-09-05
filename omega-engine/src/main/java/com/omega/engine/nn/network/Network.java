@@ -391,7 +391,7 @@ public abstract class Network {
         if (clip_coef > 1) {
             clip_coef = 1;
         }
-        System.err.println(clip_coef);
+//        System.err.println(clip_coef);
         for (Layer layer : grads.keySet()) {
             if (layer instanceof NormalizationLayer) {
                 NormalizationLayer nl = (NormalizationLayer) layer;
@@ -434,7 +434,7 @@ public abstract class Network {
     }
     
     public void clearCacheDelta() {
-    	System.err.println(routeLayers.size());
+//    	System.err.println(routeLayers.size());
         for (RouteLayer rl : routeLayers) {
             rl.clearCacheDelta();
         }
@@ -445,6 +445,7 @@ public abstract class Network {
     	for(int i = 0;i<paramLayers.size();i++) {
     		Layer l1 = paramLayers.get(i);
     		Layer l2 = model.paramLayers.get(i);
+    		System.err.println(l2);
     		if (l1 instanceof NormalizationLayer) {
                 NormalizationLayer ema_nl = (NormalizationLayer) l1;
                 NormalizationLayer model_nl = (NormalizationLayer) l2;

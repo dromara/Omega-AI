@@ -245,6 +245,14 @@ public class GNLayer extends NormalizationLayer {
             this.diffBeta = new Tensor(1, 1, 1, numChannel, true);
         }
     }
+    
+    public void initBack(Tensor delta,Tensor diff) {
+        this.diff = diff;
+        if (this.diffGamma == null) {
+            this.diffGamma = new Tensor(1, 1, 1, numChannel, true);
+            this.diffBeta = new Tensor(1, 1, 1, numChannel, true);
+        }
+    }
 
     @Override
     public void output() {
@@ -396,17 +404,14 @@ public class GNLayer extends NormalizationLayer {
         // TODO Auto-generated method stub
         /**
          * 参数初始化
-
          */
         this.init(input);
         /**
          * 设置输入
-
          */
         this.setInput(input);
         /**
          * 计算输出
-
          */
         this.output();
     }
@@ -435,6 +440,24 @@ public class GNLayer extends NormalizationLayer {
     public void back(Tensor delta) {
         // TODO Auto-generated method stub
         this.initBack(delta);
+        /**
+         * 设置梯度
+
+         */
+        this.setDelta(delta);
+        /**
+         * 计算梯度
+
+         */
+        this.diff();
+        if (this.network.GRADIENT_CHECK) {
+            this.gradientCheck();
+        }
+    }
+    
+    public void back(Tensor delta,Tensor diff) {
+        // TODO Auto-generated method stub
+        this.initBack(delta, diff);
         /**
          * 设置梯度
 

@@ -134,7 +134,7 @@ public class UNetAttentionLayer extends Layer {
         this.kDim = embedDim;
         this.vDim = embedDim;
         this.headNum = headNum;
-        System.err.println(embedDim);
+//        System.err.println(embedDim);
         if (embedDim % headNum != 0) {
             throw new RuntimeException("embedDim % headNum must be zero.");
         }

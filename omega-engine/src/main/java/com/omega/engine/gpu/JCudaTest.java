@@ -23,7 +23,7 @@ public class JCudaTest {
         // Enable exceptions and omit all subsequent error checks
         JCudaDriver.setExceptionsEnabled(true);
         // Create the PTX file by calling the NVCC
-        String ptxFileName = preparePtxFile(LibPaths.LIB_PATH + "JCudaVectorAddKernel.cu");
+        String ptxFileName = preparePtxFile(LibPaths.getLibPath() + "JCudaVectorAddKernel.cu");
         // Initialize the driver and create a context for the first device.
         cuInit(0);
         CUdevice device = new CUdevice();

@@ -165,19 +165,13 @@ public class LPIPSBlock extends Layer {
         //		System.out.println(index);
         for (int i = feats1.length - 1; i >= 0; i--) {
             Tensor_OP().mean2DimBack(delta, lins.get(i).getOutput());
+           
             lins.get(i).back(lins.get(i).getOutput());
 
-//            int last1 = 17 * feats1[i].getOnceSize();
-//            feats0[i].showDMByOffsetRed(last1, feats0[i].getOnceSize(), "1["+i+"]");
-//            feats1[i].showDMByOffsetRed(last1, feats1[i].getOnceSize(), "2["+i+"]");
-            
             lpipsKernel.lpip_l2_backward(lins.get(i).diff, feats0[i], feats1[i], feats1[i]);
             
-//            feats1[i].showDMByOffsetRed(last1, feats1[i].getOnceSize(), "d["+i+"]");
-            
             normKernel.l2norm1Dim_back3(outputs[i], feats1[i], feats0[i]);
-//            int last = 17 * feats0[i].getOnceSize();
-//            feats0[i].showDMByOffsetRed(last, feats0[i].getOnceSize(), "dx1["+i+"]");
+//            feats0[i].showDM("feats0:"+i);
         }
         Tensor diff = vgg.featuresBackward(feats0, featuresIndex);
 //        diff.showDM("dsix");
@@ -278,17 +272,14 @@ public class LPIPSBlock extends Layer {
         // TODO Auto-generated method stub
         /**
          * 参数初始化
-
          */
         this.init(input);
         /**
          * 设置输入
-
          */
         this.setInput(input);
         /**
          * 计算输出
-
          */
         this.output(input, label);
     }

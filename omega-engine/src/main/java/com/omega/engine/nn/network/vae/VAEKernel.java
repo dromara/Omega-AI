@@ -13,8 +13,14 @@ import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 public class VAEKernel extends BaseKernel {
     private CUfunction function;
     private CUfunction function_back;
+    private CUfunction function_back_org;
     private CUfunction kl_loss_function;
     private CUfunction kl_loss_function_back;
+    private CUfunction kl_loss_function2;
+    private CUfunction kl_loss_function_back2;
+    private CUfunction l1_loss_function;
+    private CUfunction l1_loss_back_function;
+    private CUfunction l1_loss_allBack_function;
     private CUfunction cdist_function;
     private CUfunction cdist2_function;
     private CUfunction argmin_function;
@@ -42,7 +48,6 @@ public class VAEKernel extends BaseKernel {
     public void init() {
         /**
          * 初始化cuda函数
-
          */
         initFunction();
     }
@@ -55,11 +60,23 @@ public class VAEKernel extends BaseKernel {
             if (function_back == null) {
                 function_back = getCudaManager().getLocalFunctionByModule("VAE.cu", "reparameterize_backward");
             }
+            if (function_back_org == null) {
+            	function_back_org = getCudaManager().getLocalFunctionByModule("VAE.cu", "reparameterize_backward_org");
+            }
             if (kl_loss_function == null) {
                 kl_loss_function = getCudaManager().getLocalFunctionByModule("VAE.cu", "kl_loss");
             }
             if (kl_loss_function_back == null) {
                 kl_loss_function_back = getCudaManager().getLocalFunctionByModule("VAE.cu", "kl_loss_back");
+            }
+            if(l1_loss_function == null) {
+            	l1_loss_function = getCudaManager().getLocalFunctionByModule("VAE.cu", "l1_loss");
+            }
+            if(l1_loss_back_function == null) {
+            	l1_loss_back_function = getCudaManager().getLocalFunctionByModule("VAE.cu", "l1_loss_back");
+            }
+            if(l1_loss_allBack_function == null) {
+            	l1_loss_allBack_function = getCudaManager().getLocalFunctionByModule("VAE.cu", "l1_loss_allBack");
             }
             if (cdist_function == null) {
                 cdist_function = getCudaManager().getLocalFunctionByModule("VAE.cu", "CdistP");
@@ -105,6 +122,12 @@ public class VAEKernel extends BaseKernel {
             }
             if (update_emb_weight_function == null) {
                 update_emb_weight_function = getCudaManager().getLocalFunctionByModule("VAE.cu", "update_emb_weight");
+            }
+            if(kl_loss_function2 == null) {
+            	kl_loss_function2 = getCudaManager().getLocalFunctionByModule("VAE.cu", "kl_loss2");
+            }
+            if(kl_loss_function_back2 == null) {
+            	kl_loss_function_back2 = getCudaManager().getLocalFunctionByModule("VAE.cu", "kl_loss_back2");
             }
         } catch (Exception e) {
             // TODO: handle exception
@@ -154,6 +177,25 @@ public class VAEKernel extends BaseKernel {
             e.printStackTrace();
         }
     }
+    
+    public void backward_org(Tensor delta, Tensor eps, Tensor logvar, Tensor dmu, Tensor dlogvar) {
+        try {
+            /**
+             * 设置入参
+             * float *dmu,float *dlogvar,float *eps,float *logvar, float *delta, int n
+
+             */
+            backwardKernelParameters = Pointer.to(Pointer.to(dmu.getGpuData()), Pointer.to(dlogvar.getGpuData()), Pointer.to(eps.getGpuData()), Pointer.to(logvar.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(new int[]{delta.dataLength}));
+            cuLaunchKernel(function_back_org, this.CAFFE_GET_BLOCKS(delta.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    backwardKernelParameters, null // Kernel- and extra parameters
+            );
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
 
     public void kl(Tensor mu, Tensor logvar, float kl_weight, Tensor output) {
         try {
@@ -184,6 +226,99 @@ public class VAEKernel extends BaseKernel {
              */
             backwardKernelParameters = Pointer.to(Pointer.to(mu.getGpuData()), Pointer.to(logvar.getGpuData()), Pointer.to(new float[]{kl_weight}), Pointer.to(dmu.getGpuData()), Pointer.to(dlogvar.getGpuData()), Pointer.to(new int[]{mu.number}), Pointer.to(new int[]{mu.dataLength}));
             cuLaunchKernel(kl_loss_function_back, this.CAFFE_GET_BLOCKS(mu.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    backwardKernelParameters, null // Kernel- and extra parameters
+            );
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void kl2(Tensor mu, Tensor logvar, float kl_weight, Tensor output) {
+        try {
+            /**
+             * 设置入参
+             * float *mu,float *logvar,float kl_weight, float *klLoss, int n
+
+             */
+            forwardKernelParameters = Pointer.to(Pointer.to(mu.getGpuData()), Pointer.to(logvar.getGpuData()), Pointer.to(new float[]{kl_weight}), Pointer.to(output.getGpuData()), Pointer.to(new int[]{output.dataLength}));
+            this.N = output.number;
+            cuLaunchKernel(kl_loss_function2, this.CAFFE_GET_BLOCKS(output.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    forwardKernelParameters, null // Kernel- and extra parameters
+            );
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+
+    public void kl_back2(Tensor mu, Tensor logvar, float kl_weight, Tensor dmu, Tensor dlogvar) {
+        try {
+            /**
+             * 设置入参
+             * float *mu,float *logvar,float kl_weight, float *dmu, float * dlogvar,int batch, int n
+
+             */
+            backwardKernelParameters = Pointer.to(Pointer.to(mu.getGpuData()), Pointer.to(logvar.getGpuData()), Pointer.to(new float[]{kl_weight}), Pointer.to(dmu.getGpuData()), Pointer.to(dlogvar.getGpuData()), Pointer.to(new int[]{mu.number}), Pointer.to(new int[]{mu.dataLength}));
+            cuLaunchKernel(kl_loss_function_back2, this.CAFFE_GET_BLOCKS(mu.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    backwardKernelParameters, null // Kernel- and extra parameters
+            );
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void l1_loss(Tensor x, Tensor y, Tensor output) {
+        try {
+            /**
+             * 设置入参
+             * const float* output, const float* target, float* loss, int num_elem
+             */
+            backwardKernelParameters = Pointer.to(Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{x.dataLength}));
+            cuLaunchKernel(l1_loss_function, this.CAFFE_GET_BLOCKS(x.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    backwardKernelParameters, null // Kernel- and extra parameters
+            );
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void l1_loss_back(Tensor x, Tensor y, Tensor diff, int bs) {
+        try {
+            /**
+             * 设置入参
+             * const float* output, const float* target, float* diff, int num_elem, int bs
+             */
+            backwardKernelParameters = Pointer.to(Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(diff.getGpuData()), Pointer.to(new int[]{x.dataLength}), Pointer.to(new int[]{bs}));
+            cuLaunchKernel(l1_loss_back_function, this.CAFFE_GET_BLOCKS(x.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    backwardKernelParameters, null // Kernel- and extra parameters
+            );
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void l1_loss_allBack(Tensor x, Tensor y, Tensor diffX, Tensor diffY, int bs) {
+        try {
+            /**
+             * 设置入参
+             * const float* output, const float* target, float* diff, int num_elem, int bs
+             */
+            backwardKernelParameters = Pointer.to(Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(diffX.getGpuData()), Pointer.to(diffY.getGpuData()), Pointer.to(new int[]{x.dataLength}), Pointer.to(new int[]{bs}));
+            cuLaunchKernel(l1_loss_allBack_function, this.CAFFE_GET_BLOCKS(x.dataLength), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     backwardKernelParameters, null // Kernel- and extra parameters

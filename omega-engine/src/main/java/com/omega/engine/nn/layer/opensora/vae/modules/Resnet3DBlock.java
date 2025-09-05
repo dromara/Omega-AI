@@ -2,17 +2,23 @@ package com.omega.engine.nn.layer.opensora.vae.modules;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.Map;
 
+import com.omega.common.utils.RandomUtils;
+import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.ParamsInit;
 import com.omega.engine.nn.layer.active.SiLULayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
+import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
- * Resnet3DBlock
+ * WFEncoderMid
  *
  * @author Administrator
  */
@@ -30,6 +36,9 @@ public class Resnet3DBlock extends Layer {
     public CausalConv3DPlainAR conv2;
     
     public CausalConv3DPlainAR shortcut;
+    
+    private Tensor tmp_diff;
+    private Tensor tmp_norm_diff;
     
     public Resnet3DBlock(int channel, int oChannel, int depth, int height, int width, Network network) {
         this.network = network;
@@ -87,6 +96,55 @@ public class Resnet3DBlock extends Layer {
         // TODO Auto-generated method stub
     }
 
+    public static void main(String[] args) {
+        int N = 2;
+        int C = 32;
+        int F = 17;
+        int H = 32;
+        int W = 32;
+        
+        int OC = 32;
+        
+        float[] data = RandomUtils.order(N * C * F * H * W, 0.01f, 0.01f);
+        Tensor input = new Tensor(N, C * F, H, W, data, true);
+        Transformer nn = new Transformer();
+        nn.CUDNN = true;
+        nn.number = N;
+        
+        Resnet3DBlock block = new Resnet3DBlock(C, OC, F, H, W, nn);
+        
+    	String path = "H:\\model\\Resnet3DBlock.json";
+    	loadWeight(LagJsonReader.readJsonFileSmallWeight(path), block, true);
+        
+    	block.forward(input);
+    	
+    	block.getOutput().showDM();
+    	
+        float[] data2 = RandomUtils.order(N * C * F * H * W, 0.001f, 0.001f);
+        Tensor delta = new Tensor(N, C * F, H, W, data2, true);
+        
+        block.back(delta);
+    	
+        block.diff.showDM();
+    }
+    
+    public static void loadWeight(Map<String, Object> weightMap, Resnet3DBlock block, boolean showLayers) {
+        if (showLayers) {
+            for (String key : weightMap.keySet()) {
+                System.out.println(key);
+            }
+        }
+        
+        block.norm1.norm.gamma = ClipModelUtils.loadData(block.norm1.norm.gamma, weightMap, 1, "norm1.weight");
+    	block.norm1.norm.beta = ClipModelUtils.loadData(block.norm1.norm.beta, weightMap, 1, "norm1.bias");
+    	ClipModelUtils.loadData(block.conv1.weight, weightMap, "conv1.conv.weight", 5);
+        ClipModelUtils.loadData(block.conv1.bias, weightMap, "conv1.conv.bias");
+        block.norm2.norm.gamma = ClipModelUtils.loadData(block.norm2.norm.gamma, weightMap, 1, "norm2.weight");
+    	block.norm2.norm.beta = ClipModelUtils.loadData(block.norm2.norm.beta, weightMap, 1, "norm2.bias");
+    	ClipModelUtils.loadData(block.conv2.weight, weightMap, "conv2.conv.weight", 5);
+        ClipModelUtils.loadData(block.conv2.bias, weightMap, "conv2.conv.bias");
+    }
+    
     @Override
     public void output() {
         // TODO Auto-generated method stub
@@ -94,7 +152,7 @@ public class Resnet3DBlock extends Layer {
     	norm1.forward(input);
     	act1.forward(norm1.getOutput());
     	conv1.forward(act1.getOutput());
-    	
+
     	norm2.forward(conv1.getOutput());
     	act2.forward(norm2.getOutput());
     	conv2.forward(act2.getOutput());
@@ -117,11 +175,14 @@ public class Resnet3DBlock extends Layer {
     @Override
     public void diff() {
         // TODO Auto-generated method stub
-    	conv2.back(delta);
+    	this.tmp_diff = CUDAMemoryManager.getCache("opensora_block_tmp_diff", conv2.input.shape());
+    	conv2.back(delta, tmp_diff);
     	act2.back(conv2.diff);
-    	norm2.back(act2.diff);
+    	this.tmp_norm_diff = CUDAMemoryManager.getCache("opensora_block_tmp_norm_diff", act2.input.shape());
+    	norm2.back(act2.diff, tmp_norm_diff);
     	
-    	conv1.back(norm2.diff);
+    	this.tmp_diff = CUDAMemoryManager.getCache("opensora_block_tmp_diff", conv1.input.shape());
+    	conv1.back(norm2.diff, tmp_diff);
     	act1.back(conv1.diff);
     	norm1.back(act1.diff);
     	

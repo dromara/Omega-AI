@@ -161,7 +161,6 @@ __global__ void silu_backward(float *x, float *output, float *delta, float *diff
     	float x_i = x[i];
     	float x_sigmod = (float) (1.0f / (1.0f + expf(-x_i)));
     	diff[i] = delta[i] * (x_sigmod * (1 + x_i * (1 - x_sigmod)));
-    	//diff[i] = delta[i] * (output[i] + 1.0f / (1.0f + expf(-x_i)) * (1.0f - output[i]));
     }
 }
 

@@ -34,6 +34,15 @@ __global__ void reparameterize_backward(float *dmu,float *dlogvar,float *eps,flo
     }
 }
 
+extern "C"
+__global__ void reparameterize_backward_org(float *dmu,float *dlogvar,float *eps,float *logvar, float *delta, int n)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if(i < n) {
+    	dlogvar[i] = delta[i] * eps[i] * expf(0.5f * logvar[i]) * 0.5f;
+    	dmu[i] = delta[i];
+    }
+}
 
 extern "C"
 __global__ void kl_loss(float *mu,float *logvar,float kl_weight, float *klLoss, int n)
@@ -51,6 +60,25 @@ __global__ void kl_loss_back(float *mu,float *logvar,float kl_weight, float *dmu
     if(i < n) {
     	dmu[i] = kl_weight * mu[i];
     	dlogvar[i] = kl_weight * -0.5f * (1.0f - expf(logvar[i]));
+    }
+}
+
+extern "C"
+__global__ void kl_loss2(float *mu,float *logvar,float kl_weight, float *klLoss, int n)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if(i < n) {
+		klLoss[i] = (0.5f * powf(mu[i], 2) + expf(logvar[i]) - 1.0f - logvar[i]) * kl_weight;
+    }
+}
+
+extern "C"
+__global__ void kl_loss_back2(float *mu,float *logvar,float kl_weight, float *dmu, float * dlogvar,int batch, int n)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if(i < n) {
+		dmu[i] = kl_weight * mu[i];
+		dlogvar[i] = kl_weight * (expf(logvar[i]) - 1.0f);
     }
 }
 
@@ -209,6 +237,62 @@ __global__ void mse_loss_kernel_only_c(const float* output, const float* target,
       mean_square_error = beta * mean_square_error;
       atomicAdd(loss, mean_square_error); // poor performance
   }
+}
+
+extern "C"
+__global__ void l1_loss_kernel(const float* output, const float* target, float* loss, int num_elem){
+  int idx = blockIdx.x*blockDim.x + threadIdx.x;
+  if(idx==0) *loss=0;
+
+  if(idx<num_elem)
+  {
+      float err = abs(output[idx] - target[idx]);
+      float mean_square_error = err/num_elem;
+      atomicAdd(loss, mean_square_error); // poor performance
+  }
+}
+
+extern "C"
+__global__ void l1_loss(const float* output, const float* target, float* loss, int num_elem){
+  	int id = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if(id < num_elem){
+    	loss[id] = abs(output[id] - target[id]);
+    }
+}
+
+extern "C"
+__global__ void l1_loss_back(const float* output, const float* target, float* diff, int num_elem, int bs){
+  	int id = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    
+    if(id < num_elem){
+    	float tmp = output[id] - target[id];
+    	if(tmp > 0){
+			diff[id] = 1.0f / bs;
+		}else if(tmp < 0){
+			diff[id] = -1.0f / bs;
+		}else{
+			diff[id] = 0;
+		}
+    }
+}
+
+extern "C"
+__global__ void l1_loss_allBack(const float* output, const float* target, float* diff_x, float* diff_y, int num_elem, int bs){
+  	int id = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    
+    if(id < num_elem){
+    	float tmp = output[id] - target[id];
+    	if(tmp > 0){
+			diff_x[id] = 1.0f / bs;
+			diff_y[id] = -1.0f / bs;
+		}else if(tmp < 0){
+			diff_x[id] = -1.0f / bs;
+			diff_y[id] = 1.0f / bs;
+		}else{
+			diff_x[id] = 0;
+			diff_y[id] = 0;
+		}
+    }
 }
 
 extern "C"

@@ -1,4 +1,4 @@
-package com.omega.engine.nn.network;
+package com.omega.engine.nn.network.dit;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -10,6 +10,9 @@ import com.omega.engine.nn.layer.InputLayer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.SoftmaxWithCrossEntropyLayer;
 import com.omega.engine.nn.layer.dit.DiTOrgMoudue;
+import com.omega.engine.nn.network.Network;
+import com.omega.engine.nn.network.NetworkType;
+import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 
@@ -36,10 +39,12 @@ public class DiT_ORG extends Network {
     private int mlpRatio = 4;
     private boolean learnSigma = true;
     
+    private float y_drop_prob = 0.0f;
+    
     private InputLayer inputLayer;
     public DiTOrgMoudue main;
     
-    public DiT_ORG(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio,boolean learnSigma) {
+    public DiT_ORG(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio,boolean learnSigma, float y_drop_prob) {
         this.lossFunction = LossFactory.create(lossType, this);
         this.updater = updater;
         this.inChannel = inChannel;
@@ -54,6 +59,7 @@ public class DiT_ORG extends Network {
         this.maxContextLen = maxContextLen;
         this.mlpRatio = mlpRatio;
         this.learnSigma = learnSigma;
+        this.y_drop_prob = y_drop_prob;
         this.time = (width / patchSize) * (height / patchSize);
         initLayers();
     }
@@ -62,7 +68,7 @@ public class DiT_ORG extends Network {
     	
         this.inputLayer = new InputLayer(inChannel, height, width);
         
-        main = new DiTOrgMoudue(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, maxContextLen, textEmbedDim, mlpRatio, learnSigma, this);
+        main = new DiTOrgMoudue(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, maxContextLen, textEmbedDim, mlpRatio, learnSigma, y_drop_prob, this);
         
         this.addLayer(inputLayer);
         this.addLayer(main);

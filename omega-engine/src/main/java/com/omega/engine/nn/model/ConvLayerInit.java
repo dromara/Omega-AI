@@ -1,5 +1,6 @@
 package com.omega.engine.nn.model;
 
+import com.omega.engine.nn.layer.Convolution3DTransposeLayer;
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.ConvolutionTransposeLayer;
 
@@ -30,6 +31,16 @@ public class ConvLayerInit extends LayerInit {
     }
 
     public ConvLayerInit(ConvolutionTransposeLayer layer) {
+        // TODO Auto-generated constructor stub
+        super(layer);
+        this.kernelNum = layer.kernelNum;
+        this.kWidth = layer.kWidth;
+        this.kHeight = layer.kHeight;
+        this.stride = layer.stride;
+        this.padding = layer.padding;
+    }
+    
+    public ConvLayerInit(Convolution3DTransposeLayer layer) {
         // TODO Auto-generated constructor stub
         super(layer);
         this.kernelNum = layer.kernelNum;

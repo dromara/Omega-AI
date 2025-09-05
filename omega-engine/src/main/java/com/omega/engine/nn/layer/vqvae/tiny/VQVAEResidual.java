@@ -25,13 +25,13 @@ import java.io.RandomAccessFile;
 public class VQVAEResidual extends Layer {
     private int group = 32;
     private BasicBlockKernel kernel;
-    private GNLayer norm1;
+    public GNLayer norm1;
     private SiLULayer a1;
-    private ConvolutionLayer conv1;
-    private GNLayer norm2;
+    public ConvolutionLayer conv1;
+    public GNLayer norm2;
     private SiLULayer a2;
-    private ConvolutionLayer conv2;
-    private ConvolutionLayer conv_shortcut;
+    public ConvolutionLayer conv2;
+    public ConvolutionLayer conv_shortcut;
     private boolean shortcut = false;
     private Tensor cache;
     

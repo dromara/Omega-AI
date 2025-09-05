@@ -52,7 +52,7 @@ public class MatrixShape {
      * @param w
      * @return
      */
-    private static float[][][][] toCube(float[] x, int n, int c, int h, int w) {
+    public static float[][][][] toCube(float[] x, int n, int c, int h, int w) {
         float[][][][] result = new float[n][c][h][w];
         int pos = 0;
         for (int in = 0; in < n; in++) {

@@ -22,6 +22,9 @@ public class DiTPatchEmbeddingLayer extends Layer {
     private int embedDim = 0;
 
     public ConvolutionLayer patchEmbedding;
+    
+    private int[] shape;
+    private int[] t_shape;
 
     public DiTPatchEmbeddingLayer(int channel, int imageSize, int embedDim, int patchSize, boolean bias, Network network) {
         this.network = network;
@@ -67,11 +70,12 @@ public class DiTPatchEmbeddingLayer extends Layer {
         if (output == null || output.number != this.number) {
             int pChannel = this.getPatchEmbedding().oHeight * this.getPatchEmbedding().oWidth;
             output = Tensor.createGPUTensor(output, this.number, pChannel, 1, embedDim, true);
+            shape = new int[] {number, this.getPatchEmbedding().oChannel, 1, pChannel};
+            t_shape = new int[] {number, pChannel, 1, this.getPatchEmbedding().oChannel};
         }
     }
 
     public void initLayers(int inChannel, int height, int width, int patchSize, boolean bias) {
-    	
         this.patchEmbedding = new ConvolutionLayer(inChannel, embedDim, height, width, patchSize, patchSize, 0, patchSize, bias, network);
         this.patchEmbedding.weight.setData(RandomUtils.xavierUniform(this.patchEmbedding.weight.dataLength, inChannel * patchSize * patchSize, embedDim * patchSize * patchSize, 1));
         if(this.patchEmbedding.bias != null) {
@@ -97,8 +101,7 @@ public class DiTPatchEmbeddingLayer extends Layer {
     public void output() {
         // TODO Auto-generated method stub
         getPatchEmbedding().forward(this.input);
-        Tensor or = getPatchEmbedding().getOutput().view(this.number, getPatchEmbedding().getOutput().channel, 1, getPatchEmbedding().getOutput().height * getPatchEmbedding().getOutput().width);
-        Tensor_OP().permute(or, output, new int[]{0, 3, 2, 1});
+        Tensor_OP().permute(getPatchEmbedding().getOutput(), output, shape, t_shape, new int[]{0, 3, 2, 1});
     }
 
     @Override
@@ -110,8 +113,7 @@ public class DiTPatchEmbeddingLayer extends Layer {
     @Override
     public void diff() {
         // TODO Auto-generated method stub
-    	Tensor_OP().permute(delta, getPatchEmbedding().getOutput(), new int[]{0, 3, 2, 1});
-    	getPatchEmbedding().getOutput().viewOrg();
+    	Tensor_OP().permute(delta, getPatchEmbedding().getOutput(), t_shape, shape, new int[]{0, 3, 2, 1});
     	getPatchEmbedding().back(getPatchEmbedding().getOutput());
     	this.diff =  getPatchEmbedding().diff;
 //    	diff.showDM("dx");

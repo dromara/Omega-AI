@@ -21,6 +21,7 @@ public class DiTSimpleHeadLayer extends Layer {
     private int inDim = 0;
     private int outDim = 1;
     private boolean bias = false;
+    private boolean addParamLayer = true;
 
     public FullyLayer linear1;
     private GeluLayer active;
@@ -36,7 +37,7 @@ public class DiTSimpleHeadLayer extends Layer {
         this.initLayers();
     }
 
-    public DiTSimpleHeadLayer(int inDim, int outDim, boolean bias, Network network) {
+    public DiTSimpleHeadLayer(int inDim, int outDim, boolean bias, boolean addParamLayer, Network network) {
         this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
@@ -47,6 +48,7 @@ public class DiTSimpleHeadLayer extends Layer {
         this.oChannel = 1;
         this.oHeight = 1;
         this.oWidth = outDim;
+        this.addParamLayer = addParamLayer;
         this.initLayers();
     }
 
@@ -54,13 +56,13 @@ public class DiTSimpleHeadLayer extends Layer {
     }
 
     public void initLayers() {
-        this.linear1 = new FullyLayer(inDim, inDim + outDim, bias, network);
+        this.linear1 = new FullyLayer(inDim, inDim + outDim, bias, addParamLayer, network);
         this.linear1.weight.setData(RandomUtils.xavierUniform(inDim * (inDim + outDim), inDim, (inDim + outDim), 1.0f));
         if(this.linear1.bias != null) {
         	this.linear1.bias.clearGPU();
         }
         this.active = new GeluLayer(linear1);
-        this.linear2 = new FullyLayer((inDim + outDim), outDim, bias, network);
+        this.linear2 = new FullyLayer((inDim + outDim), outDim, bias, addParamLayer, network);
         this.linear2.weight.setData(RandomUtils.xavierUniform((inDim + outDim) * outDim, (inDim + outDim), outDim, 1.0f));
         if(this.linear2.bias != null) {
         	this.linear2.bias.clearGPU();

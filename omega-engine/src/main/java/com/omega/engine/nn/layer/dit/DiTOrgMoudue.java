@@ -43,11 +43,14 @@ public class DiTOrgMoudue extends Layer {
     private Tensor dtc;
     private Tensor dtext;
     
-    public DiTOrgMoudue(int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio, boolean learnSigma,Network network) {
+    private float y_drop_prob = 0.0f;
+    
+    public DiTOrgMoudue(int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio, boolean learnSigma, float y_drop_prob, Network network) {
 		this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
         }
+        this.y_drop_prob = y_drop_prob;
     	this.inChannel = inChannel;
 		this.width = width;
 		this.height = height;
@@ -73,7 +76,7 @@ public class DiTOrgMoudue extends Layer {
          
         timeEmbd = new DiTTimeEmbeddingLayer(timeSteps, 256, hiddenSize, true, network);
         
-        labelEmbd = new DiTCaptionEmbeddingLayer(textEmbedDim, hiddenSize, true, network);
+        labelEmbd = new DiTCaptionEmbeddingLayer(textEmbedDim, hiddenSize, maxContextLen, y_drop_prob, true, network);
         
         blocks = new ArrayList<DiTOrgBlock>();
          
@@ -86,7 +89,7 @@ public class DiTOrgMoudue extends Layer {
         	os = inChannel * 2;
         }
         this.oChannel = os;
-        finalLayer = new DiTFinalLayer(patchSize, hiddenSize, os, patchEmbd.oChannel, true, network);
+        finalLayer = new DiTFinalLayer(patchSize, hiddenSize, os, patchEmbd.oChannel, true, false, network);
 
     }
 
@@ -187,7 +190,7 @@ public class DiTOrgMoudue extends Layer {
     public void output(Tensor tc,Tensor text) {
     	
     	patchEmbd.forward(input);
-    	Tensor_OP().addAxis(patchEmbd.getOutput(), posEmbd, patchEmbd.getOutput(), patchEmbd.getOutput().number, patchEmbd.getOutput().channel, 1, patchEmbd.getOutput().getWidth(), 1);
+    	Tensor_OP().addAxis(patchEmbd.getOutput(), posEmbd, patchEmbd.getOutput(), posEmbd.channel * posEmbd.width);
 
     	timeEmbd.forward(tc);
     	
@@ -230,7 +233,7 @@ public class DiTOrgMoudue extends Layer {
     		DiTOrgBlock block = blocks.get(i);
     		block.forward(x, timeEmbd.getOutput(), labelEmbd.getOutput(), cos, sin);
     		x = block.getOutput();
-//    		x.showDM("x["+i+"]");
+//    		x.showDMByOffsetRed(0,100, i+"");
     	}
     	
     	finalLayer.forward(x, timeEmbd.getOutput());
@@ -266,7 +269,7 @@ public class DiTOrgMoudue extends Layer {
     	int[] yShape = new int[] {number, oChannel, h, patchSize, w, patchSize};
     	int[] xShape = new int[] {number, h, w, patchSize, patchSize, oChannel};
     	Tensor_OP().permute(delta, finalLayer.getOutput(), yShape, xShape, new int[] {0, 2, 4, 3, 5, 1});
-    	
+
     	finalLayer.back(finalLayer.getOutput(), dtc);
 
     	Tensor dy = finalLayer.diff;
@@ -288,6 +291,7 @@ public class DiTOrgMoudue extends Layer {
     public void diff(Tensor cos,Tensor sin) {
         // TODO Auto-generated method stub
 //    	delta.showDM("total-delta");
+//    	delta.showDMByOffsetRed(0,10, "delta");
     	/**
     	 * unpatchify back
     	 */
@@ -296,16 +300,18 @@ public class DiTOrgMoudue extends Layer {
     	int[] yShape = new int[] {number, oChannel, h, patchSize, w, patchSize};
     	int[] xShape = new int[] {number, h, w, patchSize, patchSize, oChannel};
     	Tensor_OP().permute(delta, finalLayer.getOutput(), yShape, xShape, new int[] {0, 2, 4, 3, 5, 1});
-    	
+
     	finalLayer.back(finalLayer.getOutput(), dtc);
     	
     	Tensor dy = finalLayer.diff;
+//    	dy.showDMByOffsetRed(0,10, "dy");
 //    	dy.showDM("in-block-diff");
      	for(int i = depth - 1;i>=0;i--) {
      		DiTOrgBlock block = blocks.get(i);
     		block.back(dy, dtc, dtext, cos, sin);
     		dy = block.diff;
 //    		dy.showDM("in-block-diff");
+//    		dy.showDMByOffsetRed(0,10, i+"");
     	}
      	
      	labelEmbd.back(dtext);
@@ -544,8 +550,8 @@ public class DiTOrgMoudue extends Layer {
     }
     
     public static void main(String[] args) {
-    	int embed_dim = 8;
-    	int grid_size = 4;
+    	int embed_dim = 768;
+    	int grid_size = 16;
     	get_2d_cossin_pos_embed(embed_dim, grid_size);
     	
     }

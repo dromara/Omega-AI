@@ -1,11 +1,18 @@
 package com.omega.engine.nn.network;
 
+import java.io.IOException;
+import java.io.RandomAccessFile;
+
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.loss.LossFactory;
 import com.omega.engine.loss.LossFunction;
 import com.omega.engine.loss.LossType;
+import com.omega.engine.nn.layer.CBLLayer;
+import com.omega.engine.nn.layer.ConvolutionLayer;
+import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
+import com.omega.engine.nn.layer.normalization.BNLayer;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 import jcuda.Sizeof;
@@ -281,5 +288,56 @@ public class Yolo extends OutputsNetwork {
     //		JCuda.cudaStreamDestroy(stream);
     //
     //	}
+    
+    public void saveModel(RandomAccessFile outputStream) throws IOException {
+//    	int count = 0;
+    	for (int i = 0; i < layerCount; i++) {
+            Layer layer = layerList.get(i);
+//            System.err.println(layer);
+            
+            if(layer instanceof ConvolutionLayer) {
+            	ConvolutionLayer conv = (ConvolutionLayer) layer;
+            	conv.saveModel(outputStream);
+            }
+            if(layer instanceof FullyLayer) {
+            	FullyLayer conv = (FullyLayer) layer;
+            	conv.saveModel(outputStream);
+            }
+            if(layer instanceof CBLLayer) {
+            	CBLLayer conv = (CBLLayer) layer;
+            	conv.convLayer.saveModel(outputStream);
+            	conv.bnLayer.saveModel(outputStream);
+            }
+            if(layer instanceof BNLayer) {
+            	BNLayer conv = (BNLayer) layer;
+            	conv.saveModel(outputStream);
+            }
+        }
+//    	System.err.println(count);
+    }
+    
+    public void loadModel(RandomAccessFile inputStream) throws IOException {
+    	for (int i = 0; i < layerCount; i++) {
+            Layer layer = layerList.get(i);
+            if(layer instanceof ConvolutionLayer) {
+            	ConvolutionLayer conv = (ConvolutionLayer) layer;
+            	conv.loadModel(inputStream);
+            }
+            if(layer instanceof FullyLayer) {
+            	FullyLayer conv = (FullyLayer) layer;
+            	conv.loadModel(inputStream);
+            }
+            if(layer instanceof CBLLayer) {
+            	CBLLayer conv = (CBLLayer) layer;
+            	conv.convLayer.loadModel(inputStream);
+            	conv.bnLayer.loadModel(inputStream);
+            }
+            if(layer instanceof BNLayer) {
+            	BNLayer conv = (BNLayer) layer;
+            	conv.loadModel(inputStream);
+            }
+        }
+    }
+    
 }
 

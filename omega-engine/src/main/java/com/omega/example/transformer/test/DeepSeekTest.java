@@ -107,7 +107,7 @@ public class DeepSeekTest {
             BPETokenizer3 tokenizer = new BPETokenizer3(vocabPath, mergesPath);
             SFTBinDataset trainData = new SFTBinDataset(trainPath, max_len, batchSize, tokenizer, BinDataType.unint16);
             ParallelDataLoader pdl = new ParallelDataLoader(trainData, deviceIds);
-            Llama3Parameters parameters = new Llama3Parameters(LossType.softmax_with_cross_entropy_idx, UpdaterType.adamw, headNum, nKVHeadNum, decoderNum, vocabSize, max_len, embedDim, false, false, false, lr);
+            Llama3Parameters parameters = new Llama3Parameters(LossType.softmax_with_cross_entropy_idx, UpdaterType.adamw, headNum, nKVHeadNum, decoderNum, vocabSize, max_len, embedDim, true, false, false, lr);
             DP dp = new DP(deviceIds, 0, networkType, parameters, pdl, 2);
             dp.train();
             String save_model_path = "/omega/models/llama3-26-base-zh.model";
@@ -189,11 +189,11 @@ public class DeepSeekTest {
             int nKVHeadNum = 2;
             int decoderNum = 16;
             int vocabSize = 6400;
-            String vocabPath = "H:\\transformer_dataset\\6400\\vocab.json";
-            String mergesPath = "H:\\transformer_dataset\\6400\\merges.txt";
+            String vocabPath = "D:\\test\\models\\mmdit\\6400_tokenizer\\vocab.json";
+            String mergesPath = "D:\\test\\models\\mmdit\\6400_tokenizer\\merges.txt";
             BPETokenizer3 tokenizer = new BPETokenizer3(vocabPath, mergesPath);
             Llama3 network = new Llama3(LossType.softmax_with_cross_entropy_idx, UpdaterType.adamw, headNum, nKVHeadNum, decoderNum, vocabSize, max_len, embedDim, bias, dropout, flashAttention);
-            String model_path = "H:\\model\\llama3-r1-1024.model";
+            String model_path = "D:\\test\\models\\mmdit\\llama3-deepseek-distill-1024.model";
             ModelUtils.loadModel(network, model_path);
             network.RUN_MODEL = RunModel.TEST;
             Scanner scanner = new Scanner(System.in);
@@ -218,7 +218,7 @@ public class DeepSeekTest {
                     Tensor sin = pos[1];
                     Tensor output = network.forward(cos, sin, input);
                     output.syncHost();
-                    int nextIDX = Llama3Test.output2NextIDXTopN(output, idx.length - 1, 25, network.cudaManager);
+                    int nextIDX = Llama3Test.output2NextIDXTopN(output, idx.length - 1, 8, network.cudaManager);
                     idx = Arrays.copyOf(idx, idx.length + 1);
                     idx[idx.length - 1] = nextIDX;
                     if (nextIDX == tokenizer.eos) {

@@ -11,6 +11,7 @@ import jcuda.jcudnn.cudnnTensorDescriptor;
 import static jcuda.jcudnn.cudnnDataType.CUDNN_DATA_FLOAT;
 import static jcuda.jcudnn.cudnnSoftmaxAlgorithm.CUDNN_SOFTMAX_ACCURATE;
 import static jcuda.jcudnn.cudnnSoftmaxMode.CUDNN_SOFTMAX_MODE_CHANNEL;
+import static jcuda.jcudnn.cudnnSoftmaxMode.CUDNN_SOFTMAX_MODE_INSTANCE;
 import static jcuda.jcudnn.cudnnTensorFormat.CUDNN_TENSOR_NCHW;
 
 public class SoftmaxCudnnKernel extends BaseKernel {
@@ -74,6 +75,11 @@ public class SoftmaxCudnnKernel extends BaseKernel {
     public void softmax(Tensor input, Tensor output, int number) {
         init(number);
         handle(JCudnn.cudnnSoftmaxForward(CudnnHandleManager.getHandle(), CUDNN_SOFTMAX_ACCURATE, CUDNN_SOFTMAX_MODE_CHANNEL, alpha_P, xDesc, input.getGpuData(), beta_P, yDesc, output.getGpuData()));
+    }
+    
+    public void softmax_(Tensor input, Tensor output, int number) {
+        init(number);
+        handle(JCudnn.cudnnSoftmaxForward(CudnnHandleManager.getHandle(), CUDNN_SOFTMAX_ACCURATE, CUDNN_SOFTMAX_MODE_INSTANCE, alpha_P, xDesc, input.getGpuData(), beta_P, yDesc, output.getGpuData()));
     }
 
     public void softmax_backward(Tensor output, Tensor delta, Tensor diff) {

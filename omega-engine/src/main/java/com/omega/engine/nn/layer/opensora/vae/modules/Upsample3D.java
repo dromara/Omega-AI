@@ -90,9 +90,9 @@ public class Upsample3D extends Layer {
     	conv3d.back(delta);
     	
     	Tensor_OP().add(conv3d.diff, delta, conv3d.diff);
-    	
+
     	up.back(conv3d.diff);
-    	
+
         this.diff = up.diff;
 
     }

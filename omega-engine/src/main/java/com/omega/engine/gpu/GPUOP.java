@@ -1,5 +1,21 @@
 package com.omega.engine.gpu;
 
+import static jcuda.driver.JCudaDriver.cuLaunchKernel;
+import static jcuda.driver.JCudaDriver.cuMemAlloc;
+import static jcuda.jcublas.JCublas2.cublasCreate;
+import static jcuda.jcublas.JCublas2.cublasDestroy;
+import static jcuda.jcublas.JCublas2.cublasGetVector;
+import static jcuda.jcublas.JCublas2.cublasSetVector;
+import static jcuda.jcublas.JCublas2.cublasSgemm;
+import static jcuda.jcublas.cublasOperation.CUBLAS_OP_N;
+import static jcuda.jcublas.cublasOperation.CUBLAS_OP_T;
+import static jcuda.runtime.JCuda.cudaDeviceSynchronize;
+import static jcuda.runtime.JCuda.cudaFree;
+import static jcuda.runtime.JCuda.cudaMalloc;
+
+import java.util.List;
+import java.util.Locale;
+
 import com.omega.common.utils.PrintUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.tensor.Tensor;
@@ -11,23 +27,17 @@ import jcuda.cudaDataType;
 import jcuda.driver.CUdeviceptr;
 import jcuda.driver.CUfunction;
 import jcuda.driver.JCudaDriver;
-import jcuda.jcublas.*;
+import jcuda.jcublas.JCublas2;
+import jcuda.jcublas.cublasGemmAlgo;
+import jcuda.jcublas.cublasHandle;
+import jcuda.jcublas.cublasOperation;
+import jcuda.jcublas.cublasStatus;
 import jcuda.jcurand.JCurand;
 import jcuda.jcurand.curandGenerator;
 import jcuda.jcurand.curandRngType;
 import jcuda.jcurand.curandStatus;
 import jcuda.runtime.JCuda;
 import jcuda.runtime.cudaMemcpyKind;
-
-import java.util.List;
-import java.util.Locale;
-
-import static jcuda.driver.JCudaDriver.cuLaunchKernel;
-import static jcuda.driver.JCudaDriver.cuMemAlloc;
-import static jcuda.jcublas.JCublas2.*;
-import static jcuda.jcublas.cublasOperation.CUBLAS_OP_N;
-import static jcuda.jcublas.cublasOperation.CUBLAS_OP_T;
-import static jcuda.runtime.JCuda.*;
 
 public class GPUOP {
     private static GPUOP o;
@@ -167,7 +177,8 @@ public class GPUOP {
     public static int checkCUBLASResult(int result) {
         if (result != cublasStatus.CUBLAS_STATUS_SUCCESS) {
             System.err.println("cuda error code:" + result + "[" + cublasStatus.stringFor(result) + "]");
-            throw new CudaException(cublasStatus.stringFor(result));
+//            throw new CudaException(cublasStatus.stringFor(result));
+            throw new RuntimeException(cublasStatus.stringFor(result));
         }
         return result;
     }
@@ -387,6 +398,7 @@ public class GPUOP {
         } catch (Exception e) {
             // TODO: handle exception
             e.printStackTrace();
+            
         }
     }
 

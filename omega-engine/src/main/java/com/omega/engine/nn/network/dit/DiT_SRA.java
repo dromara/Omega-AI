@@ -1,4 +1,4 @@
-package com.omega.engine.nn.network;
+package com.omega.engine.nn.network.dit;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -14,6 +14,9 @@ import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.SoftmaxWithCrossEntropyLayer;
 import com.omega.engine.nn.layer.dit.DiTMoudue_SRA;
 import com.omega.engine.nn.layer.dit.modules.DiTRouteLayer;
+import com.omega.engine.nn.network.Network;
+import com.omega.engine.nn.network.NetworkType;
+import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 

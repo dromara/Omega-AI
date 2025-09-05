@@ -9,6 +9,7 @@ import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.active.SiLULayer;
+import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.Transformer;
@@ -28,7 +29,9 @@ public class DiTFinalLayer extends Layer {
 	private int time;
     private int hidden_size = 1;
     private boolean bias = false;
-
+    
+    private boolean normParams = true;
+    
     public LNLayer finalNorm;
 //    public RMSLayer finalNorm;
     public FullyLayer finalLinear;
@@ -52,7 +55,7 @@ public class DiTFinalLayer extends Layer {
         this.initLayers();
     }
 
-    public DiTFinalLayer(int patch_size, int hidden_size,int out_channels, int time, boolean bias, Network network) {
+    public DiTFinalLayer(int patch_size, int hidden_size,int out_channels, int time, boolean bias, boolean normParams, Network network) {
         this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
@@ -63,12 +66,13 @@ public class DiTFinalLayer extends Layer {
         this.oHeight = 1;
         this.oWidth = patch_size * patch_size * out_channels;
         this.time = time;
+        this.normParams = normParams;
         this.initLayers();
     }
 
     public void initLayers() {
         //		NanoGPT net = (NanoGPT) this.network;
-    	this.finalNorm = new LNLayer(network);
+    	this.finalNorm = new LNLayer(1, 1, hidden_size, normParams, BNType.fully_bn, network);
         this.finalLinear = new FullyLayer(hidden_size, oWidth, bias, network);
         this.finalLinear.weight.clearGPU();
         this.finalLinear.bias.clearGPU();
@@ -126,7 +130,7 @@ public class DiTFinalLayer extends Layer {
     	m_linear1.forward(m_active.getOutput());
     	m_linear2.forward(m_active.getOutput());
     	
-    	finalNorm.forward_llmc(input);
+    	finalNorm.forward(input);
     	
     	/**
     	 * modulate
@@ -156,7 +160,7 @@ public class DiTFinalLayer extends Layer {
     public void diff(Tensor dtc) {
         // TODO Auto-generated method stub
     	finalLinear.back(this.delta);
-    	
+
         Tensor_OP().addAxisBack(dShift, finalLinear.diff, batchSize, time, 1, finalNorm.getOutput().width, 1);
 
     	Tensor_OP().mul_right_back(finalNorm.getOutput(), finalLinear.diff, dScale, batchSize, time, 1, finalNorm.getOutput().width, 1);
@@ -324,7 +328,7 @@ public class DiTFinalLayer extends Layer {
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
-    	finalNorm.loadModel(inputStream);
+    	finalNorm.loadModel(inputStream, 1, 1, hidden_size, BNType.fully_bn);
     	finalLinear.loadModel(inputStream);
     	m_linear1.loadModel(inputStream);
     	m_linear2.loadModel(inputStream);
@@ -386,7 +390,7 @@ public class DiTFinalLayer extends Layer {
         
         Tensor dcond = new Tensor(batchSize, 1, 1, embedDim, true);
 
-        DiTFinalLayer finalLayer = new DiTFinalLayer(patch_size, embedDim, outChannel, time, true, tf);
+        DiTFinalLayer finalLayer = new DiTFinalLayer(patch_size, embedDim, outChannel, time, true, true, tf);
         
         loadWeight(datas, finalLayer, true);
         

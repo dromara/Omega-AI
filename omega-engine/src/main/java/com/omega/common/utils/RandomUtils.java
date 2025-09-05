@@ -41,6 +41,15 @@ public class RandomUtils {
         }
     }
     
+    public static void uniform(Tensor data) {
+    	for (int i = 0; i < data.dataLength; i++) {
+            data.data[i] = getInstance().nextFloat();
+        }
+        if(data.isHasGPU()) {
+        	data.hostToDevice();
+        }
+    }
+    
     public static int randomInt(int min, int max) {
         return min + (int) (Math.random() * (max - min));
     }
@@ -338,6 +347,9 @@ public class RandomUtils {
     }
 
     public static void gaussianRandom(Tensor output) {
+    	if( output.data == null) {
+    		output.data = new float[output.dataLength];
+    	}
         for (int i = 0; i < output.dataLength; i++) {
             output.data[i] = (float) (getInstance().nextGaussian());
         }
@@ -346,6 +358,19 @@ public class RandomUtils {
         }
     }
 
+    public static void gaussianRandomLogitNormal(Tensor output) {
+    	if( output.data == null) {
+    		output.data = new float[output.dataLength];
+    	}
+        for (int i = 0; i < output.dataLength; i++) {
+        	float tmp = (float) (getInstance().nextGaussian());
+            output.data[i] = (float) (1 / (1 + Math.exp(-tmp)));
+        }
+        if (output.isHasGPU()) {
+            output.hostToDevice();
+        }
+    }
+    
     public static void gaussianRandom(Tensor output, float mean, float std) {
         if (output.data == null) {
             output.data = new float[output.dataLength];

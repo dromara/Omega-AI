@@ -297,7 +297,7 @@ public class AttentionKernel extends BaseKernel {
              * float* q, float* k, float* v, const float* inp,int B, int N, int NH, int d
 
              */
-            permuteKernelParameters = Pointer.to(Pointer.to(query.getGpuData()), Pointer.to(key.getGpuData()), Pointer.to(value.getGpuData()), Pointer.to(input.getGpuData()), Pointer.to(new int[]{B}), Pointer.to(new int[]{N}), Pointer.to(new int[]{NH}), Pointer.to(new int[]{d}));
+        	Pointer permuteKernelParameters = Pointer.to(Pointer.to(query.getGpuData()), Pointer.to(key.getGpuData()), Pointer.to(value.getGpuData()), Pointer.to(input.getGpuData()), Pointer.to(new int[]{B}), Pointer.to(new int[]{N}), Pointer.to(new int[]{NH}), Pointer.to(new int[]{d}));
             int total_threads = B * NH * N * d;
             int num_blocks = get_number_of_blocks(total_threads, BLOCK);
             checkCUDA(cuLaunchKernel(permute_function, num_blocks, 1, 1,      // Grid dimension
@@ -318,7 +318,7 @@ public class AttentionKernel extends BaseKernel {
              * float* dinp, const float* dq, const float* dk, const float* dv,int B, int N, int NH, int d
 
              */
-            permute_backwardKernelParameters = Pointer.to(Pointer.to(diff.getGpuData()), Pointer.to(dQuery.getGpuData()), Pointer.to(dKey.getGpuData()), Pointer.to(dValue.getGpuData()), Pointer.to(new int[]{B}), Pointer.to(new int[]{N}), Pointer.to(new int[]{NH}), Pointer.to(new int[]{d}));
+        	Pointer permute_backwardKernelParameters = Pointer.to(Pointer.to(diff.getGpuData()), Pointer.to(dQuery.getGpuData()), Pointer.to(dKey.getGpuData()), Pointer.to(dValue.getGpuData()), Pointer.to(new int[]{B}), Pointer.to(new int[]{N}), Pointer.to(new int[]{NH}), Pointer.to(new int[]{d}));
             int total_threads = B * NH * N * d;
             int num_blocks = get_number_of_blocks(total_threads, BLOCK);
             checkCUDA(cuLaunchKernel(permute_backward_function, num_blocks, 1, 1,      // Grid dimension
@@ -339,7 +339,7 @@ public class AttentionKernel extends BaseKernel {
              * const float* inp, float *out, int B, int N, int NH, int d
 
              */
-            unpermuteKernelBackParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{B}), Pointer.to(new int[]{N}), Pointer.to(new int[]{NH}), Pointer.to(new int[]{d}));
+        	Pointer unpermuteKernelBackParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{B}), Pointer.to(new int[]{N}), Pointer.to(new int[]{NH}), Pointer.to(new int[]{d}));
             int total_threads = output.getDataLength();
             int num_blocks = get_number_of_blocks(total_threads, BLOCK);
             checkCUDA(cuLaunchKernel(unpermute_function, num_blocks, 1, 1,      // Grid dimension
@@ -360,7 +360,7 @@ public class AttentionKernel extends BaseKernel {
              * float* dinp, const float *dout, int B, int N, int NH, int d
 
              */
-            unpermute_backwardKernelBackParameters = Pointer.to(Pointer.to(din.getGpuData()), Pointer.to(dout.getGpuData()), Pointer.to(new int[]{B}), Pointer.to(new int[]{N}), Pointer.to(new int[]{NH}), Pointer.to(new int[]{d}));
+        	Pointer unpermute_backwardKernelBackParameters = Pointer.to(Pointer.to(din.getGpuData()), Pointer.to(dout.getGpuData()), Pointer.to(new int[]{B}), Pointer.to(new int[]{N}), Pointer.to(new int[]{NH}), Pointer.to(new int[]{d}));
             int total_threads = B * N * NH * d;
             int num_blocks = get_number_of_blocks(total_threads, BLOCK);
             checkCUDA(cuLaunchKernel(unpermute_backward_function, num_blocks, 1, 1,      // Grid dimension
@@ -391,7 +391,7 @@ public class AttentionKernel extends BaseKernel {
              * float* out, const float* inp, int N, int C
 
              */
-            softmaxForwardParameters = Pointer.to(Pointer.to(output.getGpuData()), Pointer.to(new float[]{scale}), Pointer.to(input.getGpuData()), Pointer.to(new int[]{B * NH}), Pointer.to(new int[]{T}));
+        	Pointer softmaxForwardParameters = Pointer.to(Pointer.to(output.getGpuData()), Pointer.to(new float[]{scale}), Pointer.to(input.getGpuData()), Pointer.to(new int[]{B * NH}), Pointer.to(new int[]{T}));
             //			int softmax_block_size = 256;
             //		    int grid_size = get_number_of_blocks(B * NH * T * 32, softmax_block_size);
             int softmax_block_size = 256;

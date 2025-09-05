@@ -25,11 +25,12 @@ public class TinyVQVAEDecoder2 extends Layer {
     private int headNum;
     private int[] ch_mult;
     private int ch;
-    private ConvolutionLayer convIn;
-    private List<Layer> up;
-    private GNLayer convNormOut;
+    public ConvolutionLayer convIn;
+    public List<Layer> up;
+    public GNLayer convNormOut;
     private SiLULayer convAct;
-    private ConvolutionLayer convOut;
+    public ConvolutionLayer convOut;
+    private boolean hasAttn = true;
     
     public TinyVQVAEDecoder2(int channel, int oChannel, int height, int width, int num_res_blocks, int groups, int headNum, int[] ch_mult, int ch, Network network) {
         this.network = network;
@@ -41,6 +42,21 @@ public class TinyVQVAEDecoder2 extends Layer {
         this.headNum = headNum;
         this.ch_mult = ch_mult;
         this.ch = ch;
+        this.num_res_blocks = num_res_blocks;
+        initLayers();
+    }
+    
+    public TinyVQVAEDecoder2(int channel, int oChannel, int height, int width, int num_res_blocks, int groups, int headNum, int[] ch_mult, int ch, boolean hasAttn, Network network) {
+        this.network = network;
+        this.channel = channel;
+        this.oChannel = oChannel;
+        this.height = height;
+        this.width = width;
+        this.groups = groups;
+        this.headNum = headNum;
+        this.ch_mult = ch_mult;
+        this.ch = ch;
+        this.hasAttn = hasAttn;
         this.num_res_blocks = num_res_blocks;
         initLayers();
     }
@@ -68,7 +84,7 @@ public class TinyVQVAEDecoder2 extends Layer {
                 c_in = c_out;
                 ih = res.oHeight;
                 iw = res.oWidth;
-                if (i == ch_mult.length - 1) {
+                if (hasAttn && i == ch_mult.length - 1) {
                     VQVAEAttentionLayer2 rattn = new VQVAEAttentionLayer2(c_out, headNum, ih, iw, groups, false, network);
                     up.add(rattn);
                 }

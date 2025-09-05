@@ -113,9 +113,8 @@ public class FullyKernel extends BaseKernel {
                 /**
                  * 设置入参
                  * float* output, float* biases, int batch, int n, int size
-
                  */
-                kernelParameters = Pointer.to(Pointer.to(output.getGpuData()), Pointer.to(bias.getGpuData()), Pointer.to(new int[]{output.getNumber()}), Pointer.to(new int[]{output.getWidth()}), Pointer.to(new int[]{1}));
+                kernelParameters = Pointer.to(Pointer.to(output.getGpuData()), Pointer.to(bias.getGpuData()), Pointer.to(new int[]{output.number * output.channel * output.height}), Pointer.to(new int[]{output.getWidth()}), Pointer.to(new int[]{1}));
                 this.N = output.number;
             }
             checkCUDA(cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(output.dataLength), 1, 1,      // Grid dimension
@@ -180,14 +179,15 @@ public class FullyKernel extends BaseKernel {
     public void backwardBias(Tensor diffB, Tensor delta) {
         try {
             diffB.clearGPU();
-            if (kernelBackParameters == null) {
+//            if (kernelBackParameters == null) {
                 /**
                  * 设置入参
                  * float* data_im,float* data_col,int n,int height,int width,int kh,int kw,int s,int p,int oh,int ow
                  */
-                kernelBackParameters = Pointer.to(Pointer.to(diffB.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(new int[]{delta.getNumber()}), Pointer.to(new int[]{delta.getWidth()}));
-            }
-            cuLaunchKernel(back_function, this.CAFFE_GET_BLOCKS(delta.getWidth()), 1, 1,      // Grid dimension
+//            System.err.println(delta.number * delta.channel * delta.height);
+            kernelBackParameters = Pointer.to(Pointer.to(diffB.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(new int[]{delta.number * delta.channel * delta.height}), Pointer.to(new int[]{diffB.dataLength}));
+//            }
+            cuLaunchKernel(back_function, this.CAFFE_GET_BLOCKS(diffB.dataLength), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelBackParameters, null // Kernel- and extra parameters

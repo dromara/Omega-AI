@@ -31,20 +31,21 @@ public class Downsample2D extends Layer {
     private int ph;
     
     private int depth;
+    public int oDepth;
     
     private Tensor inputT;
     
-    public Downsample2D(int channel, int depth, int height, int width, Network network) {
+    public Downsample2D(int channel, int oChannel, int depth, int height, int width, Network network) {
         this.network = network;
         this.channel = channel;
         this.depth = depth;
-        this.oChannel = channel;
+        this.oChannel = oChannel;
         this.height = height;
         this.width = width;
         initLayers();
+        this.oDepth = depth;
         this.oHeight = conv.oHeight;
         this.oWidth = conv.oWidth;
-        this.oChannel = conv.oChannel;
     }
 
     public void initLayers() {
@@ -54,7 +55,7 @@ public class Downsample2D extends Layer {
         pw = padding[0] + width + padding[1];
         ph = padding[2] + height + padding[3];
         
-        conv = new ConvolutionLayer(channel, channel, pw, ph, 3, 3, 0, 2, true, this.network);
+        conv = new ConvolutionLayer(channel, oChannel, pw, ph, 3, 3, 0, 2, true, this.network);
         conv.setUpdater(UpdaterFactory.create(this.network));
         conv.paramsInit = ParamsInit.silu;
        
@@ -85,20 +86,10 @@ public class Downsample2D extends Layer {
     @Override
     public void output() {
         // TODO Auto-generated method stub
-    	input.view(number, channel, depth, height * width);
-    	inputT.view(number, depth, channel, height * width);
-    	Tensor_OP().permute(input, inputT, new int[]{0, 2, 1, 3});
-    	inputT.viewOrg();
+    	Tensor_OP().permute(input, inputT, new int[] {number, channel, depth, height, width}, new int[] {number, depth, channel, height, width}, new int[]{0, 2, 1, 3, 4});
     	kernel.padding2d(inputT, padOutput, padding, 0);
-    	
     	conv.forward(padOutput);
-    	
-    	conv.getOutput().view(number, depth, conv.oChannel, conv.oHeight * conv.oWidth);
-    	output.view(number, conv.oChannel, depth, conv.oHeight * conv.oWidth);
-    	Tensor_OP().permute(conv.getOutput(), output, new int[]{0, 2, 1, 3});
-    	
-        output.viewOrg();
-        
+    	Tensor_OP().permute(conv.getOutput(), output, new int[] {number, depth, conv.oChannel, conv.oHeight, conv.oWidth}, new int[] {number, conv.oChannel, depth, conv.oHeight, conv.oWidth}, new int[]{0, 2, 1, 3, 4});
     }
 
     @Override
@@ -110,18 +101,11 @@ public class Downsample2D extends Layer {
     @Override
     public void diff() {
         // TODO Auto-generated method stub
-    	delta.view(number, conv.oChannel, depth, conv.oHeight * conv.oWidth);
-    	conv.getOutput().view(number, depth, conv.oChannel, conv.oHeight * conv.oWidth);
-    	Tensor_OP().permute(delta, conv.getOutput(), new int[]{0, 2, 1, 3});
-    	conv.getOutput().viewOrg();
+    	Tensor_OP().permute(delta, conv.getOutput(), new int[] {number, conv.oChannel, depth, conv.oHeight, conv.oWidth}, new int[] {number, depth, conv.oChannel, conv.oHeight, conv.oWidth}, new int[]{0, 2, 1, 3, 4});
         conv.back(conv.getOutput(), padOutput);
-        
         kernel.padding2dGrad(padOutput, inputT, padding);
-        
-        inputT.view(number, depth, channel, height * width);
-        input.view(number, channel, depth, height * width);
-        Tensor_OP().permute(inputT, input, new int[]{0, 2, 1, 3});
-        this.diff = input.viewOrg();
+        Tensor_OP().permute(inputT, input, new int[] {number, depth, channel, height, width}, new int[] {number, channel, depth, height, width}, new int[]{0, 2, 1, 3, 4});
+        this.diff = input;
     }
 
     @Override

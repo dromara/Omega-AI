@@ -21,6 +21,8 @@ public class ClipTextModel extends Network {
     public CLIPTextTransformer clip;
     private InputLayer inputLayer;
     private Tensor output;
+    
+    private int[] shape;
 
     public ClipTextModel(LossType lossType, UpdaterType updater, int headNum, int time, int vocabSize, int embedDim, int maxPositionEmbeddingsSize, int n_layers) {
         this.lossFunction = LossFactory.create(lossType, this);
@@ -33,6 +35,21 @@ public class ClipTextModel extends Network {
         this.time = time;
         this.inputLayer = new InputLayer(1, 1, vocabSize);
         this.clip = new CLIPTextTransformer(vocabSize, maxPositionEmbeddingsSize, n_layers, headNum, time, embedDim, true, false, this);
+        this.addLayer(inputLayer);
+        this.addLayer(clip);
+    }
+    
+    public ClipTextModel(LossType lossType, UpdaterType updater, int headNum, int time, int vocabSize, int embedDim, int maxPositionEmbeddingsSize, int intermediateSize, int n_layers) {
+        this.lossFunction = LossFactory.create(lossType, this);
+        this.vocabSize = vocabSize;
+        this.embedDim = embedDim;
+        this.maxPositionEmbeddingsSize = maxPositionEmbeddingsSize;
+        this.n_layers = n_layers;
+        this.updater = updater;
+        this.headNum = headNum;
+        this.time = time;
+        this.inputLayer = new InputLayer(1, 1, vocabSize);
+        this.clip = new CLIPTextTransformer(vocabSize, maxPositionEmbeddingsSize, intermediateSize, n_layers, headNum, time, embedDim, true, false, this);
         this.addLayer(inputLayer);
         this.addLayer(clip);
     }
@@ -84,6 +101,17 @@ public class ClipTextModel extends Network {
         clip.forward(input);
         this.output = clip.getOutput();
         return this.output;
+    }
+    
+    public Tensor get_clip_prompt_embeds(Tensor input, Tensor eos_idx, Tensor embeds) {
+        // TODO Auto-generated method stub
+    	forward(input);
+//    	eos_idx.showDM("eos_idx");
+    	if(shape == null || shape[0] != output.number / time) {
+    		shape = new int[] {output.number / time, time, 1, embedDim};
+    	}
+    	tensorOP.getByChannel(output, embeds, shape, eos_idx);
+        return embeds;
     }
 
     @Override

@@ -879,6 +879,7 @@ public abstract class Optimizer {
         Yolo net = (Yolo) this.network;
         for (int pageIndex = 0; pageIndex < itc; pageIndex++) {
             testData.loadData(pageIndex, batchSize, input);
+           
             Tensor[] output = net.predicts(input);
             YoloBox[] boxs = new YoloBox[input.number];
             for (int i = 0; i < net.outputLayers.size(); i++) {
@@ -887,7 +888,6 @@ public abstract class Optimizer {
                 for (int j = 0; j < dets.length; j++) {
                     /**
                      * nms
-                     *
                      */
                     nmsSort(dets[j], dets[j].length, layer.class_number, 0.7f);
                     if (boxs[j] != null) {

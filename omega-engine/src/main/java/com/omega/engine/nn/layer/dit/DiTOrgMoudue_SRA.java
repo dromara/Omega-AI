@@ -84,7 +84,7 @@ public class DiTOrgMoudue_SRA extends Layer {
          
         timeEmbd = new DiTTimeEmbeddingLayer(timeSteps, 256, hiddenSize, hasBias, network);
         
-        labelEmbd = new DiTCaptionEmbeddingLayer(textEmbedDim, hiddenSize, hasBias, network);
+        labelEmbd = new DiTCaptionEmbeddingLayer(textEmbedDim, hiddenSize, maxContextLen, hasBias, network);
         
         blocks = new ArrayList<DiTOrgBlock>();
          
@@ -97,10 +97,10 @@ public class DiTOrgMoudue_SRA extends Layer {
         	os = inChannel * 2;
         }
         
-        this.ap_head = new DiTSimpleHeadLayer(hiddenSize, hiddenSize, true, network);
+        this.ap_head = new DiTSimpleHeadLayer(hiddenSize, hiddenSize, true, false, network);
         
         this.oChannel = os;
-        finalLayer = new DiTFinalLayer(patchSize, hiddenSize, os, patchEmbd.oChannel, hasBias, network);
+        finalLayer = new DiTFinalLayer(patchSize, hiddenSize, os, patchEmbd.oChannel, hasBias, true, network);
 
     }
 

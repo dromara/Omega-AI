@@ -1,9 +1,7 @@
-package com.omega.engine.nn.network;
+package com.omega.engine.nn.network.dit;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.util.ArrayList;
-import java.util.List;
 
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.loss.LossFactory;
@@ -11,8 +9,10 @@ import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.layer.InputLayer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.SoftmaxWithCrossEntropyLayer;
-import com.omega.engine.nn.layer.dit.DiTMoudue;
-import com.omega.engine.nn.layer.dit.modules.DiTRouteLayer;
+import com.omega.engine.nn.layer.dit.org.DiTMainMoudue;
+import com.omega.engine.nn.network.Network;
+import com.omega.engine.nn.network.NetworkType;
+import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 
@@ -24,27 +24,26 @@ import jcuda.runtime.JCuda;
  *
  * @author Administrator
  */
-public class DiT extends Network {
+public class DiT_Class extends Network {
 	
     public int inChannel;
     public int width;
     public int height;
     public int patchSize;
-    public int maxContextLen;
+    public int classNum;
     public int hiddenSize;
     private int depth;
     private int timeSteps;
     public int headNum;
-    private int textEmbedDim;
     private int mlpRatio = 4;
     private boolean learnSigma = true;
     
-    private InputLayer inputLayer;
-    public DiTMoudue main;
+    private float y_drop_prob = 0.0f;
     
-    private List<DiTRouteLayer> skipLayers;
-
-    public DiT(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio,boolean learnSigma) {
+    private InputLayer inputLayer;
+    public DiTMainMoudue main;
+    
+    public DiT_Class(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int classNum, int mlpRatio,boolean learnSigma, float y_drop_prob) {
         this.lossFunction = LossFactory.create(lossType, this);
         this.updater = updater;
         this.inChannel = inChannel;
@@ -55,10 +54,10 @@ public class DiT extends Network {
         this.hiddenSize = hiddenSize;
         this.depth = depth;
         this.timeSteps = timeSteps;
-        this.textEmbedDim = textEmbedDim;
-        this.maxContextLen = maxContextLen;
+        this.classNum = classNum;
         this.mlpRatio = mlpRatio;
         this.learnSigma = learnSigma;
+        this.y_drop_prob = y_drop_prob;
         this.time = (width / patchSize) * (height / patchSize);
         initLayers();
     }
@@ -67,7 +66,7 @@ public class DiT extends Network {
     	
         this.inputLayer = new InputLayer(inChannel, height, width);
         
-        main = new DiTMoudue(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, maxContextLen, textEmbedDim, mlpRatio, learnSigma, this);
+        main = new DiTMainMoudue(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, classNum, mlpRatio, learnSigma, y_drop_prob, this);
         
         this.addLayer(inputLayer);
         this.addLayer(main);
@@ -98,7 +97,7 @@ public class DiT extends Network {
     @Override
     public NetworkType getNetworkType() {
         // TODO Auto-generated method stub
-        return NetworkType.DUFFSION_UNET_COND;
+        return NetworkType.DiT;
     }
 
     @Override
@@ -205,7 +204,6 @@ public class DiT extends Network {
          * forward
          */
         JCuda.cudaMemset(CUDAMemoryManager.workspace.getPointer(), 0, CUDAMemoryManager.workspace.getSize() * Sizeof.FLOAT);
-        this.clearSkip();
         JCuda.cudaDeviceSynchronize();
     }
 
@@ -252,19 +250,5 @@ public class DiT extends Network {
         // TODO Auto-generated method stub
     }
     
-    public void addSkip(DiTRouteLayer route) {
-    	if(skipLayers == null) {
-    		skipLayers = new ArrayList<DiTRouteLayer>();
-    	}
-    	skipLayers.add(route);
-    }
-    
-    public void clearSkip() {
-    	if(skipLayers != null) {
-	    	for(DiTRouteLayer layer:skipLayers) {
-	    		layer.clearCacheDelta();
-	    	}
-    	}
-    }
 }
 

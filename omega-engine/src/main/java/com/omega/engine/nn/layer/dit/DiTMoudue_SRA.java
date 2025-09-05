@@ -82,7 +82,7 @@ public class DiTMoudue_SRA extends Layer {
          
         timeEmbd = new DiTTimeEmbeddingLayer(timeSteps, 256, hiddenSize, true, network);
         
-        labelEmbd = new DiTCaptionEmbeddingLayer(textEmbedDim, hiddenSize, true, network);
+        labelEmbd = new DiTCaptionEmbeddingLayer(textEmbedDim, hiddenSize, maxContextLen, true, network);
         
         blocks = new ArrayList<DiTBlock>();
         
@@ -91,14 +91,14 @@ public class DiTMoudue_SRA extends Layer {
 	        blocks.add(block);
         }
         
-        this.ap_head = new DiTSimpleHeadLayer(hiddenSize, hiddenSize, true, network);
+        this.ap_head = new DiTSimpleHeadLayer(hiddenSize, hiddenSize, true, false, network);
         
         int os = inChannel;
         if(learnSigma) {
         	os = inChannel * 2;
         }
         this.oChannel = os;
-        finalLayer = new DiTFinalLayer(patchSize, hiddenSize, os, patchEmbd.oChannel, true, network);
+        finalLayer = new DiTFinalLayer(patchSize, hiddenSize, os, patchEmbd.oChannel, true, true, network);
 
     }
 

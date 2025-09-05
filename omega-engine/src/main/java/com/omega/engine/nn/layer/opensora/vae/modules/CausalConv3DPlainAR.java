@@ -3,7 +3,6 @@ package com.omega.engine.nn.layer.opensora.vae.modules;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
-import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.active.ActiveType;
 import com.omega.engine.gpu.PaddingKernel;
@@ -225,14 +224,14 @@ public class CausalConv3DPlainAR extends Layer {
 
     public static void main(String[] args) {
         int N = 2;
-        int C = 3;
+        int C = 1;
         int F = 6;
-        int H = 64;
-        int W = 64;
+        int H = 32;
+        int W = 32;
         
-        int KC = 4;
-        int KS = 3;
-        int stride = 1;
+        int KC = 1;
+        int KS = 2;
+        int stride = 2;
         
         float[] data = RandomUtils.order(N * C * F * H * W, 0.1f, 0.1f);
         Tensor input = new Tensor(N, C * F, H, W, data, true);
@@ -244,8 +243,8 @@ public class CausalConv3DPlainAR extends Layer {
 //        conv1.weight = new Tensor(KC, C * KS, KS, KS, RandomUtils.order(KC * C * KS * KS * KS, 0.1f, 0.1f), true);
 //        conv1.bias = new Tensor(1, 1, 1, KC, RandomUtils.order(KC, 0.1f, 0.1f), true);
         conv1.forward(input);
-        float[] delta_data = MatrixUtils.val(conv1.getOutput().dataLength, 1.0f);
-        Tensor delta = new Tensor(N, conv1.oChannel * conv1.oDepth, conv1.oHeight, conv1.oWidth, delta_data, true);
+//        float[] delta_data = MatrixUtils.val(conv1.getOutput().dataLength, 1.0f);
+//        Tensor delta = new Tensor(N, conv1.oChannel * conv1.oDepth, conv1.oHeight, conv1.oWidth, delta_data, true);
 //        conv1.back(delta);
 //        conv1.getOutput().showShape();
 //        conv1.getOutput().showDM();
@@ -342,14 +341,32 @@ public class CausalConv3DPlainAR extends Layer {
         	this.pDiff = new Tensor(number, channel * pDepth, pHeight, pWidth, true);
         }
     }
+    
+    public void initBack(Tensor diff) {
+        // TODO Auto-generated method stub
+    	this.diff = diff;
+    	if (this.diffW == null) {
+            if (!freeze) {
+                if (this.hasBias) {
+                    this.diffB = new Tensor(1, 1, 1, kernelNum, true);
+                }
+                this.diffW = new Tensor(this.kernelNum, this.channel * kernelSize, this.kernelSize, this.kernelSize, true);
+            }
+        }
+        if(this.pDiff == null || this.number != this.pDiff.number) {
+        	this.pDiff = new Tensor(number, channel * pDepth, pHeight, pWidth, true);
+        }
+    }
 
     @Override
     public void output() {
         // TODO Auto-generated method stub
-    	
+//    	input.showShape();
     	paddingKernel.padding3d(input, pOutput, depth, padding3d, 0);
-
+//    	pOutput.showShape();
         kernel.conv(pOutput, weight, output);
+//        System.err.println("weight:"+MatrixOperation.sum(weight.syncHost()));
+//        System.err.println("output:"+MatrixOperation.sum(output.syncHost()));
         if (this.hasBias) {
             biasKernel.addConvBiasFast(output, bias, oChannel, oDepth);
         }
@@ -623,7 +640,7 @@ public class CausalConv3DPlainAR extends Layer {
 
     public void back(Tensor delta, Tensor diff) {
         // TODO Auto-generated method stub
-        this.initBack();
+        this.initBack(diff);
         /**
          * 设置梯度
 

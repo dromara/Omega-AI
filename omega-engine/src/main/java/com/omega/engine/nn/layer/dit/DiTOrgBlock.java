@@ -14,13 +14,13 @@ import com.omega.engine.nn.layer.dit.modules.DiTAttentionLayer2;
 import com.omega.engine.nn.layer.dit.modules.DiTCrossAttentionLayer2;
 import com.omega.engine.nn.layer.dit.modules.DiTMLPLayer;
 import com.omega.engine.nn.layer.gpu.RoPEKernel;
+import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
-import com.omega.example.clip.utils.ClipModelUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
@@ -56,6 +56,7 @@ public class DiTOrgBlock extends Layer {
     public DiTCrossAttentionLayer2 cross_attn;
     public LNLayer norm3;
     public DiTMLPLayer mlp;
+//    public DiTSwiGLUFFN mlp;
     
     private Tensor attnInput;
     private Tensor crossAttnInput;
@@ -78,6 +79,9 @@ public class DiTOrgBlock extends Layer {
         this.mlpHiddenDim = mlpHiddenDim;
         this.bias = bias;
         this.qkNorm = qkNorm;
+        this.channel = 1;
+        this.height = 1;
+        this.width = embedDim;
         this.oChannel = 1;
         this.oHeight = 1;
         this.oWidth = embedDim;
@@ -97,6 +101,9 @@ public class DiTOrgBlock extends Layer {
         this.textTime = textTime;
         this.mlpHiddenDim = mlpHiddenDim;
         this.bias = bias;
+        this.channel = 1;
+        this.height = 1;
+        this.width = embedDim;
         this.oChannel = 1;
         this.oHeight = 1;
         this.oWidth = embedDim;
@@ -106,7 +113,7 @@ public class DiTOrgBlock extends Layer {
 
     public void initLayers() {
     	
-        this.norm1 = new LNLayer(network);
+        this.norm1 = new LNLayer(1, 1, embedDim, false, BNType.fully_bn, network);
         
         this.modulationAct = new SiLULayer(network);
 
@@ -130,11 +137,13 @@ public class DiTOrgBlock extends Layer {
         this.modulation_gate_mlp.bias.clearGPU();
         
         this.attn = new DiTAttentionLayer2(embedDim, headNum, time, bias, qkNorm, network);
-        this.norm2 = new LNLayer(network);
+        this.norm2 = new LNLayer(1, 1, embedDim, false, BNType.fully_bn, network);
         this.cross_attn = new DiTCrossAttentionLayer2(embedDim, textStateDim, headNum, time, textTime, bias, qkNorm, network);
-        this.norm3 = new LNLayer(network);
+        this.norm3 = new LNLayer(1, 1, embedDim, false, BNType.fully_bn, network);
        
         this.mlp = new DiTMLPLayer(embedDim, mlpHiddenDim, bias, network);
+//        int swiNum = (int)(2.0/3.0 * mlpHiddenDim);
+//        this.mlp = new DiTSwiGLUFFN(embedDim, swiNum, embedDim, bias, network);
     }
 
     @Override
@@ -269,7 +278,7 @@ public class DiTOrgBlock extends Layer {
     	/**
     	 *  x1 = x + gate_msa.unsqueeze(1) * self.attn(modulate(self.norm1(x), shift_msa, scale_msa))
     	 */
-    	norm1.forward_llmc(input);
+    	norm1.forward(input);
     	modulate(norm1.getOutput(), modulation_shift_msa.getOutput(), modulation_scale_msa.getOutput(), attnInput);
     	attn.forward(attnInput, cos , sin);
 
@@ -279,61 +288,61 @@ public class DiTOrgBlock extends Layer {
     	/**
     	 * x2 = x1 + self.crossAttn(self.norm2(x1), text)
     	 */
-    	norm2.forward_llmc(crossAttnInput);
+    	norm2.forward(crossAttnInput);
     	cross_attn.forward(norm2.getOutput(), text, cos , sin);
     	Tensor_OP().add(crossAttnInput, cross_attn.getOutput(), crossAttnOut);
 
     	/**
     	 * x3 = x2 + gate_mlp.unsqueeze(1) * self.mlp(modulate(self.norm3(x2), shift_mlp, scale_mlp))
     	 */
-    	norm3.forward_llmc(crossAttnOut);
+    	norm3.forward(crossAttnOut);
     	modulate(norm3.getOutput(), modulation_shift_mlp.getOutput(), modulation_scale_mlp.getOutput(), mlpInput);
     	mlp.forward(mlpInput);
     	Tensor_OP().mul(mlp.getOutput(), modulation_gate_mlp.getOutput(), output, batchSize, time, 1, output.width, 1);
     	Tensor_OP().add(crossAttnOut, output, output);
     }
     
-    public void output_eval(Tensor tc,Tensor text,Tensor cos,Tensor sin) {
-    	
-    	Tensor x = input;
-    	
-    	/**
-    	 * shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = self.adaLN_modulation(c).chunk(6, dim=1)
-    	 */
-    	modulationAct.forward(tc, temp_ma);
-    	
-    	modulation_shift_msa.forward(temp_ma, temp_m1);
-    	modulation_scale_msa.forward(temp_ma, temp_m2);
-    	/**
-    	 *  x1 = x + gate_msa.unsqueeze(1) * self.attn(modulate(self.norm1(x), shift_msa, scale_msa))
-    	 */
-    	norm1.forward_llmc(x, temp_out);
-    	modulate(temp_out, temp_m1, temp_m2, temp_out);
-    	attn.forward(temp_out, cos , sin);
-    	modulation_gate_msa.forward(temp_ma, temp_m1);
-
-    	Tensor_OP().mul(attn.getOutput(), temp_m1, temp_out, batchSize, time, 1, temp_out.width, 1);
-    	Tensor_OP().add(x, temp_out, x);
-
-    	/**
-    	 * x2 = x1 + self.crossAttn(self.norm2(x1), text)
-    	 */
-    	norm2.forward_llmc(x, temp_out);
-    	cross_attn.forward(temp_out, text, cos , sin);
-    	Tensor_OP().add(x, cross_attn.getOutput(), x);
-
-    	/**
-    	 * x3 = x2 + gate_mlp.unsqueeze(1) * self.mlp(modulate(self.norm3(x2), shift_mlp, scale_mlp))
-    	 */
-    	modulation_shift_mlp.forward(temp_ma, temp_m1);
-    	modulation_scale_mlp.forward(temp_ma, temp_m2);
-    	norm3.forward_llmc(x, temp_out);
-    	modulate(temp_out, temp_m1, temp_m2, temp_out);
-    	mlp.forward(temp_out);
-    	modulation_gate_mlp.forward(temp_ma, temp_m1);
-    	Tensor_OP().mul(mlp.getOutput(), temp_m1, temp_out, batchSize, time, 1, temp_out.width, 1);
-    	Tensor_OP().add(x, temp_out, output);
-    }
+//    public void output_eval(Tensor tc,Tensor text,Tensor cos,Tensor sin) {
+//    	
+//    	Tensor x = input;
+//    	
+//    	/**
+//    	 * shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = self.adaLN_modulation(c).chunk(6, dim=1)
+//    	 */
+//    	modulationAct.forward(tc, temp_ma);
+//    	
+//    	modulation_shift_msa.forward(temp_ma, temp_m1);
+//    	modulation_scale_msa.forward(temp_ma, temp_m2);
+//    	/**
+//    	 *  x1 = x + gate_msa.unsqueeze(1) * self.attn(modulate(self.norm1(x), shift_msa, scale_msa))
+//    	 */
+//    	norm1.forward(x, temp_out);
+//    	modulate(temp_out, temp_m1, temp_m2, temp_out);
+//    	attn.forward(temp_out, cos , sin);
+//    	modulation_gate_msa.forward(temp_ma, temp_m1);
+//
+//    	Tensor_OP().mul(attn.getOutput(), temp_m1, temp_out, batchSize, time, 1, temp_out.width, 1);
+//    	Tensor_OP().add(x, temp_out, x);
+//
+//    	/**
+//    	 * x2 = x1 + self.crossAttn(self.norm2(x1), text)
+//    	 */
+//    	norm2.forward(x, temp_out);
+//    	cross_attn.forward(temp_out, text, cos , sin);
+//    	Tensor_OP().add(x, cross_attn.getOutput(), x);
+//
+//    	/**
+//    	 * x3 = x2 + gate_mlp.unsqueeze(1) * self.mlp(modulate(self.norm3(x2), shift_mlp, scale_mlp))
+//    	 */
+//    	modulation_shift_mlp.forward(temp_ma, temp_m1);
+//    	modulation_scale_mlp.forward(temp_ma, temp_m2);
+//    	norm3.forward(x, temp_out);
+//    	modulate(temp_out, temp_m1, temp_m2, temp_out);
+//    	mlp.forward(temp_out);
+//    	modulation_gate_mlp.forward(temp_ma, temp_m1);
+//    	Tensor_OP().mul(mlp.getOutput(), temp_m1, temp_out, batchSize, time, 1, temp_out.width, 1);
+//    	Tensor_OP().add(x, temp_out, output);
+//    }
     
     @Override
     public Tensor getOutput() {
@@ -430,6 +439,8 @@ public class DiTOrgBlock extends Layer {
     	
     	norm3.back(output);
 
+//    	norm3.diff.showDMByOffsetRed(0, 10, "norm3");
+    	
     	Tensor_OP().add(norm3.diff, delta, norm3.diff);
 
     	/**
@@ -438,6 +449,7 @@ public class DiTOrgBlock extends Layer {
     	cross_attn.back(norm3.diff, cos, sin);
 
     	norm2.back(cross_attn.diff);
+//    	norm2.diff.showDMByOffsetRed(0, 10, "norm2");
     	Tensor_OP().add(norm2.diff, norm3.diff, norm2.diff);
     	
 //    	norm2.diff.showDM("x1");
@@ -459,6 +471,8 @@ public class DiTOrgBlock extends Layer {
     	modulation_scale_msa.back(dScale);
 
     	norm1.back(output);
+    	
+//    	norm1.diff.showDMByOffsetRed(0, 10, "norm1");
 
     	Tensor_OP().add(norm1.diff, norm2.diff, norm1.diff);
     	
@@ -571,11 +585,12 @@ public class DiTOrgBlock extends Layer {
         /**
          * 计算输出
          */
-        if(network.RUN_MODEL == RunModel.EVAL) {
-        	this.output_eval(tc, text, cos, sin);
-        }else {
-        	this.output(tc, text, cos, sin);
-        }
+//        if(network.RUN_MODEL == RunModel.EVAL) {
+//        	this.output_eval(tc, text, cos, sin);
+//        }else {
+//        	this.output(tc, text, cos, sin);
+//        }
+        this.output(tc, text, cos, sin);
     }
 
     @Override
@@ -695,7 +710,8 @@ public class DiTOrgBlock extends Layer {
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
-    	norm1.loadModel(inputStream);
+    	
+    	norm1.loadModel(inputStream, channel, height, width, BNType.fully_bn);
     	modulation_shift_msa.loadModel(inputStream);
     	modulation_scale_msa.loadModel(inputStream);
     	modulation_gate_msa.loadModel(inputStream);
@@ -704,10 +720,10 @@ public class DiTOrgBlock extends Layer {
     	modulation_gate_mlp.loadModel(inputStream);
     	
     	attn.loadModel(inputStream);
-    	norm2.loadModel(inputStream);
+    	norm2.loadModel(inputStream, 1, 1, attn.oWidth, BNType.fully_bn);
     	
     	cross_attn.loadModel(inputStream);
-    	norm3.loadModel(inputStream);
+    	norm3.loadModel(inputStream, 1, 1, cross_attn.oWidth, BNType.fully_bn);
     	
     	mlp.loadModel(inputStream);
     }
@@ -739,50 +755,50 @@ public class DiTOrgBlock extends Layer {
             }
         }
         
-        block.norm1.gamma = ClipModelUtils.loadData(block.norm1.gamma, weightMap, 1, "norm1.weight");
-        block.norm1.beta = ClipModelUtils.loadData(block.norm1.beta, weightMap, 1, "norm1.bias");
-        
-        ClipModelUtils.loadData(block.attn.qLinerLayer.weight, weightMap, "attn1.qL.weight");
-        ClipModelUtils.loadData(block.attn.qLinerLayer.bias, weightMap, "attn1.qL.bias");
-        ClipModelUtils.loadData(block.attn.kLinerLayer.weight, weightMap, "attn1.kL.weight");
-        ClipModelUtils.loadData(block.attn.kLinerLayer.bias, weightMap, "attn1.kL.bias");
-        ClipModelUtils.loadData(block.attn.vLinerLayer.weight, weightMap, "attn1.vL.weight");
-        ClipModelUtils.loadData(block.attn.vLinerLayer.bias, weightMap, "attn1.vL.bias");
-        ClipModelUtils.loadData(block.attn.oLinerLayer.weight, weightMap, "attn1.proj.weight");
-        ClipModelUtils.loadData(block.attn.oLinerLayer.bias, weightMap, "attn1.proj.bias");
-        
-        block.norm2.gamma = ClipModelUtils.loadData(block.norm2.gamma, weightMap, 1, "norm2.weight");
-        block.norm2.beta = ClipModelUtils.loadData(block.norm2.beta, weightMap, 1, "norm2.bias");
-        
-        ClipModelUtils.loadData(block.cross_attn.qLinerLayer.weight, weightMap, "attn2.query.weight");
-        ClipModelUtils.loadData(block.cross_attn.qLinerLayer.bias, weightMap, "attn2.query.bias");
-        ClipModelUtils.loadData(block.cross_attn.kLinerLayer.weight, weightMap, "attn2.key.weight");
-        ClipModelUtils.loadData(block.cross_attn.kLinerLayer.bias, weightMap, "attn2.key.bias");
-        ClipModelUtils.loadData(block.cross_attn.vLinerLayer.weight, weightMap, "attn2.value.weight");
-        ClipModelUtils.loadData(block.cross_attn.vLinerLayer.bias, weightMap, "attn2.value.bias");
-        ClipModelUtils.loadData(block.cross_attn.oLinerLayer.weight, weightMap, "attn2.out_proj.weight");
-        ClipModelUtils.loadData(block.cross_attn.oLinerLayer.bias, weightMap, "attn2.out_proj.bias");
-        
-        block.norm3.gamma = ClipModelUtils.loadData(block.norm3.gamma, weightMap, 1, "norm3.weight");
-        block.norm3.beta = ClipModelUtils.loadData(block.norm3.beta, weightMap, 1, "norm3.bias");
-        
-        ClipModelUtils.loadData(block.mlp.linear1.weight, weightMap, "mlp.fc1.weight");
-        ClipModelUtils.loadData(block.mlp.linear1.bias, weightMap, "mlp.fc1.bias");
-        ClipModelUtils.loadData(block.mlp.linear2.weight, weightMap, "mlp.fc2.weight");
-        ClipModelUtils.loadData(block.mlp.linear2.bias, weightMap, "mlp.fc2.bias");
-        
-        ClipModelUtils.loadData(block.modulation_shift_msa.weight, weightMap, "adaLN_modulation_1.weight");
-        ClipModelUtils.loadData(block.modulation_shift_msa.bias, weightMap, "adaLN_modulation_1.bias");
-        ClipModelUtils.loadData(block.modulation_scale_msa.weight, weightMap, "adaLN_modulation_2.weight");
-        ClipModelUtils.loadData(block.modulation_scale_msa.bias, weightMap, "adaLN_modulation_2.bias");
-        ClipModelUtils.loadData(block.modulation_gate_msa.weight, weightMap, "adaLN_modulation_3.weight");
-        ClipModelUtils.loadData(block.modulation_gate_msa.bias, weightMap, "adaLN_modulation_3.bias");
-        ClipModelUtils.loadData(block.modulation_shift_mlp.weight, weightMap, "adaLN_modulation_4.weight");
-        ClipModelUtils.loadData(block.modulation_shift_mlp.bias, weightMap, "adaLN_modulation_4.bias");
-        ClipModelUtils.loadData(block.modulation_scale_mlp.weight, weightMap, "adaLN_modulation_5.weight");
-        ClipModelUtils.loadData(block.modulation_scale_mlp.bias, weightMap, "adaLN_modulation_5.bias");
-        ClipModelUtils.loadData(block.modulation_gate_mlp.weight, weightMap, "adaLN_modulation_6.weight");
-        ClipModelUtils.loadData(block.modulation_gate_mlp.bias, weightMap, "adaLN_modulation_6.bias");
+//        block.norm1.gamma = ClipModelUtils.loadData(block.norm1.gamma, weightMap, 1, "norm1.weight");
+//        block.norm1.beta = ClipModelUtils.loadData(block.norm1.beta, weightMap, 1, "norm1.bias");
+//        
+//        ClipModelUtils.loadData(block.attn.qLinerLayer.weight, weightMap, "attn1.qL.weight");
+//        ClipModelUtils.loadData(block.attn.qLinerLayer.bias, weightMap, "attn1.qL.bias");
+//        ClipModelUtils.loadData(block.attn.kLinerLayer.weight, weightMap, "attn1.kL.weight");
+//        ClipModelUtils.loadData(block.attn.kLinerLayer.bias, weightMap, "attn1.kL.bias");
+//        ClipModelUtils.loadData(block.attn.vLinerLayer.weight, weightMap, "attn1.vL.weight");
+//        ClipModelUtils.loadData(block.attn.vLinerLayer.bias, weightMap, "attn1.vL.bias");
+//        ClipModelUtils.loadData(block.attn.oLinerLayer.weight, weightMap, "attn1.proj.weight");
+//        ClipModelUtils.loadData(block.attn.oLinerLayer.bias, weightMap, "attn1.proj.bias");
+//        
+//        block.norm2.gamma = ClipModelUtils.loadData(block.norm2.gamma, weightMap, 1, "norm2.weight");
+//        block.norm2.beta = ClipModelUtils.loadData(block.norm2.beta, weightMap, 1, "norm2.bias");
+//        
+//        ClipModelUtils.loadData(block.cross_attn.qLinerLayer.weight, weightMap, "attn2.query.weight");
+//        ClipModelUtils.loadData(block.cross_attn.qLinerLayer.bias, weightMap, "attn2.query.bias");
+//        ClipModelUtils.loadData(block.cross_attn.kLinerLayer.weight, weightMap, "attn2.key.weight");
+//        ClipModelUtils.loadData(block.cross_attn.kLinerLayer.bias, weightMap, "attn2.key.bias");
+//        ClipModelUtils.loadData(block.cross_attn.vLinerLayer.weight, weightMap, "attn2.value.weight");
+//        ClipModelUtils.loadData(block.cross_attn.vLinerLayer.bias, weightMap, "attn2.value.bias");
+//        ClipModelUtils.loadData(block.cross_attn.oLinerLayer.weight, weightMap, "attn2.out_proj.weight");
+//        ClipModelUtils.loadData(block.cross_attn.oLinerLayer.bias, weightMap, "attn2.out_proj.bias");
+//        
+//        block.norm3.gamma = ClipModelUtils.loadData(block.norm3.gamma, weightMap, 1, "norm3.weight");
+//        block.norm3.beta = ClipModelUtils.loadData(block.norm3.beta, weightMap, 1, "norm3.bias");
+//        
+//        ClipModelUtils.loadData(block.mlp.linear1.weight, weightMap, "mlp.fc1.weight");
+//        ClipModelUtils.loadData(block.mlp.linear1.bias, weightMap, "mlp.fc1.bias");
+//        ClipModelUtils.loadData(block.mlp.linear2.weight, weightMap, "mlp.fc2.weight");
+//        ClipModelUtils.loadData(block.mlp.linear2.bias, weightMap, "mlp.fc2.bias");
+//        
+//        ClipModelUtils.loadData(block.modulation_shift_msa.weight, weightMap, "adaLN_modulation_1.weight");
+//        ClipModelUtils.loadData(block.modulation_shift_msa.bias, weightMap, "adaLN_modulation_1.bias");
+//        ClipModelUtils.loadData(block.modulation_scale_msa.weight, weightMap, "adaLN_modulation_2.weight");
+//        ClipModelUtils.loadData(block.modulation_scale_msa.bias, weightMap, "adaLN_modulation_2.bias");
+//        ClipModelUtils.loadData(block.modulation_gate_msa.weight, weightMap, "adaLN_modulation_3.weight");
+//        ClipModelUtils.loadData(block.modulation_gate_msa.bias, weightMap, "adaLN_modulation_3.bias");
+//        ClipModelUtils.loadData(block.modulation_shift_mlp.weight, weightMap, "adaLN_modulation_4.weight");
+//        ClipModelUtils.loadData(block.modulation_shift_mlp.bias, weightMap, "adaLN_modulation_4.bias");
+//        ClipModelUtils.loadData(block.modulation_scale_mlp.weight, weightMap, "adaLN_modulation_5.weight");
+//        ClipModelUtils.loadData(block.modulation_scale_mlp.bias, weightMap, "adaLN_modulation_5.bias");
+//        ClipModelUtils.loadData(block.modulation_gate_mlp.weight, weightMap, "adaLN_modulation_6.weight");
+//        ClipModelUtils.loadData(block.modulation_gate_mlp.bias, weightMap, "adaLN_modulation_6.bias");
     }
     
     public static void main(String[] args) {

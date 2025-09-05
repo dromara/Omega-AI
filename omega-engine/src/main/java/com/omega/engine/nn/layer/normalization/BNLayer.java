@@ -354,7 +354,6 @@ public class BNLayer extends NormalizationLayer {
         // TODO Auto-generated method stub
         /**
          * 参数初始化
-
          */
         this.init(input);
         /**
@@ -395,16 +394,24 @@ public class BNLayer extends NormalizationLayer {
 
     public void saveModel(RandomAccessFile outputStream) throws IOException {
         ModelUtils.saveParams(outputStream, gamma);
+        ModelUtils.saveParams(outputStream, runingMean);
+//        runingMean.showDM("runingMean");
         if (hasBias) {
             ModelUtils.saveParams(outputStream, beta);
+            ModelUtils.saveParams(outputStream, runingVar);
+//            runingVar.showDM("runingVar");
         }
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
         init();
         ModelUtils.loadParams(inputStream, gamma);
+        ModelUtils.loadParams(inputStream, runingMean);
+//        runingMean.showDM("runingMean");
         if (hasBias) {
             ModelUtils.loadParams(inputStream, beta);
+            ModelUtils.loadParams(inputStream, runingVar);
+//            runingVar.showDM("runingVar");
         }
     }
 

@@ -18,8 +18,8 @@ public class CBLLayer extends Layer {
     private int kWidth = 3;
     private int padding = 1;
     private int stride = 2;
-    private ConvolutionLayer convLayer;
-    private BNLayer bnLayer;
+    public ConvolutionLayer convLayer;
+    public BNLayer bnLayer;
     private ActiveFunctionLayer activeLayer;
     private ActiveType activeType;
 

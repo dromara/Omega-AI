@@ -25,11 +25,12 @@ public class TinyVQVAEEncoder2 extends Layer {
     private int headNum;
     private int ch;
     private int[] ch_mult;
-    private ConvolutionLayer convIn;
-    private List<Layer> down;
-    private GNLayer convNormOut;
-    private SiLULayer convAct;
-    private ConvolutionLayer convOut;
+    public ConvolutionLayer convIn;
+    public List<Layer> down;
+    public GNLayer convNormOut;
+    public SiLULayer convAct;
+    public ConvolutionLayer convOut;
+    private boolean hasAttn = true;
 
     public TinyVQVAEEncoder2(int channel, int oChannel, int height, int width, int num_res_blocks, int groups, int headNum, int[] ch_mult, int ch, Network network) {
         this.network = network;
@@ -41,6 +42,21 @@ public class TinyVQVAEEncoder2 extends Layer {
         this.headNum = headNum;
         this.ch_mult = ch_mult;
         this.ch = ch;
+        this.num_res_blocks = num_res_blocks;
+        initLayers();
+    }
+    
+    public TinyVQVAEEncoder2(int channel, int oChannel, int height, int width, int num_res_blocks, int groups, int headNum, int[] ch_mult, int ch, boolean hasAttn, Network network) {
+        this.network = network;
+        this.channel = channel;
+        this.oChannel = oChannel;
+        this.height = height;
+        this.width = width;
+        this.groups = groups;
+        this.headNum = headNum;
+        this.ch_mult = ch_mult;
+        this.ch = ch;
+        this.hasAttn = hasAttn;
         this.num_res_blocks = num_res_blocks;
         initLayers();
     }
@@ -63,7 +79,7 @@ public class TinyVQVAEEncoder2 extends Layer {
                 c_in = c_out;
                 ih = res.oHeight;
                 iw = res.oWidth;
-                if (i == ch_mult.length - 1) {
+                if (hasAttn && i == ch_mult.length - 1) {
                     VQVAEAttentionLayer2 attn = new VQVAEAttentionLayer2(c_out, headNum, ih, iw, groups, false, network);
                     down.add(attn);
                 }
@@ -108,12 +124,11 @@ public class TinyVQVAEEncoder2 extends Layer {
         // TODO Auto-generated method stub
         convIn.forward(this.input);
         Tensor x = convIn.getOutput();
-        //		x.showShape("en-x");
+//        		x.showShape("en-x");
         for (int i = 0; i < down.size(); i++) {
             Layer l = down.get(i);
             l.forward(x);
             x = l.getOutput();
-            //			x.showDMByOffset(0, 10, i+"");
         }
         convNormOut.forward(x);
         convAct.forward(convNormOut.getOutput());

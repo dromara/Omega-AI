@@ -5,6 +5,7 @@ import static jcuda.jcublas.cublasOperation.CUBLAS_OP_T;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.Map;
 
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
@@ -17,6 +18,8 @@ import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
+import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
  * AttentionBlock3D
@@ -52,6 +55,7 @@ public class AttentionBlock3D extends Layer {
     private Tensor kt;
     private Tensor vt;
     private Tensor dqkvt;
+    private Tensor d_tmp;
     private Tensor temp;
     private Tensor attn;
     private Tensor oi;
@@ -81,25 +85,50 @@ public class AttentionBlock3D extends Layer {
 
     public static void main(String[] args) {
     	int batchSize = 2;
-    	int channel = 64;
-    	int numFrames = 17;
-    	int imageSize = 8;
+    	int channel = 128;
+    	int numFrames = 5;
+    	int imageSize = 4;
     	Tensor input = new Tensor(batchSize, channel * numFrames, imageSize, imageSize, true);
     	
         Transformer tf = new Transformer();
         tf.CUDNN = true;
         float[] data = RandomUtils.order(input.dataLength, 0.001f, 0.001f);
         Tensor input2 = new Tensor(batchSize, channel * numFrames, imageSize, imageSize, data, true);
+        
 //        float[] delta_data = MatrixUtils.val(batchSize * time * embedDim, 1.0f);
-//        Tensor delta = new Tensor(batchSize * time, 1, 1, embedDim, delta_data, true);
-        AttentionBlock3D mal = new AttentionBlock3D(channel, numFrames, imageSize, imageSize, true, false, tf);
-        for (int i = 0; i < 10; i++) {
+        Tensor delta = new Tensor(batchSize, channel * numFrames, imageSize, imageSize, data, true);
+        AttentionBlock3D mal = new AttentionBlock3D(channel, numFrames, imageSize, imageSize, true, true, tf);
+        
+        String weight = "D:\\models\\opensora_attn3d.json";
+        loadWeight(LagJsonReader.readJsonFileSmallWeight(weight), mal, true);
+        
+        for (int i = 0; i < 2; i++) {
             mal.forward(input2);
             mal.getOutput().showShape();
             mal.getOutput().showDM();
-//            mal.back(delta);
-//            mal.diff.showDM();
+            mal.back(delta);
+            mal.diff.showDM();
         }
+    }
+    
+    public static void loadWeight(Map<String, Object> weightMap, AttentionBlock3D network, boolean showLayers) {
+        if (showLayers) {
+            for (String key : weightMap.keySet()) {
+                System.out.println(key);
+            }
+        }
+        
+        network.norm.norm.gamma = ClipModelUtils.loadData(network.norm.norm.gamma, weightMap, 1, "norm.weight");
+        network.norm.norm.beta = ClipModelUtils.loadData(network.norm.norm.beta, weightMap, 1, "norm.bias");
+        
+        ClipModelUtils.loadData(network.qLinerLayer.weight, weightMap, "q.conv.weight", 5);
+        ClipModelUtils.loadData(network.qLinerLayer.bias, weightMap, "q.conv.bias");
+        ClipModelUtils.loadData(network.kLinerLayer.weight, weightMap, "k.conv.weight", 5);
+        ClipModelUtils.loadData(network.kLinerLayer.bias, weightMap, "k.conv.bias");
+        ClipModelUtils.loadData(network.vLinerLayer.weight, weightMap, "v.conv.weight", 5);
+        ClipModelUtils.loadData(network.vLinerLayer.bias, weightMap, "v.conv.bias");
+        ClipModelUtils.loadData(network.oLinerLayer.weight, weightMap, "proj_out.conv.weight", 5);
+        ClipModelUtils.loadData(network.oLinerLayer.bias, weightMap, "proj_out.conv.bias");
     }
 
     public static boolean same(Tensor a, Tensor b) {
@@ -182,6 +211,7 @@ public class AttentionBlock3D extends Layer {
         if (this.dattn == null) {
             this.dqkvt = Tensor.createGPUTensor(this.dqkvt, number, headNum, time, dk, true);
             this.dattn = Tensor.createGPUTensor(this.dattn, number, headNum, time, time, true);
+            this.d_tmp = Tensor.createGPUTensor(this.d_tmp, input.shape(), true);
         }
     }
 
@@ -223,7 +253,7 @@ public class AttentionBlock3D extends Layer {
     public void train() {
 
     	this.norm.forward(input);
-    	norm.getOutput().showDM("norm");
+//    	norm.getOutput().showDM("norm");
         this.qLinerLayer.forward(norm.getOutput());
         this.kLinerLayer.forward(norm.getOutput());
         this.vLinerLayer.forward(norm.getOutput());
@@ -235,14 +265,15 @@ public class AttentionBlock3D extends Layer {
         Tensor_OP().permute(q, qt, new int[]{0, 2, 3, 1});
         Tensor_OP().permute(k, kt, new int[]{0, 2, 3, 1});
         Tensor_OP().permute(v, vt, new int[]{0, 2, 3, 1});
+
         scaledDotProductAttention(qt, kt, vt);
         Tensor vaccum = temp;
         attentionKernel.unpermute(vaccum, oi, number, time, headNum, dk);
-        
+
         Tensor_OP().permute(oi, oit, new int[]{0, 3, 2, 1});  //n t 1 c -> n c 1 t
         oit.view(number, channel * depth , height, width);
         this.oLinerLayer.forward(oit);
-
+        
         Tensor_OP().add(this.oLinerLayer.getOutput(), input, this.output);
 
     }
@@ -252,10 +283,13 @@ public class AttentionBlock3D extends Layer {
         Tensor preatt = temp;
         GPU_OP().bmmEX(CUBLAS_OP_T, CUBLAS_OP_N, time, time, dk, 1.0f, key.getGpuData(), dk, time * dk, query.getGpuData(), dk, time * dk, 0.0f, preatt.getGpuData(), time, time * time, number * headNum);
         Tensor_OP().mul(preatt, d_k, preatt);
+
         if(isCausal) {
-        	Tensor_OP().mask(preatt, mask, preatt, maskFill);
+        	Tensor_OP().mask(preatt, mask, preatt, maskFill, number * mask.dataLength, mask.dataLength);
         }
+
         softmaxKernel.softmax(preatt, attn, number * headNum * time);
+
         Tensor tmp = attn;
         Tensor vaccum = temp;
         GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_N, dk, time, time, 1.0f, value.getGpuData(), dk, time * dk, tmp.getGpuData(), time, time * time, 0.0f, vaccum.getGpuData(), dk, time * dk, number * headNum);
@@ -272,11 +306,13 @@ public class AttentionBlock3D extends Layer {
         // TODO Auto-generated method stub
         this.oLinerLayer.back(delta, oit);
         oit.viewOrg();
+//        oit.showDM("oit");
         Tensor_OP().permute(oit, oi, new int[]{0, 3, 2, 1});  //n c 1 t -> n t 1 c
         attentionKernel.unpermute_backward(temp, oi, number, time, headNum, dk);
         Tensor dvaccum = temp;
         // backward into datt
         GPU_OP().bmmEX(CUBLAS_OP_T, CUBLAS_OP_N, time, time, dk, 1.0f, vt.getGpuData(), dk, time * dk, dvaccum.getGpuData(), dk, time * dk, 0.0f, dattn.getGpuData(), time, time * time, number * headNum);
+//        dattn.showDMByOffsetRed(79 * 80, 80, "dattn");
         // backward into preatt
         softmaxKernel.softmax_backward(attn, dattn, dattn);
         float d_k = (float) (1.0f / Math.sqrt(dk));
@@ -284,26 +320,30 @@ public class AttentionBlock3D extends Layer {
         Tensor dpreatt = dattn;
         // backward into dv
         GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_T, dk, time, time, 1.0f, dvaccum.getGpuData(), dk, time * dk, attn.getGpuData(), time, time * time, 0.0f, dqkvt.getGpuData(), dk, time * dk, number * headNum);
-        vt.view(number, time, headNum, dk);
-        Tensor_OP().permute(dqkvt, vt, new int[]{0, 3, 1, 2});//n 1 t c-> n c 1 t
-        Tensor vDelta = vt.view(number, channel * depth, height, headNum * dk);
-        this.vLinerLayer.back(vDelta);
+        Tensor dvt = vt.view(number, channel, 1, time); // b, c, 1, t
+        Tensor_OP().permute(dqkvt, dvt, new int[]{0, 3, 1, 2});//n 1 t c-> n c 1 t
+        Tensor vDelta = dvt.view(this.vLinerLayer.getOutput().shape());
+        this.vLinerLayer.back(vDelta, norm.getOutput());
+        Tensor_OP().add(norm.getOutput(), 0, d_tmp);
         // backward into q
         GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_N, dk, time, time, 1.0f, kt.getGpuData(), dk, time * dk, dpreatt.getGpuData(), time, time * time, 0.0f, dqkvt.getGpuData(), dk, time * dk, number * headNum);
-        qt.view(number, time, headNum, dk);
-        Tensor_OP().permute(dqkvt, qt, new int[]{0, 3, 1, 2});//n 1 t c-> n c 1 t
-        Tensor qDelta = qt.view(number, channel * depth, height, headNum * dk);
-        this.qLinerLayer.back(qDelta);
+        Tensor dqt = vt.view(number, channel, 1, time); // b, c, 1, t
+        Tensor_OP().permute(dqkvt, dqt, new int[]{0, 3, 1, 2});//n 1 t c-> n c 1 t
+        Tensor qDelta = dvt.view(this.qLinerLayer.getOutput().shape());
+        this.qLinerLayer.back(qDelta, norm.getOutput());
+
+        Tensor_OP().add(norm.getOutput(), d_tmp, d_tmp);
         // backward into k
         GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_T, dk, time, time, 1.0f, qt.getGpuData(), dk, time * dk, dpreatt.getGpuData(), time, time * time, 0.0f, dqkvt.getGpuData(), dk, time * dk, number * headNum);
-        kt.view(number, time, headNum, dk);
-        Tensor_OP().permute(dqkvt, kt, new int[]{0, 3, 1, 2});//n 1 t c-> n c 1 t
-        Tensor kDelta = kt.view(number, channel * depth, height, headNum * dk);
-        this.kLinerLayer.back(kDelta);
-        Tensor_OP().add(this.qLinerLayer.diff, this.kLinerLayer.diff, this.qLinerLayer.diff);
-        Tensor_OP().add(this.qLinerLayer.diff, this.vLinerLayer.diff, this.qLinerLayer.diff);
-        Tensor_OP().add(this.qLinerLayer.diff, delta, this.qLinerLayer.diff);
-        this.diff = this.qLinerLayer.diff;
+        Tensor dkt = vt.view(number, channel, 1, time); // b, c, 1, t
+        Tensor_OP().permute(dqkvt, dkt, new int[]{0, 3, 1, 2});//n 1 t c-> n c 1 t
+        Tensor kDelta = dvt.view(this.kLinerLayer.getOutput().shape());
+        this.kLinerLayer.back(kDelta, norm.getOutput());
+
+        Tensor_OP().add(norm.getOutput(), d_tmp, d_tmp);
+        this.norm.back(d_tmp);
+        Tensor_OP().add(this.norm.diff, delta, this.norm.diff);
+        this.diff = this.norm.diff;
     }
 
     @Override
@@ -377,6 +417,7 @@ public class AttentionBlock3D extends Layer {
     @Override
     public void update() {
         // TODO Auto-generated method stub
+    	norm.update();
         qLinerLayer.update();
         kLinerLayer.update();
         vLinerLayer.update();
@@ -411,6 +452,7 @@ public class AttentionBlock3D extends Layer {
     }
 
     public void saveModel(RandomAccessFile outputStream) throws IOException {
+    	norm.saveModel(outputStream);
         qLinerLayer.saveModel(outputStream);
         kLinerLayer.saveModel(outputStream);
         vLinerLayer.saveModel(outputStream);
@@ -418,6 +460,7 @@ public class AttentionBlock3D extends Layer {
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
+    	norm.loadModel(inputStream);
         qLinerLayer.loadModel(inputStream);
         kLinerLayer.loadModel(inputStream);
         vLinerLayer.loadModel(inputStream);
@@ -427,6 +470,7 @@ public class AttentionBlock3D extends Layer {
     @Override
     public void accGrad(float scale) {
         // TODO Auto-generated method stub
+    	norm.accGrad(scale);
         qLinerLayer.accGrad(scale);
         kLinerLayer.accGrad(scale);
         vLinerLayer.accGrad(scale);

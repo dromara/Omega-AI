@@ -205,12 +205,35 @@ public class ConvolutionTransposeLayer extends Layer {
         }
     }
 
+    public void init(Tensor input) {
+        // TODO Auto-generated method stub
+        this.number = input.number;
+        if (this.output == null || this.number != this.output.number) {
+            //			this.output = new Tensor(number, oChannel, oHeight, oWidth, true);
+            this.output = Tensor.createTensor(this.output, number, oChannel, oHeight, oWidth, true);
+        }
+        if (kernel == null) {
+            if (this.network.CUDNN) {
+                kernel = new ConvTransposeCudnnKernel(network, channel, height, width, kernelNum, kHeight, kWidth, stride, padding, dilation, output_padding, cuda());
+            } else {
+                //				kernel = new ConvKernel(channel, height, width, kernelNum, kHeight, kWidth, stride, padding);
+            }
+            if (this.hasBias) {
+                biasKernel = new BiasKernel(cuda());
+            }
+        }
+    }
+
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
         if (this.diff == null || this.number != this.diff.number) {
             this.diff = new Tensor(number, channel, height, width, true);
         }
+    }
+
+    public void initBack(Tensor diff) {
+        this.diff = diff;
     }
 
     @Override
@@ -399,9 +422,27 @@ public class ConvolutionTransposeLayer extends Layer {
         // TODO Auto-generated method stub
         /**
          * 参数初始化
+         */
+        this.init(input);
+        /**
+         * 设置输入
 
          */
-        this.init();
+        this.setInput(input);
+        /**
+         * 计算输出
+
+         */
+        this.output();
+    }
+
+    public void forward(Tensor input,Tensor output) {
+        // TODO Auto-generated method stub
+        this.output = output;
+        /**
+         * 参数初始化
+         */
+        this.init(input);
         /**
          * 设置输入
 
@@ -418,6 +459,23 @@ public class ConvolutionTransposeLayer extends Layer {
     public void back(Tensor delta) {
         // TODO Auto-generated method stub
         initBack();
+        /**
+         * 设置梯度
+
+         */
+        this.setDelta(delta);
+        /**
+         * 计算梯度
+
+         */
+        this.diff();
+        if (this.network.GRADIENT_CHECK) {
+            this.gradientCheck();
+        }
+    }
+
+    public void back(Tensor delta, Tensor diff) {
+        initBack(diff);
         /**
          * 设置梯度
 

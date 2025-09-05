@@ -116,7 +116,69 @@ public class BatchTokenizerUtils {
         }
         System.out.println("Data has been written to the file.");
     }
-
+    
+    public static void encodeDeepSeekR1STFDatasetBPE(String dataPath, String outputPath, String vocabPath, String mergesPath, int maxLen) {
+        try {
+            File file = new File(outputPath);
+            FileWriter writer = new FileWriter(file);
+            Map<String, List> once = new HashMap<String, List>();
+            String line = null;
+            FileInputStream fis = new FileInputStream(dataPath);
+            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(fis));
+            BPETokenizer3 bpe = new BPETokenizer3(vocabPath, mergesPath);
+            int batchSize = 10000;
+            List<String> txtList = new ArrayList<String>();
+            String[] ids = new String[batchSize];
+            int i = 1;
+            while ((line = bufferedReader.readLine()) != null) {
+                String txt = null;
+                try {
+//                	System.out.println(line);
+                	once = JsonUtils.gson.fromJson(line, HashMap.class);
+                    List txts = once.get("messages");
+                    StringBuilder sb = new StringBuilder();
+                    //					sb.append("<s>system\n您好，我是人工智能机器人，请问有什么可以帮助您？</s>\n");
+                    String role = "user";
+                    for (int j = 0; j < txts.size(); j++) {
+                        if (j % 2 == 0) {
+                            role = "user";
+                        } else {
+                            role = "assistant";
+                        }
+                        Map<String, String> onceObj = (Map<String, String>) txts.get(j);
+                        txt = "<s>" + role + "\n" + onceObj.get("content") + "</s>\n";
+                        sb.append(txt);
+                    }
+                    txt = sb.toString();
+                } catch (Exception e) {
+                    // TODO: handle exception
+                    e.printStackTrace();
+                }
+                if (txt != null) {
+                    if (txt != null && !txt.equals("")) {
+                        txtList.add(txt);
+                    }
+                    if (i > 1 && i % batchSize == 0) {
+                        EncodeExMaxLen.encode(txtList, ids, bpe, maxLen, false);
+                        writeIn(txtList, ids, writer);
+                        txtList.clear();
+                    }
+                    System.out.println(i);
+                    i++;
+                }
+            }
+            if (txtList.size() > 0) {
+                EncodeExMaxLen.encode(txtList, ids, bpe, maxLen, false);
+                writeIn(txtList, ids, writer);
+            }
+            bufferedReader.close();
+            writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        System.out.println("Data has been written to the file.");
+    }
+    
     public static void encodeMonkeyDatasetByBPE(String dataPath, String outputPath, String vocabPath, String mergesPath) {
         try {
             File file = new File(outputPath);
@@ -279,7 +341,9 @@ public class BatchTokenizerUtils {
         System.out.println("writing.");
         for (int i = 0; i < txtList.size(); i++) {
             String txt = ids[i];
-            writer.write(txt + "\n");
+            if(!txt.equals("-1")) {
+            	 writer.write(txt + "\n");
+            }
         }
     }
 
@@ -635,13 +699,20 @@ public class BatchTokenizerUtils {
         //		String outputPath = "H:\\transformer_dataset\\pretrain_hq_6400.bin";
         //
         //		txt2bin(txtPath, outputPath, 1, 2);
-        int maxLen = 1024;
-        String dataPath = "I:\\dataset\\r1_mix_1024.jsonl";
-        String outputPath = "I:\\dataset\\r1_mix_1024.txt";
-        String vocabPath = "H:\\transformer_dataset\\6400\\6400_tokenizer\\vocab.json";
-        String mergesPath = "H:\\transformer_dataset\\6400\\6400_tokenizer\\merges.txt";
-        encodeDeepSeekFullSTFDatasetBPE(dataPath, outputPath, vocabPath, mergesPath, maxLen);
+//        int maxLen = 1024;
+//        String dataPath = "D:\\dataset\\llm\\qwen3_235b_thinking_2507_distill_110k.jsonl";
+//        String outputPath = "D:\\dataset\\llm\\r1_mix_1024.txt";
+//        String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
+//        String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
+//        encodeDeepSeekR1STFDatasetBPE(dataPath, outputPath, vocabPath, mergesPath, maxLen);
         
+        int maxLen = 1024;
+        String dataPath = "D:\\dataset\\llm\\qwen3_235b_thinking_2507_distill_110k.jsonl";
+        String outputPath = "D:\\dataset\\llm\\r1_mix_1024.txt";
+        String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
+        String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
+        encodeDeepSeekR1STFDatasetBPE(dataPath, outputPath, vocabPath, mergesPath, maxLen);
+    	
 //		String txtPath = "I:\\dataset\\r1_mix_1024.txt";
 //		String outputPath = "H:\\transformer_dataset\\r1_mix_1024.bin";		
 //		txt2bin(txtPath, outputPath, BinDataType.unint16, maxLen);

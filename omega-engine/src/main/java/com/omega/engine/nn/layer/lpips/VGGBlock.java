@@ -55,6 +55,10 @@ public class VGGBlock extends Layer {
     public void init() {
         this.number = this.network.number;
     }
+    
+    public void init(Tensor input) {
+        this.number = input.number;
+    }
 
     @Override
     public void initBack() {
@@ -171,17 +175,14 @@ public class VGGBlock extends Layer {
         // TODO Auto-generated method stub
         /**
          * 参数初始化
-
          */
-        this.init();
+        this.init(input);
         /**
          * 设置输入
-
          */
         this.setInput(input);
         /**
          * 计算输出
-
          */
         this.output();
     }

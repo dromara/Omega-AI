@@ -34,6 +34,7 @@ public class Tensor implements Serializable {
     public int gpuLength = 0;
     public float[] data;
     public float[] once;
+    public float[] hw;
     public int onceSize;
     private Pointer gpuData;
     private SerializablePointer shareGPU;
@@ -371,10 +372,10 @@ public class Tensor implements Serializable {
         this.height = height;
         this.width = width;
         this.dataLength = number * channel * height * width;
-        this.orgShape[0] = number;
-        this.orgShape[1] = channel;
-        this.orgShape[2] = height;
-        this.orgShape[3] = width;
+        this.getOrgShape()[0] = number;
+        this.getOrgShape()[1] = channel;
+        this.getOrgShape()[2] = height;
+        this.getOrgShape()[3] = width;
         return this;
     }
 
@@ -387,13 +388,13 @@ public class Tensor implements Serializable {
     }
 
     public Tensor viewOrg() {
-        this.number = orgShape[0];
-        this.channel = orgShape[1];
-        this.height = orgShape[2];
-        this.width = orgShape[3];
+        this.number = getOrgShape()[0];
+        this.channel = getOrgShape()[1];
+        this.height = getOrgShape()[2];
+        this.width = getOrgShape()[3];
         return this;
     }
-
+    
     public int[] shape() {
         return new int[]{this.number, this.channel, this.height, this.width};
     }
@@ -485,6 +486,11 @@ public class Tensor implements Serializable {
         System.arraycopy(data, n * channel * height * width, getOnce(), 0, channel * height * width);
         return this.once;
     }
+    
+    public float[] getBy(int n,int c) {
+        System.arraycopy(data, n * channel * height * width + c * height * width, getHW(), 0, height * width);
+        return this.hw;
+    }
 
     public float[] getByOffset(int start, int len) {
         float[] tmp = new float[len];
@@ -508,7 +514,7 @@ public class Tensor implements Serializable {
         System.arraycopy(data, start, getOnce(), 0, height * width);
         return this.once;
     }
-
+    
     public void setByNumberAndChannel(int n, int c, float[] x) {
         System.arraycopy(x, 0, data, n * channel * height * width + c * height * width, height * width);
     }
@@ -607,6 +613,11 @@ public class Tensor implements Serializable {
     public void showDMByNumber(int number) {
         syncHost();
         System.out.println(JsonUtils.toJson(this.getByNumber(number)));
+    }
+    
+    public void showDMBy(int number,int channel) {
+        syncHost();
+        System.out.println(JsonUtils.toJson(this.getBy(number, channel)));
     }
 
     public void checkDMByNumber(int number) {
@@ -977,6 +988,13 @@ public class Tensor implements Serializable {
         }
         return once;
     }
+    
+    public float[] getHW() {
+        if (this.hw == null || this.hw.length != height * width) {
+            this.hw = new float[height * width];
+        }
+        return hw;
+    }
 
     public Graph getG() {
         return g;
@@ -1002,6 +1020,14 @@ public class Tensor implements Serializable {
             return false;
         }
     }
+    
+    public boolean checkShape(int N, int C, int H, int W) {
+        if (this.number == N && this.channel == C && this.height == H && this.width == W) {
+            return true;
+        } else {
+            return false;
+        }
+    }
 
     public SerializablePointer getShareGPU() {
         return shareGPU;
@@ -1016,4 +1042,8 @@ public class Tensor implements Serializable {
     //		}
     //		Graph.backward();
     //	}
+
+	public int[] getOrgShape() {
+		return orgShape;
+	}
 }

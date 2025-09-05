@@ -526,31 +526,72 @@ public class VQVAETest {
 
     public static void anime_vqvae2_lpips_gandisc_32_nogan2() {
         try {
-            int batchSize = 3;
+            int batchSize = 16;
             int imageSize = 256;
-            int z_dim = 32;
+            int z_dim = 128;
             int latendDim = 4;
             int num_vq_embeddings = 512;
-            int num_res_blocks = 1;
+            int num_res_blocks = 2;
             int[] ch_mult = new int[]{1, 2, 2, 4};
             int ch = 32;
             float[] mean = new float[]{0.5f, 0.5f, 0.5f};
             float[] std = new float[]{0.5f, 0.5f, 0.5f};
-            //			String imgDirPath = "I:\\dataset\\sd-anime\\anime_op\\256\\";
-            String imgDirPath = "H:\\vae_dataset\\pokemon-blip\\dataset256\\";
+            String imgDirPath = "D:\\dataset\\amine\\256\\";
+//            String imgDirPath = "D:\\dataset\\pokemon\\dataset256\\";
+//            String imgDirPath = "/omega/dataset/256/";
             DiffusionImageDataLoader dataLoader = new DiffusionImageDataLoader(imgDirPath, imageSize, imageSize, batchSize, true, false, mean, std);
             VQVAE2 network = new VQVAE2(LossType.MSE, UpdaterType.adamw, z_dim, latendDim, num_vq_embeddings, imageSize, ch_mult, ch, num_res_blocks);
             network.CUDNN = true;
             network.gradCacheMode=true;
             network.learnRate = 0.001f;
             LPIPS lpips = new LPIPS(LossType.MSE, UpdaterType.adamw, imageSize);
-            String lpipsWeight = "H:\\model\\lpips.json";
+            String lpipsWeight = "D:\\models\\lpips.json";
+            LPIPSTest.loadLPIPSWeight(LagJsonReader.readJsonFileSmallWeight(lpipsWeight), lpips, false);
+            lpips.CUDNN = true;
+            
+            String model_path = "/omega/models/anime_vqvae_256_v1.0.model";
+            ModelUtils.loadModel(network, model_path);
+            
+            MBSGDOptimizer optimizer = new MBSGDOptimizer(network, 500, 0.00001f, batchSize, LearnRateUpdate.CONSTANT, false);
+            //			optimizer.lr_step = new int[] {50, 100, 150, 200, 250, 300, 350, 400, 450};
+            optimizer.trainVQVAE2_lpips_nogan(dataLoader, lpips, "D:\\test\\vae\\256\\");
+            String save_model_path = "/omega/models/anime_vqvae_256_v1.0.model";
+            ModelUtils.saveModel(network, save_model_path);
+            //			ModelUtils.loadModel(network, save_model_path);
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public static void pokemon_vqvae2_lpips_gandisc_32_nogan2() {
+        try {
+            int batchSize = 8;
+            int imageSize = 256;
+            int z_dim = 32;
+            int latendDim = 4;
+            int num_vq_embeddings = 512;
+            int num_res_blocks = 2;
+            int[] ch_mult = new int[]{1, 2, 2, 4};
+            int ch = 32;
+            float[] mean = new float[]{0.5f, 0.5f, 0.5f};
+            float[] std = new float[]{0.5f, 0.5f, 0.5f};
+//            String imgDirPath = "I:\\dataset\\sd-anime\\anime_op\\256\\";
+            String imgDirPath = "D:\\dataset\\pokemon\\dataset256\\";
+//            String imgDirPath = "/omega/dataset/256/";
+            DiffusionImageDataLoader dataLoader = new DiffusionImageDataLoader(imgDirPath, imageSize, imageSize, batchSize, true, false, mean, std);
+            VQVAE2 network = new VQVAE2(LossType.MSE, UpdaterType.adamw, z_dim, latendDim, num_vq_embeddings, imageSize, ch_mult, ch, num_res_blocks);
+            network.CUDNN = true;
+            network.gradCacheMode=true;
+            network.learnRate = 0.001f;
+            LPIPS lpips = new LPIPS(LossType.MSE, UpdaterType.adamw, imageSize);
+            String lpipsWeight = "D:\\models\\lpips.json";
             LPIPSTest.loadLPIPSWeight(LagJsonReader.readJsonFileSmallWeight(lpipsWeight), lpips, false);
             lpips.CUDNN = true;
             MBSGDOptimizer optimizer = new MBSGDOptimizer(network, 500, 0.00001f, batchSize, LearnRateUpdate.CONSTANT, false);
             //			optimizer.lr_step = new int[] {50, 100, 150, 200, 250, 300, 350, 400, 450};
-            optimizer.trainVQVAE2_lpips_nogan(dataLoader, lpips);
-            String save_model_path = "H:\\model\\pokemon_vqvae2_256.model";
+            optimizer.trainVQVAE2_lpips_nogan(dataLoader, lpips, "D:\\test\\vae\\256\\");
+            String save_model_path = "/omega/models/anime_vqvae_256_v1.0.model";
             ModelUtils.saveModel(network, save_model_path);
             //			ModelUtils.loadModel(network, save_model_path);
         } catch (Exception e) {
@@ -588,7 +629,7 @@ public class VQVAETest {
             
             MBSGDOptimizer optimizer = new MBSGDOptimizer(network, 500, 0.00001f, batchSize, LearnRateUpdate.CONSTANT, false);
             //			optimizer.lr_step = new int[] {50, 100, 150, 200, 250, 300, 350, 400, 450};
-            optimizer.trainVQVAE2_lpips_nogan(dataLoader, lpips);
+            optimizer.trainVQVAE2_lpips_nogan(dataLoader, lpips, "D:\\test\\vae\\256\\");
             String save_model_path = "H:\\model\\pokemon_vqvae2_256.model";
             ModelUtils.saveModel(network, save_model_path);
             //			ModelUtils.loadModel(network, save_model_path);
@@ -600,25 +641,24 @@ public class VQVAETest {
     
     public static void anime_vqvae2_lpips_gandisc_32_gan2() {
         try {
-            int batchSize = 16;
+            int batchSize = 8;
             int imageSize = 256;
-//            int z_dims = 32;
+            int z_dims = 64;
             int latendDim = 4;
             int num_vq_embeddings = 512;
             int num_res_blocks = 2;
             int[] ch_mult = new int[]{1, 2, 2, 4};
-            int ch = 32;
+            int ch = 64;
             float[] mean = new float[]{0.5f, 0.5f, 0.5f};
             float[] std = new float[]{0.5f, 0.5f, 0.5f};
-            //			String imgDirPath = "I:\\dataset\\sd-anime\\anime_op\\256\\";
-            String imgDirPath = "/omega/dataset/images_256_256/";
+            String imgDirPath = "D:\\dataset\\amine\\256\\";
             DiffusionImageDataLoader dataLoader = new DiffusionImageDataLoader(imgDirPath, imageSize, imageSize, batchSize, true, false, mean, std);
-            VQVAE2 network = new VQVAE2(LossType.MSE, UpdaterType.adamw, latendDim, num_vq_embeddings, imageSize, ch_mult, ch, num_res_blocks);
+            VQVAE2 network = new VQVAE2(LossType.MSE, UpdaterType.adamw, z_dims, latendDim, num_vq_embeddings, imageSize, ch_mult, ch, num_res_blocks);
             network.CUDNN = true;
             network.gradCacheMode=true;
             network.learnRate = 0.0001f;
             LPIPS lpips = new LPIPS(LossType.MSE, UpdaterType.adamw, imageSize);
-            String lpipsWeight = "/omega/models/lpips.json";
+            String lpipsWeight = "D:\\models\\lpips.json";
             LPIPSTest.loadLPIPSWeight(LagJsonReader.readJsonFileSmallWeight(lpipsWeight), lpips, false);
             lpips.CUDNN = true;
             int[] convChannels = new int[]{3, 64, 128, 256, 256, 1};
@@ -630,7 +670,7 @@ public class VQVAETest {
             discriminator.learnRate = 0.0001f;
             MBSGDOptimizer optimizer = new MBSGDOptimizer(network, 200, 0.00001f, batchSize, LearnRateUpdate.CONSTANT, false);
             //			optimizer.lr_step = new int[] {50, 100, 150, 200, 250, 300, 350, 400, 450};
-            optimizer.trainVQVAE2_lpips_patchGANDisc(dataLoader, lpips, discriminator, 20000);
+            optimizer.trainVQVAE2_lpips_patchGANDisc(dataLoader, lpips, discriminator, 200000);
             String save_model_path = "/omega/models/anime_vqvae2_256.model";
             ModelUtils.saveModel(network, save_model_path);
             //			ModelUtils.loadModel(network, save_model_path);
@@ -657,6 +697,8 @@ public class VQVAETest {
 //            anime_vqvae2_lpips_gandisc_32_nogan2();
 //            anime_vqvae2_lpips_gandisc_32_nogan2();
         	anime_vqvae2_lpips_gandisc_32_nogan2();
+//        	anime_vqvae2_lpips_gandisc_32_gan2();
+//        	pokemon_vqvae2_lpips_gandisc_32_nogan2();
 //            anime_vqvae2_lpips_hight();
         } catch (Exception e) {
             // TODO: handle exception

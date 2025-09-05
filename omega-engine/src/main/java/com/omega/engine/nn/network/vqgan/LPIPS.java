@@ -92,7 +92,6 @@ public class LPIPS extends Network {
     public Tensor forward(Tensor input, Tensor label) {
         /**
          * 设置输入数据
-
          */
         this.setInputData(input);
         inputLayer.forward();

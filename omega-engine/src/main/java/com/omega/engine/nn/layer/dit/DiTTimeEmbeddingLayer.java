@@ -52,7 +52,7 @@ public class DiTTimeEmbeddingLayer extends Layer {
             int T = 1000;
             int d_model = 4;
             int dim = d_model * 4;
-            float[] data = new float[]{100, 200};
+            float[] data = new float[]{40, 200};
             Tensor input = new Tensor(N, 1, 1, 1, data, true);
             float[] data2 = MatrixUtils.order(N * dim, 0.01f, 0.01f);
             Tensor delta = new Tensor(N, 1, 1, dim, data2, true);
@@ -120,6 +120,7 @@ public class DiTTimeEmbeddingLayer extends Layer {
     public void output() {
         // TODO Auto-generated method stub
     	emb.forward(input);
+//    	emb.getOutput().showDM("emb");
         linear1.forward(emb.getOutput());
         //		linear1.getOutput().showDM();
         act.forward(linear1.getOutput());

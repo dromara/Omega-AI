@@ -1,5 +1,8 @@
 package com.omega.engine.nn.layer.normalization;
 
+import java.io.IOException;
+import java.io.RandomAccessFile;
+
 import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -9,9 +12,6 @@ import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.utils.ModelUtils;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
-
-import java.io.IOException;
-import java.io.RandomAccessFile;
 
 /**
  * RMS Normalization Layer
@@ -77,6 +77,20 @@ public class RMSLayer extends NormalizationLayer {
         this.hasBias = false;
         network.paramLayers.add(this);
         this.setUpdater(UpdaterFactory.create(this.network));
+    }
+    
+    public RMSLayer(int channel, int height, int width, boolean hasParams, BNType bnType, Network network) {
+    	this.network = network;
+		this.setUpdater(UpdaterFactory.create(this.network));
+        this.channel = channel;
+        this.height = height;
+        this.width = width;
+        this.oChannel = this.channel;
+        this.oHeight = this.height;
+        this.oWidth = this.width;
+        this.bnType = bnType;
+        this.hasParams = hasParams;
+        this.meanNum = width;
     }
 
     @Override
@@ -146,7 +160,34 @@ public class RMSLayer extends NormalizationLayer {
             this.output = Tensor.createGPUTensor(this.output, number, oChannel, oHeight, oWidth, true);
         }
     }
-
+    
+    public void init(int channel,int height,int width, BNType bnType) {
+    	this.channel = channel;
+        this.height = height;
+        this.width = width;
+        this.oChannel = this.channel;
+        this.oHeight = this.height;
+        this.oWidth = this.width;
+        this.setBnType(bnType);
+        if (bnType == BNType.fully_bn) {
+            this.meanNum = this.channel * this.height * this.width;
+        } else {
+            this.meanNum = this.height * this.width;
+        }
+        if (kernel == null) {
+            kernel = new RMSKernel(width, bnType, cuda());
+        }
+        if (this.gamma == null) {
+            this.gamma = new Tensor(1, 1, 1, meanNum, MatrixUtils.one(this.meanNum), true);
+            if (network != null) {
+                this.diffGamma = this.network.createParamterGrad(1, 1, 1, meanNum, true);
+            } else {
+                this.diffGamma = new Tensor(1, 1, 1, meanNum, true);
+            }
+        }
+       
+    }
+    
     @Override
     public void initParam() {
         // TODO Auto-generated method stub
@@ -340,6 +381,26 @@ public class RMSLayer extends NormalizationLayer {
          */
         this.output();
     }
+    
+    public void forward(Tensor input,Tensor output) {
+        // TODO Auto-generated method stub
+        this.output = output;
+        /**
+         * 参数初始化
+         *
+         */
+        this.init(input);
+        /**
+         * 设置输入
+         *
+         */
+        this.setInput(input);
+        /**
+         * 计算输出
+         *
+         */
+        this.output();
+    }
 
     @Override
     public void back(Tensor delta) {
@@ -366,7 +427,9 @@ public class RMSLayer extends NormalizationLayer {
     }
 
     public void saveModel(RandomAccessFile outputStream) throws IOException {
-        ModelUtils.saveParams(outputStream, gamma);
+    	if(hasParams) {
+    		ModelUtils.saveParams(outputStream, gamma);
+    	}
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
@@ -374,6 +437,14 @@ public class RMSLayer extends NormalizationLayer {
         ModelUtils.loadParams(inputStream, gamma);
     }
 
+    public void loadModel(RandomAccessFile inputStream, int channel, int height, int width, BNType bnType) throws IOException {
+    	if(hasParams) {
+	        init(channel, height, width, bnType);
+	        ModelUtils.loadParams(inputStream, gamma);
+    	}
+    }
+
+    
     public void putParamters() {
         init();
         this.network.addPamamter(gamma);

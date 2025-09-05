@@ -3,12 +3,12 @@
          xmlns="http://maven.apache.org/POM/4.0.0"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-
     <parent>
         <groupId>io.gitee.iangellove</groupId>
         <artifactId>omega-ai</artifactId>
         <version>${revision}</version>
     </parent>
+
     <groupId>io.gitee.iangellove</groupId>
     <artifactId>omega-engine-v4-gpu</artifactId>
     <name>omega-engine-v4-gpu</name>
@@ -16,7 +16,12 @@
     <url>https://gitee.com/iangellove/omega-ai</url>
 
     <properties>
-        <jcuda.version>11.7.0</jcuda.version>
+        <java.version>17</java.version>
+        <jcuda.version>11.8.0</jcuda.version>
+        <javacv.version>1.5.4</javacv.version>
+        <ffmpeg.version>4.3.1-1.5.4</ffmpeg.version>
+        <opencv.version>4.4.0-1.5.4</opencv.version>
+        <openblas.version>0.3.10-1.5.4</openblas.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <resource.delimiter>@</resource.delimiter>
@@ -126,7 +131,51 @@
             <artifactId>hutool-all</artifactId>
             <version>5.7.16</version>
         </dependency>
-        <!-- 可选配置 -->
+
+        <!-- javacv 完整依赖  如果遇到环境问题 将下面 JavaCV  Openblas FFmpeg OpenCV相关依赖注释掉  采用这个 -->
+        <!--
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>javacv-platform</artifactId>
+            <version>1.5.4</version>
+        </dependency>
+        -->
+        <!-- JavaCV 核心 -->
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>javacv</artifactId>
+            <version>${javacv.version}</version>
+        </dependency>
+        <!-- Openblas 核心 -->
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>openblas-platform</artifactId>
+            <version>${openblas.version}</version>
+        </dependency>
+        <!-- FFmpeg 核心 -->
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>ffmpeg</artifactId>
+            <version>${ffmpeg.version}</version>
+        </dependency>
+        <!-- FFmpeg 本地库 -->
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>ffmpeg-platform</artifactId>
+            <version>${ffmpeg.version}</version>
+        </dependency>
+        <!-- OpenCV 核心 -->
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>opencv</artifactId>
+            <version>${opencv.version}</version>
+        </dependency>
+        <!-- OpenCV 本地库  -->
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>opencv-platform</artifactId>
+            <version>${opencv.version}</version>
+        </dependency>
 
     </dependencies>
 

@@ -1,4 +1,4 @@
-package com.omega.engine.nn.network;
+package com.omega.engine.nn.network.dit;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -10,7 +10,10 @@ import com.omega.engine.loss.gpu.SmoothL1Kernel;
 import com.omega.engine.nn.layer.InputLayer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.SoftmaxWithCrossEntropyLayer;
-import com.omega.engine.nn.layer.dit.DiTOrgMoudue_SRA;
+import com.omega.engine.nn.layer.dit.DiTOrgMoudue2;
+import com.omega.engine.nn.network.Network;
+import com.omega.engine.nn.network.NetworkType;
+import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 
@@ -22,7 +25,7 @@ import jcuda.runtime.JCuda;
  *
  * @author Administrator
  */
-public class DiT_ORG_SRA extends Network {
+public class DiT_ORG2 extends Network {
 	
     public int inChannel;
     public int width;
@@ -30,23 +33,23 @@ public class DiT_ORG_SRA extends Network {
     public int patchSize;
     public int maxContextLen;
     public int hiddenSize;
-    public int depth;
+    private int depth;
     private int timeSteps;
     public int headNum;
     private int textEmbedDim;
     private int mlpRatio = 4;
-    
-    private int ad;
-    
     private boolean learnSigma = true;
-    private boolean qkNorm = true;
+    
+    private float y_drop_prob = 0.0f;
     
     private InputLayer inputLayer;
-    public DiTOrgMoudue_SRA main;
+    public DiTOrgMoudue2 main;
+    
+    private int ad = 0;
     
     private SmoothL1Kernel smoothL1Kernel;
     
-    public DiT_ORG_SRA(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio, int ad,boolean learnSigma,boolean qkNorm) {
+    public DiT_ORG2(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio,boolean learnSigma, float y_drop_prob) {
         this.lossFunction = LossFactory.create(lossType, this);
         this.updater = updater;
         this.inChannel = inChannel;
@@ -61,30 +64,54 @@ public class DiT_ORG_SRA extends Network {
         this.maxContextLen = maxContextLen;
         this.mlpRatio = mlpRatio;
         this.learnSigma = learnSigma;
-        this.qkNorm = qkNorm;
-        this.ad = ad;
+        this.y_drop_prob = y_drop_prob;
         this.time = (width / patchSize) * (height / patchSize);
         initLayers();
     }
     
-    public void setXRDelta(Tensor xrDelta) {
-    	main.ap_head.back(xrDelta);
-    }
-    
-    public Tensor getXR() {
-    	return main.xr;
+    public DiT_ORG2(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio,boolean learnSigma, float y_drop_prob, int ad) {
+        this.lossFunction = LossFactory.create(lossType, this);
+        this.updater = updater;
+        this.ad = ad;
+        this.inChannel = inChannel;
+        this.width = width;
+        this.height = height;
+        this.patchSize = patchSize;
+        this.headNum = headNum;
+        this.hiddenSize = hiddenSize;
+        this.depth = depth;
+        this.timeSteps = timeSteps;
+        this.textEmbedDim = textEmbedDim;
+        this.maxContextLen = maxContextLen;
+        this.mlpRatio = mlpRatio;
+        this.learnSigma = learnSigma;
+        this.y_drop_prob = y_drop_prob;
+        this.time = (width / patchSize) * (height / patchSize);
+        initLayers();
     }
 
     public void initLayers() {
     	
         this.inputLayer = new InputLayer(inChannel, height, width);
         
-        main = new DiTOrgMoudue_SRA(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, maxContextLen, textEmbedDim, mlpRatio, ad, learnSigma, true, qkNorm, this);// boolean hasBias, boolean qkNorm
+        if(ad > 0) {
+        	main = new DiTOrgMoudue2(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, maxContextLen, textEmbedDim, mlpRatio, learnSigma, y_drop_prob, true, ad, this);
+        }else {
+            main = new DiTOrgMoudue2(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, maxContextLen, textEmbedDim, mlpRatio, learnSigma, y_drop_prob, this);
+        }
         
         this.addLayer(inputLayer);
         this.addLayer(main);
     }
-
+    
+    public Tensor getXR() {
+    	return main.xr;
+    }
+    
+    public void setXRDelta(Tensor xrDelta) {
+    	main.ap_head.back(xrDelta);
+    }
+    
     @Override
     public void init() throws Exception {
         // TODO Auto-generated method stub
@@ -255,6 +282,16 @@ public class DiT_ORG_SRA extends Network {
     	main.loadModel(inputStream);
         System.out.println("tail load success...");
     }
+
+    @Override
+    public void putParamters() {
+        // TODO Auto-generated method stub
+    }
+
+    @Override
+    public void putParamterGrads() {
+        // TODO Auto-generated method stub
+    }
     
     public Tensor smoothL1(Tensor s,Tensor t,Tensor alignLoss,float beta) {
     	smoothL1Kernel.forward(s, t, alignLoss, beta);
@@ -264,16 +301,6 @@ public class DiT_ORG_SRA extends Network {
     public Tensor smoothL1Back(Tensor s,Tensor t,Tensor sxrDiff,float beta) {
     	smoothL1Kernel.backward(s, t, sxrDiff, beta);
     	return sxrDiff;
-    }
-    
-    @Override
-    public void putParamters() {
-        // TODO Auto-generated method stub
-    }
-
-    @Override
-    public void putParamterGrads() {
-        // TODO Auto-generated method stub
     }
     
 }

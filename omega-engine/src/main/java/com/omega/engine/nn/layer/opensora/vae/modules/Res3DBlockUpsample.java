@@ -2,14 +2,19 @@ package com.omega.engine.nn.layer.opensora.vae.modules;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.Map;
 
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.ParamsInit;
 import com.omega.engine.nn.layer.active.SiLULayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
+import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
  * Res3DBlockUpsample
@@ -107,16 +112,65 @@ public class Res3DBlockUpsample extends Layer {
     @Override
     public void diff() {
         // TODO Auto-generated method stub
-    	act2.back(delta);
+    	act2.back(delta, act2.getOutput());
     	norm2.back(act2.diff);
     	conv2.back(norm2.diff);
-        
+
     	act1.back(conv2.diff);
     	norm1.back(act1.diff);
     	conv1.back(norm1.diff);
+
     	Tensor_OP().add(conv1.diff, act2.diff, conv1.diff);
-    	
+
     	this.diff = conv1.diff;
+    }
+    
+    public static void main(String[] args) {
+        int N = 2;
+        int C = 32;
+        int F = 17;
+        int H = 32;
+        int W = 32;
+        
+        float[] data = RandomUtils.order(N * C * F * H * W, 0.01f, 0.01f);
+        Tensor input = new Tensor(N, C * F, H, W, data, true);
+        Transformer nn = new Transformer();
+        nn.CUDNN = true;
+        nn.number = N;
+        
+        Res3DBlockUpsample block = new Res3DBlockUpsample(C, F, H, W, nn);
+        
+    	String path = "H:\\model\\Res3DBlockUpsample.json";
+    	loadWeight(LagJsonReader.readJsonFileSmallWeight(path), block, true);
+        
+    	block.forward(input);
+    	
+    	block.getOutput().showDM("output");
+    	
+        float[] data2 = RandomUtils.order(N * C * F * H * W, 0.001f, 0.001f);
+        Tensor delta = new Tensor(N, C * F, H, W, data2, true);
+        
+        block.back(delta);
+    	
+        block.diff.showDM();
+    }
+    
+    public static void loadWeight(Map<String, Object> weightMap, Res3DBlockUpsample block, boolean showLayers) {
+        if (showLayers) {
+            for (String key : weightMap.keySet()) {
+                System.out.println(key);
+            }
+        }
+        
+        ClipModelUtils.loadData(block.conv1.weight, weightMap, "conv1.conv.weight", 5);
+        ClipModelUtils.loadData(block.conv1.bias, weightMap, "conv1.conv.bias");
+        block.norm1.norm.gamma = ClipModelUtils.loadData(block.norm1.norm.gamma, weightMap, 1, "norm1.weight");
+    	block.norm1.norm.beta = ClipModelUtils.loadData(block.norm1.norm.beta, weightMap, 1, "norm1.bias");
+    	ClipModelUtils.loadData(block.conv2.weight, weightMap, "conv2.conv.weight", 5);
+        ClipModelUtils.loadData(block.conv2.bias, weightMap, "conv2.conv.bias");
+        block.norm2.norm.gamma = ClipModelUtils.loadData(block.norm2.norm.gamma, weightMap, 1, "norm2.weight");
+    	block.norm2.norm.beta = ClipModelUtils.loadData(block.norm2.norm.beta, weightMap, 1, "norm2.bias");
+
     }
 
     @Override

@@ -2,7 +2,7 @@ package com.omega.example.opensora.vae.test;
 
 import java.util.Map;
 
-import com.omega.common.utils.MatrixUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.layer.opensora.vae.modules.AttentionBlock3D;
@@ -202,8 +202,8 @@ public class VideoVAETest {
             
         	int batchSize = 2;
         	int channel = 3;
-        	int numFrames = 17;
-            int imageSize = 32;
+        	int numFrames = 9;
+            int imageSize = 256;
             int latendDim = 8;
             int num_res_blocks = 1;
             int[] ch_mult = new int[]{1, 2, 2, 4};
@@ -212,34 +212,37 @@ public class VideoVAETest {
         	OpenSoraVAE network = new OpenSoraVAE(LossType.MSE, UpdaterType.adamw, latendDim, numFrames, imageSize, ch_mult, ch, num_res_blocks);
         	network.CUDNN = true;
         	
-        	String inputPath = "H:\\model\\input.json";
-        	Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
-        	Tensor input = new Tensor(batchSize, channel * numFrames, imageSize, imageSize, true);
-        	ClipModelUtils.loadData(input, datas, "x", 5);
+//        	String inputPath = "D:\\models\\input.json";
+//        	Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
+//        	Tensor input = new Tensor(batchSize, channel * numFrames, imageSize, imageSize, true);
+//        	ClipModelUtils.loadData(input, datas, "x", 5);
         	
-        	String inputZPath = "H:\\model\\input_z.json";
-        	Map<String, Object> zdatas = LagJsonReader.readJsonFileSmallWeight(inputZPath);
-        	Tensor input_z = new Tensor(batchSize, 40, 4, 4, true);
-        	ClipModelUtils.loadData(input_z, zdatas, "z", 5);
+//        	String inputZPath = "D:\\models\\d_delta.json";
+//        	Map<String, Object> zdatas = LagJsonReader.readJsonFileSmallWeight(inputZPath);
+//        	Tensor input_z = new Tensor(batchSize, channel * numFrames, imageSize, imageSize, true);
+//        	ClipModelUtils.loadData(input_z, zdatas, "d_delta", 5);
         	
-        	input.showDM("x:");
-        	
-        	String path = "H:\\model\\opensora_vae.json";
+        	String path = "D:\\models\\opensora_vae.json";
         	loadWeight(LagJsonReader.readJsonFileSmallWeight(path), network, true);
+        	
+        	int dataLen = batchSize * channel * numFrames * imageSize * imageSize;
+        	Tensor input = new Tensor(batchSize, channel * numFrames, imageSize, imageSize, RandomUtils.gaussianRandom(dataLen, 0.0f, 1.0f), true);
+
+//        	input.showDM("x:");
         	
         	network.forward(input);
         	network.getOutput().showDM();
         	
-//        	Opensora_LPIPS lpips = new Opensora_LPIPS(LossType.MSE, UpdaterType.adamw, imageSize);
-//            String lpipsWeight = "H:\\model\\opensora_lpips.json";
-//            LPIPSTest.loadLPIPSWeight(LagJsonReader.readJsonFileSmallWeight(lpipsWeight), lpips, true);
-//        	
-//        	network.forward(input, input_z);
+        	Opensora_LPIPS lpips = new Opensora_LPIPS(LossType.MSE, UpdaterType.adamw, imageSize);
+            String lpipsWeight = "D:\\models\\opensora_lpips.json";
+            LPIPSTest.loadLPIPSWeight(LagJsonReader.readJsonFileSmallWeight(lpipsWeight), lpips, true);
+            
+        	float totalLoss = network.totalLoss(network.getOutput(), input, lpips);
+
+        	System.err.println("totalLoss:"+totalLoss);
+        	network.getOutput().showDM();
         	
-//        	float totalLoss = network.totalLoss(network.getOutput(), input, lpips);
-//        	network.back(input);
-//        	System.err.println("totalLoss:"+totalLoss);
-//        	network.getOutput().showDM();
+        	network.back();
         	
         } catch (Exception e) {
             // TODO: handle exception

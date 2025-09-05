@@ -27,7 +27,30 @@ public class CUDAMemoryManager {
     public static Map<String, Tensor> caches = new HashMap<String, Tensor>();
     private List<Pointer> porints = new ArrayList<Pointer>();
     private Map<String, Tensor> privateCaches = new HashMap<String, Tensor>();
-
+    
+    public synchronized static Tensor getCache(String key, int[] shape) {
+        Tensor c = null;
+        int N = shape[0];
+        int C = shape[1];
+        int H = shape[2];
+        int W = shape[3];
+        if (caches.containsKey(key)) {
+            c = caches.get(key);
+            //			System.err.println("["+key+"]"+c.gpuLength+":["+N+":"+C+":"+H+":"+W+"]:"+N * C * H * W);
+            if (c.gpuLength < N * C * H * W) {
+                c = Tensor.createGPUTensor(c, N, C, H, W, true);
+            } else {
+                c = c.viewOrg(N, C, H, W);
+            }
+        } else {
+            //			System.err.println("["+key+"]:"+N * C * H * W);
+            c = Tensor.createGPUTensor(c, N, C, H, W, true);
+            caches.put(key, c);
+        }
+        //		JCuda.cudaDeviceSynchronize();
+        return c;
+    }
+    
     public synchronized static Tensor getCache(String key, int N, int C, int H, int W) {
         Tensor c = null;
         if (caches.containsKey(key)) {
@@ -88,6 +111,7 @@ public class CUDAMemoryManager {
 
     public synchronized static Pointer getPointer(int size) {
         Pointer p = new Pointer();
+//        System.err.println(size * (long) Sizeof.FLOAT);
         checkCUDA(cudaMalloc(p, size * (long) Sizeof.FLOAT), p.toString(), size * (long) Sizeof.FLOAT);
         cu_porints.add(p);
         return p;
