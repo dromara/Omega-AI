@@ -41,7 +41,7 @@ public class LibPaths {
                             copyJarCuToOut(jarPath,destDir, true);
                         }
 
-                        LIB_PATH = destDir + File.separator + "cu";
+                        LIB_PATH = destDir + File.separator + "cu" + File.separator;
                     }else{
                         System.out.println("JAR 文件路径为空");
                     }
