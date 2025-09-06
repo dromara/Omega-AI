@@ -1,3 +1,12 @@
-model:
-  path:
-   - F:\LLM\llama3
+spring:
+  thymeleaf:
+    prefix: classpath:/templates/
+    suffix: .html
+    cache: false
+    encoding: utf-8
+server:
+  tomcat:
+    connection-timeout: 600000
+#model:
+#  path:
+#   - F:\LLM\llama3

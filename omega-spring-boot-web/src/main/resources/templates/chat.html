@@ -1,0 +1,799 @@
+<!-- src/main/resources/templates/chat.html -->
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>大模型聊天窗口</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', 'Microsoft YaHei', Tahoma, Geneva, Verdana, sans-serif;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #e0e0e0;
+      position: relative;
+      overflow: hidden;
+      background: #0f1120;
+    }
+
+    /* 科技感背景 */
+    .tech-background {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background:
+              radial-gradient(ellipse at center, rgba(30, 35, 80, 0.8) 0%, rgba(15, 20, 50, 0.9) 70%, #0a0c1a 100%),
+              linear-gradient(0deg, transparent 0%, rgba(40, 50, 120, 0.2) 50%, transparent 100%);
+      z-index: -2;
+    }
+
+    /* 网格背景 */
+    .grid-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image:
+              linear-gradient(rgba(50, 80, 180, 0.15) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(50, 80, 180, 0.15) 1px, transparent 1px);
+      background-size: 30px 30px;
+      z-index: -1;
+      animation: gridMove 20s linear infinite;
+    }
+
+    @keyframes gridMove {
+      0% { transform: translate(0, 0); }
+      100% { transform: translate(30px, 30px); }
+    }
+
+    /* 浮动粒子效果 */
+    .particles {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+    }
+
+    .particle {
+      position: absolute;
+      background: rgba(100, 180, 255, 0.7);
+      border-radius: 50%;
+      box-shadow: 0 0 10px 2px rgba(100, 180, 255, 0.9);
+      animation: float 15s infinite linear;
+    }
+
+    @keyframes float {
+      0% {
+        transform: translateY(0) translateX(0);
+        opacity: 0;
+      }
+      10% {
+        opacity: 1;
+      }
+      90% {
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(-100vh) translateX(100px);
+        opacity: 0;
+      }
+    }
+
+    /* 光晕效果 */
+    .glow {
+      position: absolute;
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(100, 150, 255, 0.4), transparent 70%);
+      filter: blur(30px);
+      z-index: -1;
+    }
+
+    .glow-1 {
+      top: 10%;
+      left: 10%;
+      background: radial-gradient(circle, rgba(100, 150, 255, 0.5), transparent 70%);
+    }
+
+    .glow-2 {
+      bottom: 15%;
+      right: 15%;
+      background: radial-gradient(circle, rgba(180, 100, 255, 0.5), transparent 70%);
+    }
+
+    .glow-3 {
+      top: 40%;
+      right: 20%;
+      background: radial-gradient(circle, rgba(100, 220, 255, 0.4), transparent 70%);
+    }
+
+    /* 扫描线效果 */
+    .scan-line {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 10px;
+      background: rgba(100, 180, 255, 0.4);
+      box-shadow: 0 0 20px 5px rgba(100, 180, 255, 0.6);
+      animation: scan 8s linear infinite;
+      z-index: -1;
+    }
+
+    @keyframes scan {
+      0% { top: 0; }
+      100% { top: 100%; }
+    }
+
+    .chat-container {
+      width: 90%;
+      max-width: 1200px;
+      height: 85vh;
+      background: rgba(30, 35, 70, 0.9);
+      border-radius: 15px;
+      box-shadow:
+              0 0 30px rgba(100, 150, 255, 0.4),
+              0 0 60px rgba(30, 40, 100, 0.6),
+              inset 0 0 20px rgba(100, 180, 255, 0.2);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+      z-index: 1;
+      border: 1px solid rgba(100, 150, 255, 0.4);
+      backdrop-filter: blur(10px);
+    }
+
+    /* 边框发光效果 */
+    .chat-container::before {
+      content: "";
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      right: -2px;
+      bottom: -2px;
+      background: linear-gradient(45deg, #5a10f0, #9e3df2, #00d2ff, #a0f0ff);
+      border-radius: 17px;
+      z-index: -1;
+      animation: borderGlow 3s linear infinite;
+      background-size: 300% 300%;
+    }
+
+    @keyframes borderGlow {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .chat-header {
+      background: rgba(40, 50, 100, 0.95);
+      color: #f0f8ff;
+      padding: 12px;
+      text-align: center;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      position: relative;
+      border-bottom: 1px solid rgba(100, 150, 255, 0.4);
+    }
+
+    .chat-header h1 {
+      font-size: 1.2rem;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      text-shadow: 0 0 10px rgba(100, 180, 255, 0.8);
+    }
+
+    .chat-header p {
+      font-size: 0.75rem;
+      opacity: 0.9;
+      margin-top: 2px;
+    }
+
+    /* 模型选择下拉框样式 */
+    .model-selector-container {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .model-selector-label {
+      color: #c0d8ff;
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-shadow: 0 0 5px rgba(100, 180, 255, 0.6);
+    }
+
+    .model-selector {
+      background: rgba(50, 60, 120, 0.8);
+      border: 1px solid rgba(100, 150, 255, 0.6);
+      border-radius: 16px;
+      padding: 5px 10px;
+      color: #f0f8ff;
+      font-size: 0.75rem;
+      outline: none;
+      backdrop-filter: blur(5px);
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 0 10px rgba(100, 150, 255, 0.3);
+    }
+
+    .model-selector:hover {
+      background: rgba(60, 80, 160, 0.8);
+      border-color: rgba(120, 180, 255, 0.9);
+      box-shadow: 0 0 15px rgba(100, 150, 255, 0.5);
+    }
+
+    .model-selector:focus {
+      background: rgba(70, 90, 180, 0.9);
+      border-color: rgba(140, 200, 255, 1);
+      box-shadow: 0 0 20px rgba(100, 150, 255, 0.7);
+    }
+
+    .model-selector option {
+      background: #2a3050;
+      color: #f0f8ff;
+    }
+
+    .chat-window {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      background: rgba(20, 25, 50, 0.8);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .messages-container {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
+    }
+
+    .message {
+      max-width: 85%;
+      padding: 6px 10px;
+      border-radius: 10px;
+      position: relative;
+      animation: fadeIn 0.3s ease-out;
+      line-height: 1.4;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid transparent;
+    }
+
+    .message::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, transparent 100%);
+      z-index: -1;
+      border-radius: 10px;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(5px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .user-message {
+      background: linear-gradient(135deg, rgba(60, 80, 160, 0.8), rgba(40, 50, 120, 0.8));
+      color: #f0f8ff;
+      align-self: flex-end;
+      border-bottom-right-radius: 3px;
+      border-color: rgba(100, 150, 255, 0.4);
+      box-shadow: 0 2px 6px rgba(30, 50, 140, 0.5);
+    }
+
+    .ai-message {
+      background: linear-gradient(135deg, rgba(40, 50, 100, 0.8), rgba(25, 35, 80, 0.8));
+      color: #d0e0ff;
+      align-self: flex-start;
+      border-bottom-left-radius: 3px;
+      border-color: rgba(100, 150, 255, 0.3);
+      box-shadow: 0 2px 6px rgba(20, 30, 80, 0.4);
+    }
+
+    .message-header {
+      font-weight: 600;
+      margin-bottom: 2px;
+      font-size: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .user-message .message-header {
+      color: #b0d0ff;
+    }
+
+    .ai-message .message-header {
+      color: #90c0ff;
+    }
+
+    .model-icon {
+      font-size: 0.8rem;
+    }
+
+    .message-content {
+      font-size: 0.9rem;
+      /* white-space: pre-wrap; */
+      word-break: break-word;
+    }
+
+    .typing-indicator {
+      display: none;
+      align-self: flex-start;
+      background: linear-gradient(135deg, rgba(40, 50, 100, 0.8), rgba(25, 35, 80, 0.8));
+      padding: 6px 10px;
+      border-radius: 10px;
+      border-bottom-left-radius: 3px;
+      border: 1px solid rgba(100, 150, 255, 0.3);
+      box-shadow: 0 2px 6px rgba(20, 30, 80, 0.4);
+      font-size: 0.9rem;
+    }
+
+    .typing-dots {
+      display: flex;
+      align-items: center;
+    }
+
+    .typing-dot {
+      width: 6px;
+      height: 6px;
+      background-color: #60b0ff;
+      border-radius: 50%;
+      margin: 0 2px;
+      animation: typing 1.4s infinite ease-in-out;
+      box-shadow: 0 0 5px rgba(100, 180, 255, 0.9);
+    }
+
+    .typing-dot:nth-child(1) { animation-delay: 0s; }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes typing {
+      0%, 60%, 100% { transform: translateY(0); }
+      30% { transform: translateY(-2px); }
+    }
+
+    .input-area {
+      display: flex;
+      padding: 12px;
+      background: rgba(40, 50, 100, 0.95);
+      gap: 10px;
+      border-top: 1px solid rgba(100, 150, 255, 0.4);
+    }
+
+    #messageInput {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid rgba(100, 150, 255, 0.4);
+      border-radius: 18px;
+      font-size: 0.85rem;
+      outline: none;
+      transition: all 0.3s;
+      background: rgba(25, 30, 70, 0.8);
+      color: #f0f8ff;
+      box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3);
+      resize: none;
+      min-height: 45px;
+      max-height: 100px;
+      overflow-y: auto;
+    }
+
+    #messageInput:focus {
+      border-color: rgba(120, 180, 255, 0.9);
+      box-shadow:
+              inset 0 2px 10px rgba(0, 0, 0, 0.3),
+              0 0 15px rgba(100, 150, 255, 0.5);
+    }
+
+    #messageInput::placeholder {
+      color: #80a0d0;
+      font-size: 0.8rem;
+    }
+
+    #sendButton {
+      padding: 8px 16px;
+      background: linear-gradient(135deg, #5a10f0, #9e3df2);
+      color: white;
+      border: none;
+      border-radius: 18px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: all 0.3s;
+      box-shadow: 0 2px 8px rgba(142, 45, 226, 0.5);
+      align-self: flex-end;
+      height: fit-content;
+    }
+
+    #sendButton:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(142, 45, 226, 0.7);
+    }
+
+    #sendButton:active {
+      transform: translateY(0);
+    }
+
+    .timestamp {
+      font-size: 0.65rem;
+      opacity: 0.8;
+      margin-top: 3px;
+      text-align: right;
+    }
+
+    .user-message .timestamp {
+      color: #90b8e8;
+    }
+
+    .ai-message .timestamp {
+      color: #7098c8;
+    }
+
+    /* 滚动条样式 */
+    .chat-window::-webkit-scrollbar, #messageInput::-webkit-scrollbar {
+      width: 5px;
+    }
+
+    .chat-window::-webkit-scrollbar-track, #messageInput::-webkit-scrollbar-track {
+      background: rgba(30, 40, 90, 0.6);
+      border-radius: 2px;
+    }
+
+    .chat-window::-webkit-scrollbar-thumb, #messageInput::-webkit-scrollbar-thumb {
+      background: linear-gradient(135deg, #5a10f0, #9e3df2);
+      border-radius: 2px;
+    }
+
+    .chat-window::-webkit-scrollbar-thumb:hover, #messageInput::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(135deg, #6a20ff, #ae4df2);
+    }
+
+    /* 响应式设计 */
+    @media (max-width: 768px) {
+      .chat-container {
+        width: 95%;
+        height: 90vh;
+      }
+
+      .message {
+        max-width: 90%;
+      }
+
+      .input-area {
+        padding: 10px;
+      }
+
+      #messageInput {
+        padding: 6px 10px;
+        min-height: 40px;
+        font-size: 0.8rem;
+      }
+
+      #sendButton {
+        padding: 6px 14px;
+        font-size: 0.8rem;
+      }
+
+      .model-selector-container {
+        position: static;
+        margin-bottom: 10px;
+        justify-content: flex-start;
+      }
+
+      .chat-header {
+        padding: 10px;
+      }
+
+      .chat-header h1 {
+        font-size: 1rem;
+      }
+
+      .chat-header p {
+        font-size: 0.65rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .chat-header p {
+        font-size: 0.65rem;
+      }
+
+      .message {
+        max-width: 95%;
+        padding: 5px 8px;
+      }
+
+      .message-header {
+        font-size: 0.7rem;
+      }
+
+      .message-content {
+        font-size: 0.85rem;
+      }
+
+      .input-area {
+        flex-direction: column;
+      }
+
+      #sendButton {
+        width: 100%;
+        align-self: stretch;
+      }
+
+      .model-selector-label {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+<!-- 科技感背景元素 -->
+<div class="tech-background"></div>
+<div class="grid-overlay"></div>
+<div class="particles" id="particles"></div>
+<div class="glow glow-1"></div>
+<div class="glow glow-2"></div>
+<div class="glow glow-3"></div>
+<div class="scan-line"></div>
+
+<div class="chat-container">
+  <div class="chat-header">
+    <div class="model-selector-container">
+      <label class="model-selector-label">模型:</label>
+      <select class="model-selector" id="modelSelector">
+        <option value="llama3">🚀 Omega-AI(llama3)</option>
+      </select>
+    </div>
+    <h1>🤖 大模型聊天助手</h1>
+    <p>基于Omega-AI深度学习框架构建的网络训练的模型智能对话系统</p>
+  </div>
+
+  <div class="chat-window" id="chatWindow">
+    <div class="messages-container" id="messagesContainer">
+      <div class="message ai-message">
+        <div class="message-header">
+          <span class="model-icon">🚀</span>
+          <span>Omega-AI(llama3)</span>
+        </div>
+        <div class="message-content">
+          您好！我是Omega-AI深度学习框架构建的llama模型网络训练的大模型聊天助手。请问有什么我可以帮助您的吗？
+        </div>
+        <div class="timestamp" id="welcomeTimestamp"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="typing-indicator" id="typingIndicator">
+    <div class="typing-dots">
+      <span class="typing-dot"></span>
+      <span class="typing-dot"></span>
+      <span class="typing-dot"></span>
+    </div>
+  </div>
+
+  <div class="input-area">
+    <textarea id="messageInput" placeholder="输入您的消息... (按Ctrl+Enter发送)"></textarea>
+    <button id="sendButton">发送</button>
+  </div>
+</div>
+
+<script>
+  const chatWindow = document.getElementById('chatWindow');
+  const messagesContainer = document.getElementById('messagesContainer');
+  const messageInput = document.getElementById('messageInput');
+  const sendButton = document.getElementById('sendButton');
+  const typingIndicator = document.getElementById('typingIndicator');
+  const modelSelector = document.getElementById('modelSelector');
+  const particlesContainer = document.getElementById('particles');
+
+  // 创建浮动粒子
+  function createParticles() {
+    const particleCount = 30;
+    for (let i = 0; i < particleCount; i++) {
+      const particle = document.createElement('div');
+      particle.classList.add('particle');
+
+      // 随机大小
+      const size = Math.random() * 4 + 1;
+      particle.style.width = `${size}px`;
+      particle.style.height = `${size}px`;
+
+      // 随机位置
+      particle.style.left = `${Math.random() * 100}%`;
+      particle.style.top = `${Math.random() * 100}%`;
+
+      // 随机动画延迟和时长
+      particle.style.animationDelay = `${Math.random() * 15}s`;
+      particle.style.animationDuration = `${15 + Math.random() * 15}s`;
+
+      // 随机颜色
+      const colors = [
+        'rgba(100, 180, 255, 0.7)',
+        'rgba(140, 120, 255, 0.7)',
+        'rgba(100, 220, 255, 0.7)'
+      ];
+      particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+
+      particlesContainer.appendChild(particle);
+    }
+  }
+
+  // 初始化粒子
+  createParticles();
+
+  // 设置欢迎消息时间戳
+  document.getElementById('welcomeTimestamp').textContent = getCurrentTime();
+
+  function getCurrentTime() {
+    const now = new Date();
+    return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+  }
+
+  function getModelInfo(modelValue) {
+    const modelMap = {
+      'llama3': { name: 'Omega-AI(llama3)', icon: '🚀' }
+    };
+    return modelMap[modelValue] || modelMap['qwen-plus'];
+  }
+
+  function addMessage(content, isUser) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
+
+    const currentModel = getModelInfo(modelSelector.value);
+
+    const header = document.createElement('div');
+    header.className = 'message-header';
+
+    if (isUser) {
+      header.innerHTML = `
+                    <span class="model-icon">👤</span>
+                    <span>您</span>
+                `;
+    } else {
+      header.innerHTML = `
+                    <span class="model-icon">${currentModel.icon}</span>
+                    <span>${currentModel.name}</span>
+                `;
+    }
+
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'message-content';
+    contentDiv.textContent = content;
+
+    const timestamp = document.createElement('div');
+    timestamp.className = 'timestamp';
+    timestamp.textContent = getCurrentTime();
+
+    messageDiv.appendChild(header);
+    messageDiv.appendChild(contentDiv);
+    messageDiv.appendChild(timestamp);
+
+    messagesContainer.appendChild(messageDiv);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+  }
+
+  function showTypingIndicator() {
+    const currentModel = getModelInfo(modelSelector.value);
+    typingIndicator.innerHTML = `
+                <div class="typing-dots">
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
+                </div>
+                <div style="margin-top: 6px; font-size: 0.8rem; color: #90c0ff;">
+                    <span class="model-icon">${currentModel.icon}</span>
+                    ${currentModel.name} 正在思考...
+                </div>
+            `;
+    typingIndicator.style.display = 'flex';
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+  }
+
+  function hideTypingIndicator() {
+    typingIndicator.style.display = 'none';
+  }
+
+  async function sendMessage() {
+    const message = messageInput.value.trim();
+    if (!message) return;
+
+    // 显示用户消息
+    addMessage(message, true);
+    messageInput.value = '';
+    messageInput.style.height = 'auto';
+    messageInput.style.height = Math.min(messageInput.scrollHeight, 100) + 'px';
+
+    // 显示正在输入指示器
+    showTypingIndicator();
+
+    try {
+      // 发送请求到后端，包含模型选择
+      const response = await fetch('/model/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: message,
+          model: modelSelector.value
+        })
+      });
+
+      const data = await response.text();
+
+      // 隐藏正在输入指示器
+      hideTypingIndicator();
+
+      // 显示AI回复
+      addMessage(data, false);
+    } catch (error) {
+      hideTypingIndicator();
+      addMessage('抱歉，发生了一些错误。请稍后再试。', false);
+      console.error('Error:', error);
+    }
+  }
+
+  sendButton.addEventListener('click', sendMessage);
+
+  messageInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.ctrlKey) {
+      sendMessage();
+    } else if (e.key === 'Enter' && !e.ctrlKey) {
+      // 允许换行
+      return;
+    }
+  });
+
+  // 自动调整文本框高度
+  messageInput.addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+  });
+
+  modelSelector.addEventListener('change', function() {
+    const modelInfo = getModelInfo(this.value);
+    // 可以在这里添加模型切换的提示信息
+    console.log(`切换到模型: ${modelInfo.name}`);
+  });
+
+  // 页面加载完成后聚焦输入框
+  window.addEventListener('load', () => {
+    messageInput.focus();
+  });
+</script>
+</body>
+</html>
