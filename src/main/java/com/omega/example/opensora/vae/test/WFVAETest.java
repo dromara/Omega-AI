@@ -386,14 +386,14 @@ public class WFVAETest {
 		}
 
 		// 计算采样间隔
-		double interval = (double)(totalFrames - 1) / (numFrames - 1);
-
+		// double interval = (double)(totalFrames - 1) / (numFrames - 1);
+		double interval = 1;
 		for (int i = 0; i < numFrames; i++) {
 			// 计算每帧位置并四舍五入
-			int frameIndex = (int)Math.round(i * interval);
+//			int frameIndex = (int)Math.round(i * interval);
 			// 确保不超过总帧数范围
-			frameIndex = Math.min(frameIndex, totalFrames - 1);
-			sampledFrames.add(frameIndex);
+//			frameIndex = Math.min(frameIndex, totalFrames - 1);
+			sampledFrames.add(i);
 		}
 
 		return sampledFrames;

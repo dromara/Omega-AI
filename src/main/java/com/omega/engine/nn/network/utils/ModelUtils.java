@@ -27,19 +27,65 @@ public class ModelUtils {
         readFloat(inputStream, data);
     }
 
+//    public static void readFloat(RandomAccessFile inputStream, Tensor data) throws IOException {
+//        for (int i = 0; i < data.data.length; i++) {
+//            float v = readFloat(inputStream);
+//            data.data[i] = v;
+//            if (v == Float.NaN) {
+//                System.err.println(v);
+//            }
+//        }
+//        if (data.isHasGPU()) {
+//            data.hostToDevice();
+//        }
+//    }
+
+    /**
+     * 使用buffer,批量读取二进制文件数据
+     * 对应writeFloat
+     * 保存bytes采用小端排序
+     *
+     * @param inputStream
+     * @param data
+     * @throws IOException
+     */
     public static void readFloat(RandomAccessFile inputStream, Tensor data) throws IOException {
-        for (int i = 0; i < data.data.length; i++) {
-            float v = readFloat(inputStream);
-            data.data[i] = v;
-            if (v == Float.NaN) {
-                System.err.println(v);
+        final int CHUNK_FLOATS = 16384;
+        final int CHUNK_BYTES = CHUNK_FLOATS * 4;
+        byte[] buffer = new byte[CHUNK_BYTES];
+
+        int totalFloats = data.data.length;
+        int processed = 0;
+
+        while (processed < totalFloats) {
+            int remainingFloats = totalFloats - processed;
+            int floatsToRead = Math.min(remainingFloats, CHUNK_FLOATS);
+            int bytesToRead = floatsToRead * 4;
+
+            // 使用readFully确保读取完整数据
+            if (bytesToRead > 0) {
+                inputStream.readFully(buffer, 0, bytesToRead);
+
+                // 处理数据
+                for (int i = 0; i < floatsToRead; i++) {
+                    int pos = i * 4;
+                    int fbit = (buffer[pos] & 0xFF) |
+                            ((buffer[pos + 1] & 0xFF) << 8) |
+                            ((buffer[pos + 2] & 0xFF) << 16) |
+                            ((buffer[pos + 3] & 0xFF) << 24);
+
+                    data.data[processed + i] = Float.intBitsToFloat(fbit);
+                }
+
+                processed += floatsToRead;
             }
         }
+
         if (data.isHasGPU()) {
             data.hostToDevice();
         }
     }
-    
+
     public static void readFloat(RandomAccessFile inputStream, float[] data) throws IOException {
         for (int i = 0; i < data.length; i++) {
             float v = readFloat(inputStream);
@@ -49,7 +95,7 @@ public class ModelUtils {
             }
         }
     }
-    
+
     public static void readInt(RandomAccessFile inputStream, int[] data) throws IOException {
         for (int i = 0; i < data.length; i++) {
             int v = readInt(inputStream);
@@ -155,8 +201,42 @@ public class ModelUtils {
         if (data.isHasGPU()) {
             data.syncHost();
         }
-        for (int i = 0; i < data.data.length; i++) {
-            writeFloat(outputStream, data.data[i]);
+//        for (int i = 0; i < data.data.length; i++) {
+//            writeFloat(outputStream, data.data[i]);
+//        }
+
+        writeFloatArray(outputStream, data.getData());
+    }
+
+    /**
+     * 使用缓冲区批量写入
+     *
+     * @param outputStream
+     * @param data
+     * @throws IOException
+     */
+    public static void writeFloatArray(RandomAccessFile outputStream, float[] data) throws IOException {
+        final int BUFFER_SIZE = 16384; // 16KB缓冲区
+        byte[] buffer = new byte[BUFFER_SIZE];
+        int bufferIndex = 0;
+
+        for (float value : data) {
+            int fbit = Float.floatToIntBits(value);
+
+            // 直接写入缓冲区（小端序）
+            buffer[bufferIndex++] = (byte) fbit ;
+            buffer[bufferIndex++] = (byte) (fbit >> 8);
+            buffer[bufferIndex++] = (byte) (fbit >> 16);
+            buffer[bufferIndex++] = (byte) (fbit >> 24);
+
+            if (bufferIndex >= BUFFER_SIZE) {
+                outputStream.write(buffer, 0, bufferIndex);
+                bufferIndex = 0;
+            }
+        }
+
+        if (bufferIndex > 0) {
+            outputStream.write(buffer, 0, bufferIndex);
         }
     }
 
