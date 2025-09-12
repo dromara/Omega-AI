@@ -131,14 +131,14 @@ public class VAVAEEncoder extends Layer {
             Layer l = down.get(i);
             l.forward(x);
             x = l.getOutput();
-//            x.showDMByOffsetRed(0, 100, "x:"+i);
+//            x.showDMByOffsetRed(0, 100, "x:"+Layer.class);
         }
-        x.showDMByOffsetRed(0, 100, "x");
+//        x.showDMByOffsetRed(0, 100, "x");
         convNormOut.forward(x);
         convAct.forward(convNormOut.getOutput());
         convOut.forward(convAct.getOutput());
         this.output = convOut.getOutput();
-        output.showDMByOffsetRed(0, 100, "output");
+//        output.showDMByOffsetRed(0, 100, "output");
     }
 
     @Override

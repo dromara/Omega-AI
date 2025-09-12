@@ -10,7 +10,6 @@ import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.active.SiLULayer;
 import com.omega.engine.nn.layer.dit.modules.DiTAttentionLayer2;
 import com.omega.engine.nn.layer.normalization.BNType;
-import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.layer.normalization.RMSLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.tensor.Tensor;
@@ -43,7 +42,7 @@ public class DiTBlock extends Layer {
 //    public LNLayer norm1;
     public RMSLayer norm1;
     public DiTAttentionLayer2 attn;
-    public LNLayer norm2;
+    public RMSLayer norm2;
 
     public DiTSwiGLUFFN mlp;
     
@@ -116,7 +115,7 @@ public class DiTBlock extends Layer {
         this.modulation_gate_mlp.bias.clearGPU();
         
         this.attn = new DiTAttentionLayer2(embedDim, headNum, time, bias, qkNorm, network);
-        this.norm2 = new LNLayer(1, 1, embedDim, false, BNType.fully_bn, network);
+        this.norm2 = new RMSLayer(1, 1, embedDim, false, BNType.fully_bn, network);
         
         int swiNum = (int)(2/3 * mlpHiddenDim);
         this.mlp = new DiTSwiGLUFFN(embedDim, swiNum, embedDim, bias, network);

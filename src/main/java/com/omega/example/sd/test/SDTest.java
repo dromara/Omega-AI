@@ -19,7 +19,7 @@ import com.omega.engine.optimizer.MBSGDOptimizer;
 import com.omega.engine.optimizer.lr.LearnRateUpdate;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
-import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.diffusion.utils.DiffusionImageDataLoader;
 import com.omega.example.dit.dataset.LatendDataset;
 import com.omega.example.dit.models.BetaType;
@@ -171,7 +171,7 @@ public class SDTest {
         clip.time = time;
         clip.RUN_MODEL = RunModel.EVAL;
         String clipWeight = "H:\\model\\clip_cn_vit-b-16.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, true);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, true);
         int[] indexs = new int[]{0, 1};
         Tensor label = new Tensor(batchSize * maxContextLen, 1, 1, 1, true);
         Tensor mask = new Tensor(batchSize, 1, 1, maxContextLen, true);
@@ -325,7 +325,7 @@ public class SDTest {
         network.RUN_MODEL = RunModel.EVAL;
         
         String clipWeight = "D:\\models\\sdxl-vae-fp16-fix\\sdxl-vae-fp16-fix.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), network, true);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), network, true);
         
         String labelPath = "D:\\dataset\\amine\\data.json";
         boolean horizontalFilp = true;
@@ -485,7 +485,7 @@ public class SDTest {
         clip.time = time;
         clip.RUN_MODEL = RunModel.EVAL;
         String clipWeight = "H:\\model\\clip_cn_vit-b-16.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, true);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, true);
         int[] indexs = new int[]{0, 1, 2, 3};
         Tensor label = new Tensor(batchSize * maxContextLen, 1, 1, 1, true);
         Tensor mask = new Tensor(batchSize, 1, 1, maxContextLen, true);
@@ -518,7 +518,7 @@ public class SDTest {
         clip.time = time;
         clip.RUN_MODEL = RunModel.EVAL;
         String clipWeight = "H:\\model\\clip-vit-base-patch32.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, true);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, true);
         Tensor label = new Tensor(maxContextLen, 1, 1, 1, true);
         String[] txts = new String[]{"sharp focus on the cats eyes.", "cinematic bokeh: ironcat, sharp focus on the cat's eyes", "sharp focus on the cats eyes.", "cinematic bokeh: ironcat, sharp focus on the cat's eyes"};
         for (int i = 0; i < 4; i++) {
@@ -577,7 +577,7 @@ public class SDTest {
         clip.time = time;
         clip.RUN_MODEL = RunModel.EVAL;
         String clipWeight = "H:\\model\\clip_cn_vit-b-16.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, true);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, true);
         int convOutChannels = 128;
         int unetHeadNum = 8;
         int[] downChannels = new int[]{32, 48, 64};
@@ -635,7 +635,7 @@ public class SDTest {
         clip.time = time;
         clip.RUN_MODEL = RunModel.EVAL;
         String clipWeight = "H:\\model\\clip_cn_vit-b-16.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, true);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, true);
         int convOutChannels = 128;
         int unetHeadNum = 8;
         int[] downChannels = new int[]{64, 96, 128, 256};
@@ -694,7 +694,7 @@ public class SDTest {
         clip.time = time;
         clip.RUN_MODEL = RunModel.EVAL;
         String clipWeight = "H:\\model\\clip_cn_vit-b-16.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, true);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, true);
         int unetHeadNum = 8;
         int[] downChannels = new int[]{64, 128, 256, 512};
         int numLayer = 1;
@@ -743,7 +743,7 @@ public class SDTest {
         clip.time = time;
         clip.RUN_MODEL = RunModel.EVAL;
         String clipWeight = "H:\\model\\clip_cn_vit-b-16.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, true);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, true);
         int unetHeadNum = 8;
         int[] downChannels = new int[]{64, 128, 256, 512};
         int numLayer = 2;
@@ -803,7 +803,7 @@ public class SDTest {
         clip.time = time;
         clip.RUN_MODEL = RunModel.EVAL;
         String clipWeight = "H:\\model\\clip-vit-base-patch32.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, true);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, true);
         int z_dims = 32;
         int latendDim = 4;
         int num_vq_embeddings = 512;
@@ -857,7 +857,7 @@ public class SDTest {
         clip.time = time;
         clip.RUN_MODEL = RunModel.EVAL;
         String clipWeight = "H:\\model\\clip-vit-base-patch32.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, true);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, true);
         int z_dims = 128;
         int latendDim = 4;
         int num_vq_embeddings = 512;
@@ -1045,7 +1045,7 @@ public class SDTest {
         clip.time = time;
         clip.RUN_MODEL = RunModel.EVAL;
         String clipWeight = "D:\\models\\clip-vit-base-patch32.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, true);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, true);
         int z_dims = 128;
         int latendDim = 4;
         int num_vq_embeddings = 512;
@@ -1118,7 +1118,7 @@ public class SDTest {
         clip.time = time;
         clip.RUN_MODEL = RunModel.EVAL;
         String clipWeight = "H:\\model\\clip-vit-base-patch32.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, true);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, true);
         
         int z_dims = 32;
         int latendDim = 4;
@@ -1200,7 +1200,7 @@ public class SDTest {
         clip.time = maxContextLen;
         clip.RUN_MODEL = RunModel.EVAL;
         String clipWeight = "D:\\models\\CLIP-GmP-ViT-L-14\\CLIP-GmP-ViT-L-14.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, "", false);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, "", false);
         
         int latendDim = 4;
         int num_vq_embeddings = 512;
@@ -1212,7 +1212,7 @@ public class SDTest {
         vae.learnRate = 0.001f;
         vae.RUN_MODEL = RunModel.EVAL;
         String vaeWeight = "D:\\models\\sdxl-vae-fp16-fix\\sdxl-vae-fp16-fix.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
         
         int unetHeadNum = 8;
         int[] downChannels = new int[]{128, 256, 512, 768};
@@ -1280,7 +1280,7 @@ public class SDTest {
          clip.time = time;
          clip.RUN_MODEL = RunModel.EVAL;
          String clipWeight = "D:\\models\\clip-vit-base-patch32.json";
-         ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, true);
+         ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, true);
          int z_dims = 128;
          int latendDim = 4;
          int num_vq_embeddings = 512;

@@ -17,7 +17,7 @@ import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
-import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
@@ -92,7 +92,7 @@ public class WFAttentionBlock3D extends Layer {
          String inputPath = "D:\\models\\input_wf.json";
          Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
          Tensor input = new Tensor(N, C * F, H, W, true);
-         ClipModelUtils.loadData(input, datas, "x", 5);
+         ModeLoaderlUtils.loadData(input, datas, "x", 5);
     	
         Transformer tf = new Transformer();
         tf.CUDNN = true;
@@ -105,7 +105,7 @@ public class WFAttentionBlock3D extends Layer {
         String deltaPath = "D:\\models\\attn3d_delta_wf.json";
         Map<String, Object> d = LagJsonReader.readJsonFileSmallWeight(deltaPath);
         Tensor delta = new Tensor(N, C * F, H, W, true);
-        ClipModelUtils.loadData(delta, d, "delta", 5);
+        ModeLoaderlUtils.loadData(delta, d, "delta", 5);
         
         for (int i = 0; i < 1; i++) {
             mal.forward(input);
@@ -126,16 +126,16 @@ public class WFAttentionBlock3D extends Layer {
             }
         }
         
-        network.norm.norm.gamma = ClipModelUtils.loadData(network.norm.norm.gamma, weightMap, 1, "norm.weight");
-        network.norm.norm.beta = ClipModelUtils.loadData(network.norm.norm.beta, weightMap, 1, "norm.bias");
+        network.norm.norm.gamma = ModeLoaderlUtils.loadData(network.norm.norm.gamma, weightMap, 1, "norm.weight");
+        network.norm.norm.beta = ModeLoaderlUtils.loadData(network.norm.norm.beta, weightMap, 1, "norm.bias");
         
-        ClipModelUtils.loadData(network.qLinerLayer.weight, weightMap, "q.conv.weight", 5);
+        ModeLoaderlUtils.loadData(network.qLinerLayer.weight, weightMap, "q.conv.weight", 5);
 //        ClipModelUtils.loadData(network.qLinerLayer.bias, weightMap, "q.conv.bias");
-        ClipModelUtils.loadData(network.kLinerLayer.weight, weightMap, "k.conv.weight", 5);
+        ModeLoaderlUtils.loadData(network.kLinerLayer.weight, weightMap, "k.conv.weight", 5);
 //        ClipModelUtils.loadData(network.kLinerLayer.bias, weightMap, "k.conv.bias");
-        ClipModelUtils.loadData(network.vLinerLayer.weight, weightMap, "v.conv.weight", 5);
+        ModeLoaderlUtils.loadData(network.vLinerLayer.weight, weightMap, "v.conv.weight", 5);
 //        ClipModelUtils.loadData(network.vLinerLayer.bias, weightMap, "v.conv.bias");
-        ClipModelUtils.loadData(network.oLinerLayer.weight, weightMap, "proj_out.conv.weight", 5);
+        ModeLoaderlUtils.loadData(network.oLinerLayer.weight, weightMap, "proj_out.conv.weight", 5);
 //        ClipModelUtils.loadData(network.oLinerLayer.bias, weightMap, "proj_out.conv.bias");
     }
 

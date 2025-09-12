@@ -32,6 +32,12 @@ public class RandomUtils {
         return getInstance().nextInt();
     }
     
+    public static void xavier_uniform(Tensor data,float gain,int fan_in, int fan_out) {
+    	double std = gain * Math.sqrt(2.0f / (fan_in + fan_out));
+    	float a = (float) (Math.sqrt(3.0) * std);
+    	data.setData(uniformFloat(data.dataLength, -a, a));
+    }
+    
     public static void uniformInt(int max,Tensor data) {
     	for (int i = 0; i < data.dataLength; i++) {
             data.data[i] = getInstance().nextInt(max);

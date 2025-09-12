@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Map;
 
+import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.gpu.cudnn.SoftmaxCudnnKernel;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -15,7 +16,7 @@ import com.omega.engine.nn.layer.gpu.RoPEKernel;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
-import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.common.ModeLoaderlUtils;
 
 /**
  * DiTAttentionLayer2
@@ -179,10 +180,13 @@ public class DiTJoinBlockRoPE extends Layer {
     public void initBack() {
         // TODO Auto-generated method stub
         if (this.dattn == null) {
-            this.dattn = Tensor.createGPUTensor(this.dattn, batchSize, headNum, time, time, true);
+//            this.dattn = Tensor.createGPUTensor(this.dattn, batchSize, headNum, time, time, true);
+        	this.dattn = CUDAMemoryManager.getCache("dit_block_dattn", batchSize, headNum, time, time);
             if(pre_only) {
-            	dattn_cx = Tensor.createGPUTensor(this.dattn_cx, batchSize * textTime, 1, 1, embedDim, true);
-            	cx_diff = Tensor.createGPUTensor(this.cx_diff, batchSize * textTime, 1, 1, embedDim, true);
+//            	dattn_cx = Tensor.createGPUTensor(this.dattn_cx, batchSize * textTime, 1, 1, embedDim, true);
+            	this.dattn_cx = CUDAMemoryManager.getCache("dit_block_dattn_cx", batchSize * textTime, 1, 1, embedDim);
+//            	cx_diff = Tensor.createGPUTensor(this.cx_diff, batchSize * textTime, 1, 1, embedDim, true);
+            	this.cx_diff = CUDAMemoryManager.getCache("dit_block_cx_diff", batchSize * textTime, 1, 1, embedDim);
             }
         } else {
             dattn.viewOrg();
@@ -465,38 +469,38 @@ public class DiTJoinBlockRoPE extends Layer {
             }
         }
         
-        block.context_block.norm1.gamma = ClipModelUtils.loadData(block.context_block.norm1.gamma, weightMap, 1, "context_block.norm1.weight"); 
-        ClipModelUtils.loadData(block.context_block.qLinerLayer.weight, weightMap, "context_block.attn.ql.weight");
-        ClipModelUtils.loadData(block.context_block.kLinerLayer.weight, weightMap, "context_block.attn.kl.weight");
-        ClipModelUtils.loadData(block.context_block.vLinerLayer.weight, weightMap, "context_block.attn.vl.weight");
+        block.context_block.norm1.gamma = ModeLoaderlUtils.loadData(block.context_block.norm1.gamma, weightMap, 1, "context_block.norm1.weight"); 
+        ModeLoaderlUtils.loadData(block.context_block.qLinerLayer.weight, weightMap, "context_block.attn.ql.weight");
+        ModeLoaderlUtils.loadData(block.context_block.kLinerLayer.weight, weightMap, "context_block.attn.kl.weight");
+        ModeLoaderlUtils.loadData(block.context_block.vLinerLayer.weight, weightMap, "context_block.attn.vl.weight");
         if(block.context_block.oLinerLayer != null) {
-        	 ClipModelUtils.loadData(block.context_block.oLinerLayer.weight, weightMap, "context_block.attn.proj.weight");
-             ClipModelUtils.loadData(block.context_block.oLinerLayer.bias, weightMap, "context_block.attn.proj.bias");
+        	 ModeLoaderlUtils.loadData(block.context_block.oLinerLayer.weight, weightMap, "context_block.attn.proj.weight");
+             ModeLoaderlUtils.loadData(block.context_block.oLinerLayer.bias, weightMap, "context_block.attn.proj.bias");
         }
         
         if(block.context_block.mlp != null) {
-        	 block.context_block.norm2.gamma = ClipModelUtils.loadData(block.context_block.norm2.gamma, weightMap, 1, "context_block.norm2.weight"); 
-        	 ClipModelUtils.loadData(block.context_block.mlp.linear1.weight, weightMap, "context_block.mlp.fc1.weight");
-             ClipModelUtils.loadData(block.context_block.mlp.linear1.bias, weightMap, "context_block.mlp.fc1.bias");
-             ClipModelUtils.loadData(block.context_block.mlp.linear2.weight, weightMap, "context_block.mlp.fc2.weight");
-             ClipModelUtils.loadData(block.context_block.mlp.linear2.bias, weightMap, "context_block.mlp.fc2.bias");
+        	 block.context_block.norm2.gamma = ModeLoaderlUtils.loadData(block.context_block.norm2.gamma, weightMap, 1, "context_block.norm2.weight"); 
+        	 ModeLoaderlUtils.loadData(block.context_block.mlp.linear1.weight, weightMap, "context_block.mlp.fc1.weight");
+             ModeLoaderlUtils.loadData(block.context_block.mlp.linear1.bias, weightMap, "context_block.mlp.fc1.bias");
+             ModeLoaderlUtils.loadData(block.context_block.mlp.linear2.weight, weightMap, "context_block.mlp.fc2.weight");
+             ModeLoaderlUtils.loadData(block.context_block.mlp.linear2.bias, weightMap, "context_block.mlp.fc2.bias");
         }
-        ClipModelUtils.loadData(block.context_block.adaLN_modulation.weight, weightMap, "context_block.adaLN_modulation.1.weight");
-        ClipModelUtils.loadData(block.context_block.adaLN_modulation.bias, weightMap, "context_block.adaLN_modulation.1.bias");
+        ModeLoaderlUtils.loadData(block.context_block.adaLN_modulation.weight, weightMap, "context_block.adaLN_modulation.1.weight");
+        ModeLoaderlUtils.loadData(block.context_block.adaLN_modulation.bias, weightMap, "context_block.adaLN_modulation.1.bias");
         
-        block.x_block.norm1.gamma = ClipModelUtils.loadData(block.x_block.norm1.gamma, weightMap, 1, "x_block.norm1.weight"); 
-        ClipModelUtils.loadData(block.x_block.qLinerLayer.weight, weightMap, "x_block.attn.ql.weight");
-        ClipModelUtils.loadData(block.x_block.kLinerLayer.weight, weightMap, "x_block.attn.kl.weight");
-        ClipModelUtils.loadData(block.x_block.vLinerLayer.weight, weightMap, "x_block.attn.vl.weight");
-        ClipModelUtils.loadData(block.x_block.oLinerLayer.weight, weightMap, "x_block.attn.proj.weight");
-        ClipModelUtils.loadData(block.x_block.oLinerLayer.bias, weightMap, "x_block.attn.proj.bias");
-        block.x_block.norm2.gamma = ClipModelUtils.loadData(block.x_block.norm2.gamma, weightMap, 1, "x_block.norm2.weight"); 
-        ClipModelUtils.loadData(block.x_block.mlp.linear1.weight, weightMap, "x_block.mlp.fc1.weight");
-        ClipModelUtils.loadData(block.x_block.mlp.linear1.bias, weightMap, "x_block.mlp.fc1.bias");
-        ClipModelUtils.loadData(block.x_block.mlp.linear2.weight, weightMap, "x_block.mlp.fc2.weight");
-        ClipModelUtils.loadData(block.x_block.mlp.linear2.bias, weightMap, "x_block.mlp.fc2.bias");
-        ClipModelUtils.loadData(block.x_block.adaLN_modulation.weight, weightMap, "x_block.adaLN_modulation.1.weight");
-        ClipModelUtils.loadData(block.x_block.adaLN_modulation.bias, weightMap, "x_block.adaLN_modulation.1.bias");
+        block.x_block.norm1.gamma = ModeLoaderlUtils.loadData(block.x_block.norm1.gamma, weightMap, 1, "x_block.norm1.weight"); 
+        ModeLoaderlUtils.loadData(block.x_block.qLinerLayer.weight, weightMap, "x_block.attn.ql.weight");
+        ModeLoaderlUtils.loadData(block.x_block.kLinerLayer.weight, weightMap, "x_block.attn.kl.weight");
+        ModeLoaderlUtils.loadData(block.x_block.vLinerLayer.weight, weightMap, "x_block.attn.vl.weight");
+        ModeLoaderlUtils.loadData(block.x_block.oLinerLayer.weight, weightMap, "x_block.attn.proj.weight");
+        ModeLoaderlUtils.loadData(block.x_block.oLinerLayer.bias, weightMap, "x_block.attn.proj.bias");
+        block.x_block.norm2.gamma = ModeLoaderlUtils.loadData(block.x_block.norm2.gamma, weightMap, 1, "x_block.norm2.weight"); 
+        ModeLoaderlUtils.loadData(block.x_block.mlp.linear1.weight, weightMap, "x_block.mlp.fc1.weight");
+        ModeLoaderlUtils.loadData(block.x_block.mlp.linear1.bias, weightMap, "x_block.mlp.fc1.bias");
+        ModeLoaderlUtils.loadData(block.x_block.mlp.linear2.weight, weightMap, "x_block.mlp.fc2.weight");
+        ModeLoaderlUtils.loadData(block.x_block.mlp.linear2.bias, weightMap, "x_block.mlp.fc2.bias");
+        ModeLoaderlUtils.loadData(block.x_block.adaLN_modulation.weight, weightMap, "x_block.adaLN_modulation.1.weight");
+        ModeLoaderlUtils.loadData(block.x_block.adaLN_modulation.bias, weightMap, "x_block.adaLN_modulation.1.bias");
         
         
     }

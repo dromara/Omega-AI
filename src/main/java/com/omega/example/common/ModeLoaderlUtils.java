@@ -1,4 +1,4 @@
-package com.omega.example.clip.utils;
+package com.omega.example.common;
 
 import java.util.List;
 import java.util.Map;
@@ -24,7 +24,7 @@ import com.omega.engine.nn.network.vae.VA_VAE;
 import com.omega.engine.nn.network.vae.WFVAE;
 import com.omega.engine.tensor.Tensor;
 
-public class ClipModelUtils {
+public class ModeLoaderlUtils {
 	
     public static void loadWeight(Map<String, Object> weightMap, WFVAE network, boolean showLayers) {
         if (showLayers) {
@@ -33,190 +33,190 @@ public class ClipModelUtils {
             }
         }
         WFEncoder block = network.encoder;
-        ClipModelUtils.loadData(block.down1.conv.conv.weight, weightMap, "vae.encoder.down1.0.weight");
-        ClipModelUtils.loadData(block.down1.conv.conv.bias, weightMap, "vae.encoder.down1.0.bias");
+        ModeLoaderlUtils.loadData(block.down1.conv.conv.weight, weightMap, "vae.encoder.down1.0.weight");
+        ModeLoaderlUtils.loadData(block.down1.conv.conv.bias, weightMap, "vae.encoder.down1.0.bias");
         for(int i = 0;i<block.getNum_resblocks();i++) {
             WFResnet2DBlock b2d = block.down1.resBlocks.get(i);
-            b2d.norm1.norm.gamma = ClipModelUtils.loadData(b2d.norm1.norm.gamma, weightMap, 1, "vae.encoder.down1."+(i+1)+".norm1.norm.weight");
-            b2d.norm1.norm.beta = ClipModelUtils.loadData(b2d.norm1.norm.beta, weightMap, 1, "vae.encoder.down1."+(i+1)+".norm1.norm.bias");
-            ClipModelUtils.loadData(b2d.conv1.weight, weightMap, "vae.encoder.down1."+(i+1)+".conv1.weight");
-            ClipModelUtils.loadData(b2d.conv1.bias, weightMap, "vae.encoder.down1."+(i+1)+".conv1.bias");
-            b2d.norm2.norm.gamma = ClipModelUtils.loadData(b2d.norm2.norm.gamma, weightMap, 1, "vae.encoder.down1."+(i+1)+".norm2.norm.weight");
-            b2d.norm2.norm.beta = ClipModelUtils.loadData(b2d.norm2.norm.beta, weightMap, 1, "vae.encoder.down1."+(i+1)+".norm2.norm.bias");
-            ClipModelUtils.loadData(b2d.conv2.weight, weightMap, "vae.encoder.down1."+(i+1)+".conv2.weight");
-            ClipModelUtils.loadData(b2d.conv2.bias, weightMap, "vae.encoder.down1."+(i+1)+".conv2.bias");
+            b2d.norm1.norm.gamma = ModeLoaderlUtils.loadData(b2d.norm1.norm.gamma, weightMap, 1, "vae.encoder.down1."+(i+1)+".norm1.norm.weight");
+            b2d.norm1.norm.beta = ModeLoaderlUtils.loadData(b2d.norm1.norm.beta, weightMap, 1, "vae.encoder.down1."+(i+1)+".norm1.norm.bias");
+            ModeLoaderlUtils.loadData(b2d.conv1.weight, weightMap, "vae.encoder.down1."+(i+1)+".conv1.weight");
+            ModeLoaderlUtils.loadData(b2d.conv1.bias, weightMap, "vae.encoder.down1."+(i+1)+".conv1.bias");
+            b2d.norm2.norm.gamma = ModeLoaderlUtils.loadData(b2d.norm2.norm.gamma, weightMap, 1, "vae.encoder.down1."+(i+1)+".norm2.norm.weight");
+            b2d.norm2.norm.beta = ModeLoaderlUtils.loadData(b2d.norm2.norm.beta, weightMap, 1, "vae.encoder.down1."+(i+1)+".norm2.norm.bias");
+            ModeLoaderlUtils.loadData(b2d.conv2.weight, weightMap, "vae.encoder.down1."+(i+1)+".conv2.weight");
+            ModeLoaderlUtils.loadData(b2d.conv2.bias, weightMap, "vae.encoder.down1."+(i+1)+".conv2.bias");
         }
-        ClipModelUtils.loadData(block.down1.downsample.conv.weight, weightMap, "vae.encoder.down1.3.conv.weight");
-        ClipModelUtils.loadData(block.down1.downsample.conv.bias, weightMap, "vae.encoder.down1.3.conv.bias");
+        ModeLoaderlUtils.loadData(block.down1.downsample.conv.weight, weightMap, "vae.encoder.down1.3.conv.weight");
+        ModeLoaderlUtils.loadData(block.down1.downsample.conv.bias, weightMap, "vae.encoder.down1.3.conv.bias");
 
         /**
          * encoder down2
          */
-        ClipModelUtils.loadData(block.down2.conv.conv.weight, weightMap, "vae.encoder.down2.0.weight");
-        ClipModelUtils.loadData(block.down2.conv.conv.bias, weightMap, "vae.encoder.down2.0.bias");
+        ModeLoaderlUtils.loadData(block.down2.conv.conv.weight, weightMap, "vae.encoder.down2.0.weight");
+        ModeLoaderlUtils.loadData(block.down2.conv.conv.bias, weightMap, "vae.encoder.down2.0.bias");
         for(int i = 0;i<block.getNum_resblocks();i++) {
             WFResnet3DBlock b3d = block.down2.resBlocks.get(i);
-            b3d.norm1.norm.gamma = ClipModelUtils.loadData(b3d.norm1.norm.gamma, weightMap, 1, "vae.encoder.down2."+(i+1)+".norm1.norm.weight");
-            b3d.norm1.norm.beta = ClipModelUtils.loadData(b3d.norm1.norm.beta, weightMap, 1, "vae.encoder.down2."+(i+1)+".norm1.norm.bias");
-            ClipModelUtils.loadData(b3d.conv1.weight, weightMap, "vae.encoder.down2."+(i+1)+".conv1.conv.weight", 5);
-            ClipModelUtils.loadData(b3d.conv1.bias, weightMap, "vae.encoder.down2."+(i+1)+".conv1.conv.bias");
-            b3d.norm2.norm.gamma = ClipModelUtils.loadData(b3d.norm2.norm.gamma, weightMap, 1, "vae.encoder.down2."+(i+1)+".norm2.norm.weight");
-            b3d.norm2.norm.beta = ClipModelUtils.loadData(b3d.norm2.norm.beta, weightMap, 1, "vae.encoder.down2."+(i+1)+".norm2.norm.bias");
-            ClipModelUtils.loadData(b3d.conv2.weight, weightMap, "vae.encoder.down2."+(i+1)+".conv2.conv.weight", 5);
-            ClipModelUtils.loadData(b3d.conv2.bias, weightMap, "vae.encoder.down2."+(i+1)+".conv2.conv.bias");
+            b3d.norm1.norm.gamma = ModeLoaderlUtils.loadData(b3d.norm1.norm.gamma, weightMap, 1, "vae.encoder.down2."+(i+1)+".norm1.norm.weight");
+            b3d.norm1.norm.beta = ModeLoaderlUtils.loadData(b3d.norm1.norm.beta, weightMap, 1, "vae.encoder.down2."+(i+1)+".norm1.norm.bias");
+            ModeLoaderlUtils.loadData(b3d.conv1.weight, weightMap, "vae.encoder.down2."+(i+1)+".conv1.conv.weight", 5);
+            ModeLoaderlUtils.loadData(b3d.conv1.bias, weightMap, "vae.encoder.down2."+(i+1)+".conv1.conv.bias");
+            b3d.norm2.norm.gamma = ModeLoaderlUtils.loadData(b3d.norm2.norm.gamma, weightMap, 1, "vae.encoder.down2."+(i+1)+".norm2.norm.weight");
+            b3d.norm2.norm.beta = ModeLoaderlUtils.loadData(b3d.norm2.norm.beta, weightMap, 1, "vae.encoder.down2."+(i+1)+".norm2.norm.bias");
+            ModeLoaderlUtils.loadData(b3d.conv2.weight, weightMap, "vae.encoder.down2."+(i+1)+".conv2.conv.weight", 5);
+            ModeLoaderlUtils.loadData(b3d.conv2.bias, weightMap, "vae.encoder.down2."+(i+1)+".conv2.conv.bias");
         }
-        ClipModelUtils.loadData(block.down2.downsample3d.conv.weight, weightMap, "vae.encoder.down2.3.conv.conv.weight", 5);
-        ClipModelUtils.loadData(block.down2.downsample3d.conv.bias, weightMap, "vae.encoder.down2.3.conv.conv.bias");
+        ModeLoaderlUtils.loadData(block.down2.downsample3d.conv.weight, weightMap, "vae.encoder.down2.3.conv.conv.weight", 5);
+        ModeLoaderlUtils.loadData(block.down2.downsample3d.conv.bias, weightMap, "vae.encoder.down2.3.conv.conv.bias");
 
-        ClipModelUtils.loadData(block.connect_l1.conv.weight, weightMap, "vae.encoder.connect_l1.weight");
-        ClipModelUtils.loadData(block.connect_l1.conv.bias, weightMap, "vae.encoder.connect_l1.bias");
-        ClipModelUtils.loadData(block.connect_l2.conv.weight, weightMap, "vae.encoder.connect_l2.weight");
-        ClipModelUtils.loadData(block.connect_l2.conv.bias, weightMap, "vae.encoder.connect_l2.bias");
+        ModeLoaderlUtils.loadData(block.connect_l1.conv.weight, weightMap, "vae.encoder.connect_l1.weight");
+        ModeLoaderlUtils.loadData(block.connect_l1.conv.bias, weightMap, "vae.encoder.connect_l1.bias");
+        ModeLoaderlUtils.loadData(block.connect_l2.conv.weight, weightMap, "vae.encoder.connect_l2.weight");
+        ModeLoaderlUtils.loadData(block.connect_l2.conv.bias, weightMap, "vae.encoder.connect_l2.bias");
 
-        block.mid.block1.norm1.norm.gamma = ClipModelUtils.loadData(block.mid.block1.norm1.norm.gamma, weightMap, 1, "vae.encoder.mid.0.norm1.norm.weight");
-        block.mid.block1.norm1.norm.beta = ClipModelUtils.loadData(block.mid.block1.norm1.norm.beta, weightMap, 1, "vae.encoder.mid.0.norm1.norm.bias");
-        ClipModelUtils.loadData(block.mid.block1.conv1.weight, weightMap, "vae.encoder.mid.0.conv1.conv.weight", 5);
-        ClipModelUtils.loadData(block.mid.block1.conv1.bias, weightMap, "vae.encoder.mid.0.conv1.conv.bias");
-        block.mid.block1.norm2.norm.gamma = ClipModelUtils.loadData(block.mid.block1.norm2.norm.gamma, weightMap, 1, "vae.encoder.mid.0.norm2.norm.weight");
-        block.mid.block1.norm2.norm.beta = ClipModelUtils.loadData(block.mid.block1.norm2.norm.beta, weightMap, 1, "vae.encoder.mid.0.norm2.norm.bias");
-        ClipModelUtils.loadData(block.mid.block1.conv2.weight, weightMap, "vae.encoder.mid.0.conv2.conv.weight", 5);
-        ClipModelUtils.loadData(block.mid.block1.conv2.bias, weightMap, "vae.encoder.mid.0.conv2.conv.bias");
-        ClipModelUtils.loadData(block.mid.block1.shortcut.weight, weightMap, "vae.encoder.mid.0.nin_shortcut.conv.weight", 5);
-        ClipModelUtils.loadData(block.mid.block1.shortcut.bias, weightMap, "vae.encoder.mid.0.nin_shortcut.conv.bias");
+        block.mid.block1.norm1.norm.gamma = ModeLoaderlUtils.loadData(block.mid.block1.norm1.norm.gamma, weightMap, 1, "vae.encoder.mid.0.norm1.norm.weight");
+        block.mid.block1.norm1.norm.beta = ModeLoaderlUtils.loadData(block.mid.block1.norm1.norm.beta, weightMap, 1, "vae.encoder.mid.0.norm1.norm.bias");
+        ModeLoaderlUtils.loadData(block.mid.block1.conv1.weight, weightMap, "vae.encoder.mid.0.conv1.conv.weight", 5);
+        ModeLoaderlUtils.loadData(block.mid.block1.conv1.bias, weightMap, "vae.encoder.mid.0.conv1.conv.bias");
+        block.mid.block1.norm2.norm.gamma = ModeLoaderlUtils.loadData(block.mid.block1.norm2.norm.gamma, weightMap, 1, "vae.encoder.mid.0.norm2.norm.weight");
+        block.mid.block1.norm2.norm.beta = ModeLoaderlUtils.loadData(block.mid.block1.norm2.norm.beta, weightMap, 1, "vae.encoder.mid.0.norm2.norm.bias");
+        ModeLoaderlUtils.loadData(block.mid.block1.conv2.weight, weightMap, "vae.encoder.mid.0.conv2.conv.weight", 5);
+        ModeLoaderlUtils.loadData(block.mid.block1.conv2.bias, weightMap, "vae.encoder.mid.0.conv2.conv.bias");
+        ModeLoaderlUtils.loadData(block.mid.block1.shortcut.weight, weightMap, "vae.encoder.mid.0.nin_shortcut.conv.weight", 5);
+        ModeLoaderlUtils.loadData(block.mid.block1.shortcut.bias, weightMap, "vae.encoder.mid.0.nin_shortcut.conv.bias");
 
-        block.mid.attn.norm.norm.gamma = ClipModelUtils.loadData(block.mid.attn.norm.norm.gamma, weightMap, 1, "vae.encoder.mid.1.norm.norm.weight");
-        block.mid.attn.norm.norm.beta = ClipModelUtils.loadData(block.mid.attn.norm.norm.beta, weightMap, 1, "vae.encoder.mid.1.norm.norm.bias");
-        ClipModelUtils.loadData(block.mid.attn.qLinerLayer.weight, weightMap, "vae.encoder.mid.1.q.conv.weight", 5);
-        ClipModelUtils.loadData(block.mid.attn.kLinerLayer.weight, weightMap, "vae.encoder.mid.1.k.conv.weight", 5);
-        ClipModelUtils.loadData(block.mid.attn.vLinerLayer.weight, weightMap, "vae.encoder.mid.1.v.conv.weight", 5);
-        ClipModelUtils.loadData(block.mid.attn.oLinerLayer.weight, weightMap, "vae.encoder.mid.1.proj_out.conv.weight", 5);
+        block.mid.attn.norm.norm.gamma = ModeLoaderlUtils.loadData(block.mid.attn.norm.norm.gamma, weightMap, 1, "vae.encoder.mid.1.norm.norm.weight");
+        block.mid.attn.norm.norm.beta = ModeLoaderlUtils.loadData(block.mid.attn.norm.norm.beta, weightMap, 1, "vae.encoder.mid.1.norm.norm.bias");
+        ModeLoaderlUtils.loadData(block.mid.attn.qLinerLayer.weight, weightMap, "vae.encoder.mid.1.q.conv.weight", 5);
+        ModeLoaderlUtils.loadData(block.mid.attn.kLinerLayer.weight, weightMap, "vae.encoder.mid.1.k.conv.weight", 5);
+        ModeLoaderlUtils.loadData(block.mid.attn.vLinerLayer.weight, weightMap, "vae.encoder.mid.1.v.conv.weight", 5);
+        ModeLoaderlUtils.loadData(block.mid.attn.oLinerLayer.weight, weightMap, "vae.encoder.mid.1.proj_out.conv.weight", 5);
 
-        block.mid.block2.norm1.norm.gamma = ClipModelUtils.loadData(block.mid.block2.norm1.norm.gamma, weightMap, 1, "vae.encoder.mid.2.norm1.norm.weight");
-        block.mid.block2.norm1.norm.beta = ClipModelUtils.loadData(block.mid.block2.norm1.norm.beta, weightMap, 1, "vae.encoder.mid.2.norm1.norm.bias");
-        ClipModelUtils.loadData(block.mid.block2.conv1.weight, weightMap, "vae.encoder.mid.2.conv1.conv.weight", 5);
-        ClipModelUtils.loadData(block.mid.block2.conv1.bias, weightMap, "vae.encoder.mid.2.conv1.conv.bias");
-        block.mid.block2.norm2.norm.gamma = ClipModelUtils.loadData(block.mid.block2.norm2.norm.gamma, weightMap, 1, "vae.encoder.mid.2.norm2.norm.weight");
-        block.mid.block2.norm2.norm.beta = ClipModelUtils.loadData(block.mid.block2.norm2.norm.beta, weightMap, 1, "vae.encoder.mid.2.norm2.norm.bias");
-        ClipModelUtils.loadData(block.mid.block2.conv2.weight, weightMap, "vae.encoder.mid.2.conv2.conv.weight", 5);
-        ClipModelUtils.loadData(block.mid.block2.conv2.bias, weightMap, "vae.encoder.mid.2.conv2.conv.bias");
+        block.mid.block2.norm1.norm.gamma = ModeLoaderlUtils.loadData(block.mid.block2.norm1.norm.gamma, weightMap, 1, "vae.encoder.mid.2.norm1.norm.weight");
+        block.mid.block2.norm1.norm.beta = ModeLoaderlUtils.loadData(block.mid.block2.norm1.norm.beta, weightMap, 1, "vae.encoder.mid.2.norm1.norm.bias");
+        ModeLoaderlUtils.loadData(block.mid.block2.conv1.weight, weightMap, "vae.encoder.mid.2.conv1.conv.weight", 5);
+        ModeLoaderlUtils.loadData(block.mid.block2.conv1.bias, weightMap, "vae.encoder.mid.2.conv1.conv.bias");
+        block.mid.block2.norm2.norm.gamma = ModeLoaderlUtils.loadData(block.mid.block2.norm2.norm.gamma, weightMap, 1, "vae.encoder.mid.2.norm2.norm.weight");
+        block.mid.block2.norm2.norm.beta = ModeLoaderlUtils.loadData(block.mid.block2.norm2.norm.beta, weightMap, 1, "vae.encoder.mid.2.norm2.norm.bias");
+        ModeLoaderlUtils.loadData(block.mid.block2.conv2.weight, weightMap, "vae.encoder.mid.2.conv2.conv.weight", 5);
+        ModeLoaderlUtils.loadData(block.mid.block2.conv2.bias, weightMap, "vae.encoder.mid.2.conv2.conv.bias");
 
-        block.norm_out.norm.gamma = ClipModelUtils.loadData(block.norm_out.norm.gamma, weightMap, 1, "vae.encoder.norm_out.norm.weight");
-        block.norm_out.norm.beta = ClipModelUtils.loadData(block.norm_out.norm.beta, weightMap, 1, "vae.encoder.norm_out.norm.bias");
-        ClipModelUtils.loadData(block.conv_out.weight, weightMap, "vae.encoder.conv_out.conv.weight", 5);
-        ClipModelUtils.loadData(block.conv_out.bias, weightMap, "vae.encoder.conv_out.conv.bias");
+        block.norm_out.norm.gamma = ModeLoaderlUtils.loadData(block.norm_out.norm.gamma, weightMap, 1, "vae.encoder.norm_out.norm.weight");
+        block.norm_out.norm.beta = ModeLoaderlUtils.loadData(block.norm_out.norm.beta, weightMap, 1, "vae.encoder.norm_out.norm.bias");
+        ModeLoaderlUtils.loadData(block.conv_out.weight, weightMap, "vae.encoder.conv_out.conv.weight", 5);
+        ModeLoaderlUtils.loadData(block.conv_out.bias, weightMap, "vae.encoder.conv_out.conv.bias");
 
         // deocder
         WFDecoder decoder = network.decoder;
-        ClipModelUtils.loadData(decoder.conv_in.weight, weightMap, "vae.decoder.conv_in.conv.weight", 5);
-        ClipModelUtils.loadData(decoder.conv_in.bias, weightMap, "vae.decoder.conv_in.conv.bias");
+        ModeLoaderlUtils.loadData(decoder.conv_in.weight, weightMap, "vae.decoder.conv_in.conv.weight", 5);
+        ModeLoaderlUtils.loadData(decoder.conv_in.bias, weightMap, "vae.decoder.conv_in.conv.bias");
         /**
          * mid blocks
          */
-        decoder.mid.block1.norm1.norm.gamma = ClipModelUtils.loadData(decoder.mid.block1.norm1.norm.gamma, weightMap, 1, "vae.decoder.mid.0.norm1.norm.weight");
-        decoder.mid.block1.norm1.norm.beta = ClipModelUtils.loadData(decoder.mid.block1.norm1.norm.beta, weightMap, 1, "vae.decoder.mid.0.norm1.norm.bias");
-        ClipModelUtils.loadData(decoder.mid.block1.conv1.weight, weightMap, "vae.decoder.mid.0.conv1.conv.weight", 5);
-        ClipModelUtils.loadData(decoder.mid.block1.conv1.bias, weightMap, "vae.decoder.mid.0.conv1.conv.bias");
-        decoder.mid.block1.norm2.norm.gamma = ClipModelUtils.loadData(decoder.mid.block1.norm2.norm.gamma, weightMap, 1, "vae.decoder.mid.0.norm2.norm.weight");
-        decoder.mid.block1.norm2.norm.beta = ClipModelUtils.loadData(decoder.mid.block1.norm2.norm.beta, weightMap, 1, "vae.decoder.mid.0.norm2.norm.bias");
-        ClipModelUtils.loadData(decoder.mid.block1.conv2.weight, weightMap, "vae.decoder.mid.0.conv2.conv.weight", 5);
-        ClipModelUtils.loadData(decoder.mid.block1.conv2.bias, weightMap, "vae.decoder.mid.0.conv2.conv.bias");
+        decoder.mid.block1.norm1.norm.gamma = ModeLoaderlUtils.loadData(decoder.mid.block1.norm1.norm.gamma, weightMap, 1, "vae.decoder.mid.0.norm1.norm.weight");
+        decoder.mid.block1.norm1.norm.beta = ModeLoaderlUtils.loadData(decoder.mid.block1.norm1.norm.beta, weightMap, 1, "vae.decoder.mid.0.norm1.norm.bias");
+        ModeLoaderlUtils.loadData(decoder.mid.block1.conv1.weight, weightMap, "vae.decoder.mid.0.conv1.conv.weight", 5);
+        ModeLoaderlUtils.loadData(decoder.mid.block1.conv1.bias, weightMap, "vae.decoder.mid.0.conv1.conv.bias");
+        decoder.mid.block1.norm2.norm.gamma = ModeLoaderlUtils.loadData(decoder.mid.block1.norm2.norm.gamma, weightMap, 1, "vae.decoder.mid.0.norm2.norm.weight");
+        decoder.mid.block1.norm2.norm.beta = ModeLoaderlUtils.loadData(decoder.mid.block1.norm2.norm.beta, weightMap, 1, "vae.decoder.mid.0.norm2.norm.bias");
+        ModeLoaderlUtils.loadData(decoder.mid.block1.conv2.weight, weightMap, "vae.decoder.mid.0.conv2.conv.weight", 5);
+        ModeLoaderlUtils.loadData(decoder.mid.block1.conv2.bias, weightMap, "vae.decoder.mid.0.conv2.conv.bias");
 
-        decoder.mid.attn.norm.norm.gamma = ClipModelUtils.loadData(decoder.mid.attn.norm.norm.gamma, weightMap, 1, "vae.decoder.mid.1.norm.norm.weight");
-        decoder.mid.attn.norm.norm.beta = ClipModelUtils.loadData(decoder.mid.attn.norm.norm.beta, weightMap, 1, "vae.decoder.mid.1.norm.norm.bias");
-        ClipModelUtils.loadData(decoder.mid.attn.qLinerLayer.weight, weightMap, "vae.decoder.mid.1.q.conv.weight", 5);
-        ClipModelUtils.loadData(decoder.mid.attn.kLinerLayer.weight, weightMap, "vae.decoder.mid.1.k.conv.weight", 5);
-        ClipModelUtils.loadData(decoder.mid.attn.vLinerLayer.weight, weightMap, "vae.decoder.mid.1.v.conv.weight", 5);
-        ClipModelUtils.loadData(decoder.mid.attn.oLinerLayer.weight, weightMap, "vae.decoder.mid.1.proj_out.conv.weight", 5);
+        decoder.mid.attn.norm.norm.gamma = ModeLoaderlUtils.loadData(decoder.mid.attn.norm.norm.gamma, weightMap, 1, "vae.decoder.mid.1.norm.norm.weight");
+        decoder.mid.attn.norm.norm.beta = ModeLoaderlUtils.loadData(decoder.mid.attn.norm.norm.beta, weightMap, 1, "vae.decoder.mid.1.norm.norm.bias");
+        ModeLoaderlUtils.loadData(decoder.mid.attn.qLinerLayer.weight, weightMap, "vae.decoder.mid.1.q.conv.weight", 5);
+        ModeLoaderlUtils.loadData(decoder.mid.attn.kLinerLayer.weight, weightMap, "vae.decoder.mid.1.k.conv.weight", 5);
+        ModeLoaderlUtils.loadData(decoder.mid.attn.vLinerLayer.weight, weightMap, "vae.decoder.mid.1.v.conv.weight", 5);
+        ModeLoaderlUtils.loadData(decoder.mid.attn.oLinerLayer.weight, weightMap, "vae.decoder.mid.1.proj_out.conv.weight", 5);
 
-        decoder.mid.block2.norm1.norm.gamma = ClipModelUtils.loadData(decoder.mid.block2.norm1.norm.gamma, weightMap, 1, "vae.decoder.mid.2.norm1.norm.weight");
-        decoder.mid.block2.norm1.norm.beta = ClipModelUtils.loadData(decoder.mid.block2.norm1.norm.beta, weightMap, 1, "vae.decoder.mid.2.norm1.norm.bias");
-        ClipModelUtils.loadData(decoder.mid.block2.conv1.weight, weightMap, "vae.decoder.mid.2.conv1.conv.weight", 5);
-        ClipModelUtils.loadData(decoder.mid.block2.conv1.bias, weightMap, "vae.decoder.mid.2.conv1.conv.bias");
-        decoder.mid.block2.norm2.norm.gamma = ClipModelUtils.loadData(decoder.mid.block2.norm2.norm.gamma, weightMap, 1, "vae.decoder.mid.2.norm2.norm.weight");
-        decoder.mid.block2.norm2.norm.beta = ClipModelUtils.loadData(decoder.mid.block2.norm2.norm.beta, weightMap, 1, "vae.decoder.mid.2.norm2.norm.bias");
-        ClipModelUtils.loadData(decoder.mid.block2.conv2.weight, weightMap, "vae.decoder.mid.2.conv2.conv.weight", 5);
-        ClipModelUtils.loadData(decoder.mid.block2.conv2.bias, weightMap, "vae.decoder.mid.2.conv2.conv.bias");
-        ClipModelUtils.loadData(decoder.mid.block2.shortcut.weight, weightMap, "vae.decoder.mid.2.nin_shortcut.conv.weight", 5);
-        ClipModelUtils.loadData(decoder.mid.block2.shortcut.bias, weightMap, "vae.decoder.mid.2.nin_shortcut.conv.bias");
+        decoder.mid.block2.norm1.norm.gamma = ModeLoaderlUtils.loadData(decoder.mid.block2.norm1.norm.gamma, weightMap, 1, "vae.decoder.mid.2.norm1.norm.weight");
+        decoder.mid.block2.norm1.norm.beta = ModeLoaderlUtils.loadData(decoder.mid.block2.norm1.norm.beta, weightMap, 1, "vae.decoder.mid.2.norm1.norm.bias");
+        ModeLoaderlUtils.loadData(decoder.mid.block2.conv1.weight, weightMap, "vae.decoder.mid.2.conv1.conv.weight", 5);
+        ModeLoaderlUtils.loadData(decoder.mid.block2.conv1.bias, weightMap, "vae.decoder.mid.2.conv1.conv.bias");
+        decoder.mid.block2.norm2.norm.gamma = ModeLoaderlUtils.loadData(decoder.mid.block2.norm2.norm.gamma, weightMap, 1, "vae.decoder.mid.2.norm2.norm.weight");
+        decoder.mid.block2.norm2.norm.beta = ModeLoaderlUtils.loadData(decoder.mid.block2.norm2.norm.beta, weightMap, 1, "vae.decoder.mid.2.norm2.norm.bias");
+        ModeLoaderlUtils.loadData(decoder.mid.block2.conv2.weight, weightMap, "vae.decoder.mid.2.conv2.conv.weight", 5);
+        ModeLoaderlUtils.loadData(decoder.mid.block2.conv2.bias, weightMap, "vae.decoder.mid.2.conv2.conv.bias");
+        ModeLoaderlUtils.loadData(decoder.mid.block2.shortcut.weight, weightMap, "vae.decoder.mid.2.nin_shortcut.conv.weight", 5);
+        ModeLoaderlUtils.loadData(decoder.mid.block2.shortcut.bias, weightMap, "vae.decoder.mid.2.nin_shortcut.conv.bias");
 
         /**
          * up2
          */
         for(int i = 0;i<decoder.getNum_resblocks();i++) {
             WFResnet3DBlock b3d = decoder.up2.resBlocks.get(i);
-            b3d.norm1.norm.gamma = ClipModelUtils.loadData(b3d.norm1.norm.gamma, weightMap, 1, "vae.decoder.up2."+i+".norm1.norm.weight");
-            b3d.norm1.norm.beta = ClipModelUtils.loadData(b3d.norm1.norm.beta, weightMap, 1, "vae.decoder.up2."+i+".norm1.norm.bias");
-            ClipModelUtils.loadData(b3d.conv1.weight, weightMap, "vae.decoder.up2."+i+".conv1.conv.weight", 5);
-            ClipModelUtils.loadData(b3d.conv1.bias, weightMap, "vae.decoder.up2."+i+".conv1.conv.bias");
-            b3d.norm2.norm.gamma = ClipModelUtils.loadData(b3d.norm2.norm.gamma, weightMap, 1, "vae.decoder.up2."+i+".norm2.norm.weight");
-            b3d.norm2.norm.beta = ClipModelUtils.loadData(b3d.norm2.norm.beta, weightMap, 1, "vae.decoder.up2."+i+".norm2.norm.bias");
-            ClipModelUtils.loadData(b3d.conv2.weight, weightMap, "vae.decoder.up2."+i+".conv2.conv.weight", 5);
-            ClipModelUtils.loadData(b3d.conv2.bias, weightMap, "vae.decoder.up2."+i+".conv2.conv.bias");
+            b3d.norm1.norm.gamma = ModeLoaderlUtils.loadData(b3d.norm1.norm.gamma, weightMap, 1, "vae.decoder.up2."+i+".norm1.norm.weight");
+            b3d.norm1.norm.beta = ModeLoaderlUtils.loadData(b3d.norm1.norm.beta, weightMap, 1, "vae.decoder.up2."+i+".norm1.norm.bias");
+            ModeLoaderlUtils.loadData(b3d.conv1.weight, weightMap, "vae.decoder.up2."+i+".conv1.conv.weight", 5);
+            ModeLoaderlUtils.loadData(b3d.conv1.bias, weightMap, "vae.decoder.up2."+i+".conv1.conv.bias");
+            b3d.norm2.norm.gamma = ModeLoaderlUtils.loadData(b3d.norm2.norm.gamma, weightMap, 1, "vae.decoder.up2."+i+".norm2.norm.weight");
+            b3d.norm2.norm.beta = ModeLoaderlUtils.loadData(b3d.norm2.norm.beta, weightMap, 1, "vae.decoder.up2."+i+".norm2.norm.bias");
+            ModeLoaderlUtils.loadData(b3d.conv2.weight, weightMap, "vae.decoder.up2."+i+".conv2.conv.weight", 5);
+            ModeLoaderlUtils.loadData(b3d.conv2.bias, weightMap, "vae.decoder.up2."+i+".conv2.conv.bias");
             if(b3d.shortcut != null) {
-                ClipModelUtils.loadData(b3d.shortcut.weight, weightMap, "vae.decoder.up2."+i+".nin_shortcut.conv.weight", 5);
-                ClipModelUtils.loadData(b3d.shortcut.bias, weightMap, "vae.decoder.up2."+i+".nin_shortcut.conv.bias");
+                ModeLoaderlUtils.loadData(b3d.shortcut.weight, weightMap, "vae.decoder.up2."+i+".nin_shortcut.conv.weight", 5);
+                ModeLoaderlUtils.loadData(b3d.shortcut.bias, weightMap, "vae.decoder.up2."+i+".nin_shortcut.conv.bias");
             }
         }
-        ClipModelUtils.loadData(decoder.up2.up3d.conv.weight, weightMap, "vae.decoder.up2.2.conv.conv.weight", 5);
-        ClipModelUtils.loadData(decoder.up2.up3d.conv.bias, weightMap, "vae.decoder.up2.2.conv.conv.bias");
+        ModeLoaderlUtils.loadData(decoder.up2.up3d.conv.weight, weightMap, "vae.decoder.up2.2.conv.conv.weight", 5);
+        ModeLoaderlUtils.loadData(decoder.up2.up3d.conv.bias, weightMap, "vae.decoder.up2.2.conv.conv.bias");
         WFResnet3DBlock up2_b = decoder.up2.block;
-        up2_b.norm1.norm.gamma = ClipModelUtils.loadData(up2_b.norm1.norm.gamma, weightMap, 1, "vae.decoder.up2.3.norm1.norm.weight");
-        up2_b.norm1.norm.beta = ClipModelUtils.loadData(up2_b.norm1.norm.beta, weightMap, 1, "vae.decoder.up2.3.norm1.norm.bias");
-        ClipModelUtils.loadData(up2_b.conv1.weight, weightMap, "vae.decoder.up2.3.conv1.conv.weight", 5);
-        ClipModelUtils.loadData(up2_b.conv1.bias, weightMap, "vae.decoder.up2.3.conv1.conv.bias");
-        up2_b.norm2.norm.gamma = ClipModelUtils.loadData(up2_b.norm2.norm.gamma, weightMap, 1, "vae.decoder.up2.3.norm2.norm.weight");
-        up2_b.norm2.norm.beta = ClipModelUtils.loadData(up2_b.norm2.norm.beta, weightMap, 1, "vae.decoder.up2.3.norm2.norm.bias");
-        ClipModelUtils.loadData(up2_b.conv2.weight, weightMap, "vae.decoder.up2.3.conv2.conv.weight", 5);
-        ClipModelUtils.loadData(up2_b.conv2.bias, weightMap, "vae.decoder.up2.3.conv2.conv.bias");
-        ClipModelUtils.loadData(up2_b.shortcut.weight, weightMap, "vae.decoder.up2.3.nin_shortcut.conv.weight", 5);
-        ClipModelUtils.loadData(up2_b.shortcut.bias, weightMap, "vae.decoder.up2.3.nin_shortcut.conv.bias");
+        up2_b.norm1.norm.gamma = ModeLoaderlUtils.loadData(up2_b.norm1.norm.gamma, weightMap, 1, "vae.decoder.up2.3.norm1.norm.weight");
+        up2_b.norm1.norm.beta = ModeLoaderlUtils.loadData(up2_b.norm1.norm.beta, weightMap, 1, "vae.decoder.up2.3.norm1.norm.bias");
+        ModeLoaderlUtils.loadData(up2_b.conv1.weight, weightMap, "vae.decoder.up2.3.conv1.conv.weight", 5);
+        ModeLoaderlUtils.loadData(up2_b.conv1.bias, weightMap, "vae.decoder.up2.3.conv1.conv.bias");
+        up2_b.norm2.norm.gamma = ModeLoaderlUtils.loadData(up2_b.norm2.norm.gamma, weightMap, 1, "vae.decoder.up2.3.norm2.norm.weight");
+        up2_b.norm2.norm.beta = ModeLoaderlUtils.loadData(up2_b.norm2.norm.beta, weightMap, 1, "vae.decoder.up2.3.norm2.norm.bias");
+        ModeLoaderlUtils.loadData(up2_b.conv2.weight, weightMap, "vae.decoder.up2.3.conv2.conv.weight", 5);
+        ModeLoaderlUtils.loadData(up2_b.conv2.bias, weightMap, "vae.decoder.up2.3.conv2.conv.bias");
+        ModeLoaderlUtils.loadData(up2_b.shortcut.weight, weightMap, "vae.decoder.up2.3.nin_shortcut.conv.weight", 5);
+        ModeLoaderlUtils.loadData(up2_b.shortcut.bias, weightMap, "vae.decoder.up2.3.nin_shortcut.conv.bias");
 
         /**
          * up1
          */
         for(int i = 0;i<decoder.getNum_resblocks();i++) {
             WFResnet3DBlock b3d = decoder.up1.resBlocks.get(i);
-            b3d.norm1.norm.gamma = ClipModelUtils.loadData(b3d.norm1.norm.gamma, weightMap, 1, "vae.decoder.up1."+i+".norm1.norm.weight");
-            b3d.norm1.norm.beta = ClipModelUtils.loadData(b3d.norm1.norm.beta, weightMap, 1, "vae.decoder.up1."+i+".norm1.norm.bias");
-            ClipModelUtils.loadData(b3d.conv1.weight, weightMap, "vae.decoder.up1."+i+".conv1.conv.weight", 5);
-            ClipModelUtils.loadData(b3d.conv1.bias, weightMap, "vae.decoder.up1."+i+".conv1.conv.bias");
-            b3d.norm2.norm.gamma = ClipModelUtils.loadData(b3d.norm2.norm.gamma, weightMap, 1, "vae.decoder.up1."+i+".norm2.norm.weight");
-            b3d.norm2.norm.beta = ClipModelUtils.loadData(b3d.norm2.norm.beta, weightMap, 1, "vae.decoder.up1."+i+".norm2.norm.bias");
-            ClipModelUtils.loadData(b3d.conv2.weight, weightMap, "vae.decoder.up1."+i+".conv2.conv.weight", 5);
-            ClipModelUtils.loadData(b3d.conv2.bias, weightMap, "vae.decoder.up1."+i+".conv2.conv.bias");
+            b3d.norm1.norm.gamma = ModeLoaderlUtils.loadData(b3d.norm1.norm.gamma, weightMap, 1, "vae.decoder.up1."+i+".norm1.norm.weight");
+            b3d.norm1.norm.beta = ModeLoaderlUtils.loadData(b3d.norm1.norm.beta, weightMap, 1, "vae.decoder.up1."+i+".norm1.norm.bias");
+            ModeLoaderlUtils.loadData(b3d.conv1.weight, weightMap, "vae.decoder.up1."+i+".conv1.conv.weight", 5);
+            ModeLoaderlUtils.loadData(b3d.conv1.bias, weightMap, "vae.decoder.up1."+i+".conv1.conv.bias");
+            b3d.norm2.norm.gamma = ModeLoaderlUtils.loadData(b3d.norm2.norm.gamma, weightMap, 1, "vae.decoder.up1."+i+".norm2.norm.weight");
+            b3d.norm2.norm.beta = ModeLoaderlUtils.loadData(b3d.norm2.norm.beta, weightMap, 1, "vae.decoder.up1."+i+".norm2.norm.bias");
+            ModeLoaderlUtils.loadData(b3d.conv2.weight, weightMap, "vae.decoder.up1."+i+".conv2.conv.weight", 5);
+            ModeLoaderlUtils.loadData(b3d.conv2.bias, weightMap, "vae.decoder.up1."+i+".conv2.conv.bias");
             if(b3d.shortcut != null) {
-                ClipModelUtils.loadData(b3d.shortcut.weight, weightMap, "vae.decoder.up1."+i+".nin_shortcut.conv.weight", 5);
-                ClipModelUtils.loadData(b3d.shortcut.bias, weightMap, "vae.decoder.up1."+i+".nin_shortcut.conv.bias");
+                ModeLoaderlUtils.loadData(b3d.shortcut.weight, weightMap, "vae.decoder.up1."+i+".nin_shortcut.conv.weight", 5);
+                ModeLoaderlUtils.loadData(b3d.shortcut.bias, weightMap, "vae.decoder.up1."+i+".nin_shortcut.conv.bias");
             }
         }
-        ClipModelUtils.loadData(decoder.up1.up2d.conv.weight, weightMap, "vae.decoder.up1.2.conv.weight");
-        ClipModelUtils.loadData(decoder.up1.up2d.conv.bias, weightMap, "vae.decoder.up1.2.conv.bias");
+        ModeLoaderlUtils.loadData(decoder.up1.up2d.conv.weight, weightMap, "vae.decoder.up1.2.conv.weight");
+        ModeLoaderlUtils.loadData(decoder.up1.up2d.conv.bias, weightMap, "vae.decoder.up1.2.conv.bias");
         WFResnet3DBlock up1_b = decoder.up1.block;
-        up1_b.norm1.norm.gamma = ClipModelUtils.loadData(up1_b.norm1.norm.gamma, weightMap, 1, "vae.decoder.up1.3.norm1.norm.weight");
-        up1_b.norm1.norm.beta = ClipModelUtils.loadData(up1_b.norm1.norm.beta, weightMap, 1, "vae.decoder.up1.3.norm1.norm.bias");
-        ClipModelUtils.loadData(up1_b.conv1.weight, weightMap, "vae.decoder.up1.3.conv1.conv.weight", 5);
-        ClipModelUtils.loadData(up1_b.conv1.bias, weightMap, "vae.decoder.up1.3.conv1.conv.bias");
-        up1_b.norm2.norm.gamma = ClipModelUtils.loadData(up1_b.norm2.norm.gamma, weightMap, 1, "vae.decoder.up1.3.norm2.norm.weight");
-        up1_b.norm2.norm.beta = ClipModelUtils.loadData(up1_b.norm2.norm.beta, weightMap, 1, "vae.decoder.up1.3.norm2.norm.bias");
-        ClipModelUtils.loadData(up1_b.conv2.weight, weightMap, "vae.decoder.up1.3.conv2.conv.weight", 5);
-        ClipModelUtils.loadData(up1_b.conv2.bias, weightMap, "vae.decoder.up1.3.conv2.conv.bias");
+        up1_b.norm1.norm.gamma = ModeLoaderlUtils.loadData(up1_b.norm1.norm.gamma, weightMap, 1, "vae.decoder.up1.3.norm1.norm.weight");
+        up1_b.norm1.norm.beta = ModeLoaderlUtils.loadData(up1_b.norm1.norm.beta, weightMap, 1, "vae.decoder.up1.3.norm1.norm.bias");
+        ModeLoaderlUtils.loadData(up1_b.conv1.weight, weightMap, "vae.decoder.up1.3.conv1.conv.weight", 5);
+        ModeLoaderlUtils.loadData(up1_b.conv1.bias, weightMap, "vae.decoder.up1.3.conv1.conv.bias");
+        up1_b.norm2.norm.gamma = ModeLoaderlUtils.loadData(up1_b.norm2.norm.gamma, weightMap, 1, "vae.decoder.up1.3.norm2.norm.weight");
+        up1_b.norm2.norm.beta = ModeLoaderlUtils.loadData(up1_b.norm2.norm.beta, weightMap, 1, "vae.decoder.up1.3.norm2.norm.bias");
+        ModeLoaderlUtils.loadData(up1_b.conv2.weight, weightMap, "vae.decoder.up1.3.conv2.conv.weight", 5);
+        ModeLoaderlUtils.loadData(up1_b.conv2.bias, weightMap, "vae.decoder.up1.3.conv2.conv.bias");
 
         /**
          * layers
          */
         for(int i = 0;i<2;i++) {
             WFResnet3DBlock b3d = decoder.blocks.get(i);
-            b3d.norm1.norm.gamma = ClipModelUtils.loadData(b3d.norm1.norm.gamma, weightMap, 1, "vae.decoder.layer."+i+".norm1.norm.weight");
-            b3d.norm1.norm.beta = ClipModelUtils.loadData(b3d.norm1.norm.beta, weightMap, 1, "vae.decoder.layer."+i+".norm1.norm.bias");
-            ClipModelUtils.loadData(b3d.conv1.weight, weightMap, "vae.decoder.layer."+i+".conv1.conv.weight", 5);
-            ClipModelUtils.loadData(b3d.conv1.bias, weightMap, "vae.decoder.layer."+i+".conv1.conv.bias");
-            b3d.norm2.norm.gamma = ClipModelUtils.loadData(b3d.norm2.norm.gamma, weightMap, 1, "vae.decoder.layer."+i+".norm2.norm.weight");
-            b3d.norm2.norm.beta = ClipModelUtils.loadData(b3d.norm2.norm.beta, weightMap, 1, "vae.decoder.layer."+i+".norm2.norm.bias");
-            ClipModelUtils.loadData(b3d.conv2.weight, weightMap, "vae.decoder.layer."+i+".conv2.conv.weight", 5);
-            ClipModelUtils.loadData(b3d.conv2.bias, weightMap, "vae.decoder.layer."+i+".conv2.conv.bias");
+            b3d.norm1.norm.gamma = ModeLoaderlUtils.loadData(b3d.norm1.norm.gamma, weightMap, 1, "vae.decoder.layer."+i+".norm1.norm.weight");
+            b3d.norm1.norm.beta = ModeLoaderlUtils.loadData(b3d.norm1.norm.beta, weightMap, 1, "vae.decoder.layer."+i+".norm1.norm.bias");
+            ModeLoaderlUtils.loadData(b3d.conv1.weight, weightMap, "vae.decoder.layer."+i+".conv1.conv.weight", 5);
+            ModeLoaderlUtils.loadData(b3d.conv1.bias, weightMap, "vae.decoder.layer."+i+".conv1.conv.bias");
+            b3d.norm2.norm.gamma = ModeLoaderlUtils.loadData(b3d.norm2.norm.gamma, weightMap, 1, "vae.decoder.layer."+i+".norm2.norm.weight");
+            b3d.norm2.norm.beta = ModeLoaderlUtils.loadData(b3d.norm2.norm.beta, weightMap, 1, "vae.decoder.layer."+i+".norm2.norm.bias");
+            ModeLoaderlUtils.loadData(b3d.conv2.weight, weightMap, "vae.decoder.layer."+i+".conv2.conv.weight", 5);
+            ModeLoaderlUtils.loadData(b3d.conv2.bias, weightMap, "vae.decoder.layer."+i+".conv2.conv.bias");
             if(b3d.shortcut != null) {
-                ClipModelUtils.loadData(b3d.shortcut.weight, weightMap, "vae.decoder.layer."+i+".nin_shortcut.conv.weight", 5);
-                ClipModelUtils.loadData(b3d.shortcut.bias, weightMap, "vae.decoder.layer."+i+".nin_shortcut.conv.bias");
+                ModeLoaderlUtils.loadData(b3d.shortcut.weight, weightMap, "vae.decoder.layer."+i+".nin_shortcut.conv.weight", 5);
+                ModeLoaderlUtils.loadData(b3d.shortcut.bias, weightMap, "vae.decoder.layer."+i+".nin_shortcut.conv.bias");
             }
         }
 
@@ -224,54 +224,54 @@ public class ClipModelUtils {
          * connect_l1
          */
         WFResnet3DBlock b3d = decoder.connect_l1.resBlocks.get(0);
-        b3d.norm1.norm.gamma = ClipModelUtils.loadData(b3d.norm1.norm.gamma, weightMap, 1, "vae.decoder.connect_l1.0.norm1.norm.weight");
-        b3d.norm1.norm.beta = ClipModelUtils.loadData(b3d.norm1.norm.beta, weightMap, 1, "vae.decoder.connect_l1.0.norm1.norm.bias");
-        ClipModelUtils.loadData(b3d.conv1.weight, weightMap, "vae.decoder.connect_l1.0.conv1.conv.weight", 5);
-        ClipModelUtils.loadData(b3d.conv1.bias, weightMap, "vae.decoder.connect_l1.0.conv1.conv.bias");
-        b3d.norm2.norm.gamma = ClipModelUtils.loadData(b3d.norm2.norm.gamma, weightMap, 1, "vae.decoder.connect_l1.0.norm2.norm.weight");
-        b3d.norm2.norm.beta = ClipModelUtils.loadData(b3d.norm2.norm.beta, weightMap, 1, "vae.decoder.connect_l1.0.norm2.norm.bias");
-        ClipModelUtils.loadData(b3d.conv2.weight, weightMap, "vae.decoder.connect_l1.0.conv2.conv.weight", 5);
-        ClipModelUtils.loadData(b3d.conv2.bias, weightMap, "vae.decoder.connect_l1.0.conv2.conv.bias");
+        b3d.norm1.norm.gamma = ModeLoaderlUtils.loadData(b3d.norm1.norm.gamma, weightMap, 1, "vae.decoder.connect_l1.0.norm1.norm.weight");
+        b3d.norm1.norm.beta = ModeLoaderlUtils.loadData(b3d.norm1.norm.beta, weightMap, 1, "vae.decoder.connect_l1.0.norm1.norm.bias");
+        ModeLoaderlUtils.loadData(b3d.conv1.weight, weightMap, "vae.decoder.connect_l1.0.conv1.conv.weight", 5);
+        ModeLoaderlUtils.loadData(b3d.conv1.bias, weightMap, "vae.decoder.connect_l1.0.conv1.conv.bias");
+        b3d.norm2.norm.gamma = ModeLoaderlUtils.loadData(b3d.norm2.norm.gamma, weightMap, 1, "vae.decoder.connect_l1.0.norm2.norm.weight");
+        b3d.norm2.norm.beta = ModeLoaderlUtils.loadData(b3d.norm2.norm.beta, weightMap, 1, "vae.decoder.connect_l1.0.norm2.norm.bias");
+        ModeLoaderlUtils.loadData(b3d.conv2.weight, weightMap, "vae.decoder.connect_l1.0.conv2.conv.weight", 5);
+        ModeLoaderlUtils.loadData(b3d.conv2.bias, weightMap, "vae.decoder.connect_l1.0.conv2.conv.bias");
         WFResnet3DBlock b3d_ = decoder.connect_l1.resBlocks.get(1);
-        b3d_.norm1.norm.gamma = ClipModelUtils.loadData(b3d_.norm1.norm.gamma, weightMap, 1, "vae.decoder.connect_l1.1.norm1.norm.weight");
-        b3d_.norm1.norm.beta = ClipModelUtils.loadData(b3d_.norm1.norm.beta, weightMap, 1, "vae.decoder.connect_l1.1.norm1.norm.bias");
-        ClipModelUtils.loadData(b3d_.conv1.weight, weightMap, "vae.decoder.connect_l1.1.conv1.conv.weight", 5);
-        ClipModelUtils.loadData(b3d_.conv1.bias, weightMap, "vae.decoder.connect_l1.1.conv1.conv.bias");
-        b3d_.norm2.norm.gamma = ClipModelUtils.loadData(b3d_.norm2.norm.gamma, weightMap, 1, "vae.decoder.connect_l1.1.norm2.norm.weight");
-        b3d_.norm2.norm.beta = ClipModelUtils.loadData(b3d_.norm2.norm.beta, weightMap, 1, "vae.decoder.connect_l1.1.norm2.norm.bias");
-        ClipModelUtils.loadData(b3d_.conv2.weight, weightMap, "vae.decoder.connect_l1.1.conv2.conv.weight", 5);
-        ClipModelUtils.loadData(b3d_.conv2.bias, weightMap, "vae.decoder.connect_l1.1.conv2.conv.bias");
-        ClipModelUtils.loadData(decoder.connect_l1.conv.conv.weight, weightMap, "vae.decoder.connect_l1.2.weight");
-        ClipModelUtils.loadData(decoder.connect_l1.conv.conv.bias, weightMap, "vae.decoder.connect_l1.2.bias");
+        b3d_.norm1.norm.gamma = ModeLoaderlUtils.loadData(b3d_.norm1.norm.gamma, weightMap, 1, "vae.decoder.connect_l1.1.norm1.norm.weight");
+        b3d_.norm1.norm.beta = ModeLoaderlUtils.loadData(b3d_.norm1.norm.beta, weightMap, 1, "vae.decoder.connect_l1.1.norm1.norm.bias");
+        ModeLoaderlUtils.loadData(b3d_.conv1.weight, weightMap, "vae.decoder.connect_l1.1.conv1.conv.weight", 5);
+        ModeLoaderlUtils.loadData(b3d_.conv1.bias, weightMap, "vae.decoder.connect_l1.1.conv1.conv.bias");
+        b3d_.norm2.norm.gamma = ModeLoaderlUtils.loadData(b3d_.norm2.norm.gamma, weightMap, 1, "vae.decoder.connect_l1.1.norm2.norm.weight");
+        b3d_.norm2.norm.beta = ModeLoaderlUtils.loadData(b3d_.norm2.norm.beta, weightMap, 1, "vae.decoder.connect_l1.1.norm2.norm.bias");
+        ModeLoaderlUtils.loadData(b3d_.conv2.weight, weightMap, "vae.decoder.connect_l1.1.conv2.conv.weight", 5);
+        ModeLoaderlUtils.loadData(b3d_.conv2.bias, weightMap, "vae.decoder.connect_l1.1.conv2.conv.bias");
+        ModeLoaderlUtils.loadData(decoder.connect_l1.conv.conv.weight, weightMap, "vae.decoder.connect_l1.2.weight");
+        ModeLoaderlUtils.loadData(decoder.connect_l1.conv.conv.bias, weightMap, "vae.decoder.connect_l1.2.bias");
 
         /**
          * connect_l2
          */
         WFResnet3DBlock b3d2 = decoder.connect_l2.resBlocks.get(0);
-        b3d2.norm1.norm.gamma = ClipModelUtils.loadData(b3d2.norm1.norm.gamma, weightMap, 1, "vae.decoder.connect_l2.0.norm1.norm.weight");
-        b3d2.norm1.norm.beta = ClipModelUtils.loadData(b3d2.norm1.norm.beta, weightMap, 1, "vae.decoder.connect_l2.0.norm1.norm.bias");
-        ClipModelUtils.loadData(b3d2.conv1.weight, weightMap, "vae.decoder.connect_l2.0.conv1.conv.weight", 5);
-        ClipModelUtils.loadData(b3d2.conv1.bias, weightMap, "vae.decoder.connect_l2.0.conv1.conv.bias");
-        b3d2.norm2.norm.gamma = ClipModelUtils.loadData(b3d2.norm2.norm.gamma, weightMap, 1, "vae.decoder.connect_l2.0.norm2.norm.weight");
-        b3d2.norm2.norm.beta = ClipModelUtils.loadData(b3d2.norm2.norm.beta, weightMap, 1, "vae.decoder.connect_l2.0.norm2.norm.bias");
-        ClipModelUtils.loadData(b3d2.conv2.weight, weightMap, "vae.decoder.connect_l2.0.conv2.conv.weight", 5);
-        ClipModelUtils.loadData(b3d2.conv2.bias, weightMap, "vae.decoder.connect_l2.0.conv2.conv.bias");
+        b3d2.norm1.norm.gamma = ModeLoaderlUtils.loadData(b3d2.norm1.norm.gamma, weightMap, 1, "vae.decoder.connect_l2.0.norm1.norm.weight");
+        b3d2.norm1.norm.beta = ModeLoaderlUtils.loadData(b3d2.norm1.norm.beta, weightMap, 1, "vae.decoder.connect_l2.0.norm1.norm.bias");
+        ModeLoaderlUtils.loadData(b3d2.conv1.weight, weightMap, "vae.decoder.connect_l2.0.conv1.conv.weight", 5);
+        ModeLoaderlUtils.loadData(b3d2.conv1.bias, weightMap, "vae.decoder.connect_l2.0.conv1.conv.bias");
+        b3d2.norm2.norm.gamma = ModeLoaderlUtils.loadData(b3d2.norm2.norm.gamma, weightMap, 1, "vae.decoder.connect_l2.0.norm2.norm.weight");
+        b3d2.norm2.norm.beta = ModeLoaderlUtils.loadData(b3d2.norm2.norm.beta, weightMap, 1, "vae.decoder.connect_l2.0.norm2.norm.bias");
+        ModeLoaderlUtils.loadData(b3d2.conv2.weight, weightMap, "vae.decoder.connect_l2.0.conv2.conv.weight", 5);
+        ModeLoaderlUtils.loadData(b3d2.conv2.bias, weightMap, "vae.decoder.connect_l2.0.conv2.conv.bias");
         WFResnet3DBlock b3d2_ = decoder.connect_l2.resBlocks.get(1);
-        b3d2_.norm1.norm.gamma = ClipModelUtils.loadData(b3d2_.norm1.norm.gamma, weightMap, 1, "vae.decoder.connect_l2.1.norm1.norm.weight");
-        b3d2_.norm1.norm.beta = ClipModelUtils.loadData(b3d2_.norm1.norm.beta, weightMap, 1, "vae.decoder.connect_l2.1.norm1.norm.bias");
-        ClipModelUtils.loadData(b3d2_.conv1.weight, weightMap, "vae.decoder.connect_l2.1.conv1.conv.weight", 5);
-        ClipModelUtils.loadData(b3d2_.conv1.bias, weightMap, "vae.decoder.connect_l2.1.conv1.conv.bias");
-        b3d2_.norm2.norm.gamma = ClipModelUtils.loadData(b3d2_.norm2.norm.gamma, weightMap, 1, "vae.decoder.connect_l2.1.norm2.norm.weight");
-        b3d2_.norm2.norm.beta = ClipModelUtils.loadData(b3d2_.norm2.norm.beta, weightMap, 1, "vae.decoder.connect_l2.1.norm2.norm.bias");
-        ClipModelUtils.loadData(b3d2_.conv2.weight, weightMap, "vae.decoder.connect_l2.1.conv2.conv.weight", 5);
-        ClipModelUtils.loadData(b3d2_.conv2.bias, weightMap, "vae.decoder.connect_l2.1.conv2.conv.bias");
-        ClipModelUtils.loadData(decoder.connect_l2.conv.conv.weight, weightMap, "vae.decoder.connect_l2.2.weight");
-        ClipModelUtils.loadData(decoder.connect_l2.conv.conv.bias, weightMap, "vae.decoder.connect_l2.2.bias");
+        b3d2_.norm1.norm.gamma = ModeLoaderlUtils.loadData(b3d2_.norm1.norm.gamma, weightMap, 1, "vae.decoder.connect_l2.1.norm1.norm.weight");
+        b3d2_.norm1.norm.beta = ModeLoaderlUtils.loadData(b3d2_.norm1.norm.beta, weightMap, 1, "vae.decoder.connect_l2.1.norm1.norm.bias");
+        ModeLoaderlUtils.loadData(b3d2_.conv1.weight, weightMap, "vae.decoder.connect_l2.1.conv1.conv.weight", 5);
+        ModeLoaderlUtils.loadData(b3d2_.conv1.bias, weightMap, "vae.decoder.connect_l2.1.conv1.conv.bias");
+        b3d2_.norm2.norm.gamma = ModeLoaderlUtils.loadData(b3d2_.norm2.norm.gamma, weightMap, 1, "vae.decoder.connect_l2.1.norm2.norm.weight");
+        b3d2_.norm2.norm.beta = ModeLoaderlUtils.loadData(b3d2_.norm2.norm.beta, weightMap, 1, "vae.decoder.connect_l2.1.norm2.norm.bias");
+        ModeLoaderlUtils.loadData(b3d2_.conv2.weight, weightMap, "vae.decoder.connect_l2.1.conv2.conv.weight", 5);
+        ModeLoaderlUtils.loadData(b3d2_.conv2.bias, weightMap, "vae.decoder.connect_l2.1.conv2.conv.bias");
+        ModeLoaderlUtils.loadData(decoder.connect_l2.conv.conv.weight, weightMap, "vae.decoder.connect_l2.2.weight");
+        ModeLoaderlUtils.loadData(decoder.connect_l2.conv.conv.bias, weightMap, "vae.decoder.connect_l2.2.bias");
         
-        decoder.norm_out.norm.gamma = ClipModelUtils.loadData(decoder.norm_out.norm.gamma, weightMap, 1, "vae.decoder.norm_out.norm.weight");
-        decoder.norm_out.norm.beta = ClipModelUtils.loadData(decoder.norm_out.norm.beta, weightMap, 1, "vae.decoder.norm_out.norm.bias");
-        ClipModelUtils.loadData(decoder.conv_out.conv.weight, weightMap, "vae.decoder.conv_out.weight");
-        ClipModelUtils.loadData(decoder.conv_out.conv.bias, weightMap, "vae.decoder.conv_out.bias");
+        decoder.norm_out.norm.gamma = ModeLoaderlUtils.loadData(decoder.norm_out.norm.gamma, weightMap, 1, "vae.decoder.norm_out.norm.weight");
+        decoder.norm_out.norm.beta = ModeLoaderlUtils.loadData(decoder.norm_out.norm.beta, weightMap, 1, "vae.decoder.norm_out.norm.bias");
+        ModeLoaderlUtils.loadData(decoder.conv_out.conv.weight, weightMap, "vae.decoder.conv_out.weight");
+        ModeLoaderlUtils.loadData(decoder.conv_out.conv.bias, weightMap, "vae.decoder.conv_out.bias");
     }
 
     public static void loadWeight(Map<String, Object> weightMap, SD_VAE network, boolean showLayers) {

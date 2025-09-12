@@ -34,6 +34,7 @@ import com.omega.engine.nn.network.dit.DiT_ORG;
 import com.omega.engine.nn.network.dit.DiT_ORG2;
 import com.omega.engine.nn.network.dit.DiT_ORG_SRA;
 import com.omega.engine.nn.network.dit.DiT_SRA;
+import com.omega.engine.nn.network.dit.DiT_TXT;
 import com.omega.engine.nn.network.dit.MMDiT;
 import com.omega.engine.nn.network.dit.MMDiT_RoPE;
 import com.omega.engine.nn.network.dit.PixArtDiT;
@@ -42,6 +43,7 @@ import com.omega.engine.nn.network.vae.SD_VAE;
 import com.omega.engine.nn.network.vae.TinyVAE;
 import com.omega.engine.nn.network.vae.TinyVQVAE;
 import com.omega.engine.nn.network.vae.TinyVQVAE2;
+import com.omega.engine.nn.network.vae.VA_VAE;
 import com.omega.engine.nn.network.vae.VQVAE;
 import com.omega.engine.nn.network.vae.VQVAE2;
 import com.omega.engine.nn.network.vae.WFVAE;
@@ -619,6 +621,34 @@ public class MBSGDOptimizer extends Optimizer {
         }
     }
     
+    public static void testDiT_IDDPM(String it, Tensor noiseInput,Tensor noise, Tensor t, Tensor condInput,Tensor score, MMDiT network, VA_VAE vae,IDDPM iddpm, String[] labels,String testPath,float scale_factor,Tensor latend_mean,Tensor latend_std) {
+        try {
+            
+            RandomUtils.gaussianRandom(noiseInput, 0, 1);
+
+            Tensor sample = iddpm.p_sample_mean(network, noiseInput, noise, condInput, t, score);
+            
+            JCuda.cudaDeviceSynchronize();
+
+            network.tensorOP.mul(sample, 1.0f / scale_factor, sample);
+            iddpm.latend_un_norm(sample, latend_mean, latend_std);
+            
+            Tensor result = vae.decode(sample);
+            JCuda.cudaDeviceSynchronize();
+            result.data = MatrixOperation.clampSelf(result.syncHost(), -1, 1);
+
+            /**
+             * print image
+             */
+            float[] mean = new float[]{0.5f, 0.5f, 0.5f};
+            float[] std = new float[]{0.5f, 0.5f, 0.5f};
+            showImgs(testPath, result, it, mean, std, labels);
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
     public static void testDiT_IDDPM(String it, Tensor noiseInput,Tensor noise, Tensor t, Tensor condInput,Tensor score, PixArtDiT network, SD_VAE vae,IDDPM iddpm, String[] labels,String testPath,float scale_factor) {
         try {
             
@@ -843,6 +873,36 @@ public class MBSGDOptimizer extends Optimizer {
     }
     
     public static void testDiT_IDDPM(String it, Tensor noiseInput,Tensor noise, Tensor t, Tensor condInput,Tensor cos,Tensor sin, Tensor score, MMDiT_RoPE network, SD_VAE vae,IDDPM iddpm, String[] labels,String testPath,Tensor latendMean,Tensor latendStd,float scale_factor) {
+        try {
+            
+            RandomUtils.gaussianRandom(noiseInput, 0, 1);
+
+            Tensor sample = iddpm.p_sample_mean(network, cos, sin, noiseInput, noise, condInput, t, score);
+            
+            JCuda.cudaDeviceSynchronize();
+
+            network.tensorOP.mul(sample, 1.0f / scale_factor, sample);
+            
+            iddpm.latend_un_norm(sample, latendMean, latendStd);
+            
+            Tensor result = vae.decode(sample);
+            JCuda.cudaDeviceSynchronize();
+            result.data = MatrixOperation.clampSelf(result.syncHost(), -1, 1);
+            //			System.err.println("in");
+            /**
+             * print image
+             */
+            float[] mean = new float[]{0.5f, 0.5f, 0.5f};
+            float[] std = new float[]{0.5f, 0.5f, 0.5f};
+//            showImgs("H:\\vae_dataset\\anime_test256\\dit_test2\\", result, it, mean, std, labels);
+            showImgs(testPath, result, it, mean, std, labels);
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public static void testDiT_IDDPM(String it, Tensor noiseInput,Tensor noise, Tensor t, Tensor condInput,Tensor cos,Tensor sin, Tensor score, MMDiT_RoPE network, VA_VAE vae,IDDPM iddpm, String[] labels,String testPath,Tensor latendMean,Tensor latendStd,float scale_factor) {
         try {
             
             RandomUtils.gaussianRandom(noiseInput, 0, 1);
@@ -6790,6 +6850,432 @@ public class MBSGDOptimizer extends Optimizer {
         }
     }
     
+    public void train_DiT_ICPlan(LatendDataset trainingData,ICPlan icplan,String weightPath, Tensor mean, Tensor std, float scale_factor, int weightCount) {
+        // TODO Auto-generated method stub
+        try {
+
+            DiT_ORG network = (DiT_ORG) this.network;
+            
+            this.dataSize = trainingData.number;
+            if (isWarmUp()) {
+                this.network.learnRate = (float) (this.lr * Math.pow(batchIndex * 1.0f / burnIn * 1.0f, power));
+            }
+            Tensor latend = new Tensor(batchSize, trainingData.channel, trainingData.height, trainingData.width, true);
+            Tensor condInput = new Tensor(batchSize , 1, 1, trainingData.clipEmbd, true);
+            
+            Tensor xt = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+            Tensor ut = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+         
+            Tensor[] cs = RoPEKernel.getCosAndSin2D(network.time, network.hiddenSize, network.headNum);
+            Tensor cos = cs[0];
+            Tensor sin = cs[1];
+            
+            Tensor t = new Tensor(batchSize, 1, 1, 1, true);
+
+            Tensor noise = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+            
+            Tensor cosine_similarity_loss = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+            
+            float runing_loss = 0.0f;
+            int runTime = 0;
+            
+            for (int i = 0; i < this.trainTime; i++) {
+                if (this.trainIndex >= this.minTrainTime) {
+                    break;
+                }
+                this.trainIndex = i + 1;
+                int[][] indexs = trainingData.shuffle();
+                this.network.RUN_MODEL = RunModel.TRAIN;
+                
+                trainingData.loadData(indexs[0], latend, condInput, 0);
+
+                float train_loss = 0.0f;
+                /**
+                 * 遍历整个训练集
+                 */
+                for (int it = 0; it < indexs.length; it++) {
+                    long start = System.nanoTime();
+                    if (Math.abs(this.currentError) <= this.error) {
+                        break;
+                    }
+                    
+                    icplan.t(t);
+
+                    RandomUtils.gaussianRandom(noise, 0, 1);
+                    
+                    trainingData.loadData(indexs[it], latend, condInput, it);
+                    JCudaDriver.cuCtxSynchronize();
+                    icplan.latend_norm(latend, mean, std);    
+                    network.tensorOP.mul(latend, scale_factor, latend);
+                   
+                    /**
+                     * latend add noise
+                     */
+                    icplan.compute_xt(t, noise, latend, xt);
+                    icplan.compute_ut(t, noise, latend, ut);
+//                    xt.showDM();
+//                    ut.showDM("ut");
+                    /**
+                     * forward
+                     */
+                    Tensor output = network.forward(xt, t, condInput, cos, sin);
+
+                    /**
+                     * loss
+                     */
+                    this.loss = network.loss(output, ut);
+                 
+                    /**
+                     * loss diff
+                     */
+                    this.lossDiff = network.lossDiff(output, ut);
+//                    lossDiff.showDM();
+                    icplan.cosine_similarity_loss(output, ut, cosine_similarity_loss);
+                    
+                    icplan.cosine_similarity_loss_back(output, ut, cosine_similarity_loss);
+                    
+                    network.tensorOP.add(lossDiff, cosine_similarity_loss, lossDiff);
+                    
+                    /**
+                     * back
+                     */
+                    network.back(lossDiff, cos, sin);
+                    
+                    /**
+                     * update
+                     */
+                    network.update();
+                    JCudaDriver.cuCtxSynchronize();
+                    /**
+                     * current time error
+                     */
+                    if (this.loss.isHasGPU()) {
+                    	float mse_loss = MatrixOperation.sum(this.loss.syncHost()) / this.batchSize;
+//                    	System.out.println("mse_loss:" + mse_loss);
+                        this.currentError = mse_loss;
+//                        runTime++;
+//                        runing_loss += mse_loss;
+//                        if(runTime == 100) {
+//                            String msg = "training[" + this.trainIndex+"]{" + it + "/" + indexs.length + "} (lr:" + this.network.learnRate + ") train_loss:" + runing_loss/100 + " [costTime:" + (System.nanoTime() - start) / 1e6 + "ms.]";
+//                        	System.out.println(msg);
+//                        	runTime = 0;
+//                        	runing_loss = 0;
+//                        }
+//                        t.showDM("t:");
+                    } else {
+                        this.currentError = MatrixOperation.sum(this.loss.data) / this.batchSize;
+                    }
+                    train_loss += this.currentError;
+                    String msg = "training[" + this.trainIndex+"]{" + it + "/" + indexs.length + "} (lr:" + this.network.learnRate + ") train_loss:" + this.currentError + " [costTime:" + (System.nanoTime() - start) / 1e6 + "ms.]";
+                    System.out.println(msg);
+                    this.batchIndex++;
+                    /**
+                     * update learning rate
+                     */
+                    this.updateLR(this.lr_step);
+                    updateLRDynamic(i * trainingData.count_it + it, this.trainTime * trainingData.count_it, 1e-6f);
+                }
+               
+                if (i > 0 && i % weightCount == 0) {
+                    String save_model_path = weightPath + "/dit_b2_" + i + ".model";
+                    ModelUtils.saveModel(network, save_model_path);
+                }
+                System.out.println("training[" + this.trainIndex + "] train loss:{" + train_loss / indexs.length + "} ");
+            }
+            /**
+             * 停止训练
+             */
+            System.out.println("training finish. [" + this.trainIndex + "] finalError:" + this.currentError);
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void train_DiT_TXT_ICPlan(LatendDataset trainingData,ICPlan icplan,String weightPath, Tensor mean, Tensor std, float scale_factor, int weightCount) {
+        // TODO Auto-generated method stub
+        try {
+
+            DiT_TXT network = (DiT_TXT) this.network;
+            
+            this.dataSize = trainingData.number;
+            if (isWarmUp()) {
+                this.network.learnRate = (float) (this.lr * Math.pow(batchIndex * 1.0f / burnIn * 1.0f, power));
+            }
+            Tensor latend = new Tensor(batchSize, trainingData.channel, trainingData.height, trainingData.width, true);
+            Tensor condInput = new Tensor(batchSize , 1, 1, trainingData.clipEmbd, true);
+            
+            Tensor xt = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+            Tensor ut = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+         
+            Tensor[] cs = RoPEKernel.getCosAndSin2D(network.time, network.hiddenSize, network.headNum);
+            Tensor cos = cs[0];
+            Tensor sin = cs[1];
+            
+            Tensor t = new Tensor(batchSize, 1, 1, 1, true);
+
+            Tensor noise = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+            
+            Tensor cosine_similarity_loss = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+            
+            float runing_loss = 0.0f;
+            int runTime = 0;
+            
+            for (int i = 0; i < this.trainTime; i++) {
+                if (this.trainIndex >= this.minTrainTime) {
+                    break;
+                }
+                this.trainIndex = i + 1;
+                int[][] indexs = trainingData.shuffle();
+                this.network.RUN_MODEL = RunModel.TRAIN;
+                
+                trainingData.loadData(indexs[0], latend, condInput, 0);
+
+                float train_loss = 0.0f;
+                /**
+                 * 遍历整个训练集
+                 */
+                for (int it = 0; it < indexs.length; it++) {
+                    long start = System.nanoTime();
+                    if (Math.abs(this.currentError) <= this.error) {
+                        break;
+                    }
+                    
+                    icplan.t(t);
+
+                    RandomUtils.gaussianRandom(noise, 0, 1);
+                    
+                    trainingData.loadData(indexs[it], latend, condInput, it);
+                    JCudaDriver.cuCtxSynchronize();
+                    icplan.latend_norm(latend, mean, std);    
+                    network.tensorOP.mul(latend, scale_factor, latend);
+                   
+                    /**
+                     * latend add noise
+                     */
+                    icplan.compute_xt(t, noise, latend, xt);
+                    icplan.compute_ut(t, noise, latend, ut);
+//                    xt.showDM();
+//                    ut.showDM("ut");
+                    /**
+                     * forward
+                     */
+                    Tensor output = network.forward(xt, t, condInput, cos, sin);
+
+                    /**
+                     * loss
+                     */
+                    this.loss = network.loss(output, ut);
+                 
+                    /**
+                     * loss diff
+                     */
+                    this.lossDiff = network.lossDiff(output, ut);
+//                    lossDiff.showDM();
+                    icplan.cosine_similarity_loss(output, ut, cosine_similarity_loss);
+                    
+                    icplan.cosine_similarity_loss_back(output, ut, cosine_similarity_loss);
+                    
+                    network.tensorOP.add(lossDiff, cosine_similarity_loss, lossDiff);
+                    
+                    /**
+                     * back
+                     */
+                    network.back(lossDiff, cos, sin);
+                    
+                    /**
+                     * update
+                     */
+                    network.update();
+                    JCudaDriver.cuCtxSynchronize();
+                    /**
+                     * current time error
+                     */
+                    if (this.loss.isHasGPU()) {
+                    	float mse_loss = MatrixOperation.sum(this.loss.syncHost()) / this.batchSize;
+//                    	System.out.println("mse_loss:" + mse_loss);
+                        this.currentError = mse_loss;
+//                        runTime++;
+//                        runing_loss += mse_loss;
+//                        if(runTime == 100) {
+//                            String msg = "training[" + this.trainIndex+"]{" + it + "/" + indexs.length + "} (lr:" + this.network.learnRate + ") train_loss:" + runing_loss/100 + " [costTime:" + (System.nanoTime() - start) / 1e6 + "ms.]";
+//                        	System.out.println(msg);
+//                        	runTime = 0;
+//                        	runing_loss = 0;
+//                        }
+//                        t.showDM("t:");
+                    } else {
+                        this.currentError = MatrixOperation.sum(this.loss.data) / this.batchSize;
+                    }
+                    train_loss += this.currentError;
+                    String msg = "training[" + this.trainIndex+"]{" + it + "/" + indexs.length + "} (lr:" + this.network.learnRate + ") train_loss:" + this.currentError + " [costTime:" + (System.nanoTime() - start) / 1e6 + "ms.]";
+                    System.out.println(msg);
+                    this.batchIndex++;
+//                    /**
+//                     * update learning rate
+//                     */
+//                    this.updateLR(this.lr_step);
+//                    updateLRDynamic(i * trainingData.count_it + it, this.trainTime * trainingData.count_it, 1e-6f);
+                }
+               
+                if (i > 0 && i % weightCount == 0) {
+                    String save_model_path = weightPath + "/dit_b2_" + i + ".model";
+                    ModelUtils.saveModel(network, save_model_path);
+                }
+                System.out.println("training[" + this.trainIndex + "] train loss:{" + train_loss / indexs.length + "} ");
+            }
+            /**
+             * 停止训练
+             */
+            System.out.println("training finish. [" + this.trainIndex + "] finalError:" + this.currentError);
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void train_MMDiT_TXT_ICPlan(LatendDataset trainingData,ICPlan icplan,String weightPath, Tensor mean, Tensor std, float scale_factor, int weightCount) {
+        // TODO Auto-generated method stub
+        try {
+
+            MMDiT_RoPE network = (MMDiT_RoPE) this.network;
+            
+            this.dataSize = trainingData.number;
+            if (isWarmUp()) {
+                this.network.learnRate = (float) (this.lr * Math.pow(batchIndex * 1.0f / burnIn * 1.0f, power));
+            }
+            Tensor latend = new Tensor(batchSize, trainingData.channel, trainingData.height, trainingData.width, true);
+            Tensor condInput = new Tensor(batchSize , 1, 1, trainingData.clipEmbd, true);
+            
+            Tensor xt = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+            Tensor ut = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+         
+            Tensor[] cs = RoPEKernel.getCosAndSin2D(network.time, network.hiddenSize, network.headNum);
+            Tensor cos = cs[0];
+            Tensor sin = cs[1];
+            
+            Tensor t = new Tensor(batchSize, 1, 1, 1, true);
+
+            Tensor noise = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+            
+            Tensor cosine_similarity_loss = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+            
+            float runing_loss = 0.0f;
+            int runTime = 0;
+            
+            for (int i = 0; i < this.trainTime; i++) {
+                if (this.trainIndex >= this.minTrainTime) {
+                    break;
+                }
+                this.trainIndex = i + 1;
+                int[][] indexs = trainingData.shuffle();
+                this.network.RUN_MODEL = RunModel.TRAIN;
+                
+                trainingData.loadData(indexs[0], latend, condInput, 0);
+
+                float train_loss = 0.0f;
+                /**
+                 * 遍历整个训练集
+                 */
+                for (int it = 0; it < indexs.length; it++) {
+                    long start = System.nanoTime();
+                    if (Math.abs(this.currentError) <= this.error) {
+                        break;
+                    }
+                    
+                    icplan.t(t);
+
+                    RandomUtils.gaussianRandom(noise, 0, 1);
+                    
+                    trainingData.loadData(indexs[it], latend, condInput, it);
+                    JCudaDriver.cuCtxSynchronize();
+                    icplan.latend_norm(latend, mean, std);    
+                    network.tensorOP.mul(latend, scale_factor, latend);
+                   
+                    /**
+                     * latend add noise
+                     */
+                    icplan.compute_xt(t, noise, latend, xt);
+                    icplan.compute_ut(t, noise, latend, ut);
+//                    xt.showDM();
+//                    ut.showDM("ut");
+                    /**
+                     * forward
+                     */
+                    Tensor output = network.forward(xt, t, condInput, cos, sin);
+
+                    /**
+                     * loss
+                     */
+                    this.loss = network.loss(output, ut);
+                 
+                    /**
+                     * loss diff
+                     */
+                    this.lossDiff = network.lossDiff(output, ut);
+//                    lossDiff.showDM();
+                    icplan.cosine_similarity_loss(output, ut, cosine_similarity_loss);
+                    
+                    icplan.cosine_similarity_loss_back(output, ut, cosine_similarity_loss);
+                    
+                    network.tensorOP.add(lossDiff, cosine_similarity_loss, lossDiff);
+                    
+                    /**
+                     * back
+                     */
+                    network.back(lossDiff, cos, sin);
+                    
+                    /**
+                     * update
+                     */
+                    network.update();
+                    JCudaDriver.cuCtxSynchronize();
+                    /**
+                     * current time error
+                     */
+                    if (this.loss.isHasGPU()) {
+                    	float mse_loss = MatrixOperation.sum(this.loss.syncHost()) / this.batchSize;
+//                    	System.out.println("mse_loss:" + mse_loss);
+                        this.currentError = mse_loss;
+//                        runTime++;
+//                        runing_loss += mse_loss;
+//                        if(runTime == 100) {
+//                            String msg = "training[" + this.trainIndex+"]{" + it + "/" + indexs.length + "} (lr:" + this.network.learnRate + ") train_loss:" + runing_loss/100 + " [costTime:" + (System.nanoTime() - start) / 1e6 + "ms.]";
+//                        	System.out.println(msg);
+//                        	runTime = 0;
+//                        	runing_loss = 0;
+//                        }
+//                        t.showDM("t:");
+                    } else {
+                        this.currentError = MatrixOperation.sum(this.loss.data) / this.batchSize;
+                    }
+                    train_loss += this.currentError;
+                    String msg = "training[" + this.trainIndex+"]{" + it + "/" + indexs.length + "} (lr:" + this.network.learnRate + ") train_loss:" + this.currentError + " [costTime:" + (System.nanoTime() - start) / 1e6 + "ms.]";
+                    System.out.println(msg);
+                    this.batchIndex++;
+                    /**
+                     * update learning rate
+                     */
+                    this.updateLR(this.lr_step);
+                    updateLRDynamic(i * trainingData.count_it + it, this.trainTime * trainingData.count_it, 1e-6f);
+                }
+               
+                if (i > 0 && i % weightCount == 0) {
+                    String save_model_path = weightPath + "/mmdit_b2_" + i + ".model";
+                    ModelUtils.saveModel(network, save_model_path);
+                }
+                System.out.println("training[" + this.trainIndex + "] train loss:{" + train_loss / indexs.length + "} ");
+            }
+            /**
+             * 停止训练
+             */
+            System.out.println("training finish. [" + this.trainIndex + "] finalError:" + this.currentError);
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
     public void train_DiT_ORG_iddpm(LatendDataset trainingData,IDDPM iddpm,String weightPath, float scale_factor) {
         // TODO Auto-generated method stub
         try {
@@ -7936,6 +8422,281 @@ public class MBSGDOptimizer extends Optimizer {
         }
     }
     
+    public void train_MMDiT_rope_iddpm_kl(LatendDataset trainingData,IDDPM iddpm,String weightPath, float scale_factor,Tensor latend_mean,Tensor latend_std) {
+        // TODO Auto-generated method stub
+        try {
+        	MMDiT_RoPE network = (MMDiT_RoPE) this.network;
+            
+            this.dataSize = trainingData.number;
+            if (isWarmUp()) {
+                this.network.learnRate = (float) (this.lr * Math.pow(batchIndex * 1.0f / burnIn * 1.0f, power));
+            }
+            Tensor latend = new Tensor(batchSize, trainingData.channel, trainingData.height, trainingData.width, true);
+            Tensor condInput = new Tensor(batchSize , 1, 1, trainingData.clipEmbd, true);
+            
+            Tensor xt = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+         
+            Tensor[] cs = RoPEKernel.getCosAndSin2D(network.time, network.hiddenSize, network.headNum);
+            Tensor cos = cs[0];
+            Tensor sin = cs[1];
+            
+            Tensor t = new Tensor(batchSize, 1, 1, 1, true);
+
+            Tensor noise = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+
+            int T = 1000;
+
+            Tensor mean = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+            Tensor var = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+            
+            Tensor delta = new Tensor(batchSize, network.oChannel, network.height, network.width, true);
+            
+            for (int i = 0; i < this.trainTime; i++) {
+                if (this.trainIndex >= this.minTrainTime) {
+                    break;
+                }
+                this.trainIndex = i + 1;
+                int[][] indexs = trainingData.shuffle();
+                this.network.RUN_MODEL = RunModel.TRAIN;
+                
+                trainingData.loadData(indexs[0], latend, condInput, 0);
+                
+                float train_loss = 0.0f;
+                /**
+                 * 遍历整个训练集
+                 */
+                for (int it = 0; it < indexs.length; it++) {
+                    long start = System.nanoTime();
+                    if (Math.abs(this.currentError) <= this.error) {
+                        break;
+                    }
+                    
+                    RandomUtils.uniformInt(T, t);
+                    
+                    RandomUtils.gaussianRandom(noise, 0, 1);
+                    
+                    trainingData.loadData(indexs[it], latend, condInput, it);
+                    JCudaDriver.cuCtxSynchronize();
+                    iddpm.latend_norm(latend, latend_mean, latend_std);
+                    network.tensorOP.mul(latend, scale_factor, latend);
+                   
+                    /**
+                     * latend add noise
+                     */
+                    iddpm.q_sample(latend, noise, xt, t);
+                    /**
+                     * forward
+                     */
+                    Tensor output = network.forward(xt, t, condInput, cos, sin);
+                    
+                    network.tensorOP.getByChannel(output, mean, 0, 4);
+                    network.tensorOP.getByChannel(output, var, 4, 4);
+                    
+                    /**
+                     * loss
+                     */
+                    this.loss = network.loss(mean, noise);
+                    
+                    Tensor vb = iddpm.vb_terms_bpd(mean, var, t, latend, xt);
+                    
+                    /**
+                     * loss diff
+                     */
+                    this.lossDiff = network.lossDiff(mean, noise);
+                    
+                    Tensor dvar = iddpm.vb_terms_bpd_back(latend, t);
+                    network.tensorOP.mul(dvar, 0.0001f, dvar);
+                    network.tensorOP.cat(this.lossDiff, dvar, delta);
+                    
+                    /**
+                     * back
+                     */
+                    network.back(delta, cos, sin);
+                    /**
+                     * update
+                     */
+                    network.update();
+                    JCudaDriver.cuCtxSynchronize();
+                    /**
+                     * current time error
+                     */
+                    if (this.loss.isHasGPU()) {
+                    	float vb_loss = MatrixOperation.sum(vb.syncHost()) / this.batchSize;
+                    	float mse_loss = MatrixOperation.sum(this.loss.syncHost()) / this.batchSize;
+                    	System.out.println("vb_loss:"+vb_loss);
+                    	System.out.println("mse_loss:"+mse_loss);
+                        this.currentError = mse_loss + vb_loss;
+//                        t.showDM("t:");
+                    } else {
+                        this.currentError = MatrixOperation.sum(this.loss.data) / this.batchSize;
+                    }
+                    train_loss += this.currentError;
+                    String msg = "training[" + this.trainIndex + "]{" + it + "/" + indexs.length + "} (lr:" + this.network.learnRate + ") train_loss:" + this.currentError + " [costTime:" + (System.nanoTime() - start) / 1e6 + "ms.]";
+                    System.out.println(msg);
+                    this.batchIndex++;
+                    /**
+                     * update learning rate
+                     */
+                    this.updateLR(this.lr_step);
+                    updateLRDynamic(i * trainingData.count_it + it, this.trainTime * trainingData.count_it, 1e-6f);
+                }
+               
+                if (i > 0 && i % 10 == 0) {
+                    String save_model_path = weightPath + "vavae_mmdit_" + i + ".model";
+                    ModelUtils.saveModel(network, save_model_path);
+                }
+                System.out.println("training[" + this.trainIndex + "] train loss:{" + train_loss / indexs.length + "} ");
+            }
+            /**
+             * 停止训练
+             */
+            System.out.println("training finish. [" + this.trainIndex + "] finalError:" + this.currentError);
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void train_MMDiT_rope_iddpm_kl_disp_loss(LatendDataset trainingData,IDDPM iddpm,String weightPath, float scale_factor, int depthIdx, float lamda,Tensor latend_mean,Tensor latend_std) {
+        // TODO Auto-generated method stub
+        try {
+        	MMDiT_RoPE network = (MMDiT_RoPE) this.network;
+            
+            this.dataSize = trainingData.number;
+            if (isWarmUp()) {
+                this.network.learnRate = (float) (this.lr * Math.pow(batchIndex * 1.0f / burnIn * 1.0f, power));
+            }
+            Tensor latend = new Tensor(batchSize, trainingData.channel, trainingData.height, trainingData.width, true);
+            Tensor condInput = new Tensor(batchSize , 1, 1, trainingData.clipEmbd, true);
+            
+            Tensor xt = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+         
+            Tensor[] cs = RoPEKernel.getCosAndSin2D(network.time, network.hiddenSize, network.headNum);
+            Tensor cos = cs[0];
+            Tensor sin = cs[1];
+            
+            Tensor t = new Tensor(batchSize, 1, 1, 1, true);
+
+            Tensor noise = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+
+            int T = 1000;
+
+            Tensor mean = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+            Tensor var = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+            
+            Tensor delta = new Tensor(batchSize, network.oChannel, network.height, network.width, true);
+
+            for (int i = 0; i < this.trainTime; i++) {
+                if (this.trainIndex >= this.minTrainTime) {
+                    break;
+                }
+                this.trainIndex = i + 1;
+                int[][] indexs = trainingData.shuffle();
+                this.network.RUN_MODEL = RunModel.TRAIN;
+                
+                trainingData.loadData(indexs[0], latend, condInput, 0);
+                
+                float train_loss = 0.0f;
+                /**
+                 * 遍历整个训练集
+                 */
+                for (int it = 0; it < indexs.length; it++) {
+                    long start = System.nanoTime();
+                    if (Math.abs(this.currentError) <= this.error) {
+                        break;
+                    }
+                    
+                    RandomUtils.uniformInt(T, t);
+                    
+                    RandomUtils.gaussianRandom(noise, 0, 1);
+                    
+                    trainingData.loadData(indexs[it], latend, condInput, it);
+                    JCudaDriver.cuCtxSynchronize();
+                    iddpm.latend_norm(latend, latend_mean, latend_std);
+                    network.tensorOP.mul(latend, scale_factor, latend);
+                   
+                    /**
+                     * latend add noise
+                     */
+                    iddpm.q_sample(latend, noise, xt, t);
+                    /**
+                     * forward
+                     */
+                    Tensor output = network.forward(xt, t, condInput, cos, sin);
+                    
+                    network.tensorOP.getByChannel(output, mean, 0, 4);
+                    network.tensorOP.getByChannel(output, var, 4, 4);
+                    
+                    /**
+                     * loss
+                     */
+                    this.loss = network.loss(mean, noise);
+                    
+                    Tensor vb = iddpm.vb_terms_bpd(mean, var, t, latend, xt);
+                    
+                    /**
+                     * loss diff
+                     */
+                    this.lossDiff = network.lossDiff(mean, noise);
+                    
+                    float dispLoss = network.disp_loss(depthIdx, lamda);
+                    
+                    network.disp_loss_back(depthIdx, lamda);
+                    
+                    Tensor dvar = iddpm.vb_terms_bpd_back(latend, t);
+//                    network.tensorOP.mul(dvar, 0.0001f, dvar);
+                    network.tensorOP.cat(this.lossDiff, dvar, delta);
+                    
+                    /**
+                     * back
+                     */
+                    network.back(delta, cos, sin);
+                    /**
+                     * update
+                     */
+                    network.update();
+                    JCudaDriver.cuCtxSynchronize();
+                    /**
+                     * current time error
+                     */
+                    if (this.loss.isHasGPU()) {
+                    	float vb_loss = MatrixOperation.sum(vb.syncHost()) / this.batchSize;
+                    	float mse_loss = MatrixOperation.sum(this.loss.syncHost()) / this.batchSize;
+                    	System.out.println("vb_loss:"+vb_loss);
+                    	System.out.println("mse_loss:"+mse_loss);
+                    	System.out.println("disp_loss:"+dispLoss);
+                        this.currentError = mse_loss + vb_loss + dispLoss;
+//                        t.showDM("t:");
+                    } else {
+                        this.currentError = MatrixOperation.sum(this.loss.data) / this.batchSize;
+                    }
+                    train_loss += this.currentError;
+                    String msg = "training[" + this.trainIndex + "]{" + it + "} (lr:" + this.network.learnRate + ") train_loss:" + this.currentError + " [costTime:" + (System.nanoTime() - start) / 1e6 + "ms.]";
+                    System.out.println(msg);
+                    this.batchIndex++;
+                    /**
+                     * update learning rate
+                     */
+                    this.updateLR(this.lr_step);
+                    updateLRDynamic(i * trainingData.count_it + it, this.trainTime * trainingData.count_it, 1e-6f);
+                }
+               
+                if (i > 0 && i % 10 == 0) {
+                    String save_model_path = "/omega/models/vavae_mmdit_" + i + ".model";
+                    ModelUtils.saveModel(network, save_model_path);
+                }
+                System.out.println("training[" + this.trainIndex + "] train loss:{" + train_loss / indexs.length + "} ");
+            }
+            /**
+             * 停止训练
+             */
+            System.out.println("training finish. [" + this.trainIndex + "] finalError:" + this.currentError);
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
     public void train_MMDiT_iddpm_disp_loss(LatendDataset trainingData,IDDPM iddpm,String weightPath, float scale_factor, int depthIdx, float lamda) {
         // TODO Auto-generated method stub
         try {
@@ -8630,6 +9391,127 @@ public class MBSGDOptimizer extends Optimizer {
                 }
               
                 if (i > 0 && i % 1 == 0) {
+                    String save_model_path = weightPath+"/anime_mmdit_" + i + ".model";
+                    ModelUtils.saveModel(network, save_model_path);
+                }
+                System.out.println("training[" + this.trainIndex + "] train loss:{" + train_loss / trainingData.count_it + "} ");
+            }
+            /**
+             * 停止训练
+             */
+            System.out.println("training finish. [" + this.trainIndex + "] finalError:" + this.currentError);
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void train_MMDiT_RoPE_iddpm(LatendDataset trainingData, IDDPM iddpm, Tensor latend_mean, Tensor latend_std, String weightPath, float scale_factor,int weightCount) {
+        // TODO Auto-generated method stub
+        try {
+
+        	MMDiT_RoPE network = (MMDiT_RoPE) this.network;
+            
+            this.dataSize = trainingData.number;
+            if (isWarmUp()) {
+                this.network.learnRate = (float) (this.lr * Math.pow(batchIndex * 1.0f / burnIn * 1.0f, power));
+            }
+            Tensor latend = new Tensor(batchSize, trainingData.channel, trainingData.height, trainingData.width, true);
+            Tensor condInput = new Tensor(batchSize, 1, 1, trainingData.clipEmbd, true);
+            
+            Tensor xt = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+            Tensor target = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+            
+            Tensor t = new Tensor(batchSize, 1, 1, 1, true);
+
+            Tensor noise = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+    
+            Tensor[] cs = RoPEKernel.getCosAndSin2D(network.time, network.hiddenSize, network.headNum);
+            Tensor cos = cs[0];
+            Tensor sin = cs[1];
+            
+            for (int i = 0; i < this.trainTime; i++) {
+                if (this.trainIndex >= this.minTrainTime) {
+                    break;
+                }
+                this.trainIndex = i + 1;
+                
+                int[][] indexs = trainingData.shuffle();
+                
+                trainingData.loadData(indexs[0], latend, condInput, 0);
+                
+                this.network.RUN_MODEL = RunModel.TRAIN;
+                float train_loss = 0.0f;
+                /**
+                 * 遍历整个训练集
+                 */
+                for (int it = 0; it < trainingData.count_it; it++) {
+                    long start = System.nanoTime();
+                    if (Math.abs(this.currentError) <= this.error) {
+                        break;
+                    }
+                    
+                    RandomUtils.uniform(t);
+                    
+                    RandomUtils.gaussianRandom(noise, 0, 1);
+                    
+                    trainingData.loadData(indexs[it], latend, condInput, it);
+                    JCudaDriver.cuCtxSynchronize();
+                    iddpm.latend_norm(latend, latend_mean, latend_std);    
+                    network.tensorOP.mul(latend, scale_factor, latend);
+                   
+                    /**
+                     * latend add noise
+                     */
+                    iddpm.q_sample(latend, noise, t, xt, target);
+
+                    /**
+                     * forward
+                     */
+                    Tensor output = network.forward(xt, t, condInput, cos, sin);
+                    
+                    /**
+                     * loss
+                     */
+                    this.loss = network.loss(output, target);
+                    
+                    /**
+                     * loss diff
+                     */
+                    this.lossDiff = network.lossDiff(output, target);
+
+                    /**
+                     * back
+                     */
+                    network.back(this.lossDiff, cos, sin);
+                    
+                    /**
+                     * update
+                     */
+                    network.update();
+                    JCudaDriver.cuCtxSynchronize();
+                    /**
+                     * current time error
+                     */
+                    if (this.loss.isHasGPU()) {
+                    	float mse_loss = MatrixOperation.sum(this.loss.syncHost()) / this.batchSize;
+                        this.currentError = mse_loss;
+//                        t.showDM("t:");
+                    } else {
+                        this.currentError = MatrixOperation.sum(this.loss.data) / this.batchSize;
+                    }
+                    train_loss += this.currentError;
+                    String msg = "training[" + this.trainIndex + "]{" + it + "/" + trainingData.count_it + "} (lr:" + this.network.learnRate + ") train_loss:" + this.currentError + " [costTime:" + (System.nanoTime() - start) / 1e6 + "ms.]";
+                    System.out.println(msg);
+                    this.batchIndex++;
+                    /**
+                     * update learning rate
+                     */
+                    this.updateLR(this.lr_step);
+                    updateLRDynamic(i * trainingData.count_it + it, this.trainTime * trainingData.count_it, 1e-6f);
+                }
+              
+                if (i > 0 && i % weightCount == 0) {
                     String save_model_path = weightPath+"/anime_mmdit_" + i + ".model";
                     ModelUtils.saveModel(network, save_model_path);
                 }

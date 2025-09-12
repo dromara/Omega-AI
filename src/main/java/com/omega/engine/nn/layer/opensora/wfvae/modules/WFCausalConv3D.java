@@ -20,7 +20,7 @@ import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.utils.ModelUtils;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
-import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
@@ -266,7 +266,7 @@ public class WFCausalConv3D extends Layer {
         String inputPath = "D:\\models\\input_wf.json";
     	Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
     	Tensor input = new Tensor(N, C * F, H, W, true);
-    	ClipModelUtils.loadData(input, datas, "x", 5);
+    	ModeLoaderlUtils.loadData(input, datas, "x", 5);
         
         CNN nn = new CNN(null);
         nn.CUDNN = true;

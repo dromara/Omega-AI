@@ -23,7 +23,7 @@ public class AdamWKernel extends BaseKernel {
     public Tensor mb;
     public Tensor vb;
     private float beta1 = 0.9f;
-    private float beta2 = 0.999f;
+    private float beta2 = 0.95f;
     private CUfunction function;
     private CUfunction r_function;
     private CUfunction bn_function;

@@ -136,43 +136,48 @@
             <version>1.5.4</version>
         </dependency>
         -->
-        <!-- JavaCV 核心 -->
+        <!-- JavaCV 核心
         <dependency>
             <groupId>org.bytedeco</groupId>
             <artifactId>javacv</artifactId>
             <version>${javacv.version}</version>
         </dependency>
-        <!-- Openblas 核心 -->
+         -->
+        <!-- Openblas 核心
         <dependency>
             <groupId>org.bytedeco</groupId>
             <artifactId>openblas-platform</artifactId>
             <version>${openblas.version}</version>
         </dependency>
-        <!-- FFmpeg 核心 -->
+         -->
+        <!-- FFmpeg 核心 
         <dependency>
             <groupId>org.bytedeco</groupId>
             <artifactId>ffmpeg</artifactId>
             <version>${ffmpeg.version}</version>
         </dependency>
-        <!-- FFmpeg 本地库 -->
+         -->
+        <!-- FFmpeg 本地库
         <dependency>
             <groupId>org.bytedeco</groupId>
             <artifactId>ffmpeg-platform</artifactId>
             <version>${ffmpeg.version}</version>
         </dependency>
-        <!-- OpenCV 核心 -->
+        -->
+        <!-- OpenCV 核心
         <dependency>
             <groupId>org.bytedeco</groupId>
             <artifactId>opencv</artifactId>
             <version>${opencv.version}</version>
         </dependency>
-        <!-- OpenCV 本地库  -->
+         -->
+        <!-- OpenCV 本地库
         <dependency>
             <groupId>org.bytedeco</groupId>
             <artifactId>opencv-platform</artifactId>
             <version>${opencv.version}</version>
         </dependency>
-
+  -->
     </dependencies>
 
     <build>

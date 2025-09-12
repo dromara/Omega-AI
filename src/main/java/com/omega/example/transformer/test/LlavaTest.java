@@ -14,7 +14,7 @@ import com.omega.engine.optimizer.EDOptimizer;
 import com.omega.engine.optimizer.lr.LearnRateUpdate;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
-import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.transformer.dataset.LVMPreTrainDataset;
 import com.omega.example.transformer.utils.LagJsonReader;
 import com.omega.example.transformer.utils.ModelUtils;
@@ -38,7 +38,7 @@ public class LlavaTest {
         network.time = clip_time;
         network.CUDNN = true;
         String clipWeight = "H:\\model\\clip_vision_weights.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), network, false);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), network, false);
         System.out.println("clip vision is ready.");
         return network;
     }

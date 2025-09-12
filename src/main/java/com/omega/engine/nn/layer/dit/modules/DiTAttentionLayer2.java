@@ -118,25 +118,29 @@ public class DiTAttentionLayer2 extends Layer {
         }
     	
         this.setqLinerLayer(new FullyLayer(embedDim, embedDim, bias, this.network));
-        this.qLinerLayer.weight.setData(RandomUtils.xavierUniform(this.embedDim * this.embedDim, this.embedDim, this.embedDim,  1.0f));
+        RandomUtils.xavier_uniform(this.qLinerLayer.weight, 1, embedDim, embedDim);
+//        this.qLinerLayer.weight.setData(RandomUtils.xavierUniform(this.embedDim * this.embedDim, this.embedDim, this.embedDim,  1.0f));
         if(this.qLinerLayer.bias != null) {
         	this.qLinerLayer.bias.clearGPU();
         }
         //		this.qLinerLayer.weight = new Tensor(1, 1, embedDim, embedDim, MatrixUtils.order(embedDim * embedDim, 0.1f, 0.01f), true);
         this.setkLinerLayer(new FullyLayer(embedDim, embedDim, bias, this.network));
-        this.kLinerLayer.weight.setData(RandomUtils.xavierUniform(this.embedDim * this.embedDim, this.embedDim, this.embedDim,  1.0f));
+        RandomUtils.xavier_uniform(this.kLinerLayer.weight, 1, embedDim, embedDim);
+//        this.kLinerLayer.weight.setData(RandomUtils.xavierUniform(this.embedDim * this.embedDim, this.embedDim, this.embedDim,  1.0f));
         if(this.kLinerLayer.bias != null) {
         	this.kLinerLayer.bias.clearGPU();
         }
         //		this.kLinerLayer.weight = new Tensor(1, 1, embedDim, kDim, MatrixUtils.order(embedDim * kDim, 0.1f, 0.01f), true);
         this.setvLinerLayer(new FullyLayer(embedDim, embedDim, bias, this.network));
-        this.vLinerLayer.weight.setData(RandomUtils.xavierUniform(this.embedDim * this.embedDim, this.embedDim, this.embedDim,  1.0f));
+        RandomUtils.xavier_uniform(this.vLinerLayer.weight, 1, embedDim, embedDim);
+//        this.vLinerLayer.weight.setData(RandomUtils.xavierUniform(this.embedDim * this.embedDim, this.embedDim, this.embedDim,  1.0f));
         if(this.vLinerLayer.bias != null) {
         	this.vLinerLayer.bias.clearGPU();
         }
         //		this.vLinerLayer.weight = new Tensor(1, 1, embedDim, vDim, MatrixUtils.order(embedDim * vDim, 0.1f, 0.01f), true);
         this.setoLinerLayer(new FullyLayer(embedDim, embedDim, bias, this.network));
-        this.oLinerLayer.weight.setData(RandomUtils.xavierUniform(this.embedDim * this.embedDim, this.embedDim, this.embedDim,  1.0f));
+        RandomUtils.xavier_uniform(this.oLinerLayer.weight, 1, embedDim, embedDim);
+//        this.oLinerLayer.weight.setData(RandomUtils.xavierUniform(this.embedDim * this.embedDim, this.embedDim, this.embedDim,  1.0f));
         if(this.oLinerLayer.bias != null) {
         	this.oLinerLayer.bias.clearGPU();
         }

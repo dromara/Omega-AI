@@ -10,7 +10,7 @@ import com.omega.engine.nn.network.vae.WFVAE;
 import com.omega.engine.optimizer.MBSGDOptimizer;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
-import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.dit.dataset.LatendDataset;
 import com.omega.example.opensora.vae.dataset.VideoDataLoaderEN;
 import com.omega.example.transformer.utils.LagJsonReader;
@@ -77,7 +77,7 @@ public class DatasetCreator {
         clip.time = maxContextLen;
         clip.RUN_MODEL = RunModel.EVAL;
         String clipWeight = config.getStr("clip_model_path");
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, "", false);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, "", false);
 
         // 数据集加载
         VideoDataLoaderEN dataLoader = new VideoDataLoaderEN(bpe, dataPath, imgDirPath, ".png", num_frames, imgSize, imgSize, maxContextLen, batchSize, mean, std);
@@ -98,7 +98,7 @@ public class DatasetCreator {
 
         // 加载WFVAE权重
         String vaeWeight = config.getStr("wfvae_weight_path");
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(vaeWeight), network, true);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(vaeWeight), network, true);
 
         // latent bin 文件路径
         String outputDataPath = config.getStr("output_data_path");
@@ -196,7 +196,7 @@ public class DatasetCreator {
         clip.time = maxContextLen;
         clip.RUN_MODEL = RunModel.EVAL;
         String clipWeight = "D:\\models\\CLIP-GmP-ViT-L-14\\CLIP-GmP-ViT-L-14.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, "", false);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, "", false);
 
         // 数据集加载
         VideoDataLoaderEN dataLoader = new VideoDataLoaderEN(bpe, dataPath, imgDirPath, ".png", num_frames, imgSize, imgSize, maxContextLen, batchSize, mean, std);
@@ -217,7 +217,7 @@ public class DatasetCreator {
 
         // 加载WFVAE权重
         String vaeWeight = "D:\\models\\wfvae-s.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(vaeWeight), network, true);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(vaeWeight), network, true);
 
         String outputDataPath = "D:\\dataset\\wfvae\\video_latend.bin";
 		String clipDataPath = "D:\\dataset\\wfvae\\video_clip.bin";

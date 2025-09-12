@@ -13,6 +13,7 @@ import com.omega.engine.nn.layer.active.GeluLayer;
 import com.omega.engine.nn.layer.dit.kernel.TokenDropKernel;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
+import com.omega.engine.nn.network.utils.ModelUtils;
 import com.omega.engine.tensor.Tensor;
 
 /**
@@ -67,12 +68,14 @@ public class DiTCaptionEmbeddingLayer extends Layer {
 
     public void initLayers() {
         linear1 = new FullyLayer(inChannel, outChannel, bias, network);
+//        RandomUtils.xavier_uniform(linear1.weight, 1, inChannel, outChannel);
         linear1.weight.setData(RandomUtils.normal_(inChannel * outChannel, 0.0f, 0.02f));
         if(linear1.bias != null) {
         	linear1.bias.clearGPU();
         }
         act = new GeluLayer(linear1);
         linear2 = new FullyLayer(outChannel, outChannel, bias, network);
+//        RandomUtils.xavier_uniform(linear2.weight, 1, outChannel, outChannel);
         linear2.weight.setData(RandomUtils.normal_(outChannel * outChannel, 0.0f, 0.02f));
         if(linear2.bias != null) {
         	linear2.bias.clearGPU();
@@ -92,10 +95,10 @@ public class DiTCaptionEmbeddingLayer extends Layer {
     public void init(Tensor input) {
         // TODO Auto-generated method stub
         this.number = input.number;
-        if(network.RUN_MODEL == RunModel.TRAIN && (mask == null || mask.number != number)) {
+        if(network.RUN_MODEL == RunModel.TRAIN && uncond_prob > 0 && (mask == null || mask.number != number)) {
         	mask = Tensor.createGPUTensor(mask, number, 1, 1, 1, true);
         }
-        if(network.RUN_MODEL == RunModel.TRAIN && y_embedding == null) {
+        if(network.RUN_MODEL == RunModel.TRAIN && uncond_prob > 0 && y_embedding == null) {
         	float[] data = RandomUtils.gaussianRandom(token_num * inChannel, 0.0f, 1.0f);
         	data = MatrixOperation.multiplication(data, (float) Math.pow(inChannel, 0.5));
         	y_embedding = new Tensor(1, 1, token_num, inChannel, data, true);
@@ -255,11 +258,18 @@ public class DiTCaptionEmbeddingLayer extends Layer {
     public void saveModel(RandomAccessFile outputStream) throws IOException {
         linear1.saveModel(outputStream);
         linear2.saveModel(outputStream);
+        if(uncond_prob > 0) {
+        	ModelUtils.saveParams(outputStream, y_embedding);
+        }
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
         linear1.loadModel(inputStream);
         linear2.loadModel(inputStream);
+        if(uncond_prob > 0) {
+        	y_embedding = new Tensor(1, 1, token_num, inChannel, true);
+        	ModelUtils.loadParams(inputStream, y_embedding);
+        }
     }
 
     @Override

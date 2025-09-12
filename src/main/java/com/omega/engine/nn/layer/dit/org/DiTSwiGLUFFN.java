@@ -3,6 +3,7 @@ package com.omega.engine.nn.layer.dit.org;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -69,9 +70,11 @@ public class DiTSwiGLUFFN extends Layer {
         this.act = new SiLULayer(network);
 
         this.w12 = new FullyLayer(inChannel, hiddenSize * 2, bias, network);
-        
+        RandomUtils.xavier_uniform(w12.weight, 1, outChannel, outChannel);
+        w12.bias.clearGPU();
         this.w3 = new FullyLayer(hiddenSize, outChannel, bias, network);
-        
+        RandomUtils.xavier_uniform(w12.weight, 1, outChannel, outChannel);
+        w3.bias.clearGPU();
     }
 
     @Override
@@ -110,11 +113,11 @@ public class DiTSwiGLUFFN extends Layer {
     public void output() {
         // TODO Auto-generated method stub
     	w12.forward(input);
-    	
+
     	int[] shape = new int[] {number, 2, 1, hiddenSize};
     	Tensor_OP().getByChannel(w12.getOutput(), w1, shape, 0);
     	Tensor_OP().getByChannel(w12.getOutput(), w2, shape, 1);
-    	
+
     	act.forward(w1);
     	
     	Tensor_OP().mul(act.getOutput(), w2, wt);

@@ -18,7 +18,7 @@ import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 import com.omega.example.asr.dataset.AudioDataset;
 import com.omega.example.asr.utils.FBank;
-import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
 import com.omega.example.transformer.utils.ModelUtils;
 import com.omega.example.transformer.utils.bpe.BPETokenizer3;
@@ -33,115 +33,115 @@ public class ASRTest {
 		/**
 		 * encoder
 		 */
-		ClipModelUtils.loadData(network.transformer.encoder.feature_emb.weight, weightMap, "frontend.linear.0.weight");
-		ClipModelUtils.loadData(network.transformer.encoder.feature_emb.bias, weightMap, "frontend.linear.0.bias");
+		ModeLoaderlUtils.loadData(network.transformer.encoder.feature_emb.weight, weightMap, "frontend.linear.0.weight");
+		ModeLoaderlUtils.loadData(network.transformer.encoder.feature_emb.bias, weightMap, "frontend.linear.0.bias");
 		for (int i = 0; i < 2; i++) {
-			network.transformer.encoder.encoders.get(i).ln1.gamma = ClipModelUtils.loadData(
+			network.transformer.encoder.encoders.get(i).ln1.gamma = ModeLoaderlUtils.loadData(
 					network.transformer.encoder.encoders.get(i).ln1.gamma, weightMap, 1,
 					"encoder.layers." + i + ".norm1.weight");
-			network.transformer.encoder.encoders.get(i).ln1.beta = ClipModelUtils.loadData(
+			network.transformer.encoder.encoders.get(i).ln1.beta = ModeLoaderlUtils.loadData(
 					network.transformer.encoder.encoders.get(i).ln1.beta, weightMap, 1,
 					"encoder.layers." + i + ".norm1.bias");
-			network.transformer.encoder.encoders.get(i).ln2.gamma = ClipModelUtils.loadData(
+			network.transformer.encoder.encoders.get(i).ln2.gamma = ModeLoaderlUtils.loadData(
 					network.transformer.encoder.encoders.get(i).ln2.gamma, weightMap, 1,
 					"encoder.layers." + i + ".norm2.weight");
-			network.transformer.encoder.encoders.get(i).ln2.beta = ClipModelUtils.loadData(
+			network.transformer.encoder.encoders.get(i).ln2.beta = ModeLoaderlUtils.loadData(
 					network.transformer.encoder.encoders.get(i).ln2.beta, weightMap, 1,
 					"encoder.layers." + i + ".norm2.bias");
-			ClipModelUtils.loadData(network.transformer.encoder.encoders.get(i).attn.qLinerLayer.weight, weightMap,
+			ModeLoaderlUtils.loadData(network.transformer.encoder.encoders.get(i).attn.qLinerLayer.weight, weightMap,
 					"encoder.layers." + i + ".multi_head_attn.wq.weight");
-			ClipModelUtils.loadData(network.transformer.encoder.encoders.get(i).attn.qLinerLayer.bias, weightMap,
+			ModeLoaderlUtils.loadData(network.transformer.encoder.encoders.get(i).attn.qLinerLayer.bias, weightMap,
 					"encoder.layers." + i + ".multi_head_attn.wq.bias");
-			ClipModelUtils.loadData(network.transformer.encoder.encoders.get(i).attn.kLinerLayer.weight, weightMap,
+			ModeLoaderlUtils.loadData(network.transformer.encoder.encoders.get(i).attn.kLinerLayer.weight, weightMap,
 					"encoder.layers." + i + ".multi_head_attn.wk.weight");
-			ClipModelUtils.loadData(network.transformer.encoder.encoders.get(i).attn.kLinerLayer.bias, weightMap,
+			ModeLoaderlUtils.loadData(network.transformer.encoder.encoders.get(i).attn.kLinerLayer.bias, weightMap,
 					"encoder.layers." + i + ".multi_head_attn.wk.bias");
-			ClipModelUtils.loadData(network.transformer.encoder.encoders.get(i).attn.vLinerLayer.weight, weightMap,
+			ModeLoaderlUtils.loadData(network.transformer.encoder.encoders.get(i).attn.vLinerLayer.weight, weightMap,
 					"encoder.layers." + i + ".multi_head_attn.wv.weight");
-			ClipModelUtils.loadData(network.transformer.encoder.encoders.get(i).attn.vLinerLayer.bias, weightMap,
+			ModeLoaderlUtils.loadData(network.transformer.encoder.encoders.get(i).attn.vLinerLayer.bias, weightMap,
 					"encoder.layers." + i + ".multi_head_attn.wv.bias");
-			ClipModelUtils.loadData(network.transformer.encoder.encoders.get(i).attn.oLinerLayer.weight, weightMap,
+			ModeLoaderlUtils.loadData(network.transformer.encoder.encoders.get(i).attn.oLinerLayer.weight, weightMap,
 					"encoder.layers." + i + ".multi_head_attn.W_out.weight");
-			ClipModelUtils.loadData(network.transformer.encoder.encoders.get(i).attn.oLinerLayer.bias, weightMap,
+			ModeLoaderlUtils.loadData(network.transformer.encoder.encoders.get(i).attn.oLinerLayer.bias, weightMap,
 					"encoder.layers." + i + ".multi_head_attn.W_out.bias");
-			ClipModelUtils.loadData(network.transformer.encoder.encoders.get(i).pos_ffn.linear1.weight, weightMap,
+			ModeLoaderlUtils.loadData(network.transformer.encoder.encoders.get(i).pos_ffn.linear1.weight, weightMap,
 					"encoder.layers." + i + ".poswise_ffn.lin1.weight");
-			ClipModelUtils.loadData(network.transformer.encoder.encoders.get(i).pos_ffn.linear1.bias, weightMap,
+			ModeLoaderlUtils.loadData(network.transformer.encoder.encoders.get(i).pos_ffn.linear1.bias, weightMap,
 					"encoder.layers." + i + ".poswise_ffn.lin1.bias");
-			ClipModelUtils.loadData(network.transformer.encoder.encoders.get(i).pos_ffn.linear2.weight, weightMap,
+			ModeLoaderlUtils.loadData(network.transformer.encoder.encoders.get(i).pos_ffn.linear2.weight, weightMap,
 					"encoder.layers." + i + ".poswise_ffn.lin2.weight");
-			ClipModelUtils.loadData(network.transformer.encoder.encoders.get(i).pos_ffn.linear2.bias, weightMap,
+			ModeLoaderlUtils.loadData(network.transformer.encoder.encoders.get(i).pos_ffn.linear2.bias, weightMap,
 					"encoder.layers." + i + ".poswise_ffn.lin2.bias");
 		}
 		/**
 		 * decoder
 		 */
-		ClipModelUtils.loadData(network.transformer.decoder.tgt_emb.weight, weightMap, "decoder.tgt_emb.weight");
-		ClipModelUtils.loadData(network.transformer.decoder.pos_emb.weight, weightMap, "decoder.pos_emb.weight");
+		ModeLoaderlUtils.loadData(network.transformer.decoder.tgt_emb.weight, weightMap, "decoder.tgt_emb.weight");
+		ModeLoaderlUtils.loadData(network.transformer.decoder.pos_emb.weight, weightMap, "decoder.pos_emb.weight");
 		for (int i = 0; i < 2; i++) {
-			network.transformer.decoder.decoders.get(i).ln1.gamma = ClipModelUtils.loadData(
+			network.transformer.decoder.decoders.get(i).ln1.gamma = ModeLoaderlUtils.loadData(
 					network.transformer.decoder.decoders.get(i).ln1.gamma, weightMap, 1,
 					"decoder.layers." + i + ".norm1.weight");
-			network.transformer.decoder.decoders.get(i).ln1.beta = ClipModelUtils.loadData(
+			network.transformer.decoder.decoders.get(i).ln1.beta = ModeLoaderlUtils.loadData(
 					network.transformer.decoder.decoders.get(i).ln1.beta, weightMap, 1,
 					"decoder.layers." + i + ".norm1.bias");
-			network.transformer.decoder.decoders.get(i).ln2.gamma = ClipModelUtils.loadData(
+			network.transformer.decoder.decoders.get(i).ln2.gamma = ModeLoaderlUtils.loadData(
 					network.transformer.decoder.decoders.get(i).ln2.gamma, weightMap, 1,
 					"decoder.layers." + i + ".norm2.weight");
-			network.transformer.decoder.decoders.get(i).ln2.beta = ClipModelUtils.loadData(
+			network.transformer.decoder.decoders.get(i).ln2.beta = ModeLoaderlUtils.loadData(
 					network.transformer.decoder.decoders.get(i).ln2.beta, weightMap, 1,
 					"decoder.layers." + i + ".norm2.bias");
-			network.transformer.decoder.decoders.get(i).ln3.gamma = ClipModelUtils.loadData(
+			network.transformer.decoder.decoders.get(i).ln3.gamma = ModeLoaderlUtils.loadData(
 					network.transformer.decoder.decoders.get(i).ln3.gamma, weightMap, 1,
 					"decoder.layers." + i + ".norm3.weight");
-			network.transformer.decoder.decoders.get(i).ln3.beta = ClipModelUtils.loadData(
+			network.transformer.decoder.decoders.get(i).ln3.beta = ModeLoaderlUtils.loadData(
 					network.transformer.decoder.decoders.get(i).ln3.beta, weightMap, 1,
 					"decoder.layers." + i + ".norm3.bias");
-			ClipModelUtils.loadData(network.transformer.decoder.decoders.get(i).pos_ffn.linear1.weight, weightMap,
+			ModeLoaderlUtils.loadData(network.transformer.decoder.decoders.get(i).pos_ffn.linear1.weight, weightMap,
 					"decoder.layers." + i + ".poswise_ffn.lin1.weight");
-			ClipModelUtils.loadData(network.transformer.decoder.decoders.get(i).pos_ffn.linear1.bias, weightMap,
+			ModeLoaderlUtils.loadData(network.transformer.decoder.decoders.get(i).pos_ffn.linear1.bias, weightMap,
 					"decoder.layers." + i + ".poswise_ffn.lin1.bias");
-			ClipModelUtils.loadData(network.transformer.decoder.decoders.get(i).pos_ffn.linear2.weight, weightMap,
+			ModeLoaderlUtils.loadData(network.transformer.decoder.decoders.get(i).pos_ffn.linear2.weight, weightMap,
 					"decoder.layers." + i + ".poswise_ffn.lin2.weight");
-			ClipModelUtils.loadData(network.transformer.decoder.decoders.get(i).pos_ffn.linear2.bias, weightMap,
+			ModeLoaderlUtils.loadData(network.transformer.decoder.decoders.get(i).pos_ffn.linear2.bias, weightMap,
 					"decoder.layers." + i + ".poswise_ffn.lin2.bias");
-			ClipModelUtils.loadData(network.transformer.decoder.decoders.get(i).attn.qLinerLayer.weight, weightMap,
+			ModeLoaderlUtils.loadData(network.transformer.decoder.decoders.get(i).attn.qLinerLayer.weight, weightMap,
 					"decoder.layers." + i + ".dec_attn.wq.weight");
-			ClipModelUtils.loadData(network.transformer.decoder.decoders.get(i).attn.qLinerLayer.bias, weightMap,
+			ModeLoaderlUtils.loadData(network.transformer.decoder.decoders.get(i).attn.qLinerLayer.bias, weightMap,
 					"decoder.layers." + i + ".dec_attn.wq.bias");
-			ClipModelUtils.loadData(network.transformer.decoder.decoders.get(i).attn.kLinerLayer.weight, weightMap,
+			ModeLoaderlUtils.loadData(network.transformer.decoder.decoders.get(i).attn.kLinerLayer.weight, weightMap,
 					"decoder.layers." + i + ".dec_attn.wk.weight");
-			ClipModelUtils.loadData(network.transformer.decoder.decoders.get(i).attn.kLinerLayer.bias, weightMap,
+			ModeLoaderlUtils.loadData(network.transformer.decoder.decoders.get(i).attn.kLinerLayer.bias, weightMap,
 					"decoder.layers." + i + ".dec_attn.wk.bias");
-			ClipModelUtils.loadData(network.transformer.decoder.decoders.get(i).attn.vLinerLayer.weight, weightMap,
+			ModeLoaderlUtils.loadData(network.transformer.decoder.decoders.get(i).attn.vLinerLayer.weight, weightMap,
 					"decoder.layers." + i + ".dec_attn.wv.weight");
-			ClipModelUtils.loadData(network.transformer.decoder.decoders.get(i).attn.vLinerLayer.bias, weightMap,
+			ModeLoaderlUtils.loadData(network.transformer.decoder.decoders.get(i).attn.vLinerLayer.bias, weightMap,
 					"decoder.layers." + i + ".dec_attn.wv.bias");
-			ClipModelUtils.loadData(network.transformer.decoder.decoders.get(i).attn.oLinerLayer.weight, weightMap,
+			ModeLoaderlUtils.loadData(network.transformer.decoder.decoders.get(i).attn.oLinerLayer.weight, weightMap,
 					"decoder.layers." + i + ".dec_attn.W_out.weight");
-			ClipModelUtils.loadData(network.transformer.decoder.decoders.get(i).attn.oLinerLayer.bias, weightMap,
+			ModeLoaderlUtils.loadData(network.transformer.decoder.decoders.get(i).attn.oLinerLayer.bias, weightMap,
 					"decoder.layers." + i + ".dec_attn.W_out.bias");
-			ClipModelUtils.loadData(network.transformer.decoder.decoders.get(i).cross_attn.qLinerLayer.weight,
+			ModeLoaderlUtils.loadData(network.transformer.decoder.decoders.get(i).cross_attn.qLinerLayer.weight,
 					weightMap, "decoder.layers." + i + ".enc_dec_attn.wq.weight");
-			ClipModelUtils.loadData(network.transformer.decoder.decoders.get(i).cross_attn.qLinerLayer.bias, weightMap,
+			ModeLoaderlUtils.loadData(network.transformer.decoder.decoders.get(i).cross_attn.qLinerLayer.bias, weightMap,
 					"decoder.layers." + i + ".enc_dec_attn.wq.bias");
-			ClipModelUtils.loadData(network.transformer.decoder.decoders.get(i).cross_attn.kLinerLayer.weight,
+			ModeLoaderlUtils.loadData(network.transformer.decoder.decoders.get(i).cross_attn.kLinerLayer.weight,
 					weightMap, "decoder.layers." + i + ".enc_dec_attn.wk.weight");
-			ClipModelUtils.loadData(network.transformer.decoder.decoders.get(i).cross_attn.kLinerLayer.bias, weightMap,
+			ModeLoaderlUtils.loadData(network.transformer.decoder.decoders.get(i).cross_attn.kLinerLayer.bias, weightMap,
 					"decoder.layers." + i + ".enc_dec_attn.wk.bias");
-			ClipModelUtils.loadData(network.transformer.decoder.decoders.get(i).cross_attn.vLinerLayer.weight,
+			ModeLoaderlUtils.loadData(network.transformer.decoder.decoders.get(i).cross_attn.vLinerLayer.weight,
 					weightMap, "decoder.layers." + i + ".enc_dec_attn.wv.weight");
-			ClipModelUtils.loadData(network.transformer.decoder.decoders.get(i).cross_attn.vLinerLayer.bias, weightMap,
+			ModeLoaderlUtils.loadData(network.transformer.decoder.decoders.get(i).cross_attn.vLinerLayer.bias, weightMap,
 					"decoder.layers." + i + ".enc_dec_attn.wv.bias");
-			ClipModelUtils.loadData(network.transformer.decoder.decoders.get(i).cross_attn.oLinerLayer.weight,
+			ModeLoaderlUtils.loadData(network.transformer.decoder.decoders.get(i).cross_attn.oLinerLayer.weight,
 					weightMap, "decoder.layers." + i + ".enc_dec_attn.W_out.weight");
-			ClipModelUtils.loadData(network.transformer.decoder.decoders.get(i).cross_attn.oLinerLayer.bias, weightMap,
+			ModeLoaderlUtils.loadData(network.transformer.decoder.decoders.get(i).cross_attn.oLinerLayer.bias, weightMap,
 					"decoder.layers." + i + ".enc_dec_attn.W_out.bias");
 		}
-		network.transformer.decoder.norm.gamma = ClipModelUtils.loadData(network.transformer.decoder.norm.gamma,
+		network.transformer.decoder.norm.gamma = ModeLoaderlUtils.loadData(network.transformer.decoder.norm.gamma,
 				weightMap, 1, "norm.weight");
-		ClipModelUtils.loadData(network.fullyLayer.weight, weightMap, "linear.weight");
-		ClipModelUtils.loadData(network.fullyLayer.bias, weightMap, "linear.bias");
+		ModeLoaderlUtils.loadData(network.fullyLayer.weight, weightMap, "linear.weight");
+		ModeLoaderlUtils.loadData(network.fullyLayer.bias, weightMap, "linear.bias");
 	}
 
 	public static void testASR() throws Exception {

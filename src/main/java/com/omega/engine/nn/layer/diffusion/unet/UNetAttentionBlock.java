@@ -14,7 +14,7 @@ import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
-import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
 
 import java.io.IOException;
@@ -73,30 +73,30 @@ public class UNetAttentionBlock extends Layer {
                 System.out.println(key);
             }
         }
-        network.gn.gamma = ClipModelUtils.loadData(network.gn.gamma, weightMap, 1, "groupnorm.weight");
-        network.gn.beta = ClipModelUtils.loadData(network.gn.beta, weightMap, 1, "groupnorm.bias");
-        network.conv_in.weight = ClipModelUtils.loadData(network.conv_in.weight, weightMap, 4, "conv_input.weight");
-        ClipModelUtils.loadData(network.conv_in.bias, weightMap, "conv_input.bias");
-        network.ln1.gamma = ClipModelUtils.loadData(network.ln1.gamma, weightMap, 1, "layernorm_1.weight");
-        network.ln1.beta = ClipModelUtils.loadData(network.ln1.beta, weightMap, 1, "layernorm_1.bias");
-        network.ln2.gamma = ClipModelUtils.loadData(network.ln2.gamma, weightMap, 1, "layernorm_2.weight");
-        network.ln2.beta = ClipModelUtils.loadData(network.ln2.beta, weightMap, 1, "layernorm_2.bias");
-        network.ln3.gamma = ClipModelUtils.loadData(network.ln3.gamma, weightMap, 1, "layernorm_3.weight");
-        network.ln3.beta = ClipModelUtils.loadData(network.ln3.beta, weightMap, 1, "layernorm_3.bias");
-        ClipModelUtils.loadData(network.attn.qkvLinerLayer.weight, weightMap, "attention_1.in_proj.weight");
-        ClipModelUtils.loadData(network.attn.oLinerLayer.weight, weightMap, "attention_1.out_proj.weight");
-        ClipModelUtils.loadData(network.attn.oLinerLayer.bias, weightMap, "attention_1.out_proj.bias");
-        ClipModelUtils.loadData(network.cross_attn.qLinerLayer.weight, weightMap, "attention_2.q_proj.weight");
-        ClipModelUtils.loadData(network.cross_attn.kLinerLayer.weight, weightMap, "attention_2.k_proj.weight");
-        ClipModelUtils.loadData(network.cross_attn.vLinerLayer.weight, weightMap, "attention_2.v_proj.weight");
-        ClipModelUtils.loadData(network.cross_attn.oLinerLayer.weight, weightMap, "attention_2.out_proj.weight");
-        ClipModelUtils.loadData(network.cross_attn.oLinerLayer.bias, weightMap, "attention_2.out_proj.bias");
-        ClipModelUtils.loadData(network.geglu1.weight, weightMap, "linear_geglu_1.weight");
-        ClipModelUtils.loadData(network.geglu1.bias, weightMap, "linear_geglu_1.bias");
-        ClipModelUtils.loadData(network.geglu2.weight, weightMap, "linear_geglu_2.weight");
-        ClipModelUtils.loadData(network.geglu2.bias, weightMap, "linear_geglu_2.bias");
-        network.conv_out.weight = ClipModelUtils.loadData(network.conv_out.weight, weightMap, 4, "conv_output.weight");
-        ClipModelUtils.loadData(network.conv_out.bias, weightMap, "conv_output.bias");
+        network.gn.gamma = ModeLoaderlUtils.loadData(network.gn.gamma, weightMap, 1, "groupnorm.weight");
+        network.gn.beta = ModeLoaderlUtils.loadData(network.gn.beta, weightMap, 1, "groupnorm.bias");
+        network.conv_in.weight = ModeLoaderlUtils.loadData(network.conv_in.weight, weightMap, 4, "conv_input.weight");
+        ModeLoaderlUtils.loadData(network.conv_in.bias, weightMap, "conv_input.bias");
+        network.ln1.gamma = ModeLoaderlUtils.loadData(network.ln1.gamma, weightMap, 1, "layernorm_1.weight");
+        network.ln1.beta = ModeLoaderlUtils.loadData(network.ln1.beta, weightMap, 1, "layernorm_1.bias");
+        network.ln2.gamma = ModeLoaderlUtils.loadData(network.ln2.gamma, weightMap, 1, "layernorm_2.weight");
+        network.ln2.beta = ModeLoaderlUtils.loadData(network.ln2.beta, weightMap, 1, "layernorm_2.bias");
+        network.ln3.gamma = ModeLoaderlUtils.loadData(network.ln3.gamma, weightMap, 1, "layernorm_3.weight");
+        network.ln3.beta = ModeLoaderlUtils.loadData(network.ln3.beta, weightMap, 1, "layernorm_3.bias");
+        ModeLoaderlUtils.loadData(network.attn.qkvLinerLayer.weight, weightMap, "attention_1.in_proj.weight");
+        ModeLoaderlUtils.loadData(network.attn.oLinerLayer.weight, weightMap, "attention_1.out_proj.weight");
+        ModeLoaderlUtils.loadData(network.attn.oLinerLayer.bias, weightMap, "attention_1.out_proj.bias");
+        ModeLoaderlUtils.loadData(network.cross_attn.qLinerLayer.weight, weightMap, "attention_2.q_proj.weight");
+        ModeLoaderlUtils.loadData(network.cross_attn.kLinerLayer.weight, weightMap, "attention_2.k_proj.weight");
+        ModeLoaderlUtils.loadData(network.cross_attn.vLinerLayer.weight, weightMap, "attention_2.v_proj.weight");
+        ModeLoaderlUtils.loadData(network.cross_attn.oLinerLayer.weight, weightMap, "attention_2.out_proj.weight");
+        ModeLoaderlUtils.loadData(network.cross_attn.oLinerLayer.bias, weightMap, "attention_2.out_proj.bias");
+        ModeLoaderlUtils.loadData(network.geglu1.weight, weightMap, "linear_geglu_1.weight");
+        ModeLoaderlUtils.loadData(network.geglu1.bias, weightMap, "linear_geglu_1.bias");
+        ModeLoaderlUtils.loadData(network.geglu2.weight, weightMap, "linear_geglu_2.weight");
+        ModeLoaderlUtils.loadData(network.geglu2.bias, weightMap, "linear_geglu_2.bias");
+        network.conv_out.weight = ModeLoaderlUtils.loadData(network.conv_out.weight, weightMap, 4, "conv_output.weight");
+        ModeLoaderlUtils.loadData(network.conv_out.bias, weightMap, "conv_output.bias");
     }
 
     public static void main(String[] args) {

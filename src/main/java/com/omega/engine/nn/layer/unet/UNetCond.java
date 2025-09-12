@@ -14,7 +14,7 @@ import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 import com.omega.engine.updater.UpdaterType;
-import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
 
 import java.util.ArrayList;
@@ -162,64 +162,64 @@ public class UNetCond extends Layer {
          * conv_in
 
          */
-        ClipModelUtils.loadData(unet.conv_in.weight, weightMap, "conv_in.weight");
-        ClipModelUtils.loadData(unet.conv_in.bias, weightMap, "conv_in.bias");
+        ModeLoaderlUtils.loadData(unet.conv_in.weight, weightMap, "conv_in.weight");
+        ModeLoaderlUtils.loadData(unet.conv_in.bias, weightMap, "conv_in.bias");
         /**
          * t_proj
 
          */
-        ClipModelUtils.loadData(unet.t_embd.linear1.weight, weightMap, "t_proj.0.weight");
-        ClipModelUtils.loadData(unet.t_embd.linear1.bias, weightMap, "t_proj.0.bias");
-        ClipModelUtils.loadData(unet.t_embd.linear2.weight, weightMap, "t_proj.2.weight");
-        ClipModelUtils.loadData(unet.t_embd.linear2.bias, weightMap, "t_proj.2.bias");
+        ModeLoaderlUtils.loadData(unet.t_embd.linear1.weight, weightMap, "t_proj.0.weight");
+        ModeLoaderlUtils.loadData(unet.t_embd.linear1.bias, weightMap, "t_proj.0.bias");
+        ModeLoaderlUtils.loadData(unet.t_embd.linear2.weight, weightMap, "t_proj.2.weight");
+        ModeLoaderlUtils.loadData(unet.t_embd.linear2.bias, weightMap, "t_proj.2.bias");
         /**
          * downs
 
          */
         for (int i = 0; i < channels; i++) {
             for (int j = 0; j < numLayers; j++) {
-                unet.downs.get(i).resnetFirst.get(j).norm.gamma = ClipModelUtils.loadData(unet.downs.get(i).resnetFirst.get(j).norm.gamma, weightMap, 1, "downs." + i + ".resnet_conv_first." + j + ".0.weight");
-                unet.downs.get(i).resnetFirst.get(j).norm.beta = ClipModelUtils.loadData(unet.downs.get(i).resnetFirst.get(j).norm.beta, weightMap, 1, "downs." + i + ".resnet_conv_first." + j + ".0.bias");
-                ClipModelUtils.loadData(unet.downs.get(i).resnetFirst.get(j).conv.weight, weightMap, "downs." + i + ".resnet_conv_first." + j + ".2.weight");
-                ClipModelUtils.loadData(unet.downs.get(i).resnetFirst.get(j).conv.bias, weightMap, "downs." + i + ".resnet_conv_first." + j + ".2.bias");
-                ClipModelUtils.loadData(unet.downs.get(i).tEmbLayers.get(j).linear.weight, weightMap, "downs." + i + ".t_emb_layers." + j + ".1.weight");
-                ClipModelUtils.loadData(unet.downs.get(i).tEmbLayers.get(j).linear.bias, weightMap, "downs." + i + ".t_emb_layers." + j + ".1.bias");
-                unet.downs.get(i).resnetSecond.get(j).norm.gamma = ClipModelUtils.loadData(unet.downs.get(i).resnetSecond.get(j).norm.gamma, weightMap, 1, "downs." + i + ".resnet_conv_second." + j + ".0.weight");
-                unet.downs.get(i).resnetSecond.get(j).norm.beta = ClipModelUtils.loadData(unet.downs.get(i).resnetSecond.get(j).norm.beta, weightMap, 1, "downs." + i + ".resnet_conv_second." + j + ".0.bias");
-                ClipModelUtils.loadData(unet.downs.get(i).resnetSecond.get(j).conv.weight, weightMap, "downs." + i + ".resnet_conv_second." + j + ".2.weight");
-                ClipModelUtils.loadData(unet.downs.get(i).resnetSecond.get(j).conv.bias, weightMap, "downs." + i + ".resnet_conv_second." + j + ".2.bias");
-                unet.downs.get(i).attns.get(j).gn.gamma = ClipModelUtils.loadData(unet.downs.get(i).attns.get(j).gn.gamma, weightMap, 1, "downs." + i + ".attention_norms." + j + ".weight");
-                unet.downs.get(i).attns.get(j).gn.beta = ClipModelUtils.loadData(unet.downs.get(i).attns.get(j).gn.beta, weightMap, 1, "downs." + i + ".attention_norms." + j + ".bias");
+                unet.downs.get(i).resnetFirst.get(j).norm.gamma = ModeLoaderlUtils.loadData(unet.downs.get(i).resnetFirst.get(j).norm.gamma, weightMap, 1, "downs." + i + ".resnet_conv_first." + j + ".0.weight");
+                unet.downs.get(i).resnetFirst.get(j).norm.beta = ModeLoaderlUtils.loadData(unet.downs.get(i).resnetFirst.get(j).norm.beta, weightMap, 1, "downs." + i + ".resnet_conv_first." + j + ".0.bias");
+                ModeLoaderlUtils.loadData(unet.downs.get(i).resnetFirst.get(j).conv.weight, weightMap, "downs." + i + ".resnet_conv_first." + j + ".2.weight");
+                ModeLoaderlUtils.loadData(unet.downs.get(i).resnetFirst.get(j).conv.bias, weightMap, "downs." + i + ".resnet_conv_first." + j + ".2.bias");
+                ModeLoaderlUtils.loadData(unet.downs.get(i).tEmbLayers.get(j).linear.weight, weightMap, "downs." + i + ".t_emb_layers." + j + ".1.weight");
+                ModeLoaderlUtils.loadData(unet.downs.get(i).tEmbLayers.get(j).linear.bias, weightMap, "downs." + i + ".t_emb_layers." + j + ".1.bias");
+                unet.downs.get(i).resnetSecond.get(j).norm.gamma = ModeLoaderlUtils.loadData(unet.downs.get(i).resnetSecond.get(j).norm.gamma, weightMap, 1, "downs." + i + ".resnet_conv_second." + j + ".0.weight");
+                unet.downs.get(i).resnetSecond.get(j).norm.beta = ModeLoaderlUtils.loadData(unet.downs.get(i).resnetSecond.get(j).norm.beta, weightMap, 1, "downs." + i + ".resnet_conv_second." + j + ".0.bias");
+                ModeLoaderlUtils.loadData(unet.downs.get(i).resnetSecond.get(j).conv.weight, weightMap, "downs." + i + ".resnet_conv_second." + j + ".2.weight");
+                ModeLoaderlUtils.loadData(unet.downs.get(i).resnetSecond.get(j).conv.bias, weightMap, "downs." + i + ".resnet_conv_second." + j + ".2.bias");
+                unet.downs.get(i).attns.get(j).gn.gamma = ModeLoaderlUtils.loadData(unet.downs.get(i).attns.get(j).gn.gamma, weightMap, 1, "downs." + i + ".attention_norms." + j + ".weight");
+                unet.downs.get(i).attns.get(j).gn.beta = ModeLoaderlUtils.loadData(unet.downs.get(i).attns.get(j).gn.beta, weightMap, 1, "downs." + i + ".attention_norms." + j + ".bias");
                 //				unet.downs.get(i).attns.get(0).qLinerLayer.weight = unet.downs.get(i).attns.get(0).qLinerLayer.weight.createLike(1.0f);
                 //				unet.downs.get(i).attns.get(0).qLinerLayer.bias = unet.downs.get(i).attns.get(0).qLinerLayer.bias.createLike(1.0f);
                 //				unet.downs.get(i).attns.get(0).kLinerLayer.weight = unet.downs.get(i).attns.get(0).kLinerLayer.weight.createLike(1.0f);
                 //				unet.downs.get(i).attns.get(0).kLinerLayer.bias = unet.downs.get(i).attns.get(0).kLinerLayer.bias.createLike(1.0f);
                 //				unet.downs.get(i).attns.get(0).vLinerLayer.weight = unet.downs.get(i).attns.get(0).vLinerLayer.weight.createLike(1.0f);
                 //				unet.downs.get(i).attns.get(0).vLinerLayer.bias = unet.downs.get(i).attns.get(0).vLinerLayer.bias.createLike(1.0f);
-                ClipModelUtils.loadData(unet.downs.get(i).attns.get(j).qLinerLayer.weight, weightMap, "downs." + i + ".attentions." + j + ".query.weight");
-                ClipModelUtils.loadData(unet.downs.get(i).attns.get(j).kLinerLayer.weight, weightMap, "downs." + i + ".attentions." + j + ".key.weight");
-                ClipModelUtils.loadData(unet.downs.get(i).attns.get(j).vLinerLayer.weight, weightMap, "downs." + i + ".attentions." + j + ".value.weight");
-                ClipModelUtils.loadData(unet.downs.get(i).attns.get(j).oLinerLayer.weight, weightMap, "downs." + i + ".attentions." + j + ".out_proj.weight");
+                ModeLoaderlUtils.loadData(unet.downs.get(i).attns.get(j).qLinerLayer.weight, weightMap, "downs." + i + ".attentions." + j + ".query.weight");
+                ModeLoaderlUtils.loadData(unet.downs.get(i).attns.get(j).kLinerLayer.weight, weightMap, "downs." + i + ".attentions." + j + ".key.weight");
+                ModeLoaderlUtils.loadData(unet.downs.get(i).attns.get(j).vLinerLayer.weight, weightMap, "downs." + i + ".attentions." + j + ".value.weight");
+                ModeLoaderlUtils.loadData(unet.downs.get(i).attns.get(j).oLinerLayer.weight, weightMap, "downs." + i + ".attentions." + j + ".out_proj.weight");
                 //				ClipModelUtils.loadData(unet.downs.get(i).attns.get(0).oLinerLayer.bias, weightMap, "downs."+i+".attentions.0.out_proj.bias");
-                unet.downs.get(i).crossAttns.get(j).gn.gamma = ClipModelUtils.loadData(unet.downs.get(i).crossAttns.get(j).gn.gamma, weightMap, 1, "downs." + i + ".cross_attention_norms." + j + ".weight");
-                unet.downs.get(i).crossAttns.get(j).gn.beta = ClipModelUtils.loadData(unet.downs.get(i).crossAttns.get(j).gn.beta, weightMap, 1, "downs." + i + ".cross_attention_norms." + j + ".bias");
+                unet.downs.get(i).crossAttns.get(j).gn.gamma = ModeLoaderlUtils.loadData(unet.downs.get(i).crossAttns.get(j).gn.gamma, weightMap, 1, "downs." + i + ".cross_attention_norms." + j + ".weight");
+                unet.downs.get(i).crossAttns.get(j).gn.beta = ModeLoaderlUtils.loadData(unet.downs.get(i).crossAttns.get(j).gn.beta, weightMap, 1, "downs." + i + ".cross_attention_norms." + j + ".bias");
                 //				unet.downs.get(i).crossAttns.get(0).qLinerLayer.weight = unet.downs.get(i).crossAttns.get(0).qLinerLayer.weight.createLike(1.0f);
                 //				unet.downs.get(i).crossAttns.get(0).qLinerLayer.bias = unet.downs.get(i).crossAttns.get(0).qLinerLayer.bias.createLike(1.0f);
                 //				unet.downs.get(i).crossAttns.get(0).kLinerLayer.weight = unet.downs.get(i).crossAttns.get(0).kLinerLayer.weight.createLike(1.0f);
                 //				unet.downs.get(i).crossAttns.get(0).kLinerLayer.bias = unet.downs.get(i).crossAttns.get(0).kLinerLayer.bias.createLike(1.0f);
                 //				unet.downs.get(i).crossAttns.get(0).vLinerLayer.weight = unet.downs.get(i).crossAttns.get(0).vLinerLayer.weight.createLike(1.0f);
                 //				unet.downs.get(i).crossAttns.get(0).vLinerLayer.bias = unet.downs.get(i).crossAttns.get(0).vLinerLayer.bias.createLike(1.0f);
-                ClipModelUtils.loadData(unet.downs.get(i).crossAttns.get(j).qLinerLayer.weight, weightMap, "downs." + i + ".cross_attentions." + j + ".query.weight");
-                ClipModelUtils.loadData(unet.downs.get(i).crossAttns.get(j).kLinerLayer.weight, weightMap, "downs." + i + ".cross_attentions." + j + ".key.weight");
-                ClipModelUtils.loadData(unet.downs.get(i).crossAttns.get(j).vLinerLayer.weight, weightMap, "downs." + i + ".cross_attentions." + j + ".value.weight");
-                ClipModelUtils.loadData(unet.downs.get(i).crossAttns.get(j).oLinerLayer.weight, weightMap, "downs." + i + ".cross_attentions." + j + ".out_proj.weight");
+                ModeLoaderlUtils.loadData(unet.downs.get(i).crossAttns.get(j).qLinerLayer.weight, weightMap, "downs." + i + ".cross_attentions." + j + ".query.weight");
+                ModeLoaderlUtils.loadData(unet.downs.get(i).crossAttns.get(j).kLinerLayer.weight, weightMap, "downs." + i + ".cross_attentions." + j + ".key.weight");
+                ModeLoaderlUtils.loadData(unet.downs.get(i).crossAttns.get(j).vLinerLayer.weight, weightMap, "downs." + i + ".cross_attentions." + j + ".value.weight");
+                ModeLoaderlUtils.loadData(unet.downs.get(i).crossAttns.get(j).oLinerLayer.weight, weightMap, "downs." + i + ".cross_attentions." + j + ".out_proj.weight");
                 //				ClipModelUtils.loadData(unet.downs.get(i).crossAttns.get(0).oLinerLayer.bias, weightMap, "downs."+i+".cross_attentions.0.out_proj.bias");
-                ClipModelUtils.loadData(unet.downs.get(i).contextProjs.get(j).weight, weightMap, "downs." + i + ".context_proj." + j + ".weight");
-                ClipModelUtils.loadData(unet.downs.get(i).contextProjs.get(j).bias, weightMap, "downs." + i + ".context_proj." + j + ".bias");
-                unet.downs.get(i).residualInputs.get(j).weight = ClipModelUtils.loadData(unet.downs.get(i).residualInputs.get(j).weight, weightMap, 4, "downs." + i + ".residual_input_conv." + j + ".weight");
+                ModeLoaderlUtils.loadData(unet.downs.get(i).contextProjs.get(j).weight, weightMap, "downs." + i + ".context_proj." + j + ".weight");
+                ModeLoaderlUtils.loadData(unet.downs.get(i).contextProjs.get(j).bias, weightMap, "downs." + i + ".context_proj." + j + ".bias");
+                unet.downs.get(i).residualInputs.get(j).weight = ModeLoaderlUtils.loadData(unet.downs.get(i).residualInputs.get(j).weight, weightMap, 4, "downs." + i + ".residual_input_conv." + j + ".weight");
                 //				ClipModelUtils.loadData(unet.downs.get(i).residualInputs.get(0).bias, weightMap, "downs."+i+".residual_input_conv.0.bias");
             }
-            ClipModelUtils.loadData(unet.downs.get(i).downSampleConv.weight, weightMap, "downs." + i + ".down_sample_conv.weight");
+            ModeLoaderlUtils.loadData(unet.downs.get(i).downSampleConv.weight, weightMap, "downs." + i + ".down_sample_conv.weight");
             //			ClipModelUtils.loadData(unet.downs.get(i).downSampleConv.bias, weightMap, "downs."+i+".down_sample_conv.bias");
         }
         /**
@@ -228,38 +228,38 @@ public class UNetCond extends Layer {
          */
         for (int i = 0; i < 1; i++) {
             for (int j = 0; j < numLayers + 1; j++) {
-                unet.mids.get(i).resnetFirst.get(j).norm.gamma = ClipModelUtils.loadData(unet.mids.get(i).resnetFirst.get(j).norm.gamma, weightMap, 1, "mids." + i + ".resnet_conv_first." + j + ".0.weight");
-                unet.mids.get(i).resnetFirst.get(j).norm.beta = ClipModelUtils.loadData(unet.mids.get(i).resnetFirst.get(j).norm.beta, weightMap, 1, "mids." + i + ".resnet_conv_first." + j + ".0.bias");
-                ClipModelUtils.loadData(unet.mids.get(i).resnetFirst.get(j).conv.weight, weightMap, "mids." + i + ".resnet_conv_first." + j + ".2.weight");
-                ClipModelUtils.loadData(unet.mids.get(i).resnetFirst.get(j).conv.bias, weightMap, "mids." + i + ".resnet_conv_first." + j + ".2.bias");
+                unet.mids.get(i).resnetFirst.get(j).norm.gamma = ModeLoaderlUtils.loadData(unet.mids.get(i).resnetFirst.get(j).norm.gamma, weightMap, 1, "mids." + i + ".resnet_conv_first." + j + ".0.weight");
+                unet.mids.get(i).resnetFirst.get(j).norm.beta = ModeLoaderlUtils.loadData(unet.mids.get(i).resnetFirst.get(j).norm.beta, weightMap, 1, "mids." + i + ".resnet_conv_first." + j + ".0.bias");
+                ModeLoaderlUtils.loadData(unet.mids.get(i).resnetFirst.get(j).conv.weight, weightMap, "mids." + i + ".resnet_conv_first." + j + ".2.weight");
+                ModeLoaderlUtils.loadData(unet.mids.get(i).resnetFirst.get(j).conv.bias, weightMap, "mids." + i + ".resnet_conv_first." + j + ".2.bias");
             }
             for (int j = 0; j < numLayers + 1; j++) {
-                ClipModelUtils.loadData(unet.mids.get(i).tEmbLayers.get(j).linear.weight, weightMap, "mids." + i + ".t_emb_layers." + j + ".1.weight");
-                ClipModelUtils.loadData(unet.mids.get(i).tEmbLayers.get(j).linear.bias, weightMap, "mids." + i + ".t_emb_layers." + j + ".1.bias");
+                ModeLoaderlUtils.loadData(unet.mids.get(i).tEmbLayers.get(j).linear.weight, weightMap, "mids." + i + ".t_emb_layers." + j + ".1.weight");
+                ModeLoaderlUtils.loadData(unet.mids.get(i).tEmbLayers.get(j).linear.bias, weightMap, "mids." + i + ".t_emb_layers." + j + ".1.bias");
             }
             for (int j = 0; j < numLayers + 1; j++) {
-                unet.mids.get(i).resnetSecond.get(j).norm.gamma = ClipModelUtils.loadData(unet.mids.get(i).resnetSecond.get(j).norm.gamma, weightMap, 1, "mids." + i + ".resnet_conv_second." + j + ".0.weight");
-                unet.mids.get(i).resnetSecond.get(j).norm.beta = ClipModelUtils.loadData(unet.mids.get(i).resnetSecond.get(j).norm.beta, weightMap, 1, "mids." + i + ".resnet_conv_second." + j + ".0.bias");
-                ClipModelUtils.loadData(unet.mids.get(i).resnetSecond.get(j).conv.weight, weightMap, "mids." + i + ".resnet_conv_second." + j + ".2.weight");
-                ClipModelUtils.loadData(unet.mids.get(i).resnetSecond.get(j).conv.bias, weightMap, "mids." + i + ".resnet_conv_second." + j + ".2.bias");
+                unet.mids.get(i).resnetSecond.get(j).norm.gamma = ModeLoaderlUtils.loadData(unet.mids.get(i).resnetSecond.get(j).norm.gamma, weightMap, 1, "mids." + i + ".resnet_conv_second." + j + ".0.weight");
+                unet.mids.get(i).resnetSecond.get(j).norm.beta = ModeLoaderlUtils.loadData(unet.mids.get(i).resnetSecond.get(j).norm.beta, weightMap, 1, "mids." + i + ".resnet_conv_second." + j + ".0.bias");
+                ModeLoaderlUtils.loadData(unet.mids.get(i).resnetSecond.get(j).conv.weight, weightMap, "mids." + i + ".resnet_conv_second." + j + ".2.weight");
+                ModeLoaderlUtils.loadData(unet.mids.get(i).resnetSecond.get(j).conv.bias, weightMap, "mids." + i + ".resnet_conv_second." + j + ".2.bias");
             }
             for (int j = 0; j < numLayers; j++) {
-                unet.mids.get(i).attns.get(j).gn.gamma = ClipModelUtils.loadData(unet.mids.get(i).attns.get(j).gn.gamma, weightMap, 1, "mids." + i + ".attention_norms." + j + ".weight");
-                unet.mids.get(i).attns.get(j).gn.beta = ClipModelUtils.loadData(unet.mids.get(i).attns.get(j).gn.beta, weightMap, 1, "mids." + i + ".attention_norms." + j + ".bias");
-                ClipModelUtils.loadData(unet.mids.get(i).attns.get(j).qLinerLayer.weight, weightMap, "mids." + i + ".attentions." + j + ".query.weight");
-                ClipModelUtils.loadData(unet.mids.get(i).attns.get(j).kLinerLayer.weight, weightMap, "mids." + i + ".attentions." + j + ".key.weight");
-                ClipModelUtils.loadData(unet.mids.get(i).attns.get(j).vLinerLayer.weight, weightMap, "mids." + i + ".attentions." + j + ".value.weight");
-                ClipModelUtils.loadData(unet.mids.get(i).attns.get(j).oLinerLayer.weight, weightMap, "mids." + i + ".attentions." + j + ".out_proj.weight");
+                unet.mids.get(i).attns.get(j).gn.gamma = ModeLoaderlUtils.loadData(unet.mids.get(i).attns.get(j).gn.gamma, weightMap, 1, "mids." + i + ".attention_norms." + j + ".weight");
+                unet.mids.get(i).attns.get(j).gn.beta = ModeLoaderlUtils.loadData(unet.mids.get(i).attns.get(j).gn.beta, weightMap, 1, "mids." + i + ".attention_norms." + j + ".bias");
+                ModeLoaderlUtils.loadData(unet.mids.get(i).attns.get(j).qLinerLayer.weight, weightMap, "mids." + i + ".attentions." + j + ".query.weight");
+                ModeLoaderlUtils.loadData(unet.mids.get(i).attns.get(j).kLinerLayer.weight, weightMap, "mids." + i + ".attentions." + j + ".key.weight");
+                ModeLoaderlUtils.loadData(unet.mids.get(i).attns.get(j).vLinerLayer.weight, weightMap, "mids." + i + ".attentions." + j + ".value.weight");
+                ModeLoaderlUtils.loadData(unet.mids.get(i).attns.get(j).oLinerLayer.weight, weightMap, "mids." + i + ".attentions." + j + ".out_proj.weight");
                 //				ClipModelUtils.loadData(unet.mids.get(i).attns.get(0).oLinerLayer.bias, weightMap, "mids."+i+".attentions.0.out_proj.bias");
-                unet.mids.get(i).crossAttns.get(j).gn.gamma = ClipModelUtils.loadData(unet.mids.get(i).crossAttns.get(j).gn.gamma, weightMap, 1, "mids." + i + ".cross_attention_norms." + j + ".weight");
-                unet.mids.get(i).crossAttns.get(j).gn.beta = ClipModelUtils.loadData(unet.mids.get(i).crossAttns.get(j).gn.beta, weightMap, 1, "mids." + i + ".cross_attention_norms." + j + ".bias");
-                ClipModelUtils.loadData(unet.mids.get(i).crossAttns.get(j).qLinerLayer.weight, weightMap, "mids." + i + ".cross_attentions." + j + ".query.weight");
-                ClipModelUtils.loadData(unet.mids.get(i).crossAttns.get(j).kLinerLayer.weight, weightMap, "mids." + i + ".cross_attentions." + j + ".key.weight");
-                ClipModelUtils.loadData(unet.mids.get(i).crossAttns.get(j).vLinerLayer.weight, weightMap, "mids." + i + ".cross_attentions." + j + ".value.weight");
-                ClipModelUtils.loadData(unet.mids.get(i).crossAttns.get(j).oLinerLayer.weight, weightMap, "mids." + i + ".cross_attentions." + j + ".out_proj.weight");
+                unet.mids.get(i).crossAttns.get(j).gn.gamma = ModeLoaderlUtils.loadData(unet.mids.get(i).crossAttns.get(j).gn.gamma, weightMap, 1, "mids." + i + ".cross_attention_norms." + j + ".weight");
+                unet.mids.get(i).crossAttns.get(j).gn.beta = ModeLoaderlUtils.loadData(unet.mids.get(i).crossAttns.get(j).gn.beta, weightMap, 1, "mids." + i + ".cross_attention_norms." + j + ".bias");
+                ModeLoaderlUtils.loadData(unet.mids.get(i).crossAttns.get(j).qLinerLayer.weight, weightMap, "mids." + i + ".cross_attentions." + j + ".query.weight");
+                ModeLoaderlUtils.loadData(unet.mids.get(i).crossAttns.get(j).kLinerLayer.weight, weightMap, "mids." + i + ".cross_attentions." + j + ".key.weight");
+                ModeLoaderlUtils.loadData(unet.mids.get(i).crossAttns.get(j).vLinerLayer.weight, weightMap, "mids." + i + ".cross_attentions." + j + ".value.weight");
+                ModeLoaderlUtils.loadData(unet.mids.get(i).crossAttns.get(j).oLinerLayer.weight, weightMap, "mids." + i + ".cross_attentions." + j + ".out_proj.weight");
                 //				ClipModelUtils.loadData(unet.mids.get(i).crossAttns.get(0).oLinerLayer.bias, weightMap, "mids."+i+".cross_attentions.0.out_proj.bias");
-                ClipModelUtils.loadData(unet.mids.get(i).contextProjs.get(j).weight, weightMap, "mids." + i + ".context_proj." + j + ".weight");
-                ClipModelUtils.loadData(unet.mids.get(i).contextProjs.get(j).bias, weightMap, "mids." + i + ".context_proj." + j + ".bias");
+                ModeLoaderlUtils.loadData(unet.mids.get(i).contextProjs.get(j).weight, weightMap, "mids." + i + ".context_proj." + j + ".weight");
+                ModeLoaderlUtils.loadData(unet.mids.get(i).contextProjs.get(j).bias, weightMap, "mids." + i + ".context_proj." + j + ".bias");
             }
             //			unet.mids.get(i).attns.get(0).qLinerLayer.weight = unet.mids.get(i).attns.get(0).qLinerLayer.weight.createLike(1.0f);
             //			unet.mids.get(i).attns.get(0).qLinerLayer.bias = unet.mids.get(i).attns.get(0).qLinerLayer.bias.createLike(1.0f);
@@ -268,7 +268,7 @@ public class UNetCond extends Layer {
             //			unet.mids.get(i).attns.get(0).vLinerLayer.weight = unet.mids.get(i).attns.get(0).vLinerLayer.weight.createLike(1.0f);
             //			unet.mids.get(i).attns.get(0).vLinerLayer.bias = unet.mids.get(i).attns.get(0).vLinerLayer.bias.createLike(1.0f);
             for (int j = 0; j < numLayers + 1; j++) {
-                unet.mids.get(i).residualInputs.get(j).weight = ClipModelUtils.loadData(unet.mids.get(i).residualInputs.get(j).weight, weightMap, 4, "mids." + i + ".residual_input_conv." + j + ".weight");
+                unet.mids.get(i).residualInputs.get(j).weight = ModeLoaderlUtils.loadData(unet.mids.get(i).residualInputs.get(j).weight, weightMap, 4, "mids." + i + ".residual_input_conv." + j + ".weight");
                 //				ClipModelUtils.loadData(unet.mids.get(i).residualInputs.get(j).bias, weightMap, "mids."+i+".residual_input_conv."+j+".bias");
             }
         }
@@ -278,54 +278,54 @@ public class UNetCond extends Layer {
          */
         for (int i = 0; i < channels; i++) {
             for (int j = 0; j < numLayers; j++) {
-                unet.ups.get(i).resnetFirst.get(j).norm.gamma = ClipModelUtils.loadData(unet.ups.get(i).resnetFirst.get(j).norm.gamma, weightMap, 1, "ups." + i + ".resnet_conv_first." + j + ".0.weight");
-                unet.ups.get(i).resnetFirst.get(j).norm.beta = ClipModelUtils.loadData(unet.ups.get(i).resnetFirst.get(j).norm.beta, weightMap, 1, "ups." + i + ".resnet_conv_first." + j + ".0.bias");
-                ClipModelUtils.loadData(unet.ups.get(i).resnetFirst.get(j).conv.weight, weightMap, "ups." + i + ".resnet_conv_first." + j + ".2.weight");
-                ClipModelUtils.loadData(unet.ups.get(i).resnetFirst.get(j).conv.bias, weightMap, "ups." + i + ".resnet_conv_first." + j + ".2.bias");
-                ClipModelUtils.loadData(unet.ups.get(i).tEmbLayers.get(j).linear.weight, weightMap, "ups." + i + ".t_emb_layers." + j + ".1.weight");
-                ClipModelUtils.loadData(unet.ups.get(i).tEmbLayers.get(j).linear.bias, weightMap, "ups." + i + ".t_emb_layers." + j + ".1.bias");
-                unet.ups.get(i).resnetSecond.get(j).norm.gamma = ClipModelUtils.loadData(unet.ups.get(i).resnetSecond.get(j).norm.gamma, weightMap, 1, "ups." + i + ".resnet_conv_second." + j + ".0.weight");
-                unet.ups.get(i).resnetSecond.get(j).norm.beta = ClipModelUtils.loadData(unet.ups.get(i).resnetSecond.get(j).norm.beta, weightMap, 1, "ups." + i + ".resnet_conv_second." + j + ".0.bias");
-                ClipModelUtils.loadData(unet.ups.get(i).resnetSecond.get(j).conv.weight, weightMap, "ups." + i + ".resnet_conv_second." + j + ".2.weight");
-                ClipModelUtils.loadData(unet.ups.get(i).resnetSecond.get(j).conv.bias, weightMap, "ups." + i + ".resnet_conv_second." + j + ".2.bias");
-                unet.ups.get(i).attns.get(j).gn.gamma = ClipModelUtils.loadData(unet.ups.get(i).attns.get(j).gn.gamma, weightMap, 1, "ups." + i + ".attention_norms." + j + ".weight");
-                unet.ups.get(i).attns.get(j).gn.beta = ClipModelUtils.loadData(unet.ups.get(i).attns.get(j).gn.beta, weightMap, 1, "ups." + i + ".attention_norms." + j + ".bias");
+                unet.ups.get(i).resnetFirst.get(j).norm.gamma = ModeLoaderlUtils.loadData(unet.ups.get(i).resnetFirst.get(j).norm.gamma, weightMap, 1, "ups." + i + ".resnet_conv_first." + j + ".0.weight");
+                unet.ups.get(i).resnetFirst.get(j).norm.beta = ModeLoaderlUtils.loadData(unet.ups.get(i).resnetFirst.get(j).norm.beta, weightMap, 1, "ups." + i + ".resnet_conv_first." + j + ".0.bias");
+                ModeLoaderlUtils.loadData(unet.ups.get(i).resnetFirst.get(j).conv.weight, weightMap, "ups." + i + ".resnet_conv_first." + j + ".2.weight");
+                ModeLoaderlUtils.loadData(unet.ups.get(i).resnetFirst.get(j).conv.bias, weightMap, "ups." + i + ".resnet_conv_first." + j + ".2.bias");
+                ModeLoaderlUtils.loadData(unet.ups.get(i).tEmbLayers.get(j).linear.weight, weightMap, "ups." + i + ".t_emb_layers." + j + ".1.weight");
+                ModeLoaderlUtils.loadData(unet.ups.get(i).tEmbLayers.get(j).linear.bias, weightMap, "ups." + i + ".t_emb_layers." + j + ".1.bias");
+                unet.ups.get(i).resnetSecond.get(j).norm.gamma = ModeLoaderlUtils.loadData(unet.ups.get(i).resnetSecond.get(j).norm.gamma, weightMap, 1, "ups." + i + ".resnet_conv_second." + j + ".0.weight");
+                unet.ups.get(i).resnetSecond.get(j).norm.beta = ModeLoaderlUtils.loadData(unet.ups.get(i).resnetSecond.get(j).norm.beta, weightMap, 1, "ups." + i + ".resnet_conv_second." + j + ".0.bias");
+                ModeLoaderlUtils.loadData(unet.ups.get(i).resnetSecond.get(j).conv.weight, weightMap, "ups." + i + ".resnet_conv_second." + j + ".2.weight");
+                ModeLoaderlUtils.loadData(unet.ups.get(i).resnetSecond.get(j).conv.bias, weightMap, "ups." + i + ".resnet_conv_second." + j + ".2.bias");
+                unet.ups.get(i).attns.get(j).gn.gamma = ModeLoaderlUtils.loadData(unet.ups.get(i).attns.get(j).gn.gamma, weightMap, 1, "ups." + i + ".attention_norms." + j + ".weight");
+                unet.ups.get(i).attns.get(j).gn.beta = ModeLoaderlUtils.loadData(unet.ups.get(i).attns.get(j).gn.beta, weightMap, 1, "ups." + i + ".attention_norms." + j + ".bias");
                 //			unet.ups.get(i).attns.get(0).qLinerLayer.weight = unet.ups.get(i).attns.get(0).qLinerLayer.weight.createLike(1.0f);
                 //			unet.ups.get(i).attns.get(0).qLinerLayer.bias = unet.ups.get(i).attns.get(0).qLinerLayer.bias.createLike(1.0f);
                 //			unet.ups.get(i).attns.get(0).kLinerLayer.weight = unet.ups.get(i).attns.get(0).kLinerLayer.weight.createLike(1.0f);
                 //			unet.ups.get(i).attns.get(0).kLinerLayer.bias = unet.ups.get(i).attns.get(0).kLinerLayer.bias.createLike(1.0f);
                 //			unet.ups.get(i).attns.get(0).vLinerLayer.weight = unet.ups.get(i).attns.get(0).vLinerLayer.weight.createLike(1.0f);
                 //			unet.ups.get(i).attns.get(0).vLinerLayer.bias = unet.ups.get(i).attns.get(0).vLinerLayer.bias.createLike(1.0f);
-                ClipModelUtils.loadData(unet.ups.get(i).attns.get(j).qLinerLayer.weight, weightMap, "ups." + i + ".attentions." + j + ".query.weight");
-                ClipModelUtils.loadData(unet.ups.get(i).attns.get(j).kLinerLayer.weight, weightMap, "ups." + i + ".attentions." + j + ".key.weight");
-                ClipModelUtils.loadData(unet.ups.get(i).attns.get(j).vLinerLayer.weight, weightMap, "ups." + i + ".attentions." + j + ".value.weight");
-                ClipModelUtils.loadData(unet.ups.get(i).attns.get(j).oLinerLayer.weight, weightMap, "ups." + i + ".attentions." + j + ".out_proj.weight");
+                ModeLoaderlUtils.loadData(unet.ups.get(i).attns.get(j).qLinerLayer.weight, weightMap, "ups." + i + ".attentions." + j + ".query.weight");
+                ModeLoaderlUtils.loadData(unet.ups.get(i).attns.get(j).kLinerLayer.weight, weightMap, "ups." + i + ".attentions." + j + ".key.weight");
+                ModeLoaderlUtils.loadData(unet.ups.get(i).attns.get(j).vLinerLayer.weight, weightMap, "ups." + i + ".attentions." + j + ".value.weight");
+                ModeLoaderlUtils.loadData(unet.ups.get(i).attns.get(j).oLinerLayer.weight, weightMap, "ups." + i + ".attentions." + j + ".out_proj.weight");
                 //			ClipModelUtils.loadData(unet.ups.get(i).attns.get(0).oLinerLayer.bias, weightMap, "ups."+i+".attentions.0.out_proj.bias");
-                unet.ups.get(i).crossAttns.get(j).gn.gamma = ClipModelUtils.loadData(unet.ups.get(i).crossAttns.get(j).gn.gamma, weightMap, 1, "ups." + i + ".cross_attention_norms." + j + ".weight");
-                unet.ups.get(i).crossAttns.get(j).gn.beta = ClipModelUtils.loadData(unet.ups.get(i).crossAttns.get(j).gn.beta, weightMap, 1, "ups." + i + ".cross_attention_norms." + j + ".bias");
+                unet.ups.get(i).crossAttns.get(j).gn.gamma = ModeLoaderlUtils.loadData(unet.ups.get(i).crossAttns.get(j).gn.gamma, weightMap, 1, "ups." + i + ".cross_attention_norms." + j + ".weight");
+                unet.ups.get(i).crossAttns.get(j).gn.beta = ModeLoaderlUtils.loadData(unet.ups.get(i).crossAttns.get(j).gn.beta, weightMap, 1, "ups." + i + ".cross_attention_norms." + j + ".bias");
                 //			unet.ups.get(i).crossAttns.get(0).qLinerLayer.weight = unet.ups.get(i).crossAttns.get(0).qLinerLayer.weight.createLike(1.0f);
                 //			unet.ups.get(i).crossAttns.get(0).qLinerLayer.bias = unet.ups.get(i).crossAttns.get(0).qLinerLayer.bias.createLike(1.0f);
                 //			unet.ups.get(i).crossAttns.get(0).kLinerLayer.weight = unet.ups.get(i).crossAttns.get(0).kLinerLayer.weight.createLike(1.0f);
                 //			unet.ups.get(i).crossAttns.get(0).kLinerLayer.bias = unet.ups.get(i).crossAttns.get(0).kLinerLayer.bias.createLike(1.0f);
                 //			unet.ups.get(i).crossAttns.get(0).vLinerLayer.weight = unet.ups.get(i).crossAttns.get(0).vLinerLayer.weight.createLike(1.0f);
                 //			unet.ups.get(i).crossAttns.get(0).vLinerLayer.bias = unet.ups.get(i).crossAttns.get(0).vLinerLayer.bias.createLike(1.0f);
-                ClipModelUtils.loadData(unet.ups.get(i).crossAttns.get(j).qLinerLayer.weight, weightMap, "ups." + i + ".cross_attentions." + j + ".query.weight");
-                ClipModelUtils.loadData(unet.ups.get(i).crossAttns.get(j).kLinerLayer.weight, weightMap, "ups." + i + ".cross_attentions." + j + ".key.weight");
-                ClipModelUtils.loadData(unet.ups.get(i).crossAttns.get(j).vLinerLayer.weight, weightMap, "ups." + i + ".cross_attentions." + j + ".value.weight");
-                ClipModelUtils.loadData(unet.ups.get(i).crossAttns.get(j).oLinerLayer.weight, weightMap, "ups." + i + ".cross_attentions." + j + ".out_proj.weight");
+                ModeLoaderlUtils.loadData(unet.ups.get(i).crossAttns.get(j).qLinerLayer.weight, weightMap, "ups." + i + ".cross_attentions." + j + ".query.weight");
+                ModeLoaderlUtils.loadData(unet.ups.get(i).crossAttns.get(j).kLinerLayer.weight, weightMap, "ups." + i + ".cross_attentions." + j + ".key.weight");
+                ModeLoaderlUtils.loadData(unet.ups.get(i).crossAttns.get(j).vLinerLayer.weight, weightMap, "ups." + i + ".cross_attentions." + j + ".value.weight");
+                ModeLoaderlUtils.loadData(unet.ups.get(i).crossAttns.get(j).oLinerLayer.weight, weightMap, "ups." + i + ".cross_attentions." + j + ".out_proj.weight");
                 //			ClipModelUtils.loadData(unet.ups.get(i).crossAttns.get(0).oLinerLayer.bias, weightMap, "ups."+i+".cross_attentions.0.out_proj.bias");
-                ClipModelUtils.loadData(unet.ups.get(i).contextProjs.get(j).weight, weightMap, "ups." + i + ".context_proj." + j + ".weight");
-                ClipModelUtils.loadData(unet.ups.get(i).contextProjs.get(j).bias, weightMap, "ups." + i + ".context_proj." + j + ".bias");
-                unet.ups.get(i).residualInputs.get(j).weight = ClipModelUtils.loadData(unet.ups.get(i).residualInputs.get(j).weight, weightMap, 4, "ups." + i + ".residual_input_conv." + j + ".weight");
+                ModeLoaderlUtils.loadData(unet.ups.get(i).contextProjs.get(j).weight, weightMap, "ups." + i + ".context_proj." + j + ".weight");
+                ModeLoaderlUtils.loadData(unet.ups.get(i).contextProjs.get(j).bias, weightMap, "ups." + i + ".context_proj." + j + ".bias");
+                unet.ups.get(i).residualInputs.get(j).weight = ModeLoaderlUtils.loadData(unet.ups.get(i).residualInputs.get(j).weight, weightMap, 4, "ups." + i + ".residual_input_conv." + j + ".weight");
                 //			ClipModelUtils.loadData(unet.ups.get(i).residualInputs.get(0).bias, weightMap, "ups."+i+".residual_input_conv.0.bias");
             }
-            ClipModelUtils.loadData(unet.ups.get(i).upSampleConv.weight, weightMap, "ups." + i + ".up_sample_conv.weight");
+            ModeLoaderlUtils.loadData(unet.ups.get(i).upSampleConv.weight, weightMap, "ups." + i + ".up_sample_conv.weight");
             //			ClipModelUtils.loadData(unet.ups.get(i).upSampleConv.bias, weightMap, "ups."+i+".up_sample_conv.bias");
         }
-        unet.norm.gamma = ClipModelUtils.loadData(unet.norm.gamma, weightMap, 1, "norm_out.weight");
-        unet.norm.beta = ClipModelUtils.loadData(unet.norm.beta, weightMap, 1, "norm_out.bias");
-        ClipModelUtils.loadData(unet.conv_out.weight, weightMap, "conv_out.weight");
-        ClipModelUtils.loadData(unet.conv_out.bias, weightMap, "conv_out.bias");
+        unet.norm.gamma = ModeLoaderlUtils.loadData(unet.norm.gamma, weightMap, 1, "norm_out.weight");
+        unet.norm.beta = ModeLoaderlUtils.loadData(unet.norm.beta, weightMap, 1, "norm_out.bias");
+        ModeLoaderlUtils.loadData(unet.conv_out.weight, weightMap, "conv_out.weight");
+        ModeLoaderlUtils.loadData(unet.conv_out.bias, weightMap, "conv_out.bias");
     }
 
     public void initLayers() {

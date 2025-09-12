@@ -13,7 +13,7 @@ import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
-import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
@@ -162,14 +162,14 @@ public class Res3DBlockUpsample extends Layer {
             }
         }
         
-        ClipModelUtils.loadData(block.conv1.weight, weightMap, "conv1.conv.weight", 5);
-        ClipModelUtils.loadData(block.conv1.bias, weightMap, "conv1.conv.bias");
-        block.norm1.norm.gamma = ClipModelUtils.loadData(block.norm1.norm.gamma, weightMap, 1, "norm1.weight");
-    	block.norm1.norm.beta = ClipModelUtils.loadData(block.norm1.norm.beta, weightMap, 1, "norm1.bias");
-    	ClipModelUtils.loadData(block.conv2.weight, weightMap, "conv2.conv.weight", 5);
-        ClipModelUtils.loadData(block.conv2.bias, weightMap, "conv2.conv.bias");
-        block.norm2.norm.gamma = ClipModelUtils.loadData(block.norm2.norm.gamma, weightMap, 1, "norm2.weight");
-    	block.norm2.norm.beta = ClipModelUtils.loadData(block.norm2.norm.beta, weightMap, 1, "norm2.bias");
+        ModeLoaderlUtils.loadData(block.conv1.weight, weightMap, "conv1.conv.weight", 5);
+        ModeLoaderlUtils.loadData(block.conv1.bias, weightMap, "conv1.conv.bias");
+        block.norm1.norm.gamma = ModeLoaderlUtils.loadData(block.norm1.norm.gamma, weightMap, 1, "norm1.weight");
+    	block.norm1.norm.beta = ModeLoaderlUtils.loadData(block.norm1.norm.beta, weightMap, 1, "norm1.bias");
+    	ModeLoaderlUtils.loadData(block.conv2.weight, weightMap, "conv2.conv.weight", 5);
+        ModeLoaderlUtils.loadData(block.conv2.bias, weightMap, "conv2.conv.bias");
+        block.norm2.norm.gamma = ModeLoaderlUtils.loadData(block.norm2.norm.gamma, weightMap, 1, "norm2.weight");
+    	block.norm2.norm.beta = ModeLoaderlUtils.loadData(block.norm2.norm.beta, weightMap, 1, "norm2.bias");
 
     }
 

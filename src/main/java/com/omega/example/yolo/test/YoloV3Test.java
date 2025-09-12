@@ -395,10 +395,12 @@ public class YoloV3Test {
             netWork.learnRate = 0.001f;
             ModelLoader.loadConfigToModel(netWork, cfg_path);
             //			DarknetLoader.loadWeight(netWork, weightPath, 14, true);
-            MBSGDOptimizer optimizer = new MBSGDOptimizer(netWork, 200, 0.001f, batchSize, LearnRateUpdate.SMART_HALF, false);
-            optimizer.lr_step = new int[]{100, 400, 450};
+            MBSGDOptimizer optimizer = new MBSGDOptimizer(netWork, 1000, 0.001f, batchSize, LearnRateUpdate.SMART_HALF, false);
+            optimizer.lr_step = new int[]{200, 500, 850};
             optimizer.trainObjectRecognitionOutputs(trainData, vailData);
-            
+            /**
+             * 导出模型
+             */
             String save_model_path = "D:\\models\\yolov3-mask.model";
             ModelUtils.saveModel(netWork, save_model_path);
             
@@ -443,7 +445,9 @@ public class YoloV3Test {
             //			String weightPath = "H:\\voc\\yolo-weights\\yolov3-tiny.conv.15";
             //			DarknetLoader.loadWeight(netWork, weightPath, 14, true);
             MBSGDOptimizer optimizer = new MBSGDOptimizer(netWork, 10, 0.001f, batchSize, LearnRateUpdate.SMART_HALF, false);
-
+            /**
+             * 导入预训练模型
+             */
             String save_model_path = "D:\\models\\yolov3-mask.model";
             ModelUtils.loadModel(netWork, save_model_path);
             
@@ -453,9 +457,7 @@ public class YoloV3Test {
             List<YoloBox> draw_bbox = optimizer.showObjectRecognitionYoloV3(vailData, batchSize);
             String outputPath = "D:\\dataset\\mask\\resized\\test_yolov3\\";
             showImg(outputPath, vailData, class_num, draw_bbox, batchSize, false, im_w, im_h, labelset);
-            
-            
-            
+
         } catch (Exception e) {
             // TODO: handle exception
             e.printStackTrace();

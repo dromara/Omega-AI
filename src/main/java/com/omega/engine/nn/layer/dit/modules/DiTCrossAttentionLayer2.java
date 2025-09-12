@@ -17,7 +17,6 @@ import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.gpu.AttentionKernel;
 import com.omega.engine.nn.layer.gpu.RoPEKernel;
 import com.omega.engine.nn.layer.normalization.BNType;
-import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.layer.normalization.RMSLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
@@ -25,7 +24,7 @@ import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 import com.omega.engine.updater.UpdaterType;
-import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
@@ -164,14 +163,14 @@ public class DiTCrossAttentionLayer2 extends Layer {
                 System.out.println(key);
             }
         }
-        ClipModelUtils.loadData(network.qLinerLayer.weight, weightMap, "query.weight");
-        ClipModelUtils.loadData(network.qLinerLayer.bias, weightMap, "query.bias");
-        ClipModelUtils.loadData(network.kLinerLayer.weight, weightMap, "key.weight");
-        ClipModelUtils.loadData(network.kLinerLayer.bias, weightMap, "key.bias");
-        ClipModelUtils.loadData(network.vLinerLayer.weight, weightMap, "value.weight");
-        ClipModelUtils.loadData(network.vLinerLayer.bias, weightMap, "value.bias");
-        ClipModelUtils.loadData(network.oLinerLayer.weight, weightMap, "out_proj.weight");
-        ClipModelUtils.loadData(network.oLinerLayer.bias, weightMap, "out_proj.bias");
+        ModeLoaderlUtils.loadData(network.qLinerLayer.weight, weightMap, "query.weight");
+        ModeLoaderlUtils.loadData(network.qLinerLayer.bias, weightMap, "query.bias");
+        ModeLoaderlUtils.loadData(network.kLinerLayer.weight, weightMap, "key.weight");
+        ModeLoaderlUtils.loadData(network.kLinerLayer.bias, weightMap, "key.bias");
+        ModeLoaderlUtils.loadData(network.vLinerLayer.weight, weightMap, "value.weight");
+        ModeLoaderlUtils.loadData(network.vLinerLayer.bias, weightMap, "value.bias");
+        ModeLoaderlUtils.loadData(network.oLinerLayer.weight, weightMap, "out_proj.weight");
+        ModeLoaderlUtils.loadData(network.oLinerLayer.bias, weightMap, "out_proj.bias");
     }
 
     public static boolean same(Tensor a, Tensor b) {
@@ -194,25 +193,25 @@ public class DiTCrossAttentionLayer2 extends Layer {
         }
     	
         this.qLinerLayer = new FullyLayer(embedDim, embedDim, bias, this.network);
-        this.qLinerLayer.weight.setData(RandomUtils.xavierUniform(this.embedDim * this.embedDim, this.embedDim, this.embedDim,  1.0f));
+        RandomUtils.xavier_uniform(this.qLinerLayer.weight, 1, embedDim, embedDim);
         if(this.qLinerLayer.bias != null) {
         	this.qLinerLayer.bias.clearGPU();
         }
-        //		this.qLinerLayer.weight = new Tensor(1, 1, embedDim, embedDim, RandomUtils.order(this.embedDim * this.embedDim, 0.01f, 0.01f), true);
         this.kLinerLayer = new FullyLayer(kvDim, embedDim, bias, this.network);
-        this.kLinerLayer.weight.setData(RandomUtils.xavierUniform(this.kvDim * this.embedDim, this.kvDim, this.embedDim,  1.0f));
+        RandomUtils.xavier_uniform(this.kLinerLayer.weight, 1, kvDim, embedDim);
+//        this.kLinerLayer.weight.setData(RandomUtils.xavierUniform(this.kvDim * this.embedDim, this.kvDim, this.embedDim,  1.0f));
         if(this.kLinerLayer.bias != null) {
         	this.kLinerLayer.bias.clearGPU();
         }
-        //		this.kLinerLayer.weight = new Tensor(1, 1, embedDim, kvDim, RandomUtils.order(this.embedDim * this.kvDim, 0.01f, 0.01f), true);
         this.vLinerLayer = new FullyLayer(kvDim, embedDim, bias, this.network);
-        this.vLinerLayer.weight.setData(RandomUtils.xavierUniform(this.kvDim * this.embedDim, this.kvDim, this.embedDim,  1.0f));
+//        this.vLinerLayer.weight.setData(RandomUtils.xavierUniform(this.kvDim * this.embedDim, this.kvDim, this.embedDim,  1.0f));
+        RandomUtils.xavier_uniform(this.vLinerLayer.weight, 1, kvDim, embedDim);
         if(this.vLinerLayer.bias != null) {
         	this.vLinerLayer.bias.clearGPU();
         }
-        //		this.vLinerLayer.weight = new Tensor(1, 1, embedDim, kvDim, RandomUtils.order(this.embedDim * this.kvDim, 0.01f, 0.01f), true);
         this.oLinerLayer = new FullyLayer(embedDim, embedDim, bias, this.network);
-        this.oLinerLayer.weight.setData(RandomUtils.xavierUniform(this.embedDim * this.embedDim, this.embedDim, this.embedDim,  1.0f));
+//        this.oLinerLayer.weight.setData(RandomUtils.xavierUniform(this.embedDim * this.embedDim, this.embedDim, this.embedDim,  1.0f));
+        RandomUtils.xavier_uniform(this.oLinerLayer.weight, 1, embedDim, embedDim);
         if(this.oLinerLayer.bias != null) {
         	this.oLinerLayer.bias.clearGPU();
         }

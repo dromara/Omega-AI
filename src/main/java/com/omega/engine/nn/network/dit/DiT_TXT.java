@@ -9,7 +9,7 @@ import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.layer.InputLayer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.SoftmaxWithCrossEntropyLayer;
-import com.omega.engine.nn.layer.dit.org.DiTMainMoudue;
+import com.omega.engine.nn.layer.dit.txt.DiT_TXTMainMoudue;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.NetworkType;
 import com.omega.engine.nn.network.RunModel;
@@ -30,7 +30,8 @@ public class DiT_TXT extends Network {
     public int width;
     public int height;
     public int patchSize;
-    public int classNum;
+    public int textEmbedDim;
+    public int maxContextLen;
     public int hiddenSize;
     private int depth;
     private int timeSteps;
@@ -41,10 +42,11 @@ public class DiT_TXT extends Network {
     private float y_drop_prob = 0.0f;
     
     private InputLayer inputLayer;
-    public DiTMainMoudue main;
+    public DiT_TXTMainMoudue main;
     
-    public DiT_TXT(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int classNum, int mlpRatio,boolean learnSigma, float y_drop_prob) {
+    public DiT_TXT(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int textEmbedDim, int maxContextLen, int mlpRatio,boolean learnSigma, float y_drop_prob) {
         this.lossFunction = LossFactory.create(lossType, this);
+        this.weight_decay = 0.0f;
         this.updater = updater;
         this.inChannel = inChannel;
         this.width = width;
@@ -54,7 +56,8 @@ public class DiT_TXT extends Network {
         this.hiddenSize = hiddenSize;
         this.depth = depth;
         this.timeSteps = timeSteps;
-        this.classNum = classNum;
+        this.textEmbedDim = textEmbedDim;
+        this.maxContextLen = maxContextLen;
         this.mlpRatio = mlpRatio;
         this.learnSigma = learnSigma;
         this.y_drop_prob = y_drop_prob;
@@ -66,7 +69,7 @@ public class DiT_TXT extends Network {
     	
         this.inputLayer = new InputLayer(inChannel, height, width);
         
-        main = new DiTMainMoudue(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, classNum, mlpRatio, learnSigma, y_drop_prob, this);
+        main = new DiT_TXTMainMoudue(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, textEmbedDim, maxContextLen, mlpRatio, learnSigma, y_drop_prob, this);
         
         this.addLayer(inputLayer);
         this.addLayer(main);

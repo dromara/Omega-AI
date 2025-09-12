@@ -2,11 +2,15 @@ package com.omega.example.dit.models;
 
 import java.util.Map;
 
+import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.nn.network.CNN;
+import com.omega.engine.nn.network.dit.DiT_ORG;
+import com.omega.engine.nn.network.dit.DiT_TXT;
+import com.omega.engine.nn.network.dit.MMDiT_RoPE;
 import com.omega.engine.tensor.Tensor;
-import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
 
 public class ICPlan {
@@ -20,6 +24,17 @@ public class ICPlan {
 	private Tensor norm1;
 	private Tensor norm2;
 	
+	private float[] T;
+	
+	private float timestep_shift = 0.3f;
+	
+//	private float atol = 1e-6f;
+//	private float rtol = 1e-3f;
+	
+	private int count = 250;
+	
+	private Tensor tmp;
+	
 	public ICPlan(TensorOP op) {
 		this.op = op;
 		init();
@@ -29,6 +44,132 @@ public class ICPlan {
 		if(kernel == null) {
 			kernel = new ICPlanKernel(op.cudaManager);
 		}
+	}
+	
+	public void ininT(int start,int end,int count) {
+		if(T == null) {
+			T = MatrixUtils.linspace(start, end, count);
+			if(timestep_shift > 0) {
+				for(int i = 0;i<T.length;i++) {
+					float numerator = timestep_shift * T[i];
+					float denominator = 1 + (timestep_shift - 1) * T[i];
+					T[i] = numerator / denominator;
+				}
+				
+			}
+		}
+	}
+	
+	/**
+	 * sample
+	 * @param y0 is noise
+	 */
+	public Tensor sample(MMDiT_RoPE dit,Tensor y0, Tensor t, Tensor context, Tensor cos, Tensor sin, Tensor y1) {
+		ininT(0, 1, count);//250
+		int j = 1;
+		Tensor out = null;
+		Tensor f0 = null;
+		for(int i = 0;i<count - 1;i++) {
+			float t0 = T[i];
+			float t1 = T[i + 1];
+			float dt = t1 - t0;
+			MatrixUtils.val(t.data, t0);
+			t.hostToDevice();
+			f0 = dit.forward(y0, t, context, cos, sin);
+//			f0 = dit.tensorOP.copyTensorGPU(y0, f0);
+			
+			dit.tensorOP.mul(f0, dt, f0);
+			
+			dit.tensorOP.add(y0, f0, y1);
+			float tj = T[j];
+			if(j < T.length && t1 >= tj) {
+				out = linear_interp(dit.tensorOP, t0, t1, y0, y1, tj);
+				j++;
+			}
+			dit.tensorOP.copyGPU(y1, y0);
+//			y0.showDM();
+		}
+		return out;
+	}
+	
+	/**
+	 * sample
+	 * @param y0 is noise
+	 */
+	public Tensor sample(DiT_TXT dit,Tensor y0, Tensor t, Tensor context, Tensor cos, Tensor sin, Tensor y1) {
+		ininT(0, 1, count);
+		int j = 1;
+		Tensor out = null;
+		Tensor f0 = null;
+		for(int i = 0;i<count - 1;i++) {
+			float t0 = T[i];
+			float t1 = T[i + 1];
+			float dt = t1 - t0;
+			MatrixUtils.val(t.data, t0);
+			t.hostToDevice();
+			f0 = dit.forward(y0, t, context, cos, sin);
+//			f0 = dit.tensorOP.copyTensorGPU(y0, f0);
+			
+			dit.tensorOP.mul(f0, dt, f0);
+			
+			dit.tensorOP.add(y0, f0, y1);
+			float tj = T[j];
+			if(j < T.length && t1 >= tj) {
+				out = linear_interp(dit.tensorOP, t0, t1, y0, y1, tj);
+				j++;
+			}
+			dit.tensorOP.copyGPU(y1, y0);
+//			y0.showDM();
+		}
+		return out;
+	}
+	
+	/**
+	 * sample
+	 * @param y0 is noise
+	 */
+	public Tensor sample(DiT_ORG dit,Tensor y0, Tensor t, Tensor context, Tensor cos, Tensor sin, Tensor y1) {
+		ininT(0, 1, count);
+		int j = 1;
+		Tensor out = null;
+		Tensor f0 = null;
+		for(int i = 0;i<count - 1;i++) {
+			float t0 = T[i];
+			float t1 = T[i + 1];
+			float dt = t1 - t0;
+			MatrixUtils.val(t.data, t0);
+			t.hostToDevice();
+			f0 = dit.forward(y0, t, context, cos, sin);
+
+			dit.tensorOP.mul(f0, dt, f0);
+			
+			dit.tensorOP.add(y0, f0, y1);
+			
+			float tj = T[j];
+			if(j < T.length && t1 >= tj) {
+				out = linear_interp(dit.tensorOP, t0, t1, y0, y1, tj);
+				j++;
+			}
+			dit.tensorOP.copyGPU(y1, y0);
+		}
+		return out;
+	}
+	
+	public Tensor linear_interp(TensorOP tensorOP,float t0, float t1, Tensor y0, Tensor y1, float t) {
+		if(t == t0) {
+			return y0;
+		}
+		if(t == t1) {
+			return y1;
+		}
+		float slope = (t - t0) / (t1 - t0);
+		if(tmp == null) {
+			tmp = Tensor.createGPUTensor(tmp, y0.shape(), true);
+		}
+		tensorOP.sub(y1, y0, tmp);
+		tensorOP.mul(tmp, slope, tmp);
+		tensorOP.add(y0, tmp, tmp);
+		return tmp;
 	}
 	
 	public static void cos_f() {
@@ -41,12 +182,12 @@ public class ICPlan {
 		String inputPath = "D:\\models\\x.json";
 	    Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
 	    Tensor input = new Tensor(N, C, H, W, true);
-	    ClipModelUtils.loadData(input, datas, "x");
+	    ModeLoaderlUtils.loadData(input, datas, "x");
 		
 	    String input2Path = "D:\\models\\x2.json";
 	    Map<String, Object> datas2 = LagJsonReader.readJsonFileSmallWeight(input2Path);
 	    Tensor input2 = new Tensor(N, C, H, W, true);
-	    ClipModelUtils.loadData(input2, datas2, "x2");
+	    ModeLoaderlUtils.loadData(input2, datas2, "x2");
 	    
 	    Tensor loss = new Tensor(N, C, H, W, true);
 	    
@@ -75,17 +216,17 @@ public class ICPlan {
 		String inputPath = "D:\\models\\x.json";
 	    Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
 	    Tensor input = new Tensor(N, C, H, W, true);
-	    ClipModelUtils.loadData(input, datas, "x");
+	    ModeLoaderlUtils.loadData(input, datas, "x");
 		
 	    String input2Path = "D:\\models\\noise.json";
 	    Map<String, Object> datas2 = LagJsonReader.readJsonFileSmallWeight(input2Path);
 	    Tensor noise = new Tensor(N, C, H, W, true);
-	    ClipModelUtils.loadData(noise, datas2, "noise");
+	    ModeLoaderlUtils.loadData(noise, datas2, "noise");
 	    
 	    String tPath = "D:\\models\\t.json";
 	    Map<String, Object> tdata = LagJsonReader.readJsonFileSmallWeight(tPath);
 	    Tensor t = new Tensor(N, 1, 1, 1, true);
-	    ClipModelUtils.loadData(t, tdata, "t");
+	    ModeLoaderlUtils.loadData(t, tdata, "t");
 	    
 	    CNN nn = new CNN(null);
         nn.CUDNN = true;

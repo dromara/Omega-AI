@@ -103,6 +103,11 @@ public class ClipTextModel extends Network {
         return this.output;
     }
     
+    public Tensor get_full_clip_prompt_embeds(Tensor input) {
+    	forward(input);
+    	return clip.getEncoders().get(n_layers - 2).getOutput();
+    }
+    
     public Tensor get_clip_prompt_embeds(Tensor input, Tensor eos_idx, Tensor embeds) {
         // TODO Auto-generated method stub
     	forward(input);

@@ -129,7 +129,7 @@ public class CLIPTextTransformer extends Layer {
         getEmbeddings().getOutput().viewOrg();
         this.output = getFinalLayerNorm().getOutput();
     }
-
+    
     @Override
     public Tensor getOutput() {
         // TODO Auto-generated method stub
@@ -156,17 +156,14 @@ public class CLIPTextTransformer extends Layer {
         // TODO Auto-generated method stub
         /**
          * 设置输入
-
          */
         this.setInput(input);
         /**
          * 参数初始化
-
          */
         this.init();
         /**
          * 计算输出
-
          */
         this.output();
     }

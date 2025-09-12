@@ -8,14 +8,11 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.bytedeco.ffmpeg.global.avcodec;
-import org.bytedeco.ffmpeg.global.avutil;
-import org.bytedeco.javacpp.Loader;
+//import org.bytedeco.ffmpeg.global.avcodec;
+//import org.bytedeco.ffmpeg.global.avutil;
+//import org.bytedeco.javacpp.Loader;
 
 import com.omega.common.utils.MatrixOperation;
-import com.omega.common.utils.MatrixShape;
-import com.omega.common.utils.VideoReader;
-import com.omega.common.utils.VideoWriter;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.network.vae.WFVAE;
@@ -24,7 +21,7 @@ import com.omega.engine.optimizer.MBSGDOptimizer;
 import com.omega.engine.optimizer.lr.LearnRateUpdate;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
-import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.opensora.vae.dataset.VideoDataLoaderEN;
 import com.omega.example.transformer.utils.LagJsonReader;
 import com.omega.example.transformer.utils.ModelUtils;
@@ -323,7 +320,7 @@ public class WFVAETest {
 		lpips.CUDNN = true;
 
 		String vaeWeight = "/root/lanyun-tmp/wfvae.json";
-		ClipModelUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(vaeWeight), network, true);
+		ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(vaeWeight), network, true);
 
 		Tensor org_input = new Tensor(batchSize, dataLoader.num_frames * network.getChannel(), network.getHeight(), network.getWidth(), true);
 		Tensor input = new Tensor(batchSize, network.getChannel() * dataLoader.num_frames, network.getHeight(), network.getWidth(), true);
@@ -402,139 +399,139 @@ public class WFVAETest {
 		return sampledFrames;
 	}
 
-	/**
-	 * 从视频中采样指定帧数
-	 *
-	 * @param videoPath 视频路径
-	 * @param numFrames 采样帧数
-	 * @param width 宽
-	 * @param height 高
-	 * @param mean 均值
-	 * @param std 方差
-	 * @param groupSize 每次处理的帧数，VAE的num_frames
-	 *
-	 * @return
-	 */
-	public static List<float[][][][]> getSampledFramesGroupData(String videoPath, int numFrames, int width, int height, float[] mean, float[] std, int groupSize) {
-		File in = new File(videoPath);
-		Loader.load(avutil.class);
-		Loader.load(avcodec.class);
-		int step = 1;
-		List<Integer> sampledFrames = new ArrayList<>();
-		try (VideoReader reader = new VideoReader(in, width, height, step, true)) {
-			sampledFrames = getSampledFrames(reader.getTotalFrames(), numFrames);
-			// 读取采样帧
-			float[][][][] batchData = new float[reader.getTotalFrames()][3][width][height];
+//	/**
+//	 * 从视频中采样指定帧数
+//	 *
+//	 * @param videoPath 视频路径
+//	 * @param numFrames 采样帧数
+//	 * @param width 宽
+//	 * @param height 高
+//	 * @param mean 均值
+//	 * @param std 方差
+//	 * @param groupSize 每次处理的帧数，VAE的num_frames
+//	 *
+//	 * @return
+//	 */
+//	public static List<float[][][][]> getSampledFramesGroupData(String videoPath, int numFrames, int width, int height, float[] mean, float[] std, int groupSize) {
+//		File in = new File(videoPath);
+//		Loader.load(avutil.class);
+//		Loader.load(avcodec.class);
+//		int step = 1;
+//		List<Integer> sampledFrames = new ArrayList<>();
+//		try (VideoReader reader = new VideoReader(in, width, height, step, true)) {
+//			sampledFrames = getSampledFrames(reader.getTotalFrames(), numFrames);
+//			// 读取采样帧
+//			float[][][][] batchData = new float[reader.getTotalFrames()][3][width][height];
+//
+//			int dataIndex = 0;
+//			while (true) {
+//				float[][][][] floats = reader.nextBatch4D(1, mean, std);
+//				if (floats.length == 0) {
+//					break;
+//				}
+//				batchData[dataIndex] = floats[0];
+//				dataIndex++;
+//			}
+//
+//			int totalFrames = sampledFrames.size();
+//			int numGroups = (int) Math.ceil((double) totalFrames / groupSize);
+//			List<float[][][][]> frameGroups = new ArrayList<>();
+//			// 按16帧一组进行分组
+//			for (int groupIdx = 0; groupIdx < numGroups; groupIdx++) {
+//				int start = groupIdx * groupSize;
+//				int end = Math.min(start + groupSize, totalFrames);
+//
+//				// 创建当前组的容器 [16][C][W][H]
+//				int framesInGroup = end - start;
+//				int channels = batchData[0].length;
+//				float[][][][] group = new float[framesInGroup][channels][width][height];
+//
+//				// 填充当前组的数据
+//				for (int i = start; i < end; i++) {
+//					int frameIdx = sampledFrames.get(i);
+//					// 复制帧数据
+//					System.arraycopy(batchData[frameIdx], 0, group[i - start], 0, channels);
+//				}
+//
+//				frameGroups.add(group);
+//			}
+//
+//			return frameGroups;
+//		} catch (Exception e) {
+//			e.printStackTrace();
+//		}
+//		return null;
+//	}
 
-			int dataIndex = 0;
-			while (true) {
-				float[][][][] floats = reader.nextBatch4D(1, mean, std);
-				if (floats.length == 0) {
-					break;
-				}
-				batchData[dataIndex] = floats[0];
-				dataIndex++;
-			}
-
-			int totalFrames = sampledFrames.size();
-			int numGroups = (int) Math.ceil((double) totalFrames / groupSize);
-			List<float[][][][]> frameGroups = new ArrayList<>();
-			// 按16帧一组进行分组
-			for (int groupIdx = 0; groupIdx < numGroups; groupIdx++) {
-				int start = groupIdx * groupSize;
-				int end = Math.min(start + groupSize, totalFrames);
-
-				// 创建当前组的容器 [16][C][W][H]
-				int framesInGroup = end - start;
-				int channels = batchData[0].length;
-				float[][][][] group = new float[framesInGroup][channels][width][height];
-
-				// 填充当前组的数据
-				for (int i = start; i < end; i++) {
-					int frameIdx = sampledFrames.get(i);
-					// 复制帧数据
-					System.arraycopy(batchData[frameIdx], 0, group[i - start], 0, channels);
-				}
-
-				frameGroups.add(group);
-			}
-
-			return frameGroups;
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		return null;
-	}
-
-	/**
-	 *  vae生成视频
-	 *
-	 * @param videoPath
-	 * @param numFrames
-	 * @throws Exception
-	 */
-	public static void reconVideo(String videoPath, int numFrames) throws Exception {
-		int imgSize = 256;
-		int num_frames = 17;
-
-		int latendDim = 8;
-		int base_channels = 128;
-		int en_energy_flow_hidden_size = 64;
-		int de_energy_flow_hidden_size = 128;
-		int num_res_blocks = 2;
-		int connect_res_layer_num = 2;
-		WFVAE network = new WFVAE(LossType.MSE, UpdaterType.adamw, num_frames, latendDim, imgSize, base_channels, en_energy_flow_hidden_size, de_energy_flow_hidden_size, num_res_blocks, connect_res_layer_num);
-		network.CUDNN = true;
-		network.learnRate = 0.0001f;
-		network.init();
-
-		String vaeWeight = "/root/lanyun-tmp/wfvae.json";
-		ClipModelUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(vaeWeight), network, true);
-
-		// 输入数据
-		Tensor org_input = new Tensor(1, num_frames * network.getChannel(), network.getHeight(), network.getWidth(), true);
-		Tensor input = new Tensor(1, network.getChannel() * num_frames, network.getHeight(), network.getWidth(), true);
-
-		File outOverwrite = new File("/root/lanyun-tmp/test/out_overwrite.mp4");
-		VideoWriter writer = new VideoWriter(outOverwrite, true, imgSize, imgSize, 10, true);
-
-		float[] mean = new float[]{0.5f, 0.5f, 0.5f};
-		float[] std = new float[]{0.5f, 0.5f, 0.5f};
-
-		// 采样视频数据并分组
-		List<float[][][][]> groupData = getSampledFramesGroupData(videoPath, numFrames, imgSize, imgSize, mean, std, num_frames);
-		if (null == groupData) {
-			throw new RuntimeException("error get video data");
-		}
-		for (int i = 0; i < groupData.size(); i++) {
-			float[] rowData = MatrixShape.reshape(groupData.get(i));
-			org_input.setData(rowData);
-
-			// B T C W H -> B C T H W
-			network.tensorOP.permute(org_input, input, new int[] {1, num_frames, 3, imgSize, imgSize}, new int[] {1, 3, num_frames, imgSize, imgSize}, new int[] {0, 2, 1, 4, 3});
-
-			// VAE encode
-			Tensor lantnd = network.encode(input);
-
-			// VAE Decode
-			Tensor output = network.decode(lantnd);
-
-			// B C T H W -> B T C W H
-			network.tensorOP.permute(output, org_input, new int[] {1, 3, num_frames, imgSize, imgSize}, new int[] {1, num_frames, 3, imgSize, imgSize}, new int[] {0, 2, 1, 4, 3});
-			org_input.syncHost();
-			org_input.setData(MatrixOperation.clampSelf(org_input.data, -1, 1));
-			// 写入视频数据
-			writer.writeBatch(MatrixShape.toCube(org_input.data, num_frames, 3, imgSize, imgSize), mean, std);
-
-			// 保存中间图片文件
-			String testPath = "/root/lanyun-tmp/test";
-			// 交换 H W
-			network.tensorOP.permute(org_input, input, new int[] {1, num_frames, 3, imgSize, imgSize}, new int[] {1, num_frames, 3, imgSize, imgSize}, new int[] {0, 1, 2, 4, 3});
-			MBSGDOptimizer.showVideos(testPath, num_frames, input, i+"", mean, std);
-
-		}
-		writer.close();
-	}
+//	/**
+//	 *  vae生成视频
+//	 *
+//	 * @param videoPath
+//	 * @param numFrames
+//	 * @throws Exception
+//	 */
+//	public static void reconVideo(String videoPath, int numFrames) throws Exception {
+//		int imgSize = 256;
+//		int num_frames = 17;
+//
+//		int latendDim = 8;
+//		int base_channels = 128;
+//		int en_energy_flow_hidden_size = 64;
+//		int de_energy_flow_hidden_size = 128;
+//		int num_res_blocks = 2;
+//		int connect_res_layer_num = 2;
+//		WFVAE network = new WFVAE(LossType.MSE, UpdaterType.adamw, num_frames, latendDim, imgSize, base_channels, en_energy_flow_hidden_size, de_energy_flow_hidden_size, num_res_blocks, connect_res_layer_num);
+//		network.CUDNN = true;
+//		network.learnRate = 0.0001f;
+//		network.init();
+//
+//		String vaeWeight = "/root/lanyun-tmp/wfvae.json";
+//		ClipModelUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(vaeWeight), network, true);
+//
+//		// 输入数据
+//		Tensor org_input = new Tensor(1, num_frames * network.getChannel(), network.getHeight(), network.getWidth(), true);
+//		Tensor input = new Tensor(1, network.getChannel() * num_frames, network.getHeight(), network.getWidth(), true);
+//
+//		File outOverwrite = new File("/root/lanyun-tmp/test/out_overwrite.mp4");
+//		VideoWriter writer = new VideoWriter(outOverwrite, true, imgSize, imgSize, 10, true);
+//
+//		float[] mean = new float[]{0.5f, 0.5f, 0.5f};
+//		float[] std = new float[]{0.5f, 0.5f, 0.5f};
+//
+//		// 采样视频数据并分组
+//		List<float[][][][]> groupData = getSampledFramesGroupData(videoPath, numFrames, imgSize, imgSize, mean, std, num_frames);
+//		if (null == groupData) {
+//			throw new RuntimeException("error get video data");
+//		}
+//		for (int i = 0; i < groupData.size(); i++) {
+//			float[] rowData = MatrixShape.reshape(groupData.get(i));
+//			org_input.setData(rowData);
+//
+//			// B T C W H -> B C T H W
+//			network.tensorOP.permute(org_input, input, new int[] {1, num_frames, 3, imgSize, imgSize}, new int[] {1, 3, num_frames, imgSize, imgSize}, new int[] {0, 2, 1, 4, 3});
+//
+//			// VAE encode
+//			Tensor lantnd = network.encode(input);
+//
+//			// VAE Decode
+//			Tensor output = network.decode(lantnd);
+//
+//			// B C T H W -> B T C W H
+//			network.tensorOP.permute(output, org_input, new int[] {1, 3, num_frames, imgSize, imgSize}, new int[] {1, num_frames, 3, imgSize, imgSize}, new int[] {0, 2, 1, 4, 3});
+//			org_input.syncHost();
+//			org_input.setData(MatrixOperation.clampSelf(org_input.data, -1, 1));
+//			// 写入视频数据
+//			writer.writeBatch(MatrixShape.toCube(org_input.data, num_frames, 3, imgSize, imgSize), mean, std);
+//
+//			// 保存中间图片文件
+//			String testPath = "/root/lanyun-tmp/test";
+//			// 交换 H W
+//			network.tensorOP.permute(org_input, input, new int[] {1, num_frames, 3, imgSize, imgSize}, new int[] {1, num_frames, 3, imgSize, imgSize}, new int[] {0, 1, 2, 4, 3});
+//			MBSGDOptimizer.showVideos(testPath, num_frames, input, i+"", mean, std);
+//
+//		}
+//		writer.close();
+//	}
 
 	public static void main(String[] args) {
 		try {
@@ -549,7 +546,7 @@ public class WFVAETest {
 
 //			test_weight();
 
-			reconVideo(args[0], 17);
+//			reconVideo(args[0], 17);
 //			ImageUtils.createGifFromFolder("C:\\Temp\\test_image", "C:\\Temp\\test\\4.gif", 100, false);
 		} catch (Exception e) {
 			// TODO: handle exception

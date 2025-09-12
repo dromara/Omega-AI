@@ -117,23 +117,26 @@ public class DiTJoinBlockHead extends Layer {
         this.modulationAct = new SiLULayer(network);
         
         this.adaLN_modulation = new FullyLayer(cEmbedDim, embedDim * n_mods, true, network);
-//        this.adaLN_modulation.weight.clearGPU();
-//        this.adaLN_modulation.bias.clearGPU();
+        this.adaLN_modulation.weight.clearGPU();
+        this.adaLN_modulation.bias.clearGPU();
 
         this.setqLinerLayer(new FullyLayer(embedDim, embedDim, bias, this.network));
-        this.qLinerLayer.weight.setData(RandomUtils.xavierUniform(this.embedDim * this.embedDim, this.embedDim, this.embedDim,  1.0f));
+        RandomUtils.xavier_uniform(this.qLinerLayer.weight, 1, embedDim, embedDim);
+//        this.qLinerLayer.weight.setData(RandomUtils.xavierUniform(this.embedDim * this.embedDim, this.embedDim, this.embedDim,  1.0f));
         if(this.qLinerLayer.bias != null) {
         	this.qLinerLayer.bias.clearGPU();
         }
 
         this.setkLinerLayer(new FullyLayer(embedDim, embedDim, bias, this.network));
-        this.kLinerLayer.weight.setData(RandomUtils.xavierUniform(this.embedDim * this.embedDim, this.embedDim, this.embedDim,  1.0f));
+        RandomUtils.xavier_uniform(this.kLinerLayer.weight, 1, embedDim, embedDim);
+//        this.kLinerLayer.weight.setData(RandomUtils.xavierUniform(this.embedDim * this.embedDim, this.embedDim, this.embedDim,  1.0f));
         if(this.kLinerLayer.bias != null) {
         	this.kLinerLayer.bias.clearGPU();
         }
 
         this.setvLinerLayer(new FullyLayer(embedDim, embedDim, bias, this.network));
-        this.vLinerLayer.weight.setData(RandomUtils.xavierUniform(this.embedDim * this.embedDim, this.embedDim, this.embedDim,  1.0f));
+        RandomUtils.xavier_uniform(this.vLinerLayer.weight, 1, embedDim, embedDim);
+//        this.vLinerLayer.weight.setData(RandomUtils.xavierUniform(this.embedDim * this.embedDim, this.embedDim, this.embedDim,  1.0f));
         if(this.vLinerLayer.bias != null) {
         	this.vLinerLayer.bias.clearGPU();
         }
@@ -143,7 +146,8 @@ public class DiTJoinBlockHead extends Layer {
         	this.norm2 = new LNLayer(1, 1, embedDim, normParams, BNType.fully_bn, network);
         	
 	        this.setoLinerLayer(new FullyLayer(embedDim, embedDim, true, this.network));
-	        this.oLinerLayer.weight.setData(RandomUtils.xavierUniform(this.embedDim * this.embedDim, this.embedDim, this.embedDim,  1.0f));
+	        RandomUtils.xavier_uniform(this.oLinerLayer.weight, 1, embedDim, embedDim);
+//	        this.oLinerLayer.weight.setData(RandomUtils.xavierUniform(this.embedDim * this.embedDim, this.embedDim, this.embedDim,  1.0f));
 	        if(this.oLinerLayer.bias != null) {
 	        	this.oLinerLayer.bias.clearGPU();
 	        }

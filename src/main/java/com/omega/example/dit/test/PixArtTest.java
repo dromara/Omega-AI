@@ -12,7 +12,7 @@ import com.omega.engine.optimizer.MBSGDOptimizer;
 import com.omega.engine.optimizer.lr.LearnRateUpdate;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
-import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.dit.dataset.LatendDataset;
 import com.omega.example.dit.models.BetaType;
 import com.omega.example.dit.models.IDDPM;
@@ -122,7 +122,7 @@ public class PixArtTest {
         clip.time = maxContextLen;
         clip.RUN_MODEL = RunModel.EVAL;
         String clipWeight = "D:\\models\\CLIP-GmP-ViT-L-14\\CLIP-GmP-ViT-L-14.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, "", false);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, "", false);
 
         int latendDim = 4;
         int num_vq_embeddings = 512;
@@ -134,7 +134,7 @@ public class PixArtTest {
         vae.learnRate = 0.001f;
         vae.RUN_MODEL = RunModel.EVAL;
         String vaeWeight = "D:\\models\\sdxl-vae-fp16-fix\\sdxl-vae-fp16-fix.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
         
         int ditHeadNum = 16;
         int latendSize = 32;
@@ -211,7 +211,7 @@ public class PixArtTest {
         clip.time = maxContextLen;
         clip.RUN_MODEL = RunModel.EVAL;
         String clipWeight = "D:\\models\\CLIP-GmP-ViT-L-14\\CLIP-GmP-ViT-L-14.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, "", false);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, "", false);
 
         int latendDim = 4;
         int num_vq_embeddings = 512;
@@ -223,7 +223,7 @@ public class PixArtTest {
         vae.learnRate = 0.001f;
         vae.RUN_MODEL = RunModel.EVAL;
         String vaeWeight = "D:\\models\\sdxl-vae-fp16-fix\\sdxl-vae-fp16-fix.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
         
         int ditHeadNum = 16;
         int latendSize = 32;
@@ -314,7 +314,7 @@ public class PixArtTest {
         clip.time = maxContextLen;
         clip.RUN_MODEL = RunModel.EVAL;
         String clipWeight = "D:\\models\\CLIP-GmP-ViT-L-14\\CLIP-GmP-ViT-L-14.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, "", false);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, "", false);
 
         int latendDim = 4;
         int num_vq_embeddings = 512;
@@ -326,7 +326,7 @@ public class PixArtTest {
         vae.learnRate = 0.001f;
         vae.RUN_MODEL = RunModel.EVAL;
         String vaeWeight = "D:\\models\\sdxl-vae-fp16-fix\\sdxl-vae-fp16-fix.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
         
         int ditHeadNum = 16;
         int latendSize = 32;
@@ -345,7 +345,7 @@ public class PixArtTest {
         
         IDDPM iddpm = new IDDPM(timeSteps, BetaType.linear, network.cudaManager);
         
-        String model_path = "D:\\test\\models\\dit_xl2\\dit_xl2_12.model";
+        String model_path = "D:\\test\\models\\dit_xl2\\dit_xl2_18.model";
         ModelUtils.loadModel(network, model_path);
         
         Tensor label = new Tensor(batchSize * dataLoader.maxContextLen, 1, 1, 1, true);

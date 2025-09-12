@@ -1,4 +1,4 @@
-package com.omega.engine.nn.layer.dit;
+package com.omega.engine.nn.layer.dit.txt;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -10,7 +10,7 @@ import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.active.SiLULayer;
 import com.omega.engine.nn.layer.normalization.BNType;
-import com.omega.engine.nn.layer.normalization.LNLayer;
+import com.omega.engine.nn.layer.normalization.RMSLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
@@ -23,7 +23,7 @@ import com.omega.example.transformer.utils.LagJsonReader;
  *
  * @author Administrator
  */
-public class DiTFinalLayer extends Layer {
+public class DiT_TXTFinalLayer extends Layer {
 	
 	private int batchSize;
 	private int time;
@@ -31,9 +31,8 @@ public class DiTFinalLayer extends Layer {
     private boolean bias = false;
     
     private boolean normParams = true;
-    
-    public LNLayer finalNorm;
-//    public RMSLayer finalNorm;
+
+    public RMSLayer finalNorm;
     public FullyLayer finalLinear;
     
     private SiLULayer m_active;
@@ -45,7 +44,7 @@ public class DiTFinalLayer extends Layer {
     private Tensor dShift;
     private Tensor dScale;
 
-    public DiTFinalLayer(int patch_size, int hidden_size,int out_channels, int time, boolean bias) {
+    public DiT_TXTFinalLayer(int patch_size, int hidden_size,int out_channels, int time, boolean bias) {
         this.hidden_size = hidden_size;
         this.bias = bias;
         this.oChannel = 1;
@@ -55,7 +54,7 @@ public class DiTFinalLayer extends Layer {
         this.initLayers();
     }
 
-    public DiTFinalLayer(int patch_size, int hidden_size,int out_channels, int time, boolean bias, boolean normParams, Network network) {
+    public DiT_TXTFinalLayer(int patch_size, int hidden_size,int out_channels, int time, boolean bias, boolean normParams, Network network) {
         this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
@@ -72,7 +71,7 @@ public class DiTFinalLayer extends Layer {
 
     public void initLayers() {
         //		NanoGPT net = (NanoGPT) this.network;
-    	this.finalNorm = new LNLayer(1, 1, hidden_size, normParams, BNType.fully_bn, network);
+    	this.finalNorm = new RMSLayer(1, 1, hidden_size, normParams, BNType.fully_bn, network);
         this.finalLinear = new FullyLayer(hidden_size, oWidth, bias, network);
         this.finalLinear.weight.clearGPU();
         this.finalLinear.bias.clearGPU();
@@ -343,7 +342,7 @@ public class DiTFinalLayer extends Layer {
     	m_linear2.accGrad(scale);
     }
     
-    public static void loadWeight(Map<String, Object> weightMap, DiTFinalLayer block, boolean showLayers) {
+    public static void loadWeight(Map<String, Object> weightMap, DiT_TXTFinalLayer block, boolean showLayers) {
         if (showLayers) {
             for (String key : weightMap.keySet()) {
                 System.out.println(key);
@@ -390,7 +389,7 @@ public class DiTFinalLayer extends Layer {
         
         Tensor dcond = new Tensor(batchSize, 1, 1, embedDim, true);
 
-        DiTFinalLayer finalLayer = new DiTFinalLayer(patch_size, embedDim, outChannel, time, true, true, tf);
+        DiT_TXTFinalLayer finalLayer = new DiT_TXTFinalLayer(patch_size, embedDim, outChannel, time, true, true, tf);
         
         loadWeight(datas, finalLayer, true);
         

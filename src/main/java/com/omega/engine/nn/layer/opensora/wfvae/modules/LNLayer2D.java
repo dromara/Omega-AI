@@ -11,7 +11,7 @@ import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
-import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
@@ -87,8 +87,8 @@ public class LNLayer2D extends Layer {
                 System.out.println(key);
             }
         }
-        block.norm.gamma = ClipModelUtils.loadData(block.norm.gamma, weightMap, 1, "norm.weight");
-        block.norm.beta = ClipModelUtils.loadData(block.norm.beta, weightMap, 1, "norm.bias");
+        block.norm.gamma = ModeLoaderlUtils.loadData(block.norm.gamma, weightMap, 1, "norm.weight");
+        block.norm.beta = ModeLoaderlUtils.loadData(block.norm.beta, weightMap, 1, "norm.bias");
     }
     
     public static void main(String[] args) {
@@ -103,7 +103,7 @@ public class LNLayer2D extends Layer {
 //        float[] data = RandomUtils.order(input.dataLength, 0.1f, 0.1f);
         String inputsPath = "D:\\models\\x2.json";
 	    Map<String, Object> datas2 = LagJsonReader.readJsonFileSmallWeight(inputsPath);
-	    ClipModelUtils.loadData(input, datas2, "x2");
+	    ModeLoaderlUtils.loadData(input, datas2, "x2");
 	    
         LNLayer2D norm = new LNLayer2D(C, H, W, tf);
         

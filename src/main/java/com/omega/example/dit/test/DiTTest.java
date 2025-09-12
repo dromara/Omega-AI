@@ -21,13 +21,15 @@ import com.omega.engine.nn.network.dit.DiT_ORG;
 import com.omega.engine.nn.network.dit.DiT_ORG2;
 import com.omega.engine.nn.network.dit.DiT_ORG_SRA;
 import com.omega.engine.nn.network.dit.DiT_SRA;
+import com.omega.engine.nn.network.dit.DiT_TXT;
 import com.omega.engine.nn.network.vae.SD_VAE;
+import com.omega.engine.nn.network.vae.VA_VAE;
 import com.omega.engine.nn.network.vae.VQVAE2;
 import com.omega.engine.optimizer.MBSGDOptimizer;
 import com.omega.engine.optimizer.lr.LearnRateUpdate;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
-import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.diffusion.utils.DiffusionImageDataLoader;
 import com.omega.example.dit.dataset.LatendDataset;
 import com.omega.example.dit.models.BetaType;
@@ -38,7 +40,8 @@ import com.omega.example.sd.utils.SDImageDataLoaderEN;
 import com.omega.example.transformer.utils.LagJsonReader;
 import com.omega.example.transformer.utils.ModelUtils;
 import com.omega.example.transformer.utils.bpe.BPETokenizerEN;
-import com.omega.example.transformer.utils.bpe.BinDataType;import cn.hutool.json.JSONUtil;
+import com.omega.example.transformer.utils.bpe.BinDataType;
+
 import jcuda.driver.JCudaDriver;
 import jcuda.runtime.JCuda;
 
@@ -51,62 +54,62 @@ public class DiTTest {
             }
         }
         
-        ClipModelUtils.loadData(network.main.patchEmbd.patchEmbedding.weight, weightMap, "x_embedder.proj.weight");
-        ClipModelUtils.loadData(network.main.patchEmbd.patchEmbedding.bias, weightMap, "x_embedder.proj.bias");
+        ModeLoaderlUtils.loadData(network.main.patchEmbd.patchEmbedding.weight, weightMap, "x_embedder.proj.weight");
+        ModeLoaderlUtils.loadData(network.main.patchEmbd.patchEmbedding.bias, weightMap, "x_embedder.proj.bias");
         
-        ClipModelUtils.loadData(network.main.timeEmbd.linear1.weight, weightMap, "t_embedder.mlp.0.weight");
-        ClipModelUtils.loadData(network.main.timeEmbd.linear1.bias, weightMap, "t_embedder.mlp.0.bias");
-        ClipModelUtils.loadData(network.main.timeEmbd.linear2.weight, weightMap, "t_embedder.mlp.2.weight");
-        ClipModelUtils.loadData(network.main.timeEmbd.linear2.bias, weightMap, "t_embedder.mlp.2.bias");
+        ModeLoaderlUtils.loadData(network.main.timeEmbd.linear1.weight, weightMap, "t_embedder.mlp.0.weight");
+        ModeLoaderlUtils.loadData(network.main.timeEmbd.linear1.bias, weightMap, "t_embedder.mlp.0.bias");
+        ModeLoaderlUtils.loadData(network.main.timeEmbd.linear2.weight, weightMap, "t_embedder.mlp.2.weight");
+        ModeLoaderlUtils.loadData(network.main.timeEmbd.linear2.bias, weightMap, "t_embedder.mlp.2.bias");
         
-        ClipModelUtils.loadData(network.main.labelEmbd.linear1.weight, weightMap, "y_embedder.mlp.0.weight");
-        ClipModelUtils.loadData(network.main.labelEmbd.linear1.bias, weightMap, "y_embedder.mlp.0.bias");
-        ClipModelUtils.loadData(network.main.labelEmbd.linear2.weight, weightMap, "y_embedder.mlp.2.weight");
-        ClipModelUtils.loadData(network.main.labelEmbd.linear2.bias, weightMap, "y_embedder.mlp.2.bias");
+        ModeLoaderlUtils.loadData(network.main.labelEmbd.linear1.weight, weightMap, "y_embedder.mlp.0.weight");
+        ModeLoaderlUtils.loadData(network.main.labelEmbd.linear1.bias, weightMap, "y_embedder.mlp.0.bias");
+        ModeLoaderlUtils.loadData(network.main.labelEmbd.linear2.weight, weightMap, "y_embedder.mlp.2.weight");
+        ModeLoaderlUtils.loadData(network.main.labelEmbd.linear2.bias, weightMap, "y_embedder.mlp.2.bias");
         
         for(int i = 0;i<6;i++){
         	DiTSkipBlock block = network.main.blocks.get(i);
-        	block.norm1.gamma = ClipModelUtils.loadData(block.norm1.gamma, weightMap, 1, "blocks."+i+".norm1.weight");
-        	ClipModelUtils.loadData(block.attn.qLinerLayer.weight, weightMap, "blocks."+i+".attn1.qL.weight");
-            ClipModelUtils.loadData(block.attn.qLinerLayer.bias, weightMap, "blocks."+i+".attn1.qL.bias");
-        	ClipModelUtils.loadData(block.attn.kLinerLayer.weight, weightMap, "blocks."+i+".attn1.kL.weight");
-            ClipModelUtils.loadData(block.attn.kLinerLayer.bias, weightMap, "blocks."+i+".attn1.kL.bias");
-        	ClipModelUtils.loadData(block.attn.vLinerLayer.weight, weightMap, "blocks."+i+".attn1.vL.weight");
-            ClipModelUtils.loadData(block.attn.vLinerLayer.bias, weightMap, "blocks."+i+".attn1.vL.bias");
-        	ClipModelUtils.loadData(block.attn.oLinerLayer.weight, weightMap, "blocks."+i+".attn1.proj.weight");
-            ClipModelUtils.loadData(block.attn.oLinerLayer.bias, weightMap, "blocks."+i+".attn1.proj.bias");
-        	block.norm2.gamma = ClipModelUtils.loadData(block.norm2.gamma, weightMap, 1, "blocks."+i+".norm2.weight");
-        	ClipModelUtils.loadData(block.modulation.weight, weightMap, "blocks."+i+".default_modulation.1.weight");
-            ClipModelUtils.loadData(block.modulation.bias, weightMap, "blocks."+i+".default_modulation.1.bias");
-            ClipModelUtils.loadData(block.cross_attn.qLinerLayer.weight, weightMap, "blocks."+i+".attn2.query.weight");
-            ClipModelUtils.loadData(block.cross_attn.qLinerLayer.bias, weightMap, "blocks."+i+".attn2.query.bias");
-        	ClipModelUtils.loadData(block.cross_attn.kLinerLayer.weight, weightMap, "blocks."+i+".attn2.key.weight");
-            ClipModelUtils.loadData(block.cross_attn.kLinerLayer.bias, weightMap, "blocks."+i+".attn2.key.bias");
-        	ClipModelUtils.loadData(block.cross_attn.vLinerLayer.weight, weightMap, "blocks."+i+".attn2.value.weight");
-            ClipModelUtils.loadData(block.cross_attn.vLinerLayer.bias, weightMap, "blocks."+i+".attn2.value.bias");
-        	ClipModelUtils.loadData(block.cross_attn.oLinerLayer.weight, weightMap, "blocks."+i+".attn2.out_proj.weight");
-            ClipModelUtils.loadData(block.cross_attn.oLinerLayer.bias, weightMap, "blocks."+i+".attn2.out_proj.bias");
-            block.norm3.gamma = ClipModelUtils.loadData(block.norm3.gamma, weightMap, 1, "blocks."+i+".norm3.weight");
-            ClipModelUtils.loadData(block.mlp.linear1.weight, weightMap, "blocks."+i+".mlp.fc1.weight");
-            ClipModelUtils.loadData(block.mlp.linear1.bias, weightMap, "blocks."+i+".mlp.fc1.bias");
-        	ClipModelUtils.loadData(block.mlp.linear2.weight, weightMap, "blocks."+i+".mlp.fc2.weight");
-            ClipModelUtils.loadData(block.mlp.linear2.bias, weightMap, "blocks."+i+".mlp.fc2.bias");
+        	block.norm1.gamma = ModeLoaderlUtils.loadData(block.norm1.gamma, weightMap, 1, "blocks."+i+".norm1.weight");
+        	ModeLoaderlUtils.loadData(block.attn.qLinerLayer.weight, weightMap, "blocks."+i+".attn1.qL.weight");
+            ModeLoaderlUtils.loadData(block.attn.qLinerLayer.bias, weightMap, "blocks."+i+".attn1.qL.bias");
+        	ModeLoaderlUtils.loadData(block.attn.kLinerLayer.weight, weightMap, "blocks."+i+".attn1.kL.weight");
+            ModeLoaderlUtils.loadData(block.attn.kLinerLayer.bias, weightMap, "blocks."+i+".attn1.kL.bias");
+        	ModeLoaderlUtils.loadData(block.attn.vLinerLayer.weight, weightMap, "blocks."+i+".attn1.vL.weight");
+            ModeLoaderlUtils.loadData(block.attn.vLinerLayer.bias, weightMap, "blocks."+i+".attn1.vL.bias");
+        	ModeLoaderlUtils.loadData(block.attn.oLinerLayer.weight, weightMap, "blocks."+i+".attn1.proj.weight");
+            ModeLoaderlUtils.loadData(block.attn.oLinerLayer.bias, weightMap, "blocks."+i+".attn1.proj.bias");
+        	block.norm2.gamma = ModeLoaderlUtils.loadData(block.norm2.gamma, weightMap, 1, "blocks."+i+".norm2.weight");
+        	ModeLoaderlUtils.loadData(block.modulation.weight, weightMap, "blocks."+i+".default_modulation.1.weight");
+            ModeLoaderlUtils.loadData(block.modulation.bias, weightMap, "blocks."+i+".default_modulation.1.bias");
+            ModeLoaderlUtils.loadData(block.cross_attn.qLinerLayer.weight, weightMap, "blocks."+i+".attn2.query.weight");
+            ModeLoaderlUtils.loadData(block.cross_attn.qLinerLayer.bias, weightMap, "blocks."+i+".attn2.query.bias");
+        	ModeLoaderlUtils.loadData(block.cross_attn.kLinerLayer.weight, weightMap, "blocks."+i+".attn2.key.weight");
+            ModeLoaderlUtils.loadData(block.cross_attn.kLinerLayer.bias, weightMap, "blocks."+i+".attn2.key.bias");
+        	ModeLoaderlUtils.loadData(block.cross_attn.vLinerLayer.weight, weightMap, "blocks."+i+".attn2.value.weight");
+            ModeLoaderlUtils.loadData(block.cross_attn.vLinerLayer.bias, weightMap, "blocks."+i+".attn2.value.bias");
+        	ModeLoaderlUtils.loadData(block.cross_attn.oLinerLayer.weight, weightMap, "blocks."+i+".attn2.out_proj.weight");
+            ModeLoaderlUtils.loadData(block.cross_attn.oLinerLayer.bias, weightMap, "blocks."+i+".attn2.out_proj.bias");
+            block.norm3.gamma = ModeLoaderlUtils.loadData(block.norm3.gamma, weightMap, 1, "blocks."+i+".norm3.weight");
+            ModeLoaderlUtils.loadData(block.mlp.linear1.weight, weightMap, "blocks."+i+".mlp.fc1.weight");
+            ModeLoaderlUtils.loadData(block.mlp.linear1.bias, weightMap, "blocks."+i+".mlp.fc1.bias");
+        	ModeLoaderlUtils.loadData(block.mlp.linear2.weight, weightMap, "blocks."+i+".mlp.fc2.weight");
+            ModeLoaderlUtils.loadData(block.mlp.linear2.bias, weightMap, "blocks."+i+".mlp.fc2.bias");
             if(block.longSkip) {
-            	block.skipNorm.gamma = ClipModelUtils.loadData(block.skipNorm.gamma, weightMap, 1, "blocks."+i+".skip_norm.weight");
-            	ClipModelUtils.loadData(block.skipLinear.weight, weightMap, "blocks."+i+".skip_linear.weight");
-                ClipModelUtils.loadData(block.skipLinear.bias, weightMap, "blocks."+i+".skip_linear.bias");
+            	block.skipNorm.gamma = ModeLoaderlUtils.loadData(block.skipNorm.gamma, weightMap, 1, "blocks."+i+".skip_norm.weight");
+            	ModeLoaderlUtils.loadData(block.skipLinear.weight, weightMap, "blocks."+i+".skip_linear.weight");
+                ModeLoaderlUtils.loadData(block.skipLinear.bias, weightMap, "blocks."+i+".skip_linear.bias");
             }
         }
         
-        network.main.finalLayer.finalNorm.gamma = ClipModelUtils.loadData(network.main.finalLayer.finalNorm.gamma, weightMap, 1, "final_layer.norm_final.weight");
+        network.main.finalLayer.finalNorm.gamma = ModeLoaderlUtils.loadData(network.main.finalLayer.finalNorm.gamma, weightMap, 1, "final_layer.norm_final.weight");
         
-        ClipModelUtils.loadData(network.main.finalLayer.finalLinear.weight, weightMap, "final_layer.linear.weight");
-        ClipModelUtils.loadData(network.main.finalLayer.finalLinear.bias, weightMap, "final_layer.linear.bias");
+        ModeLoaderlUtils.loadData(network.main.finalLayer.finalLinear.weight, weightMap, "final_layer.linear.weight");
+        ModeLoaderlUtils.loadData(network.main.finalLayer.finalLinear.bias, weightMap, "final_layer.linear.bias");
         
-        ClipModelUtils.loadData(network.main.finalLayer.m_linear1.weight, weightMap, "final_layer.adaLN_modulation1.weight");
-        ClipModelUtils.loadData(network.main.finalLayer.m_linear1.bias, weightMap, "final_layer.adaLN_modulation1.bias");
-        ClipModelUtils.loadData(network.main.finalLayer.m_linear2.weight, weightMap, "final_layer.adaLN_modulation2.weight");
-        ClipModelUtils.loadData(network.main.finalLayer.m_linear2.bias, weightMap, "final_layer.adaLN_modulation2.bias");
+        ModeLoaderlUtils.loadData(network.main.finalLayer.m_linear1.weight, weightMap, "final_layer.adaLN_modulation1.weight");
+        ModeLoaderlUtils.loadData(network.main.finalLayer.m_linear1.bias, weightMap, "final_layer.adaLN_modulation1.bias");
+        ModeLoaderlUtils.loadData(network.main.finalLayer.m_linear2.weight, weightMap, "final_layer.adaLN_modulation2.weight");
+        ModeLoaderlUtils.loadData(network.main.finalLayer.m_linear2.bias, weightMap, "final_layer.adaLN_modulation2.bias");
 
     }
 	
@@ -117,78 +120,78 @@ public class DiTTest {
             }
         }
         
-        ClipModelUtils.loadData(network.main.patchEmbd.patchEmbedding.weight, weightMap, "x_embedder.proj.weight");
-        ClipModelUtils.loadData(network.main.patchEmbd.patchEmbedding.bias, weightMap, "x_embedder.proj.bias");
+        ModeLoaderlUtils.loadData(network.main.patchEmbd.patchEmbedding.weight, weightMap, "x_embedder.proj.weight");
+        ModeLoaderlUtils.loadData(network.main.patchEmbd.patchEmbedding.bias, weightMap, "x_embedder.proj.bias");
         
-        ClipModelUtils.loadData(network.main.timeEmbd.linear1.weight, weightMap, "t_embedder.mlp.0.weight");
-        ClipModelUtils.loadData(network.main.timeEmbd.linear1.bias, weightMap, "t_embedder.mlp.0.bias");
-        ClipModelUtils.loadData(network.main.timeEmbd.linear2.weight, weightMap, "t_embedder.mlp.2.weight");
-        ClipModelUtils.loadData(network.main.timeEmbd.linear2.bias, weightMap, "t_embedder.mlp.2.bias");
+        ModeLoaderlUtils.loadData(network.main.timeEmbd.linear1.weight, weightMap, "t_embedder.mlp.0.weight");
+        ModeLoaderlUtils.loadData(network.main.timeEmbd.linear1.bias, weightMap, "t_embedder.mlp.0.bias");
+        ModeLoaderlUtils.loadData(network.main.timeEmbd.linear2.weight, weightMap, "t_embedder.mlp.2.weight");
+        ModeLoaderlUtils.loadData(network.main.timeEmbd.linear2.bias, weightMap, "t_embedder.mlp.2.bias");
         
-        ClipModelUtils.loadData(network.main.labelEmbd.linear1.weight, weightMap, "y_embedder.mlp.0.weight");
-        ClipModelUtils.loadData(network.main.labelEmbd.linear1.bias, weightMap, "y_embedder.mlp.0.bias");
-        ClipModelUtils.loadData(network.main.labelEmbd.linear2.weight, weightMap, "y_embedder.mlp.2.weight");
-        ClipModelUtils.loadData(network.main.labelEmbd.linear2.bias, weightMap, "y_embedder.mlp.2.bias");
+        ModeLoaderlUtils.loadData(network.main.labelEmbd.linear1.weight, weightMap, "y_embedder.mlp.0.weight");
+        ModeLoaderlUtils.loadData(network.main.labelEmbd.linear1.bias, weightMap, "y_embedder.mlp.0.bias");
+        ModeLoaderlUtils.loadData(network.main.labelEmbd.linear2.weight, weightMap, "y_embedder.mlp.2.weight");
+        ModeLoaderlUtils.loadData(network.main.labelEmbd.linear2.bias, weightMap, "y_embedder.mlp.2.bias");
         
         for(int i = 0;i<network.depth;i++){
         	DiTOrgBlock block = network.main.blocks.get(i);
-        	block.norm1.gamma = ClipModelUtils.loadData(block.norm1.gamma, weightMap, 1, "blocks."+i+".norm1.weight");
-        	block.norm1.beta = ClipModelUtils.loadData(block.norm1.beta, weightMap, 1, "blocks."+i+".norm1.bias");
-        	ClipModelUtils.loadData(block.attn.qLinerLayer.weight, weightMap, "blocks."+i+".attn1.qL.weight");
-            ClipModelUtils.loadData(block.attn.qLinerLayer.bias, weightMap, "blocks."+i+".attn1.qL.bias");
-        	ClipModelUtils.loadData(block.attn.kLinerLayer.weight, weightMap, "blocks."+i+".attn1.kL.weight");
-            ClipModelUtils.loadData(block.attn.kLinerLayer.bias, weightMap, "blocks."+i+".attn1.kL.bias");
-        	ClipModelUtils.loadData(block.attn.vLinerLayer.weight, weightMap, "blocks."+i+".attn1.vL.weight");
-            ClipModelUtils.loadData(block.attn.vLinerLayer.bias, weightMap, "blocks."+i+".attn1.vL.bias");
-        	ClipModelUtils.loadData(block.attn.oLinerLayer.weight, weightMap, "blocks."+i+".attn1.proj.weight");
-            ClipModelUtils.loadData(block.attn.oLinerLayer.bias, weightMap, "blocks."+i+".attn1.proj.bias");
-        	block.norm2.gamma = ClipModelUtils.loadData(block.norm2.gamma, weightMap, 1, "blocks."+i+".norm2.weight");
-        	block.norm2.beta = ClipModelUtils.loadData(block.norm2.beta, weightMap, 1, "blocks."+i+".norm2.bias");
+        	block.norm1.gamma = ModeLoaderlUtils.loadData(block.norm1.gamma, weightMap, 1, "blocks."+i+".norm1.weight");
+        	block.norm1.beta = ModeLoaderlUtils.loadData(block.norm1.beta, weightMap, 1, "blocks."+i+".norm1.bias");
+        	ModeLoaderlUtils.loadData(block.attn.qLinerLayer.weight, weightMap, "blocks."+i+".attn1.qL.weight");
+            ModeLoaderlUtils.loadData(block.attn.qLinerLayer.bias, weightMap, "blocks."+i+".attn1.qL.bias");
+        	ModeLoaderlUtils.loadData(block.attn.kLinerLayer.weight, weightMap, "blocks."+i+".attn1.kL.weight");
+            ModeLoaderlUtils.loadData(block.attn.kLinerLayer.bias, weightMap, "blocks."+i+".attn1.kL.bias");
+        	ModeLoaderlUtils.loadData(block.attn.vLinerLayer.weight, weightMap, "blocks."+i+".attn1.vL.weight");
+            ModeLoaderlUtils.loadData(block.attn.vLinerLayer.bias, weightMap, "blocks."+i+".attn1.vL.bias");
+        	ModeLoaderlUtils.loadData(block.attn.oLinerLayer.weight, weightMap, "blocks."+i+".attn1.proj.weight");
+            ModeLoaderlUtils.loadData(block.attn.oLinerLayer.bias, weightMap, "blocks."+i+".attn1.proj.bias");
+        	block.norm2.gamma = ModeLoaderlUtils.loadData(block.norm2.gamma, weightMap, 1, "blocks."+i+".norm2.weight");
+        	block.norm2.beta = ModeLoaderlUtils.loadData(block.norm2.beta, weightMap, 1, "blocks."+i+".norm2.bias");
 
-        	ClipModelUtils.loadData(block.modulation_shift_msa.weight, weightMap, "blocks."+i+".adaLN_modulation_shift_msa.weight");
-            ClipModelUtils.loadData(block.modulation_shift_msa.bias, weightMap, "blocks."+i+".adaLN_modulation_shift_msa.bias");
-        	ClipModelUtils.loadData(block.modulation_scale_msa.weight, weightMap, "blocks."+i+".adaLN_modulation_scale_msa.weight");
-            ClipModelUtils.loadData(block.modulation_scale_msa.bias, weightMap, "blocks."+i+".adaLN_modulation_scale_msa.bias");
-        	ClipModelUtils.loadData(block.modulation_gate_msa.weight, weightMap, "blocks."+i+".adaLN_modulation_gate_msa.weight");
-            ClipModelUtils.loadData(block.modulation_gate_msa.bias, weightMap, "blocks."+i+".adaLN_modulation_gate_msa.bias");
-        	ClipModelUtils.loadData(block.modulation_shift_mlp.weight, weightMap, "blocks."+i+".adaLN_modulation_shift_mlp.weight");
-            ClipModelUtils.loadData(block.modulation_shift_mlp.bias, weightMap, "blocks."+i+".adaLN_modulation_shift_mlp.bias");
-        	ClipModelUtils.loadData(block.modulation_scale_mlp.weight, weightMap, "blocks."+i+".adaLN_modulation_scale_mlp.weight");
-            ClipModelUtils.loadData(block.modulation_scale_mlp.bias, weightMap, "blocks."+i+".adaLN_modulation_scale_mlp.bias");
-        	ClipModelUtils.loadData(block.modulation_gate_mlp.weight, weightMap, "blocks."+i+".adaLN_modulation_gate_mlp.weight");
-            ClipModelUtils.loadData(block.modulation_gate_mlp.bias, weightMap, "blocks."+i+".adaLN_modulation_gate_mlp.bias");
+        	ModeLoaderlUtils.loadData(block.modulation_shift_msa.weight, weightMap, "blocks."+i+".adaLN_modulation_shift_msa.weight");
+            ModeLoaderlUtils.loadData(block.modulation_shift_msa.bias, weightMap, "blocks."+i+".adaLN_modulation_shift_msa.bias");
+        	ModeLoaderlUtils.loadData(block.modulation_scale_msa.weight, weightMap, "blocks."+i+".adaLN_modulation_scale_msa.weight");
+            ModeLoaderlUtils.loadData(block.modulation_scale_msa.bias, weightMap, "blocks."+i+".adaLN_modulation_scale_msa.bias");
+        	ModeLoaderlUtils.loadData(block.modulation_gate_msa.weight, weightMap, "blocks."+i+".adaLN_modulation_gate_msa.weight");
+            ModeLoaderlUtils.loadData(block.modulation_gate_msa.bias, weightMap, "blocks."+i+".adaLN_modulation_gate_msa.bias");
+        	ModeLoaderlUtils.loadData(block.modulation_shift_mlp.weight, weightMap, "blocks."+i+".adaLN_modulation_shift_mlp.weight");
+            ModeLoaderlUtils.loadData(block.modulation_shift_mlp.bias, weightMap, "blocks."+i+".adaLN_modulation_shift_mlp.bias");
+        	ModeLoaderlUtils.loadData(block.modulation_scale_mlp.weight, weightMap, "blocks."+i+".adaLN_modulation_scale_mlp.weight");
+            ModeLoaderlUtils.loadData(block.modulation_scale_mlp.bias, weightMap, "blocks."+i+".adaLN_modulation_scale_mlp.bias");
+        	ModeLoaderlUtils.loadData(block.modulation_gate_mlp.weight, weightMap, "blocks."+i+".adaLN_modulation_gate_mlp.weight");
+            ModeLoaderlUtils.loadData(block.modulation_gate_mlp.bias, weightMap, "blocks."+i+".adaLN_modulation_gate_mlp.bias");
             
-            ClipModelUtils.loadData(block.cross_attn.qLinerLayer.weight, weightMap, "blocks."+i+".attn2.query.weight");
-            ClipModelUtils.loadData(block.cross_attn.qLinerLayer.bias, weightMap, "blocks."+i+".attn2.query.bias");
-        	ClipModelUtils.loadData(block.cross_attn.kLinerLayer.weight, weightMap, "blocks."+i+".attn2.key.weight");
-            ClipModelUtils.loadData(block.cross_attn.kLinerLayer.bias, weightMap, "blocks."+i+".attn2.key.bias");
-        	ClipModelUtils.loadData(block.cross_attn.vLinerLayer.weight, weightMap, "blocks."+i+".attn2.value.weight");
-            ClipModelUtils.loadData(block.cross_attn.vLinerLayer.bias, weightMap, "blocks."+i+".attn2.value.bias");
-        	ClipModelUtils.loadData(block.cross_attn.oLinerLayer.weight, weightMap, "blocks."+i+".attn2.out_proj.weight");
-            ClipModelUtils.loadData(block.cross_attn.oLinerLayer.bias, weightMap, "blocks."+i+".attn2.out_proj.bias");
-            block.norm3.gamma = ClipModelUtils.loadData(block.norm3.gamma, weightMap, 1, "blocks."+i+".norm3.weight");
-            block.norm3.beta = ClipModelUtils.loadData(block.norm3.beta, weightMap, 1, "blocks."+i+".norm3.bias");
+            ModeLoaderlUtils.loadData(block.cross_attn.qLinerLayer.weight, weightMap, "blocks."+i+".attn2.query.weight");
+            ModeLoaderlUtils.loadData(block.cross_attn.qLinerLayer.bias, weightMap, "blocks."+i+".attn2.query.bias");
+        	ModeLoaderlUtils.loadData(block.cross_attn.kLinerLayer.weight, weightMap, "blocks."+i+".attn2.key.weight");
+            ModeLoaderlUtils.loadData(block.cross_attn.kLinerLayer.bias, weightMap, "blocks."+i+".attn2.key.bias");
+        	ModeLoaderlUtils.loadData(block.cross_attn.vLinerLayer.weight, weightMap, "blocks."+i+".attn2.value.weight");
+            ModeLoaderlUtils.loadData(block.cross_attn.vLinerLayer.bias, weightMap, "blocks."+i+".attn2.value.bias");
+        	ModeLoaderlUtils.loadData(block.cross_attn.oLinerLayer.weight, weightMap, "blocks."+i+".attn2.out_proj.weight");
+            ModeLoaderlUtils.loadData(block.cross_attn.oLinerLayer.bias, weightMap, "blocks."+i+".attn2.out_proj.bias");
+            block.norm3.gamma = ModeLoaderlUtils.loadData(block.norm3.gamma, weightMap, 1, "blocks."+i+".norm3.weight");
+            block.norm3.beta = ModeLoaderlUtils.loadData(block.norm3.beta, weightMap, 1, "blocks."+i+".norm3.bias");
 //            ClipModelUtils.loadData(block.mlp.linear1.weight, weightMap, "blocks."+i+".mlp.fc1.weight");
 //            ClipModelUtils.loadData(block.mlp.linear1.bias, weightMap, "blocks."+i+".mlp.fc1.bias");
 //        	ClipModelUtils.loadData(block.mlp.linear2.weight, weightMap, "blocks."+i+".mlp.fc2.weight");
 //            ClipModelUtils.loadData(block.mlp.linear2.bias, weightMap, "blocks."+i+".mlp.fc2.bias");
         }
         
-        ClipModelUtils.loadData(network.main.ap_head.linear1.weight, weightMap, "ap_head.linear1.weight");
-        ClipModelUtils.loadData(network.main.ap_head.linear1.bias, weightMap, "ap_head.linear1.bias");
-        ClipModelUtils.loadData(network.main.ap_head.linear2.weight, weightMap, "ap_head.linear2.weight");
-        ClipModelUtils.loadData(network.main.ap_head.linear2.bias, weightMap, "ap_head.linear2.bias");
+        ModeLoaderlUtils.loadData(network.main.ap_head.linear1.weight, weightMap, "ap_head.linear1.weight");
+        ModeLoaderlUtils.loadData(network.main.ap_head.linear1.bias, weightMap, "ap_head.linear1.bias");
+        ModeLoaderlUtils.loadData(network.main.ap_head.linear2.weight, weightMap, "ap_head.linear2.weight");
+        ModeLoaderlUtils.loadData(network.main.ap_head.linear2.bias, weightMap, "ap_head.linear2.bias");
         
-        network.main.finalLayer.finalNorm.gamma = ClipModelUtils.loadData(network.main.finalLayer.finalNorm.gamma, weightMap, 1, "final_layer.norm_final.weight");
-        network.main.finalLayer.finalNorm.beta = ClipModelUtils.loadData(network.main.finalLayer.finalNorm.beta, weightMap, 1, "final_layer.norm_final.bias");
+        network.main.finalLayer.finalNorm.gamma = ModeLoaderlUtils.loadData(network.main.finalLayer.finalNorm.gamma, weightMap, 1, "final_layer.norm_final.weight");
+        network.main.finalLayer.finalNorm.beta = ModeLoaderlUtils.loadData(network.main.finalLayer.finalNorm.beta, weightMap, 1, "final_layer.norm_final.bias");
         
-        ClipModelUtils.loadData(network.main.finalLayer.finalLinear.weight, weightMap, "final_layer.linear.weight");
-        ClipModelUtils.loadData(network.main.finalLayer.finalLinear.bias, weightMap, "final_layer.linear.bias");
+        ModeLoaderlUtils.loadData(network.main.finalLayer.finalLinear.weight, weightMap, "final_layer.linear.weight");
+        ModeLoaderlUtils.loadData(network.main.finalLayer.finalLinear.bias, weightMap, "final_layer.linear.bias");
         
-        ClipModelUtils.loadData(network.main.finalLayer.m_linear1.weight, weightMap, "final_layer.adaLN_modulation1.weight");
-        ClipModelUtils.loadData(network.main.finalLayer.m_linear1.bias, weightMap, "final_layer.adaLN_modulation1.bias");
-        ClipModelUtils.loadData(network.main.finalLayer.m_linear2.weight, weightMap, "final_layer.adaLN_modulation2.weight");
-        ClipModelUtils.loadData(network.main.finalLayer.m_linear2.bias, weightMap, "final_layer.adaLN_modulation2.bias");
+        ModeLoaderlUtils.loadData(network.main.finalLayer.m_linear1.weight, weightMap, "final_layer.adaLN_modulation1.weight");
+        ModeLoaderlUtils.loadData(network.main.finalLayer.m_linear1.bias, weightMap, "final_layer.adaLN_modulation1.bias");
+        ModeLoaderlUtils.loadData(network.main.finalLayer.m_linear2.weight, weightMap, "final_layer.adaLN_modulation2.weight");
+        ModeLoaderlUtils.loadData(network.main.finalLayer.m_linear2.bias, weightMap, "final_layer.adaLN_modulation2.bias");
 
     }
 	
@@ -428,7 +431,7 @@ public class DiTTest {
         clip.time = time;
         clip.RUN_MODEL = RunModel.EVAL;
         String clipWeight = "H:\\model\\clip-vit-base-patch32.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, false);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, false);
         int z_dims = 128;
         int latendDim = 4;
         int num_vq_embeddings = 512;
@@ -485,7 +488,7 @@ public class DiTTest {
         clip.time = time;
         clip.RUN_MODEL = RunModel.EVAL;
         String clipWeight = "H:\\model\\clip-vit-base-patch32.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, false);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, false);
         int z_dims = 32;
         int latendDim = 4;
         int num_vq_embeddings = 512;
@@ -596,7 +599,7 @@ public class DiTTest {
         clip.time = time;
         clip.RUN_MODEL = RunModel.EVAL;
         String clipWeight = "H:\\model\\clip-vit-base-patch32.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, false);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, false);
         int z_dims = 32;
         int latendDim = 4;
         int num_vq_embeddings = 512;
@@ -667,7 +670,7 @@ public class DiTTest {
         clip.time = time;
         clip.RUN_MODEL = RunModel.EVAL;
         String clipWeight = "H:\\model\\clip-vit-base-patch32.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, false);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, false);
         int z_dims = 32;
         int latendDim = 4;
         int num_vq_embeddings = 512;
@@ -726,7 +729,7 @@ public class DiTTest {
         clip.time = time;
         clip.RUN_MODEL = RunModel.EVAL;
         String clipWeight = "H:\\model\\clip-vit-base-patch32.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, false);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, false);
         int z_dims = 32;
         int latendDim = 4;
         int num_vq_embeddings = 512;
@@ -789,7 +792,7 @@ public class DiTTest {
         clip.time = time;
         clip.RUN_MODEL = RunModel.EVAL;
         String clipWeight = "H:\\model\\clip_cn_vit-b-16.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, false);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, false);
         
         int z_dims = 32;
         int latendDim = 4;
@@ -853,7 +856,7 @@ public class DiTTest {
         clip.time = time;
         clip.RUN_MODEL = RunModel.EVAL;
         String clipWeight = "D:\\models\\clip\\clip_cn\\clip_cn_vit-b-16.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, false);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, false);
 	        
         int z_dims = 32;
         int latendDim = 4;
@@ -924,7 +927,7 @@ public class DiTTest {
         clip.time = time;
         clip.RUN_MODEL = RunModel.EVAL;
         String clipWeight = "/omega/models/clip-vit-base-patch32.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, false);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, false);
         int z_dims = 128;
         int latendDim = 4;
         int num_vq_embeddings = 512;
@@ -996,7 +999,7 @@ public class DiTTest {
         clip.time = time;
         clip.RUN_MODEL = RunModel.EVAL;
         String clipWeight = "/omega/models/clip-vit-base-patch32.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, false);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, false);
         int z_dims = 128;
         int latendDim = 4;
         int num_vq_embeddings = 512;
@@ -1055,7 +1058,7 @@ public class DiTTest {
         clip.time = time;
         clip.RUN_MODEL = RunModel.EVAL;
         String clipWeight = "D:\\models\\clip-vit-base-patch32.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, false);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, false);
         int z_dims = 128;
         int latendDim = 4;
         int num_vq_embeddings = 512;
@@ -1119,7 +1122,7 @@ public class DiTTest {
         clip.time = time;
         clip.RUN_MODEL = RunModel.EVAL;
         String clipWeight = "D:\\models\\clip-vit-base-patch32.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, false);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, false);
 
         int latendDim = 4;
         int num_vq_embeddings = 512;
@@ -1132,7 +1135,7 @@ public class DiTTest {
         vae.learnRate = 0.001f;
         vae.RUN_MODEL = RunModel.EVAL;
         String vaeWeight = "D:\\models\\sdxl-vae-fp16-fix\\sdxl-vae-fp16-fix.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
         
         int ditHeadNum = 12;
         int latendSize = 32;
@@ -1184,7 +1187,7 @@ public class DiTTest {
         clip.time = time;
         clip.RUN_MODEL = RunModel.EVAL;
         String clipWeight = "/omega/models/clip-vit-base-patch32.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, false);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, false);
 
         int latendDim = 4;
         int num_vq_embeddings = 512;
@@ -1197,7 +1200,7 @@ public class DiTTest {
         vae.learnRate = 0.001f;
         vae.RUN_MODEL = RunModel.EVAL;
         String vaeWeight = "/omega/models/sdxl-vae-fp16-fix.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
         
         int ditHeadNum = 12;
         int latendSize = 32;
@@ -1249,7 +1252,7 @@ public class DiTTest {
         clip.time = time;
         clip.RUN_MODEL = RunModel.EVAL;
         String clipWeight = "D:\\models\\clip-vit-base-patch32.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, false);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, false);
 
         int latendDim = 4;
         int num_vq_embeddings = 512;
@@ -1262,7 +1265,7 @@ public class DiTTest {
         vae.learnRate = 0.001f;
         vae.RUN_MODEL = RunModel.EVAL;
         String vaeWeight = "D:\\models\\sdxl-vae-fp16-fix\\sdxl-vae-fp16-fix.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
         
         int ditHeadNum = 6;
         int latendSize = 32;
@@ -1314,7 +1317,7 @@ public class DiTTest {
         clip.time = time;
         clip.RUN_MODEL = RunModel.EVAL;
         String clipWeight = "D:\\models\\clip-vit-base-patch32.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, false);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, false);
 
         int latendDim = 4;
         int num_vq_embeddings = 512;
@@ -1327,7 +1330,7 @@ public class DiTTest {
         vae.learnRate = 0.001f;
         vae.RUN_MODEL = RunModel.EVAL;
         String vaeWeight = "D:\\models\\sdxl-vae-fp16-fix\\sdxl-vae-fp16-fix.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
         
         int ditHeadNum = 12;
         int latendSize = 32;
@@ -1375,7 +1378,7 @@ public class DiTTest {
         clip.time = time;
         clip.RUN_MODEL = RunModel.EVAL;
         String clipWeight = "D:\\models\\clip-vit-base-patch32.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, false);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, false);
         
         int latendDim = 4;
         int num_vq_embeddings = 512;
@@ -1388,7 +1391,7 @@ public class DiTTest {
         vae.learnRate = 0.001f;
         vae.RUN_MODEL = RunModel.EVAL;
         String vaeWeight = "D:\\models\\sdxl-vae-fp16-fix\\sdxl-vae-fp16-fix.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
         
         int ditHeadNum = 12;
         int latendSize = 32;
@@ -1448,7 +1451,7 @@ public class DiTTest {
         clip.time = time;
         clip.RUN_MODEL = RunModel.EVAL;
         String clipWeight = "D:\\models\\clip-vit-base-patch32.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, false);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), clip, false);
         int z_dims = 128;
         int latendDim = 4;
         int num_vq_embeddings = 512;
@@ -1680,13 +1683,13 @@ public class DiTTest {
 	
 	public static void complate_ms2() throws Exception {
 
-		String dataPath = "D:\\dataset\\amine\\amine_latend.bin";
-        String clipDataPath = "D:\\dataset\\amine\\amine_clip.bin";
+		String dataPath = "D:\\dataset\\amine\\dalle_vavae_latend.bin";
+        String clipDataPath = "D:\\dataset\\amine\\dalle_vavae_clip.bin";
 
         int batchSize = 1000;
-        int latendDim = 4;
-        int height = 32;
-        int width = 32;
+        int latendDim = 32;
+        int height = 16;
+        int width = 16;
         int textEmbedDim = 768;
         
         LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, textEmbedDim, BinDataType.float32);
@@ -1700,8 +1703,8 @@ public class DiTTest {
         
         int tmp = count * height * width - 1;
         
-        float[] mean = new float[] {0.0f, 0.0f, 0.0f, 0.0f};
-        float[] std = new float[] {0.0f, 0.0f, 0.0f, 0.0f};
+        float[] mean = RandomUtils.val(latendDim, 0.0f);
+        float[] std = RandomUtils.val(latendDim, 0.0f);
 
         /**
          * 遍历整个训练集
@@ -1729,7 +1732,7 @@ public class DiTTest {
 
         }
         
-        for(int c = 0;c<4;c++) {
+        for(int c = 0;c<latendDim;c++) {
         	std[c] = (float) Math.sqrt(std[c]);
         }
         
@@ -1740,19 +1743,19 @@ public class DiTTest {
 	public static void dit_b2_iddpm_train() throws Exception {
 //		String dataPath = "/omega/dataset/txt2img_latend.bin";
 //        String clipDataPath = "/omega/dataset/txt2img_clip.bin";
-		String dataPath = "D:\\dataset\\amine\\dalle_latend.bin";
-        String clipDataPath = "D:\\dataset\\amine\\dalle_clip.bin";
+		String dataPath = "D:\\dataset\\amine\\dalle_vavae_latend.bin";
+        String clipDataPath = "D:\\dataset\\amine\\dalle_vavae_clip.bin";
 
-        int batchSize = 24;
-        int latendDim = 4;
-        int height = 32;
-        int width = 32;
+        int batchSize = 128;
+        int latendDim = 32;
+        int height = 16;
+        int width = 16;
         int textEmbedDim = 768;
         
         LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, textEmbedDim, BinDataType.float32);
         
         int ditHeadNum = 12;
-        int latendSize = 32;
+        int latendSize = 16;
         int depth = 12;
         int timeSteps = 1000;
         int mlpRatio = 4;
@@ -1768,11 +1771,299 @@ public class DiTTest {
         ICPlan icplan = new ICPlan(dit.tensorOP);
 
         MBSGDOptimizer optimizer = new MBSGDOptimizer(dit, 200, 0.00001f, batchSize, LearnRateUpdate.CONSTANT, false);
-
-        optimizer.train_DiT_ICPlan(dataLoader, icplan, "D://models//", 1f);
+        
+        Tensor mean = new Tensor(latendDim, 1, 1, 1, new float[] {0.23869862f,0.4016211f,-0.15087046f,-0.52679396f,-0.15986611f,-1.6260003f,-0.5108059f,0.036283042f,0.3879915f,0.5334558f,-0.96909237f,1.4872372f,0.071545064f,0.7708449f,0.16623285f,0.7733368f,-0.9222466f,1.2859207f,-0.30753133f,-0.70088845f,0.5247328f,0.09425582f,-1.1671793f,0.53027356f,2.7668183f,1.4706479f,0.09313846f,-0.25821307f,-0.81280077f,-0.56423014f,0.49580055f,-0.35338005f}, true);
+        Tensor std = new Tensor(latendDim, 1, 1, 1, new float[] {4.1767454f,4.245004f,3.4222624f,3.6970704f,3.6395364f,3.3921142f,3.0486407f,3.6789029f,3.922576f,3.760961f,3.7205217f,3.70206f,3.7118554f,3.6425886f,3.223105f,3.3205664f,4.135744f,3.6481087f,3.6758296f,3.0634696f,3.3749795f,2.9729145f,3.8634508f,4.518134f,2.7782023f,3.4923503f,4.7507596f,3.2647762f,3.3624852f,3.7219477f,4.659944f,4.2925563f}, true);
+        
+        optimizer.train_DiT_ICPlan(dataLoader, icplan, "D://models//", mean, std, 1f, 2);
         String save_model_path = "/omega/models/dit_xl2.model";
         ModelUtils.saveModel(dit, save_model_path);
     }
+	
+	public static void test_rope() throws Exception {
+		String labelPath = "D:\\dataset\\amine\\data.json";
+        String imgDirPath = "D:\\dataset\\amine\\256\\";
+        boolean horizontalFilp = true;
+        int imgSize = 256;
+        int maxContextLen = 77;
+        int batchSize = 10;
+        float[] mean = new float[]{0.5f, 0.5f, 0.5f};
+        float[] std = new float[]{0.5f, 0.5f, 0.5f};
+        String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
+        String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
+        BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+        SDImageDataLoaderEN dataLoader = new SDImageDataLoaderEN(bpe, labelPath, imgDirPath, imgSize, imgSize, maxContextLen, batchSize, horizontalFilp, mean, std);
+        int maxPositionEmbeddingsSize = 77;
+        int vocabSize = 49408;
+        int headNum = 12;
+        int n_layers = 12;
+        int textEmbedDim = 768;
+        int intermediateSize = 3072;
+        ClipTextModel clip = new ClipTextModel(LossType.MSE, UpdaterType.adamw, headNum, maxContextLen, vocabSize, textEmbedDim, maxPositionEmbeddingsSize, intermediateSize, n_layers);
+        clip.CUDNN = true;
+        clip.time = maxContextLen;
+        clip.RUN_MODEL = RunModel.EVAL;
+        String clipWeight = "D:\\models\\CLIP-GmP-ViT-L-14\\CLIP-GmP-ViT-L-14.json";
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, "", false);
+
+        int latendDim = 32;
+        int num_res_blocks = 2;
+        int[] ch_mult = new int[]{1, 1, 2, 2, 4};
+        int ch = 128;
+        
+        VA_VAE vae = new VA_VAE(LossType.MSE, UpdaterType.adamw, latendDim, imgSize, ch_mult, ch, num_res_blocks, true);
+        vae.CUDNN = true;
+        vae.learnRate = 0.001f;
+        vae.RUN_MODEL = RunModel.EVAL;
+        String vaeWeight = "D:\\models\\vavae.json";
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
+        
+        int ditHeadNum = 12;
+        int latendSize = 16;
+        int depth = 12;
+        int timeSteps = 1000;
+        int mlpRatio = 4;
+        int patchSize = 2;
+        int hiddenSize = 768;
+        
+        float y_prob = 0.3f;
+        
+        DiT_ORG network = new DiT_ORG(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, 1, textEmbedDim, mlpRatio, true, y_prob);
+        network.CUDNN = true;
+        network.learnRate = 0.0001f;
+        network.RUN_MODEL = RunModel.TEST;
+        
+        ICPlan icplan = new ICPlan(network.tensorOP);
+        
+        String model_path = "D:\\test\\models\\dit_xl2\\dit_xl2_18.model";
+        ModelUtils.loadModel(network, model_path);
+        
+        Tensor label = new Tensor(batchSize * dataLoader.maxContextLen, 1, 1, 1, true);
+        Tensor eosIds = new Tensor(batchSize, 1, 1, 1, true);
+        
+        Tensor condInput = new Tensor(batchSize, 1, 1, textEmbedDim, true);
+        Tensor t = new Tensor(batchSize, 1, 1, 1, true);
+        
+        Tensor noise = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+        Tensor latend = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+        
+        Tensor[] cs = RoPEKernel.getCosAndSin2D(network.time, network.hiddenSize, network.headNum);
+        Tensor cos = cs[0];
+        Tensor sin = cs[1];
+        
+        Tensor latendMean = new Tensor(latendDim, 1, 1, 1, new float[] {0.23869862f,0.4016211f,-0.15087046f,-0.52679396f,-0.15986611f,-1.6260003f,-0.5108059f,0.036283042f,0.3879915f,0.5334558f,-0.96909237f,1.4872372f,0.071545064f,0.7708449f,0.16623285f,0.7733368f,-0.9222466f,1.2859207f,-0.30753133f,-0.70088845f,0.5247328f,0.09425582f,-1.1671793f,0.53027356f,2.7668183f,1.4706479f,0.09313846f,-0.25821307f,-0.81280077f,-0.56423014f,0.49580055f,-0.35338005f}, true);
+        Tensor latendStd = new Tensor(latendDim, 1, 1, 1, new float[] {4.1767454f,4.245004f,3.4222624f,3.6970704f,3.6395364f,3.3921142f,3.0486407f,3.6789029f,3.922576f,3.760961f,3.7205217f,3.70206f,3.7118554f,3.6425886f,3.223105f,3.3205664f,4.135744f,3.6481087f,3.6758296f,3.0634696f,3.3749795f,2.9729145f,3.8634508f,4.518134f,2.7782023f,3.4923503f,4.7507596f,3.2647762f,3.3624852f,3.7219477f,4.659944f,4.2925563f}, true);
+        
+        
+        network.RUN_MODEL = RunModel.TEST;
+        String[] labels = new String[10];
+        for(int i = 0;i<4;i++) {
+        	System.out.println("start create test images.");
+            labels[0] = "A cat holding a sign that says hello world";
+            labels[1] = "a vibrant anime mountain lands";
+            labels[2] = "a highly detailed anime landscape,big tree on the water, epic sky,golden grass,detailed.";
+            labels[3] = "a little girl standing on the beach";
+            labels[4] = "fruit cream cake";
+            labels[5] = "cat wizard, gandalf, lord of the rings, detailed, fantasy, cute, adorable, Pixar, Disney, 8k";
+            
+            labels[6] = "A dog fly on the sky.";
+            
+            labels[7] = "A woman with shoulder-length blonde hair wearing a dark blouse with a floral patterned collar.";
+            labels[8] = "A small, grey crochet plush toy of a cat with pink paws and a pink nose sits on a wooden surface.";
+            labels[9] = "A group of humpback whales is swimming in the ocean, with one whale prominently in the foreground and two others in the background. The water is clear, and the whales are surrounded by a multitude of bubbles, creating a dynamic underwater scene.";
+            dataLoader.loadLabel_offset(label, 0, labels[0], eosIds);
+            dataLoader.loadLabel_offset(label, 1, labels[1], eosIds);
+            dataLoader.loadLabel_offset(label, 2, labels[2], eosIds);
+            dataLoader.loadLabel_offset(label, 3, labels[3], eosIds);
+            dataLoader.loadLabel_offset(label, 4, labels[4], eosIds);
+            dataLoader.loadLabel_offset(label, 5, labels[5], eosIds);
+            
+            dataLoader.loadLabel_offset(label, 6, labels[6], eosIds);
+            dataLoader.loadLabel_offset(label, 7, labels[7], eosIds);
+            dataLoader.loadLabel_offset(label, 8, labels[8], eosIds);
+            dataLoader.loadLabel_offset(label, 9, labels[9], eosIds);
+            condInput = clip.get_clip_prompt_embeds(label, eosIds, condInput);
+
+            RandomUtils.gaussianRandom(noise, 0, 1);
+            
+            Tensor sample = icplan.sample(network, noise, t, condInput, cos, sin, latend);
+            
+            icplan.latend_un_norm(sample, latendMean, latendStd);
+
+            Tensor result = vae.decode(sample);
+            
+            JCuda.cudaDeviceSynchronize();
+            
+            result.data = MatrixOperation.clampSelf(result.syncHost(), -1, 1);
+
+            showImgs("D:\\test\\dit4\\dit_org\\" + i, result, mean, std);
+            
+            System.out.println("finish create.");
+        }
+        
+	}
+	
+	public static void dit_txt_b2_iddpm_train() throws Exception {
+		String dataPath = "D:\\dataset\\amine\\dalle_vavae_latend.bin";
+        String clipDataPath = "D:\\dataset\\amine\\dalle_vavae_clip.bin";
+
+        int batchSize = 128;
+        int latendDim = 32;
+        int height = 16;
+        int width = 16;
+        int textEmbedDim = 768;
+        
+        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, textEmbedDim, BinDataType.float32);
+        
+        int ditHeadNum = 12;
+        int latendSize = 16;
+        int depth = 12;
+        int timeSteps = 1000;
+        int mlpRatio = 4;
+        int patchSize = 2;
+        int hiddenSize = 768;
+        
+        float y_prob = 0.1f;
+        
+        DiT_TXT dit = new DiT_TXT(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, textEmbedDim, 1, mlpRatio, false, y_prob);
+        dit.CUDNN = true;
+        dit.learnRate = 0.0002f;
+        
+        ICPlan icplan = new ICPlan(dit.tensorOP);
+
+        String model_path = "D:\\models\\dit_txt\\dit_b2_1.model";
+        ModelUtils.loadModel(dit, model_path);
+        
+        MBSGDOptimizer optimizer = new MBSGDOptimizer(dit, 200, 0.00001f, batchSize, LearnRateUpdate.CONSTANT, false);
+        
+        Tensor mean = new Tensor(latendDim, 1, 1, 1, new float[] {0.23869862f,0.4016211f,-0.15087046f,-0.52679396f,-0.15986611f,-1.6260003f,-0.5108059f,0.036283042f,0.3879915f,0.5334558f,-0.96909237f,1.4872372f,0.071545064f,0.7708449f,0.16623285f,0.7733368f,-0.9222466f,1.2859207f,-0.30753133f,-0.70088845f,0.5247328f,0.09425582f,-1.1671793f,0.53027356f,2.7668183f,1.4706479f,0.09313846f,-0.25821307f,-0.81280077f,-0.56423014f,0.49580055f,-0.35338005f}, true);
+        Tensor std = new Tensor(latendDim, 1, 1, 1, new float[] {4.1767454f,4.245004f,3.4222624f,3.6970704f,3.6395364f,3.3921142f,3.0486407f,3.6789029f,3.922576f,3.760961f,3.7205217f,3.70206f,3.7118554f,3.6425886f,3.223105f,3.3205664f,4.135744f,3.6481087f,3.6758296f,3.0634696f,3.3749795f,2.9729145f,3.8634508f,4.518134f,2.7782023f,3.4923503f,4.7507596f,3.2647762f,3.3624852f,3.7219477f,4.659944f,4.2925563f}, true);
+        
+        optimizer.train_DiT_TXT_ICPlan(dataLoader, icplan, "D://models//dit_txt//", mean, std, 1f, 1);
+        String save_model_path = "/omega/models/dit_xl2.model";
+        ModelUtils.saveModel(dit, save_model_path);
+    }
+	
+	public static void test_rope2() throws Exception {
+		String labelPath = "D:\\dataset\\amine\\data.json";
+        String imgDirPath = "D:\\dataset\\amine\\256\\";
+        boolean horizontalFilp = true;
+        int imgSize = 256;
+        int maxContextLen = 77;
+        int batchSize = 10;
+        float[] mean = new float[]{0.5f, 0.5f, 0.5f};
+        float[] std = new float[]{0.5f, 0.5f, 0.5f};
+        String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
+        String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
+        BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+        SDImageDataLoaderEN dataLoader = new SDImageDataLoaderEN(bpe, labelPath, imgDirPath, imgSize, imgSize, maxContextLen, batchSize, horizontalFilp, mean, std);
+        int maxPositionEmbeddingsSize = 77;
+        int vocabSize = 49408;
+        int headNum = 12;
+        int n_layers = 12;
+        int textEmbedDim = 768;
+        int intermediateSize = 3072;
+        ClipTextModel clip = new ClipTextModel(LossType.MSE, UpdaterType.adamw, headNum, maxContextLen, vocabSize, textEmbedDim, maxPositionEmbeddingsSize, intermediateSize, n_layers);
+        clip.CUDNN = true;
+        clip.time = maxContextLen;
+        clip.RUN_MODEL = RunModel.EVAL;
+        String clipWeight = "D:\\models\\CLIP-GmP-ViT-L-14\\CLIP-GmP-ViT-L-14.json";
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, "", false);
+
+        int latendDim = 32;
+        int num_res_blocks = 2;
+        int[] ch_mult = new int[]{1, 1, 2, 2, 4};
+        int ch = 128;
+        
+        VA_VAE vae = new VA_VAE(LossType.MSE, UpdaterType.adamw, latendDim, imgSize, ch_mult, ch, num_res_blocks, true);
+        vae.CUDNN = true;
+        vae.learnRate = 0.001f;
+        vae.RUN_MODEL = RunModel.EVAL;
+        String vaeWeight = "D:\\models\\vavae.json";
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
+        
+        int ditHeadNum = 12;
+        int latendSize = 16;
+        int depth = 12;
+        int timeSteps = 1000;
+        int mlpRatio = 4;
+        int patchSize = 2;
+        int hiddenSize = 768;
+        
+        float y_prob = 0.1f;
+        
+        DiT_TXT network = new DiT_TXT(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, textEmbedDim, 1, mlpRatio, false, y_prob);
+        network.CUDNN = true;
+        network.learnRate = 0.0002f;
+        
+        ICPlan icplan = new ICPlan(network.tensorOP);
+        
+        String model_path = "D:\\models\\dit_txt\\dit_b2_80.model";
+        ModelUtils.loadModel(network, model_path);
+        
+        Tensor label = new Tensor(batchSize * dataLoader.maxContextLen, 1, 1, 1, true);
+        Tensor eosIds = new Tensor(batchSize, 1, 1, 1, true);
+        
+        Tensor condInput = new Tensor(batchSize, 1, 1, textEmbedDim, true);
+        Tensor t = new Tensor(batchSize, 1, 1, 1, true);
+        
+        Tensor noise = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+        Tensor latend = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+        
+        Tensor[] cs = RoPEKernel.getCosAndSin2D(network.time, network.hiddenSize, network.headNum);
+        Tensor cos = cs[0];
+        Tensor sin = cs[1];
+        
+        Tensor latendMean = new Tensor(latendDim, 1, 1, 1, new float[] {0.23869862f,0.4016211f,-0.15087046f,-0.52679396f,-0.15986611f,-1.6260003f,-0.5108059f,0.036283042f,0.3879915f,0.5334558f,-0.96909237f,1.4872372f,0.071545064f,0.7708449f,0.16623285f,0.7733368f,-0.9222466f,1.2859207f,-0.30753133f,-0.70088845f,0.5247328f,0.09425582f,-1.1671793f,0.53027356f,2.7668183f,1.4706479f,0.09313846f,-0.25821307f,-0.81280077f,-0.56423014f,0.49580055f,-0.35338005f}, true);
+        Tensor latendStd = new Tensor(latendDim, 1, 1, 1, new float[] {4.1767454f,4.245004f,3.4222624f,3.6970704f,3.6395364f,3.3921142f,3.0486407f,3.6789029f,3.922576f,3.760961f,3.7205217f,3.70206f,3.7118554f,3.6425886f,3.223105f,3.3205664f,4.135744f,3.6481087f,3.6758296f,3.0634696f,3.3749795f,2.9729145f,3.8634508f,4.518134f,2.7782023f,3.4923503f,4.7507596f,3.2647762f,3.3624852f,3.7219477f,4.659944f,4.2925563f}, true);
+
+        network.RUN_MODEL = RunModel.TEST;
+        String[] labels = new String[10];
+        for(int i = 0;i<4;i++) {
+        	System.out.println("start create test images.");
+            labels[0] = "A cat holding a sign that says hello world";
+            labels[1] = "a vibrant anime mountain lands";
+            labels[2] = "a highly detailed anime landscape,big tree on the water, epic sky,golden grass,detailed.";
+            labels[3] = "a little girl standing on the beach";
+            labels[4] = "fruit cream cake";
+            labels[5] = "cat wizard, gandalf, lord of the rings, detailed, fantasy, cute, adorable, Pixar, Disney, 8k";
+            
+            labels[6] = "A dog fly on the sky.";
+            
+            labels[7] = "A woman with shoulder-length blonde hair wearing a dark blouse with a floral patterned collar.";
+            labels[8] = "A small, grey crochet plush toy of a cat with pink paws and a pink nose sits on a wooden surface.";
+            labels[9] = "A group of humpback whales is swimming in the ocean, with one whale prominently in the foreground and two others in the background. The water is clear, and the whales are surrounded by a multitude of bubbles, creating a dynamic underwater scene.";
+            dataLoader.loadLabel_offset(label, 0, labels[0], eosIds);
+            dataLoader.loadLabel_offset(label, 1, labels[1], eosIds);
+            dataLoader.loadLabel_offset(label, 2, labels[2], eosIds);
+            dataLoader.loadLabel_offset(label, 3, labels[3], eosIds);
+            dataLoader.loadLabel_offset(label, 4, labels[4], eosIds);
+            dataLoader.loadLabel_offset(label, 5, labels[5], eosIds);
+            
+            dataLoader.loadLabel_offset(label, 6, labels[6], eosIds);
+            dataLoader.loadLabel_offset(label, 7, labels[7], eosIds);
+            dataLoader.loadLabel_offset(label, 8, labels[8], eosIds);
+            dataLoader.loadLabel_offset(label, 9, labels[9], eosIds);
+            condInput = clip.get_clip_prompt_embeds(label, eosIds, condInput);
+
+            RandomUtils.gaussianRandom(noise, 0, 1);
+            
+            Tensor sample = icplan.sample(network, noise, t, condInput, cos, sin, latend);
+            
+            icplan.latend_un_norm(sample, latendMean, latendStd);
+
+            Tensor result = vae.decode(sample);
+            
+            JCuda.cudaDeviceSynchronize();
+            
+            result.data = MatrixOperation.clampSelf(result.syncHost(), -1, 1);
+
+            showImgs("D:\\test\\dit_vavae\\dit_1\\" + i, result, mean, std);
+            
+            System.out.println("finish create.");
+        }
+        
+	}
 	
 	public static void main(String[] args) {
 		 
@@ -1816,8 +2107,16 @@ public class DiTTest {
 	        	
 //	        	complate_ms();
 	        	
-	        	complate_ms2();
+//	        	complate_ms2();
 	        	
+//	        	test_rope();
+	        	
+//	        	dit_b2_iddpm_train();
+	        	
+	        	dit_txt_b2_iddpm_train();
+	        	
+//	        	test_rope2();
+
 	        } catch (Exception e) {
 	            // TODO: handle exception
 	            e.printStackTrace();

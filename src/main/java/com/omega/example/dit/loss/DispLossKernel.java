@@ -7,7 +7,7 @@ import java.util.Map;
 import com.omega.engine.gpu.CUDAKernel;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.tensor.Tensor;
-import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
 
 import jcuda.Pointer;
@@ -46,7 +46,7 @@ public class DispLossKernel extends CUDAKernel {
  	     String inputPath = "D:\\models\\x2.json";
  	     Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
  	     Tensor input = new Tensor(N, C, 1, headNum, true);
- 	     ClipModelUtils.loadData(input, datas, "x2", 3);
+ 	     ModeLoaderlUtils.loadData(input, datas, "x2", 3);
  	     
  	     int OW = (int) (0.5 * N * (N - 1));
  	     System.err.println(OW);

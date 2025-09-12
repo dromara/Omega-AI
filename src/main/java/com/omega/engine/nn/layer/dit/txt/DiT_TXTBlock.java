@@ -1,33 +1,28 @@
-package com.omega.engine.nn.layer.dit;
+package com.omega.engine.nn.layer.dit.txt;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Map;
 
-import com.omega.common.utils.RandomUtils;
-import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.active.SiLULayer;
 import com.omega.engine.nn.layer.dit.modules.DiTAttentionLayer2;
 import com.omega.engine.nn.layer.dit.modules.DiTCrossAttentionLayer2;
-import com.omega.engine.nn.layer.dit.modules.DiTMLPLayer;
-import com.omega.engine.nn.layer.gpu.RoPEKernel;
+import com.omega.engine.nn.layer.dit.org.DiTSwiGLUFFN;
 import com.omega.engine.nn.layer.normalization.BNType;
-import com.omega.engine.nn.layer.normalization.LNLayer;
+//import com.omega.engine.nn.layer.normalization.LNLayer;
+import com.omega.engine.nn.layer.normalization.RMSLayer;
 import com.omega.engine.nn.network.Network;
-import com.omega.engine.nn.network.RunModel;
-import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
-import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
  * DiT_Block
  * @author Administrator
  */
-public class DiTOrgBlock extends Layer {
+public class DiT_TXTBlock extends Layer {
 	
 	private int batchSize;
 	
@@ -42,41 +37,36 @@ public class DiTOrgBlock extends Layer {
     private boolean qkNorm = false;
     
     private SiLULayer modulationAct;
-    public FullyLayer modulation_shift_msa;
-    public FullyLayer modulation_scale_msa;
-    public FullyLayer modulation_gate_msa;
-    public FullyLayer modulation_shift_mlp;
-    public FullyLayer modulation_scale_mlp;
-    public FullyLayer modulation_gate_mlp;
-    
-    public LNLayer norm1;
-//    public RMSLayer norm1;
+    public FullyLayer adaLN_modulation;
+
+    public RMSLayer norm1;
     public DiTAttentionLayer2 attn;
-    public LNLayer norm2;
+    public RMSLayer norm2;
     public DiTCrossAttentionLayer2 cross_attn;
-    public LNLayer norm3;
-    public DiTMLPLayer mlp;
-//    public DiTSwiGLUFFN mlp;
+    public RMSLayer norm3;
+
+    public DiTSwiGLUFFN mlp;
     
     private Tensor attnInput;
     private Tensor crossAttnInput;
     private Tensor crossAttnOut;
     private Tensor mlpInput;
     
-    private Tensor temp_ma;
-    private Tensor temp_m1;
-    private Tensor temp_m2;
+    public Tensor shift_msa;
+    public Tensor scale_msa;
+    public Tensor gate_msa;
+    public Tensor shift_mlp;
+    public Tensor scale_mlp;
+    public Tensor gate_mlp;
     
-    private Tensor temp_out;
-
-    public DiTOrgBlock(int embedDim, int cEmbedDim, int textStateDim, int time, int textTime, int mlpHiddenDim, int headNum, boolean bias, boolean qkNorm) {
+    public DiT_TXTBlock(int embedDim, int cEmbedDim, int textStateDim, int time, int textTime, int mlpHiddenDim, int headNum, boolean bias, boolean qkNorm) {
         this.embedDim = embedDim;
         this.cEmbedDim = cEmbedDim;
         this.headNum = headNum;
-        this.textStateDim = textStateDim;
         this.time = time;
-        this.textTime = textTime;
         this.mlpHiddenDim = mlpHiddenDim;
+        this.textStateDim = textStateDim;
+        this.textTime = textTime;
         this.bias = bias;
         this.qkNorm = qkNorm;
         this.channel = 1;
@@ -88,7 +78,7 @@ public class DiTOrgBlock extends Layer {
         this.initLayers();
     }
 
-    public DiTOrgBlock(int embedDim, int cEmbedDim, int textStateDim, int time, int textTime, int mlpHiddenDim, int headNum, boolean bias, boolean qkNorm, Network network) {
+    public DiT_TXTBlock(int embedDim, int cEmbedDim, int textStateDim, int time, int textTime, int mlpHiddenDim, int headNum, boolean bias, boolean qkNorm, Network network) {
         this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
@@ -96,10 +86,10 @@ public class DiTOrgBlock extends Layer {
         this.embedDim = embedDim;
         this.cEmbedDim = cEmbedDim;
         this.headNum = headNum;
-        this.textStateDim = textStateDim;
         this.time = time;
-        this.textTime = textTime;
         this.mlpHiddenDim = mlpHiddenDim;
+        this.textStateDim = textStateDim;
+        this.textTime = textTime;
         this.bias = bias;
         this.channel = 1;
         this.height = 1;
@@ -113,37 +103,21 @@ public class DiTOrgBlock extends Layer {
 
     public void initLayers() {
     	
-        this.norm1 = new LNLayer(1, 1, embedDim, false, BNType.fully_bn, network);
+        this.norm1 = new RMSLayer(1, 1, embedDim, true, BNType.fully_bn, network);
         
         this.modulationAct = new SiLULayer(network);
-
-        this.modulation_shift_msa = new FullyLayer(cEmbedDim, embedDim, bias, network);
-        this.modulation_shift_msa.weight.clearGPU();
-        this.modulation_shift_msa.bias.clearGPU();
-        this.modulation_scale_msa = new FullyLayer(cEmbedDim, embedDim, bias, network);
-        this.modulation_scale_msa.weight.clearGPU();
-        this.modulation_scale_msa.bias.clearGPU();
-        this.modulation_gate_msa = new FullyLayer(cEmbedDim, embedDim, bias, network);
-        this.modulation_gate_msa.weight.clearGPU();
-        this.modulation_gate_msa.bias.clearGPU();
-        this.modulation_shift_mlp = new FullyLayer(cEmbedDim, embedDim, bias, network);
-        this.modulation_shift_mlp.weight.clearGPU();
-        this.modulation_shift_mlp.bias.clearGPU();
-        this.modulation_scale_mlp = new FullyLayer(cEmbedDim, embedDim, bias, network);
-        this.modulation_scale_mlp.weight.clearGPU();
-        this.modulation_scale_mlp.bias.clearGPU();
-        this.modulation_gate_mlp = new FullyLayer(cEmbedDim, embedDim, bias, network);
-        this.modulation_gate_mlp.weight.clearGPU();
-        this.modulation_gate_mlp.bias.clearGPU();
+        
+        this.adaLN_modulation = new FullyLayer(cEmbedDim, embedDim * 6, true, network);
+        adaLN_modulation.weight.clearGPU();
+        adaLN_modulation.bias.clearGPU();
         
         this.attn = new DiTAttentionLayer2(embedDim, headNum, time, bias, qkNorm, network);
-        this.norm2 = new LNLayer(1, 1, embedDim, false, BNType.fully_bn, network);
+        this.norm2 = new RMSLayer(1, 1, embedDim, true, BNType.fully_bn, network);
         this.cross_attn = new DiTCrossAttentionLayer2(embedDim, textStateDim, headNum, time, textTime, bias, qkNorm, network);
-        this.norm3 = new LNLayer(1, 1, embedDim, false, BNType.fully_bn, network);
-       
-        this.mlp = new DiTMLPLayer(embedDim, mlpHiddenDim, bias, network);
-//        int swiNum = (int)(2.0/3.0 * mlpHiddenDim);
-//        this.mlp = new DiTSwiGLUFFN(embedDim, swiNum, embedDim, bias, network);
+        this.norm3 = new RMSLayer(1, 1, embedDim, true, BNType.fully_bn, network);
+        
+        int swiNum = (int)(2.0f/3.0f * mlpHiddenDim);
+        this.mlp = new DiTSwiGLUFFN(embedDim, swiNum, embedDim, bias, network);
     }
 
     @Override
@@ -158,6 +132,12 @@ public class DiTOrgBlock extends Layer {
         this.batchSize = number / time;
         if(attnInput == null || attnInput.number != number) {
         	attnInput = Tensor.createGPUTensor(attnInput, input.number, input.channel, input.height, input.width, true);
+        	shift_msa = Tensor.createGPUTensor(this.shift_msa, batchSize, 1, 1, embedDim, true);
+        	scale_msa = Tensor.createGPUTensor(this.scale_msa, batchSize, 1, 1, embedDim, true);
+        	gate_msa = Tensor.createGPUTensor(this.gate_msa, batchSize, 1, 1, embedDim, true);
+    		shift_mlp = Tensor.createGPUTensor(this.shift_mlp, batchSize, 1, 1, embedDim, true);
+        	scale_mlp = Tensor.createGPUTensor(this.scale_mlp, batchSize, 1, 1, embedDim, true);
+        	gate_mlp = Tensor.createGPUTensor(this.gate_mlp, batchSize, 1, 1, embedDim, true);
         }
         if(crossAttnInput == null || crossAttnInput.number != number) {
         	crossAttnInput = Tensor.createGPUTensor(crossAttnInput, input.number, input.channel, input.height, input.width, true);
@@ -178,6 +158,12 @@ public class DiTOrgBlock extends Layer {
         this.batchSize = number / time;
         if(attnInput == null || attnInput.number != number) {
         	attnInput = Tensor.createGPUTensor(attnInput, input.number, input.channel, input.height, input.width, true);
+        	shift_msa = Tensor.createGPUTensor(this.shift_msa, batchSize, 1, 1, embedDim, true);
+        	scale_msa = Tensor.createGPUTensor(this.scale_msa, batchSize, 1, 1, embedDim, true);
+        	gate_msa = Tensor.createGPUTensor(this.gate_msa, batchSize, 1, 1, embedDim, true);
+    		shift_mlp = Tensor.createGPUTensor(this.shift_mlp, batchSize, 1, 1, embedDim, true);
+        	scale_mlp = Tensor.createGPUTensor(this.scale_mlp, batchSize, 1, 1, embedDim, true);
+        	gate_mlp = Tensor.createGPUTensor(this.gate_mlp, batchSize, 1, 1, embedDim, true);
         }
         if(crossAttnInput == null || crossAttnInput.number != number) {
         	crossAttnInput = Tensor.createGPUTensor(crossAttnInput, input.number, input.channel, input.height, input.width, true);
@@ -187,16 +173,8 @@ public class DiTOrgBlock extends Layer {
         	mlpInput = Tensor.createGPUTensor(mlpInput, input.number, input.channel, input.height, input.width, true);
         }
         
-        if(network.RUN_MODEL == RunModel.EVAL) {
-        	temp_ma = CUDAMemoryManager.getCache("dit_block_temp_ma", tc.number, tc.channel, tc.height, tc.width);
-        	temp_m1 = CUDAMemoryManager.getCache("dit_block_temp_m1", tc.number, modulation_shift_msa.oChannel, modulation_shift_msa.oHeight, modulation_shift_msa.oWidth);
-        	temp_m2 = CUDAMemoryManager.getCache("dit_block_temp_m2", tc.number, modulation_shift_msa.oChannel, modulation_shift_msa.oHeight, modulation_shift_msa.oWidth);
-        	temp_out = CUDAMemoryManager.getCache("dit_block_temp_out", input.number, input.channel, input.height, input.width);
-        	output = CUDAMemoryManager.getCache("dit_block_output", input.number, oChannel, oHeight, oWidth);
-        }else {
-        	if(output == null || output.number != number) {
-            	output = Tensor.createGPUTensor(output, input.number, oChannel, oHeight, oWidth, true);
-            }
+        if(output == null || output.number != number) {
+        	output = Tensor.createGPUTensor(output, input.number, oChannel, oHeight, oWidth, true);
         }
     }
     
@@ -230,19 +208,24 @@ public class DiTOrgBlock extends Layer {
     public void output(Tensor tc,Tensor text) {
     	
     	modulationAct.forward(tc);
-    	modulation_shift_msa.forward(modulationAct.getOutput());
-    	modulation_scale_msa.forward(modulationAct.getOutput());
-    	modulation_gate_msa.forward(modulationAct.getOutput());
-    	modulation_shift_mlp.forward(modulationAct.getOutput());
-    	modulation_scale_mlp.forward(modulationAct.getOutput());
-    	modulation_gate_mlp.forward(modulationAct.getOutput());
+    	
+    	adaLN_modulation.forward(modulationAct.getOutput());
+    	
+    	int[] shape = new int[] {batchSize, 6, 1, embedDim};
+
+    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), shift_msa, shape, 0);
+    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), scale_msa, shape, 1);
+    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), gate_msa, shape, 2);
+    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), shift_mlp, shape, 3);
+    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), scale_mlp, shape, 4);
+    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), gate_mlp, shape, 5);
 
     	norm1.forward(input);
-
-    	modulate(norm1.getOutput(), modulation_shift_msa.getOutput(), modulation_scale_msa.getOutput(), attnInput);
+    	
+    	modulate(norm1.getOutput(), shift_msa, scale_msa, attnInput);
 
     	attn.forward(attnInput);
-    	Tensor_OP().mul(attn.getOutput(), modulation_gate_msa.getOutput(), crossAttnInput, batchSize, time, 1, crossAttnInput.width, 1);
+    	Tensor_OP().mul(attn.getOutput(), gate_msa, crossAttnInput, batchSize, time, 1, crossAttnInput.width, 1);
     	Tensor_OP().add(input, crossAttnInput, crossAttnInput);
     	
     	norm2.forward(crossAttnInput);
@@ -253,11 +236,11 @@ public class DiTOrgBlock extends Layer {
     	
     	norm3.forward(crossAttnOut);
     	
-    	modulate(norm3.getOutput(), modulation_shift_mlp.getOutput(), modulation_scale_mlp.getOutput(), mlpInput);
-    	
+    	modulate(norm3.getOutput(), shift_mlp, scale_mlp, mlpInput);
+
     	mlp.forward(mlpInput);
     	
-    	Tensor_OP().mul(mlp.getOutput(), modulation_gate_mlp.getOutput(), output, batchSize, time, 1, output.width, 1);
+    	Tensor_OP().mul(mlp.getOutput(), gate_mlp, output, batchSize, time, 1, output.width, 1);
     	
     	Tensor_OP().add(crossAttnOut, output, output);
     }
@@ -268,21 +251,26 @@ public class DiTOrgBlock extends Layer {
     	 * shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = self.adaLN_modulation(c).chunk(6, dim=1)
     	 */
     	modulationAct.forward(tc);
-    	modulation_shift_msa.forward(modulationAct.getOutput());
-    	modulation_scale_msa.forward(modulationAct.getOutput());
-    	modulation_gate_msa.forward(modulationAct.getOutput());
-    	modulation_shift_mlp.forward(modulationAct.getOutput());
-    	modulation_scale_mlp.forward(modulationAct.getOutput());
-    	modulation_gate_mlp.forward(modulationAct.getOutput());
+    	
+    	adaLN_modulation.forward(modulationAct.getOutput());
+    	
+    	int[] shape = new int[] {batchSize, 6, 1, embedDim};
+
+    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), shift_msa, shape, 0);
+    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), scale_msa, shape, 1);
+    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), gate_msa, shape, 2);
+    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), shift_mlp, shape, 3);
+    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), scale_mlp, shape, 4);
+    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), gate_mlp, shape, 5);
     	
     	/**
     	 *  x1 = x + gate_msa.unsqueeze(1) * self.attn(modulate(self.norm1(x), shift_msa, scale_msa))
     	 */
     	norm1.forward(input);
-    	modulate(norm1.getOutput(), modulation_shift_msa.getOutput(), modulation_scale_msa.getOutput(), attnInput);
+    	modulate(norm1.getOutput(), shift_msa, scale_msa, attnInput);
     	attn.forward(attnInput, cos , sin);
 
-    	Tensor_OP().mul(attn.getOutput(), modulation_gate_msa.getOutput(), crossAttnInput, batchSize, time, 1, crossAttnInput.width, 1);
+    	Tensor_OP().mul(attn.getOutput(), gate_msa, crossAttnInput, batchSize, time, 1, crossAttnInput.width, 1);
     	Tensor_OP().add(input, crossAttnInput, crossAttnInput);
 
     	/**
@@ -296,53 +284,11 @@ public class DiTOrgBlock extends Layer {
     	 * x3 = x2 + gate_mlp.unsqueeze(1) * self.mlp(modulate(self.norm3(x2), shift_mlp, scale_mlp))
     	 */
     	norm3.forward(crossAttnOut);
-    	modulate(norm3.getOutput(), modulation_shift_mlp.getOutput(), modulation_scale_mlp.getOutput(), mlpInput);
+    	modulate(norm3.getOutput(), shift_mlp, scale_mlp, mlpInput);
     	mlp.forward(mlpInput);
-    	Tensor_OP().mul(mlp.getOutput(), modulation_gate_mlp.getOutput(), output, batchSize, time, 1, output.width, 1);
+    	Tensor_OP().mul(mlp.getOutput(), gate_mlp, output, batchSize, time, 1, output.width, 1);
     	Tensor_OP().add(crossAttnOut, output, output);
     }
-    
-//    public void output_eval(Tensor tc,Tensor text,Tensor cos,Tensor sin) {
-//    	
-//    	Tensor x = input;
-//    	
-//    	/**
-//    	 * shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = self.adaLN_modulation(c).chunk(6, dim=1)
-//    	 */
-//    	modulationAct.forward(tc, temp_ma);
-//    	
-//    	modulation_shift_msa.forward(temp_ma, temp_m1);
-//    	modulation_scale_msa.forward(temp_ma, temp_m2);
-//    	/**
-//    	 *  x1 = x + gate_msa.unsqueeze(1) * self.attn(modulate(self.norm1(x), shift_msa, scale_msa))
-//    	 */
-//    	norm1.forward(x, temp_out);
-//    	modulate(temp_out, temp_m1, temp_m2, temp_out);
-//    	attn.forward(temp_out, cos , sin);
-//    	modulation_gate_msa.forward(temp_ma, temp_m1);
-//
-//    	Tensor_OP().mul(attn.getOutput(), temp_m1, temp_out, batchSize, time, 1, temp_out.width, 1);
-//    	Tensor_OP().add(x, temp_out, x);
-//
-//    	/**
-//    	 * x2 = x1 + self.crossAttn(self.norm2(x1), text)
-//    	 */
-//    	norm2.forward(x, temp_out);
-//    	cross_attn.forward(temp_out, text, cos , sin);
-//    	Tensor_OP().add(x, cross_attn.getOutput(), x);
-//
-//    	/**
-//    	 * x3 = x2 + gate_mlp.unsqueeze(1) * self.mlp(modulate(self.norm3(x2), shift_mlp, scale_mlp))
-//    	 */
-//    	modulation_shift_mlp.forward(temp_ma, temp_m1);
-//    	modulation_scale_mlp.forward(temp_ma, temp_m2);
-//    	norm3.forward(x, temp_out);
-//    	modulate(temp_out, temp_m1, temp_m2, temp_out);
-//    	mlp.forward(temp_out);
-//    	modulation_gate_mlp.forward(temp_ma, temp_m1);
-//    	Tensor_OP().mul(mlp.getOutput(), temp_m1, temp_out, batchSize, time, 1, temp_out.width, 1);
-//    	Tensor_OP().add(x, temp_out, output);
-//    }
     
     @Override
     public Tensor getOutput() {
@@ -364,18 +310,20 @@ public class DiTOrgBlock extends Layer {
     
     public void diff(Tensor dtc,Tensor dText) {
     	
-    	Tensor_OP().mul_left_back(modulation_gate_mlp.getOutput(), delta, output,  batchSize, time, 1, output.width, 1);
-    	mlp.back(output);
-    	Tensor_OP().mul_right_back(mlp.getOutput(), delta, modulation_gate_mlp.getOutput(), batchSize, time, 1, output.width, 1);
-    	modulation_gate_mlp.back(modulation_gate_mlp.getOutput());
+    	int[] shape = new int[] {batchSize, 6, 1, embedDim};
     	
-    	Tensor dShift = modulation_shift_mlp.getOutput();
-    	Tensor dScale = modulation_gate_mlp.getOutput();
+    	Tensor_OP().mul_left_back(gate_mlp, delta, output,  batchSize, time, 1, output.width, 1);
+    	mlp.back(output);
+    	Tensor_OP().mul_right_back(mlp.getOutput(), delta, gate_mlp, batchSize, time, 1, output.width, 1);
+    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), gate_mlp, shape, 5);
+    	
+    	Tensor dShift = shift_mlp;
+    	Tensor dScale = gate_mlp;
     	Tensor x = norm3.getOutput();
-    	Tensor scale = modulation_scale_mlp.getOutput();
+    	Tensor scale = scale_mlp;
     	modulate_back(dShift, dScale, output, x, scale, mlp.diff);
-    	modulation_shift_mlp.back(dShift);
-    	modulation_scale_mlp.back(dScale);
+    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dShift, shape, 3);
+    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dScale, shape, 4);
     	
     	norm3.back(output);
 
@@ -386,32 +334,26 @@ public class DiTOrgBlock extends Layer {
     	norm2.back(cross_attn.diff);
     	Tensor_OP().add(norm2.diff, norm3.diff, norm2.diff);
     	
-    	Tensor_OP().mul_left_back(modulation_gate_msa.getOutput(), norm2.diff, output,  batchSize, time, 1, output.width, 1);
+    	Tensor_OP().mul_left_back(gate_msa, norm2.diff, output,  batchSize, time, 1, output.width, 1);
     	attn.back(output);
-    	Tensor_OP().mul_right_back(attn.getOutput(), norm2.diff, modulation_gate_msa.getOutput(), batchSize, time, 1, output.width, 1);
-    	modulation_gate_msa.back(modulation_gate_msa.getOutput());
+    	Tensor_OP().mul_right_back(attn.getOutput(), norm2.diff, gate_msa, batchSize, time, 1, output.width, 1);
+    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), gate_msa, shape, 2);
     	
-    	dShift = modulation_shift_msa.getOutput();
-    	dScale = modulation_gate_msa.getOutput();
+    	dShift = shift_msa;
+    	dScale = gate_msa;
     	x = norm1.getOutput();
-    	scale = modulation_scale_msa.getOutput();
+    	scale = scale_msa;
     	modulate_back(dShift, dScale, output, x, scale, attn.diff);
-    	modulation_shift_msa.back(dShift);
-    	modulation_scale_msa.back(dScale);
+    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dShift, shape, 0);
+    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dScale, shape, 1);
 
     	norm1.back(output);
 
     	Tensor_OP().add(norm1.diff, norm2.diff, norm1.diff);
     	
-    	Tensor dtc_tmp = modulation_scale_msa.diff;
-    	
-    	Tensor_OP().add(dtc_tmp, modulation_shift_msa.diff, dtc_tmp);
-    	Tensor_OP().add(dtc_tmp, modulation_gate_msa.diff, dtc_tmp);
-    	Tensor_OP().add(dtc_tmp, modulation_scale_mlp.diff, dtc_tmp);
-    	Tensor_OP().add(dtc_tmp, modulation_shift_mlp.diff, dtc_tmp);
-    	Tensor_OP().add(dtc_tmp, modulation_gate_mlp.diff, dtc_tmp);
+    	adaLN_modulation.back(adaLN_modulation.getOutput());
 
-        modulationAct.back(dtc_tmp);
+        modulationAct.back(adaLN_modulation.diff);
         
     	Tensor_OP().add(dtc, modulationAct.diff, dtc);
     	Tensor_OP().add(dText, cross_attn.kLinerLayer.diff, dText);
@@ -424,67 +366,50 @@ public class DiTOrgBlock extends Layer {
     	/**
     	 * x3 = x2 + gate_mlp.unsqueeze(1) * self.mlp(modulate(self.norm3(x2), shift_mlp, scale_mlp))
     	 */
-    	Tensor_OP().mul_left_back(modulation_gate_mlp.getOutput(), delta, output,  batchSize, time, 1, output.width, 1);
-    	mlp.back(output);
-    	Tensor_OP().mul_right_back(mlp.getOutput(), delta, modulation_gate_mlp.getOutput(), batchSize, time, 1, output.width, 1);
-    	modulation_gate_mlp.back(modulation_gate_mlp.getOutput());
+    	int[] shape = new int[] {batchSize, 6, 1, embedDim};
     	
-    	Tensor dShift = modulation_shift_mlp.getOutput();
-    	Tensor dScale = modulation_gate_mlp.getOutput();
+    	Tensor_OP().mul_left_back(gate_mlp, delta, output,  batchSize, time, 1, output.width, 1);
+    	mlp.back(output);
+    	Tensor_OP().mul_right_back(mlp.getOutput(), delta, gate_mlp, batchSize, time, 1, output.width, 1);
+    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), gate_mlp, shape, 5);
+    	
+    	Tensor dShift = shift_mlp;
+    	Tensor dScale = gate_mlp;
     	Tensor x = norm3.getOutput();
-    	Tensor scale = modulation_scale_mlp.getOutput();
+    	Tensor scale = scale_mlp;
     	modulate_back(dShift, dScale, output, x, scale, mlp.diff);
-    	modulation_shift_mlp.back(dShift);
-    	modulation_scale_mlp.back(dScale);
+    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dShift, shape, 3);
+    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dScale, shape, 4);
     	
     	norm3.back(output);
 
-//    	norm3.diff.showDMByOffsetRed(0, 10, "norm3");
-    	
     	Tensor_OP().add(norm3.diff, delta, norm3.diff);
-
-    	/**
-    	 * x2 = x1 + self.crossAttn(self.norm2(x1), text)
-    	 */
+    	
     	cross_attn.back(norm3.diff, cos, sin);
 
     	norm2.back(cross_attn.diff);
-//    	norm2.diff.showDMByOffsetRed(0, 10, "norm2");
     	Tensor_OP().add(norm2.diff, norm3.diff, norm2.diff);
     	
-//    	norm2.diff.showDM("x1");
-    	/**
-    	 *  x1 = x + gate_msa.unsqueeze(1) * self.attn(modulate(self.norm1(x), shift_msa, scale_msa))
-    	 */
-    	Tensor_OP().mul_left_back(modulation_gate_msa.getOutput(), norm2.diff, output,  batchSize, time, 1, output.width, 1);
+    	Tensor_OP().mul_left_back(gate_msa, norm2.diff, output,  batchSize, time, 1, output.width, 1);
     	attn.back(output, cos, sin);
-    	Tensor_OP().mul_right_back(attn.getOutput(), norm2.diff, modulation_gate_msa.getOutput(), batchSize, time, 1, output.width, 1);
-    	modulation_gate_msa.back(modulation_gate_msa.getOutput());
+    	Tensor_OP().mul_right_back(attn.getOutput(), norm2.diff, gate_msa, batchSize, time, 1, output.width, 1);
+    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), gate_msa, shape, 2);
     	
-    	dShift = modulation_shift_msa.getOutput();
-    	dScale = modulation_gate_msa.getOutput();
+    	dShift = shift_msa;
+    	dScale = gate_msa;
     	x = norm1.getOutput();
-    	scale = modulation_scale_msa.getOutput();
-//    	attn.diff.showDM("m1");
+    	scale = scale_msa;
     	modulate_back(dShift, dScale, output, x, scale, attn.diff);
-    	modulation_shift_msa.back(dShift);
-    	modulation_scale_msa.back(dScale);
+    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dShift, shape, 0);
+    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dScale, shape, 1);
 
     	norm1.back(output);
-    	
-//    	norm1.diff.showDMByOffsetRed(0, 10, "norm1");
 
     	Tensor_OP().add(norm1.diff, norm2.diff, norm1.diff);
     	
-    	Tensor dtc_tmp = modulation_scale_msa.diff;
-    	
-    	Tensor_OP().add(dtc_tmp, modulation_shift_msa.diff, dtc_tmp);
-    	Tensor_OP().add(dtc_tmp, modulation_gate_msa.diff, dtc_tmp);
-    	Tensor_OP().add(dtc_tmp, modulation_scale_mlp.diff, dtc_tmp);
-    	Tensor_OP().add(dtc_tmp, modulation_shift_mlp.diff, dtc_tmp);
-    	Tensor_OP().add(dtc_tmp, modulation_gate_mlp.diff, dtc_tmp);
+    	adaLN_modulation.back(adaLN_modulation.getOutput());
 
-        modulationAct.back(dtc_tmp);
+        modulationAct.back(adaLN_modulation.diff);
         
     	Tensor_OP().add(dtc, modulationAct.diff, dtc);
     	Tensor_OP().add(dText, cross_attn.kLinerLayer.diff, dText);
@@ -544,6 +469,7 @@ public class DiTOrgBlock extends Layer {
         this.output();
     }
     
+
     /**
      * 
      * @param input
@@ -648,12 +574,7 @@ public class DiTOrgBlock extends Layer {
     public void update() {
         // TODO Auto-generated method stub
     	norm1.update();
-    	modulation_shift_msa.update();
-    	modulation_scale_msa.update();
-    	modulation_gate_msa.update();
-    	modulation_shift_mlp.update();
-    	modulation_scale_mlp.update();
-    	modulation_gate_mlp.update();
+    	adaLN_modulation.update();
     	
     	attn.update();
     	norm2.update();
@@ -693,12 +614,7 @@ public class DiTOrgBlock extends Layer {
 
     public void saveModel(RandomAccessFile outputStream) throws IOException {
     	norm1.saveModel(outputStream);
-    	modulation_shift_msa.saveModel(outputStream);
-    	modulation_scale_msa.saveModel(outputStream);
-    	modulation_gate_msa.saveModel(outputStream);
-    	modulation_shift_mlp.saveModel(outputStream);
-    	modulation_scale_mlp.saveModel(outputStream);
-    	modulation_gate_mlp.saveModel(outputStream);
+    	adaLN_modulation.saveModel(outputStream);
     	
     	attn.saveModel(outputStream);
     	norm2.saveModel(outputStream);
@@ -711,12 +627,7 @@ public class DiTOrgBlock extends Layer {
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
     	norm1.loadModel(inputStream, channel, height, width, BNType.fully_bn);
-    	modulation_shift_msa.loadModel(inputStream);
-    	modulation_scale_msa.loadModel(inputStream);
-    	modulation_gate_msa.loadModel(inputStream);
-    	modulation_shift_mlp.loadModel(inputStream);
-    	modulation_scale_mlp.loadModel(inputStream);
-    	modulation_gate_mlp.loadModel(inputStream);
+    	adaLN_modulation.loadModel(inputStream);
     	
     	attn.loadModel(inputStream);
     	norm2.loadModel(inputStream, 1, 1, attn.oWidth, BNType.fully_bn);
@@ -729,14 +640,9 @@ public class DiTOrgBlock extends Layer {
 
     @Override
     public void accGrad(float scale) {
-        // TODO Auto-generated method stub
+    	 // TODO Auto-generated method stub
     	norm1.accGrad(scale);
-    	modulation_shift_msa.accGrad(scale);
-    	modulation_scale_msa.accGrad(scale);
-    	modulation_gate_msa.accGrad(scale);
-    	modulation_shift_mlp.accGrad(scale);
-    	modulation_scale_mlp.accGrad(scale);
-    	modulation_gate_mlp.accGrad(scale);
+    	adaLN_modulation.accGrad(scale);
     	
     	attn.accGrad(scale);
     	norm2.accGrad(scale);
@@ -747,13 +653,13 @@ public class DiTOrgBlock extends Layer {
     	mlp.accGrad(scale);
     }
     
-    public static void loadWeight(Map<String, Object> weightMap, DiTOrgBlock block, boolean showLayers) {
-        if (showLayers) {
-            for (String key : weightMap.keySet()) {
-                System.out.println(key);
-            }
-        }
-        
+    public static void loadWeight(Map<String, Object> weightMap, DiT_TXTBlock block, boolean showLayers) {
+//        if (showLayers) {
+//            for (String key : weightMap.keySet()) {
+//                System.out.println(key);
+//            }
+//        }
+//        
 //        block.norm1.gamma = ClipModelUtils.loadData(block.norm1.gamma, weightMap, 1, "norm1.weight");
 //        block.norm1.beta = ClipModelUtils.loadData(block.norm1.beta, weightMap, 1, "norm1.bias");
 //        
@@ -802,47 +708,47 @@ public class DiTOrgBlock extends Layer {
     
     public static void main(String[] args) {
     	
-    	String inputPath = "H:\\model\\dit_block_org.json";
-    	Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
-    	
-    	int batchSize = 2;
-        int time = 256;
-        int embedDim = 384;
-        int headNum = 6;
-         
-        float[] data = RandomUtils.order(batchSize * time * embedDim, 0.01f, 0.01f);
-        Tensor input = new Tensor(batchSize * time, 1, 1, embedDim, data, true);
-        
-        int textTime = 77;
-        float[] cData = RandomUtils.order(batchSize * textTime * embedDim, 0.001f, 0.001f); 
-        Tensor cond = new Tensor(batchSize * textTime, 1, 1, embedDim, cData, true);
-        
-        float[] tData = RandomUtils.order(batchSize * embedDim, 0.1f, 0.1f); 
-        Tensor t = new Tensor(batchSize, 1, 1, embedDim, tData, true);
-        
-    	Transformer tf = new Transformer();
-        tf.number = batchSize * time;
-        tf.time = time;
-        
-        DiTOrgBlock block = new DiTOrgBlock(embedDim, embedDim, embedDim, time, textTime, 4 * embedDim, headNum, true, false, tf);
-        
-        loadWeight(datas, block, true);
-        
-        Tensor[] cs = RoPEKernel.getCosAndSin2D(time, embedDim, headNum);
-        Tensor cos = cs[0];
-        Tensor sin = cs[1];
-        
-        block.forward(input, t, cond, cos, sin);
-        
-        block.getOutput().showDM();
-        
-        float[] dd = RandomUtils.order(batchSize * time * embedDim, 0.01f, 0.01f);
-        Tensor delta = new Tensor(batchSize * time, 1, 1, embedDim, dd, true);
-        
-        Tensor dt = new Tensor(batchSize, 1, 1, embedDim, true);
-        Tensor dc = new Tensor(batchSize * textTime, 1, 1, embedDim, true);
-        block.back(delta, dt, dc, cos, sin);
-        block.diff.showDM();
+//    	String inputPath = "H:\\model\\dit_block_org.json";
+//    	Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
+//    	
+//    	int batchSize = 2;
+//        int time = 256;
+//        int embedDim = 384;
+//        int headNum = 6;
+//         
+//        float[] data = RandomUtils.order(batchSize * time * embedDim, 0.01f, 0.01f);
+//        Tensor input = new Tensor(batchSize * time, 1, 1, embedDim, data, true);
+//        
+//        int textTime = 77;
+//        float[] cData = RandomUtils.order(batchSize * textTime * embedDim, 0.001f, 0.001f); 
+//        Tensor cond = new Tensor(batchSize * textTime, 1, 1, embedDim, cData, true);
+//        
+//        float[] tData = RandomUtils.order(batchSize * embedDim, 0.1f, 0.1f); 
+//        Tensor t = new Tensor(batchSize, 1, 1, embedDim, tData, true);
+//        
+//    	Transformer tf = new Transformer();
+//        tf.number = batchSize * time;
+//        tf.time = time;
+//        
+//        DiTBlock block = new DiTBlock(embedDim, embedDim, embedDim, time, textTime, 4 * embedDim, headNum, true, false, tf);
+//        
+//        loadWeight(datas, block, true);
+//        
+//        Tensor[] cs = RoPEKernel.getCosAndSin2D(time, embedDim, headNum);
+//        Tensor cos = cs[0];
+//        Tensor sin = cs[1];
+//        
+//        block.forward(input, t, cond, cos, sin);
+//        
+//        block.getOutput().showDM();
+//        
+//        float[] dd = RandomUtils.order(batchSize * time * embedDim, 0.01f, 0.01f);
+//        Tensor delta = new Tensor(batchSize * time, 1, 1, embedDim, dd, true);
+//        
+//        Tensor dt = new Tensor(batchSize, 1, 1, embedDim, true);
+//        Tensor dc = new Tensor(batchSize * textTime, 1, 1, embedDim, true);
+//        block.back(delta, dt, dc, cos, sin);
+//        block.diff.showDM();
     }
     
 }

@@ -16,7 +16,7 @@ import com.omega.engine.nn.network.CNN;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
-import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
@@ -445,37 +445,37 @@ public class DiTJoinBlock extends Layer {
             }
         }
         
-        block.context_block.norm1.gamma = ClipModelUtils.loadData(block.context_block.norm1.gamma, weightMap, 1, "context_block.norm1.weight"); 
-        ClipModelUtils.loadData(block.context_block.qLinerLayer.weight, weightMap, "context_block.attn.ql.weight");
-        ClipModelUtils.loadData(block.context_block.kLinerLayer.weight, weightMap, "context_block.attn.kl.weight");
-        ClipModelUtils.loadData(block.context_block.vLinerLayer.weight, weightMap, "context_block.attn.vl.weight");
+        block.context_block.norm1.gamma = ModeLoaderlUtils.loadData(block.context_block.norm1.gamma, weightMap, 1, "context_block.norm1.weight"); 
+        ModeLoaderlUtils.loadData(block.context_block.qLinerLayer.weight, weightMap, "context_block.attn.ql.weight");
+        ModeLoaderlUtils.loadData(block.context_block.kLinerLayer.weight, weightMap, "context_block.attn.kl.weight");
+        ModeLoaderlUtils.loadData(block.context_block.vLinerLayer.weight, weightMap, "context_block.attn.vl.weight");
         if(block.context_block.oLinerLayer != null) {
-        	 ClipModelUtils.loadData(block.context_block.oLinerLayer.weight, weightMap, "context_block.attn.proj.weight");
-             ClipModelUtils.loadData(block.context_block.oLinerLayer.bias, weightMap, "context_block.attn.proj.bias");
+        	 ModeLoaderlUtils.loadData(block.context_block.oLinerLayer.weight, weightMap, "context_block.attn.proj.weight");
+             ModeLoaderlUtils.loadData(block.context_block.oLinerLayer.bias, weightMap, "context_block.attn.proj.bias");
         }
-        block.context_block.norm2.gamma = ClipModelUtils.loadData(block.context_block.norm2.gamma, weightMap, 1, "context_block.norm2.weight"); 
+        block.context_block.norm2.gamma = ModeLoaderlUtils.loadData(block.context_block.norm2.gamma, weightMap, 1, "context_block.norm2.weight"); 
         if(block.context_block.mlp != null) {
-        	 ClipModelUtils.loadData(block.context_block.mlp.linear1.weight, weightMap, "context_block.mlp.fc1.weight");
-             ClipModelUtils.loadData(block.context_block.mlp.linear1.bias, weightMap, "context_block.mlp.fc1.bias");
-             ClipModelUtils.loadData(block.context_block.mlp.linear2.weight, weightMap, "context_block.mlp.fc2.weight");
-             ClipModelUtils.loadData(block.context_block.mlp.linear2.bias, weightMap, "context_block.mlp.fc2.bias");
+        	 ModeLoaderlUtils.loadData(block.context_block.mlp.linear1.weight, weightMap, "context_block.mlp.fc1.weight");
+             ModeLoaderlUtils.loadData(block.context_block.mlp.linear1.bias, weightMap, "context_block.mlp.fc1.bias");
+             ModeLoaderlUtils.loadData(block.context_block.mlp.linear2.weight, weightMap, "context_block.mlp.fc2.weight");
+             ModeLoaderlUtils.loadData(block.context_block.mlp.linear2.bias, weightMap, "context_block.mlp.fc2.bias");
         }
-        ClipModelUtils.loadData(block.context_block.adaLN_modulation.weight, weightMap, "context_block.adaLN_modulation.1.weight");
-        ClipModelUtils.loadData(block.context_block.adaLN_modulation.bias, weightMap, "context_block.adaLN_modulation.1.bias");
+        ModeLoaderlUtils.loadData(block.context_block.adaLN_modulation.weight, weightMap, "context_block.adaLN_modulation.1.weight");
+        ModeLoaderlUtils.loadData(block.context_block.adaLN_modulation.bias, weightMap, "context_block.adaLN_modulation.1.bias");
         
-        block.x_block.norm1.gamma = ClipModelUtils.loadData(block.x_block.norm1.gamma, weightMap, 1, "x_block.norm1.weight"); 
-        ClipModelUtils.loadData(block.x_block.qLinerLayer.weight, weightMap, "x_block.attn.ql.weight");
-        ClipModelUtils.loadData(block.x_block.kLinerLayer.weight, weightMap, "x_block.attn.kl.weight");
-        ClipModelUtils.loadData(block.x_block.vLinerLayer.weight, weightMap, "x_block.attn.vl.weight");
-        ClipModelUtils.loadData(block.x_block.oLinerLayer.weight, weightMap, "x_block.attn.proj.weight");
-        ClipModelUtils.loadData(block.x_block.oLinerLayer.bias, weightMap, "x_block.attn.proj.bias");
-        block.x_block.norm2.gamma = ClipModelUtils.loadData(block.x_block.norm2.gamma, weightMap, 1, "x_block.norm2.weight"); 
-        ClipModelUtils.loadData(block.x_block.mlp.linear1.weight, weightMap, "x_block.mlp.fc1.weight");
-        ClipModelUtils.loadData(block.x_block.mlp.linear1.bias, weightMap, "x_block.mlp.fc1.bias");
-        ClipModelUtils.loadData(block.x_block.mlp.linear2.weight, weightMap, "x_block.mlp.fc2.weight");
-        ClipModelUtils.loadData(block.x_block.mlp.linear2.bias, weightMap, "x_block.mlp.fc2.bias");
-        ClipModelUtils.loadData(block.x_block.adaLN_modulation.weight, weightMap, "x_block.adaLN_modulation.1.weight");
-        ClipModelUtils.loadData(block.x_block.adaLN_modulation.bias, weightMap, "x_block.adaLN_modulation.1.bias");
+        block.x_block.norm1.gamma = ModeLoaderlUtils.loadData(block.x_block.norm1.gamma, weightMap, 1, "x_block.norm1.weight"); 
+        ModeLoaderlUtils.loadData(block.x_block.qLinerLayer.weight, weightMap, "x_block.attn.ql.weight");
+        ModeLoaderlUtils.loadData(block.x_block.kLinerLayer.weight, weightMap, "x_block.attn.kl.weight");
+        ModeLoaderlUtils.loadData(block.x_block.vLinerLayer.weight, weightMap, "x_block.attn.vl.weight");
+        ModeLoaderlUtils.loadData(block.x_block.oLinerLayer.weight, weightMap, "x_block.attn.proj.weight");
+        ModeLoaderlUtils.loadData(block.x_block.oLinerLayer.bias, weightMap, "x_block.attn.proj.bias");
+        block.x_block.norm2.gamma = ModeLoaderlUtils.loadData(block.x_block.norm2.gamma, weightMap, 1, "x_block.norm2.weight"); 
+        ModeLoaderlUtils.loadData(block.x_block.mlp.linear1.weight, weightMap, "x_block.mlp.fc1.weight");
+        ModeLoaderlUtils.loadData(block.x_block.mlp.linear1.bias, weightMap, "x_block.mlp.fc1.bias");
+        ModeLoaderlUtils.loadData(block.x_block.mlp.linear2.weight, weightMap, "x_block.mlp.fc2.weight");
+        ModeLoaderlUtils.loadData(block.x_block.mlp.linear2.bias, weightMap, "x_block.mlp.fc2.bias");
+        ModeLoaderlUtils.loadData(block.x_block.adaLN_modulation.weight, weightMap, "x_block.adaLN_modulation.1.weight");
+        ModeLoaderlUtils.loadData(block.x_block.adaLN_modulation.bias, weightMap, "x_block.adaLN_modulation.1.bias");
 
     }
     
@@ -502,17 +502,17 @@ public class DiTJoinBlock extends Layer {
         String inputPath = "D:\\models\\img_x.json";
         Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
         Tensor input = new Tensor(N, T, 1, W, true);
-        ClipModelUtils.loadData(input, datas, "img_x", 3);
+        ModeLoaderlUtils.loadData(input, datas, "img_x", 3);
         
         String textPath = "D:\\models\\text_x.json";
         Map<String, Object> textDatas = LagJsonReader.readJsonFileSmallWeight(textPath);
         Tensor txt = new Tensor(N, TT, 1, W, true);
-        ClipModelUtils.loadData(txt, textDatas, "text_x", 3);
+        ModeLoaderlUtils.loadData(txt, textDatas, "text_x", 3);
         
         String cPath = "D:\\models\\c_mod.json";
         Map<String, Object> cDatas = LagJsonReader.readJsonFileSmallWeight(cPath);
         Tensor c = new Tensor(N, 1, 1, W, true);
-        ClipModelUtils.loadData(c, cDatas, "c_mod", 2);
+        ModeLoaderlUtils.loadData(c, cDatas, "c_mod", 2);
         
         input.view(N * T, 1, 1, W);
         txt.view(N * TT, 1, 1, W);
@@ -526,7 +526,7 @@ public class DiTJoinBlock extends Layer {
         String dinputPath = "D:\\models\\dimg_x.json";
         Map<String, Object> d_datas = LagJsonReader.readJsonFileSmallWeight(dinputPath);
         Tensor dinput = new Tensor(N, T, 1, W, true);
-        ClipModelUtils.loadData(dinput, d_datas, "dimg_x", 3);
+        ModeLoaderlUtils.loadData(dinput, d_datas, "dimg_x", 3);
         
 //        String dtextPath = "D:\\models\\dtext_x.json";
 //        Map<String, Object> d_textDatas = LagJsonReader.readJsonFileSmallWeight(dtextPath);

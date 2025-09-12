@@ -16,7 +16,7 @@ import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.nn.network.utils.ModelUtils;
 import com.omega.engine.tensor.Tensor;
-import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
@@ -100,8 +100,8 @@ public class Convolution3DTransposeLayer extends Layer {
             }
         }
 
-        ClipModelUtils.loadData(network.weight, weightMap, "conv.weight", 5);
-        ClipModelUtils.loadData(network.bias, weightMap, "conv.bias");
+        ModeLoaderlUtils.loadData(network.weight, weightMap, "conv.weight", 5);
+        ModeLoaderlUtils.loadData(network.bias, weightMap, "conv.bias");
         
     }
     
@@ -128,7 +128,7 @@ public class Convolution3DTransposeLayer extends Layer {
             String inputPath = "D:\\models\\input_wf.json";
             Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
             Tensor input = new Tensor(N, C * F, H, W, true);
-            ClipModelUtils.loadData(input, datas, "x", 5);
+            ModeLoaderlUtils.loadData(input, datas, "x", 5);
             
             String weight = "D:\\models\\conv3dTrans.json";
             loadWeight(LagJsonReader.readJsonFileSmallWeight(weight), ct, true);

@@ -60,13 +60,15 @@ public class MMDiTMLPLayer extends Layer {
 
     public void initLayers() {
         this.linear1 = new FullyLayer(embedDim, nChannel, bias, network);
-        this.linear1.weight.setData(RandomUtils.xavierUniform(embedDim * nChannel, embedDim, nChannel, 1.0f));
+//        this.linear1.weight.setData(RandomUtils.xavierUniform(embedDim * nChannel, embedDim, nChannel, 1.0f));
+        RandomUtils.xavier_uniform(this.linear1.weight, 1, embedDim, nChannel);
         if(this.linear1.bias != null) {
         	this.linear1.bias.clearGPU();
         }
         this.active = new GeluLayer(linear1);
         this.linear2 = new FullyLayer(nChannel, embedDim, bias, network);
-        this.linear2.weight.setData(RandomUtils.xavierUniform(embedDim * nChannel, nChannel, embedDim, 1.0f));
+        RandomUtils.xavier_uniform(this.linear2.weight, 1, nChannel, embedDim);
+//        this.linear2.weight.setData(RandomUtils.xavierUniform(embedDim * nChannel, nChannel, embedDim, 1.0f));
         if(this.linear2.bias != null) {
         	this.linear2.bias.clearGPU();
         }

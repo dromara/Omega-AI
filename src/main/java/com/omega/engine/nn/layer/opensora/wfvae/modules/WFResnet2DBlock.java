@@ -14,7 +14,7 @@ import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
-import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
@@ -295,7 +295,7 @@ public class WFResnet2DBlock extends Layer {
         String inputPath = "D:\\models\\input_resnet.json";
         Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
         Tensor input = new Tensor(N, C * F, H, W, true);
-        ClipModelUtils.loadData(input, datas, "x", 5);
+        ModeLoaderlUtils.loadData(input, datas, "x", 5);
 
         Transformer nn = new Transformer();
         nn.CUDNN = true;
@@ -319,18 +319,18 @@ public class WFResnet2DBlock extends Layer {
             }
         }
 
-        block.norm1.norm.gamma= ClipModelUtils.loadData(block.norm1.norm.gamma, weightMap, 1, "norm1.weight");
-        block.norm1.norm.beta = ClipModelUtils.loadData(block.norm1.norm.beta, weightMap, 1, "norm1.bias");
-        ClipModelUtils.loadData(block.conv1.weight, weightMap, "conv1.weight", 4);
-        ClipModelUtils.loadData(block.conv1.bias, weightMap, "conv1.bias");
-        block.norm2.norm.gamma = ClipModelUtils.loadData(block.norm2.norm.gamma, weightMap, 1, "norm2.weight");
-        block.norm2.norm.beta = ClipModelUtils.loadData(block.norm2.norm.beta, weightMap, 1, "norm2.bias");
-        ClipModelUtils.loadData(block.conv2.weight, weightMap, "conv2.weight", 4);
-        ClipModelUtils.loadData(block.conv2.bias, weightMap, "conv2.bias");
+        block.norm1.norm.gamma= ModeLoaderlUtils.loadData(block.norm1.norm.gamma, weightMap, 1, "norm1.weight");
+        block.norm1.norm.beta = ModeLoaderlUtils.loadData(block.norm1.norm.beta, weightMap, 1, "norm1.bias");
+        ModeLoaderlUtils.loadData(block.conv1.weight, weightMap, "conv1.weight", 4);
+        ModeLoaderlUtils.loadData(block.conv1.bias, weightMap, "conv1.bias");
+        block.norm2.norm.gamma = ModeLoaderlUtils.loadData(block.norm2.norm.gamma, weightMap, 1, "norm2.weight");
+        block.norm2.norm.beta = ModeLoaderlUtils.loadData(block.norm2.norm.beta, weightMap, 1, "norm2.bias");
+        ModeLoaderlUtils.loadData(block.conv2.weight, weightMap, "conv2.weight", 4);
+        ModeLoaderlUtils.loadData(block.conv2.bias, weightMap, "conv2.bias");
         
         if(block.shortcut) {
-        	ClipModelUtils.loadData(block.conv_shortcut.weight, weightMap, "nin_shortcut.weight", 4);
-            ClipModelUtils.loadData(block.conv_shortcut.bias, weightMap, "nin_shortcut.bias");
+        	ModeLoaderlUtils.loadData(block.conv_shortcut.weight, weightMap, "nin_shortcut.weight", 4);
+            ModeLoaderlUtils.loadData(block.conv_shortcut.bias, weightMap, "nin_shortcut.bias");
         }
     }
     
