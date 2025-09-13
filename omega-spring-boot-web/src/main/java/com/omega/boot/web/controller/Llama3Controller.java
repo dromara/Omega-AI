@@ -21,7 +21,7 @@ public class Llama3Controller {
     private Llama3Service llama3Service;
     @PostMapping("/chat")
     public String chat(@RequestBody ChatDto chatDto) {
-        System.out.println(chatDto.getMessage());
         return llama3Service.predict(chatDto.getMessage());
+//        return "hello world!!!";
     }
 }

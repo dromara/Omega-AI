@@ -3,7 +3,6 @@ package com.omega.boot.starter;
 import cn.hutool.json.JSONObject;
 import com.omega.boot.starter.entity.ModelData;
 import com.omega.boot.starter.utils.JsonUtils;
-import com.omega.boot.starter.utils.PackageScannerUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.bind.Bindable;
@@ -14,11 +13,7 @@ import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.util.StringUtils;
 
 import java.io.File;
-import java.io.IOException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * 模型配置文件初始化加载器
@@ -35,6 +30,8 @@ public class ModelApplicationInitializer implements ApplicationContextInitialize
     private static final String CONFIG = "config.json";
     private static final String TOKENIZER_CONFIG = "tokenizer_config.json";
     private static final String MODEL_TYLE = "model_type";
+
+    private static final List<String> modelTypes = Arrays.asList("yolov3","yolov7");
 
     @Override
     public void initialize(ConfigurableApplicationContext applicationContext) {
@@ -60,10 +57,18 @@ public class ModelApplicationInitializer implements ApplicationContextInitialize
                     continue;
                 }
                 String modelType = config.getStr(MODEL_TYLE);
+
                 if(StringUtils.isEmpty(modelType)){
                     logger.error("read model model_type is empty from configUrl: {}", path);
                     continue;
                 }
+                if(modelTypes.contains(modelType)){
+                    ModelData modelData = new ModelData(path, config, null);
+                    modelDataMap.put(modelType, modelData);
+                    logger.info("yolo model not read tokenizer: {}", path);
+                    continue;
+                }
+
                 String tokenizerConfigUrl = path + File.separator + TOKENIZER_CONFIG;
                 JSONObject tokenizerConfig = JsonUtils.readJson(tokenizerConfigUrl);
                 if(tokenizerConfig == null){

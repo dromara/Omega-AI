@@ -1,4 +1,3 @@
-<!-- src/main/resources/templates/chat.html -->
 <!DOCTYPE html>
 <html lang="zh" xmlns:th="http://www.thymeleaf.org">
 <head>
@@ -330,6 +329,8 @@
       display: flex;
       align-items: center;
       gap: 5px;
+      flex-wrap: wrap;
+      justify-content: space-between;
     }
 
     .user-message .message-header {
@@ -346,8 +347,67 @@
 
     .message-content {
       font-size: 0.9rem;
-      /* white-space: pre-wrap; */
       word-break: break-word;
+    }
+
+    /* 图片消息样式 */
+    .image-message {
+      max-width: 100%;
+      margin: 5px 0;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .image-message img {
+      max-width: 100%;
+      max-height: 300px;
+      display: block;
+    }
+
+    .detection-result {
+      margin-top: 8px;
+      padding: 8px;
+      background: rgba(30, 40, 80, 0.6);
+      border-radius: 6px;
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+
+    .detection-object {
+      display: inline-block;
+      margin: 3px 5px 3px 0;
+      padding: 3px 6px;
+      background: rgba(90, 16, 240, 0.3);
+      border-radius: 4px;
+      font-size: 0.8rem;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .action-button {
+      padding: 5px 10px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 0.75rem;
+      font-weight: 500;
+      transition: all 0.3s;
+    }
+
+    .download-button {
+      background: linear-gradient(135deg, #007bff, #0056b3);
+      color: white;
+      box-shadow: 0 1px 4px rgba(0, 123, 255, 0.4);
+    }
+
+    .download-button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 6px rgba(0, 123, 255, 0.6);
     }
 
     .typing-indicator {
@@ -447,6 +507,36 @@
       transform: translateY(0);
     }
 
+    .file-upload-button {
+      background: linear-gradient(135deg, #28a745, #20c997);
+      color: white;
+      border: none;
+      border-radius: 18px;
+      padding: 8px 16px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: all 0.3s;
+      box-shadow: 0 2px 8px rgba(40, 167, 69, 0.5);
+      align-self: flex-end;
+      height: fit-content;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .file-upload-button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(40, 167, 69, 0.7);
+    }
+
+    .upload-instruction {
+      text-align: center;
+      padding: 15px;
+      color: #90c0ff;
+      font-size: 0.9rem;
+    }
+
     .timestamp {
       font-size: 0.65rem;
       opacity: 0.8;
@@ -502,7 +592,7 @@
         font-size: 0.8rem;
       }
 
-      #sendButton {
+      #sendButton, .file-upload-button {
         padding: 6px 14px;
         font-size: 0.8rem;
       }
@@ -519,6 +609,8 @@
 
       .chat-header h1 {
         font-size: 1rem;
+        flex-direction: column;
+        gap: 3px;
       }
 
       .chat-header p {
@@ -548,13 +640,21 @@
         flex-direction: column;
       }
 
-      #sendButton {
+      #sendButton, .file-upload-button {
         width: 100%;
         align-self: stretch;
       }
 
       .model-selector-label {
         display: none;
+      }
+
+      .action-buttons {
+        flex-direction: column;
+      }
+
+      .action-button {
+        width: 100%;
       }
     }
   </style>
@@ -575,15 +675,17 @@
       <label class="model-selector-label">模型:</label>
       <select class="model-selector" id="modelSelector">
         <option value="llama3">🚀 Omega-AI(llama3)</option>
+        <option value="yolov3">✨ Omega-AI(yolov3)</option>
+        <option value="yolov7">🔍 Omega-AI(yolov7)</option>
       </select>
     </div>
-    <h1>🤖 大模型聊天助手</h1>
-    <p>基于Omega-AI深度学习框架构建的网络训练的模型智能对话系统</p>
+    <h1>🤖 大模型智能助手</h1>
+    <p id="modelDescription">基于Omega-AI深度学习框架构建的llama3网络训练的模型智能对话系统</p>
   </div>
 
   <div class="chat-window" id="chatWindow">
     <div class="messages-container" id="messagesContainer">
-      <div class="message ai-message">
+      <div class="message ai-message" id="tishiyu">
         <div class="message-header">
           <span class="model-icon">🚀</span>
           <span>Omega-AI(llama3)</span>
@@ -604,8 +706,10 @@
     </div>
   </div>
 
-  <div class="input-area">
+  <div class="input-area" id="inputArea">
     <textarea id="messageInput" placeholder="输入您的消息... (按Ctrl+Enter发送)"></textarea>
+    <input type="file" id="fileInput" accept="image/*" style="display: none;">
+    <button class="file-upload-button" id="uploadButton">📁 上传图片</button>
     <button id="sendButton">发送</button>
   </div>
 </div>
@@ -618,6 +722,12 @@
   const typingIndicator = document.getElementById('typingIndicator');
   const modelSelector = document.getElementById('modelSelector');
   const particlesContainer = document.getElementById('particles');
+  const fileInput = document.getElementById('fileInput');
+  const uploadButton = document.getElementById('uploadButton');
+  const inputArea = document.getElementById('inputArea');
+  const modelDescription = document.getElementById('modelDescription');
+
+  let currentModel = 'llama3';
 
   // 创建浮动粒子
   function createParticles() {
@@ -664,35 +774,143 @@
 
   function getModelInfo(modelValue) {
     const modelMap = {
-      'llama3': { name: 'Omega-AI(llama3)', icon: '🚀' }
+      'llama3': {
+        name: 'Omega-AI(llama3)',
+        icon: '🚀',
+        type: 'llama3',
+        description: '基于Omega-AI深度学习框架构建的llama3网络训练的模型智能对话系统'
+      },
+      'yolov3': {
+        name: 'yolov3',
+        icon: '✨',
+        type: 'yolov3',
+        description: '基于Omega-AI深度学习框架构建的yolov3网络训练的实时目标检测模型，支持快速准确的物体识别和定位'
+      },
+      'yolov7': {
+        name: 'yolov7',
+        icon: '🔍',
+        type: 'yolov7',
+        description: '基于Omega-AI深度学习框架构建的yolov7网络训练的高性能目标检测模型，提供更精准的物体识别和边界框预测'
+      }
     };
-    return modelMap[modelValue] || modelMap['qwen-plus'];
+    return modelMap[modelValue] || modelMap['llama3'];
   }
 
-  function addMessage(content, isUser) {
+  // 更新界面控件显示
+  function updateInputControls() {
+    const modelInfo = getModelInfo(currentModel);
+
+    // 更新模型描述
+    modelDescription.textContent = modelInfo.description;
+
+    // 清空聊天记录（除了欢迎消息）
+    const welcomeMessage = messagesContainer.querySelector('.ai-message');
+    messagesContainer.innerHTML = '';
+    if (welcomeMessage) {
+      messagesContainer.appendChild(welcomeMessage);
+    }
+
+    // 根据模型类型显示不同的控件
+    if (modelInfo.type === 'llama3') {
+      document.getElementById('tishiyu').style.display = 'block';
+      // 聊天模型：显示输入框和发送按钮，隐藏上传按钮
+      messageInput.style.display = 'block';
+      sendButton.style.display = 'block';
+      uploadButton.style.display = 'none';
+      messageInput.placeholder = '输入您的消息... (按Ctrl+Enter发送)';
+
+      // 添加欢迎消息
+      if (!welcomeMessage) {
+        addMessage('您好！我是Omega-AI深度学习框架构建的llama模型网络训练的大模型聊天助手。请问有什么我可以帮助您的吗？', false);
+      }
+    } else {
+      // 视觉模型：显示上传按钮，隐藏输入框和发送按钮
+      messageInput.style.display = 'none';
+      sendButton.style.display = 'none';
+      uploadButton.style.display = 'block';
+
+      document.getElementById('tishiyu').style.display = 'none';
+
+      // 添加使用说明
+      addMessage('请上传图片进行目标检测分析，支持JPG、PNG等常见图片格式。', false);
+    }
+  }
+
+  function addMessage(content, isUser, imageData = null, detectionResult = null) {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
 
-    const currentModel = getModelInfo(modelSelector.value);
+    const currentModelInfo = getModelInfo(currentModel);
 
     const header = document.createElement('div');
     header.className = 'message-header';
 
     if (isUser) {
       header.innerHTML = `
-                    <span class="model-icon">👤</span>
-                    <span>您</span>
-                `;
+        <span class="model-icon">👤</span>
+        <span>您</span>
+      `;
     } else {
       header.innerHTML = `
-                    <span class="model-icon">${currentModel.icon}</span>
-                    <span>${currentModel.name}</span>
-                `;
+        <span class="model-icon">${currentModelInfo.icon}</span>
+        <span>${currentModelInfo.name}</span>
+      `;
     }
 
     const contentDiv = document.createElement('div');
     contentDiv.className = 'message-content';
-    contentDiv.textContent = content;
+
+    if (imageData) {
+      // 添加图片消息
+      const imageContainer = document.createElement('div');
+      imageContainer.className = 'image-message';
+
+      const img = document.createElement('img');
+      img.src = imageData;
+      img.alt = isUser ? '上传的图片' : '分析结果';
+
+      imageContainer.appendChild(img);
+      contentDiv.appendChild(imageContainer);
+
+      if (content) {
+        const textDiv = document.createElement('div');
+        textDiv.textContent = content;
+        textDiv.style.marginTop = '8px';
+        contentDiv.appendChild(textDiv);
+      }
+    } else {
+      contentDiv.textContent = content;
+    }
+
+    // 添加检测结果
+    if (detectionResult && !isUser) {
+      const resultDiv = document.createElement('div');
+      resultDiv.className = 'detection-result';
+
+      if (detectionResult.success) {
+        // resultDiv.innerHTML = `
+        //   <strong>检测结果：</strong><br>
+        //   共检测到 ${detectionResult.objects.length} 个对象<br>
+        //   ${detectionResult.objects.map(obj =>
+        //         `<span class="detection-object">${obj.class} (${(obj.confidence * 100).toFixed(1)}%)</span>`
+        // ).join('')}
+        // `;
+
+        // 添加下载按钮
+        const buttonsDiv = document.createElement('div');
+        buttonsDiv.className = 'action-buttons';
+        buttonsDiv.innerHTML = `
+          <button class="action-button download-button" onclick="downloadImage('${imageData}')">
+            下载检测结果
+          </button>
+        `;
+        resultDiv.appendChild(buttonsDiv);
+      } else {
+        resultDiv.textContent = '未检测到任何对象';
+      }
+
+      contentDiv.appendChild(resultDiv);
+    }
 
     const timestamp = document.createElement('div');
     timestamp.className = 'timestamp';
@@ -707,18 +925,18 @@
   }
 
   function showTypingIndicator() {
-    const currentModel = getModelInfo(modelSelector.value);
+    const currentModelInfo = getModelInfo(currentModel);
     typingIndicator.innerHTML = `
-                <div class="typing-dots">
-                    <span class="typing-dot"></span>
-                    <span class="typing-dot"></span>
-                    <span class="typing-dot"></span>
-                </div>
-                <div style="margin-top: 6px; font-size: 0.8rem; color: #90c0ff;">
-                    <span class="model-icon">${currentModel.icon}</span>
-                    ${currentModel.name} 正在思考...
-                </div>
-            `;
+      <div class="typing-dots">
+        <span class="typing-dot"></span>
+        <span class="typing-dot"></span>
+        <span class="typing-dot"></span>
+      </div>
+      <div style="margin-top: 6px; font-size: 0.8rem; color: #90c0ff;">
+        <span class="model-icon">${currentModelInfo.icon}</span>
+        ${currentModelInfo.name} 正在分析...
+      </div>
+    `;
     typingIndicator.style.display = 'flex';
     chatWindow.scrollTop = chatWindow.scrollHeight;
   }
@@ -729,13 +947,18 @@
 
   async function sendMessage() {
     const message = messageInput.value.trim();
+    const modelInfo = getModelInfo(currentModel);
+
+    if (modelInfo.type !== 'llama3') {
+      return;
+    }
+
     if (!message) return;
 
     // 显示用户消息
     addMessage(message, true);
     messageInput.value = '';
     messageInput.style.height = 'auto';
-    messageInput.style.height = Math.min(messageInput.scrollHeight, 100) + 'px';
 
     // 显示正在输入指示器
     showTypingIndicator();
@@ -749,7 +972,7 @@
         },
         body: JSON.stringify({
           message: message,
-          model: modelSelector.value
+          model: currentModel
         })
       });
 
@@ -767,14 +990,94 @@
     }
   }
 
+  // 图片上传功能
+  uploadButton.addEventListener('click', () => {
+    fileInput.click();
+  });
+
+  fileInput.addEventListener('change', async (e) => {
+    if (!e.target.files.length) return;
+
+    const file = e.target.files[0];
+    if (!file.type.match('image.*')) {
+      alert('请上传图片文件！');
+      return;
+    }
+
+    const modelInfo = getModelInfo(currentModel);
+    if (modelInfo.type !== 'yolov3' && modelInfo.type !== 'yolov7') {
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = async (e) => {
+      const imageData = e.target.result;
+
+      // 显示用户上传的图片
+      addMessage('图片已上传', true, imageData);
+
+      // 显示正在分析指示器
+      showTypingIndicator();
+
+      try {
+        // 发送图片到后端进行检测
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('model', currentModel);
+
+        const url = modelInfo.type === 'yolov3' ? '/yolov3/image' : '/yolov7/image';
+
+        const response = await fetch(url, {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!response.ok) {
+          throw new Error('检测请求失败');
+        }
+
+        const result = await response.json();
+
+        // 隐藏正在输入指示器
+        hideTypingIndicator();
+
+        // 显示检测结果 - 使用后端返回的处理后图片
+        addMessage('图片分析完成', false, "data:image/jpeg;base64," + result.fileBase64, result);
+
+      } catch (error) {
+        hideTypingIndicator();
+        addMessage('图片分析失败，请重试', false);
+        console.error('检测错误:', error);
+      }
+    };
+
+    reader.readAsDataURL(file);
+    fileInput.value = '';
+  });
+
+  // 下载图片功能
+  window.downloadImage = function(imageData) {
+    const link = document.createElement('a');
+    link.href = imageData;
+    link.download = `detection-result-${new Date().getTime()}.jpg`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // 模型切换事件
+  modelSelector.addEventListener('change', function() {
+    currentModel = this.value;
+    updateInputControls();
+  });
+
   sendButton.addEventListener('click', sendMessage);
 
   messageInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && e.ctrlKey) {
       sendMessage();
-    } else if (e.key === 'Enter' && !e.ctrlKey) {
-      // 允许换行
-      return;
+      e.preventDefault();
     }
   });
 
@@ -784,14 +1087,9 @@
     this.style.height = Math.min(this.scrollHeight, 100) + 'px';
   });
 
-  modelSelector.addEventListener('change', function() {
-    const modelInfo = getModelInfo(this.value);
-    // 可以在这里添加模型切换的提示信息
-    console.log(`切换到模型: ${modelInfo.name}`);
-  });
-
-  // 页面加载完成后聚焦输入框
+  // 页面加载完成后初始化
   window.addEventListener('load', () => {
+    updateInputControls();
     messageInput.focus();
   });
 </script>

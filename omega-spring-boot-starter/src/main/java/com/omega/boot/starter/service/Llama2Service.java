@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -43,6 +44,9 @@ public class Llama2Service extends ModelAbstract{
 
     int max_test = 200;
 
+    @Value("${model.cudnn:false}")
+    private boolean cudnn;
+
     @Autowired
     @Qualifier("modelConfig")
     private Map<String, ModelData> modelConfig;
@@ -69,6 +73,7 @@ public class Llama2Service extends ModelAbstract{
             Llama2 network = new Llama2(LossType.softmax_with_cross_entropy_idx, UpdaterType.adamw, head_num, decoderNum, ((SentencePieceTokenizer)tokenizer).voc_size, max_len, embedDim, bias, dropout, flashAttention);
             ModelUtils.loadModel(network, path+ File.separator + name);
             network.RUN_MODEL = RunModel.TEST;
+            network.CUDNN = cudnn;
             return network;
         } catch (Exception e) {
             logger.error("Error loading llama2: {}", e);

@@ -5,8 +5,11 @@ spring:
     cache: false
     encoding: utf-8
 server:
+  port: 8080
   tomcat:
     connection-timeout: 600000
-#model:
-#  path:
-#   - F:\LLM\llama3
+model:
+  # 是否使用cudnn加速,使用cudnn加速，需要安装cudnn
+  cudnn: false
+  path:
+   - D:\Desktop\yolo\yolo_v3

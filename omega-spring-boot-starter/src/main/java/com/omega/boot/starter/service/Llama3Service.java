@@ -20,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.annotation.Bean;
@@ -60,6 +61,9 @@ public class Llama3Service extends ModelAbstract{
 
     private Object tokenizer;
 
+    @Value("${model.cudnn:false}")
+    private boolean cudnn;
+
     @PostConstruct
     public void init() {
         this.modelData = modelConfig.get(model_type);
@@ -76,6 +80,7 @@ public class Llama3Service extends ModelAbstract{
             Llama3 network = new Llama3(LossType.softmax_with_cross_entropy_idx, UpdaterType.adamw, head_num, nKVHeadNum, decoderNum, ((BPETokenizer3)this.tokenizer).voc_size, max_len, embedDim, bias, dropout, flashAttention);
             ModelUtils.loadModel(network, path+ File.separator + name);
             network.RUN_MODEL = RunModel.TEST;
+            network.CUDNN = cudnn;
             return network;
         } catch (Exception e) {
             logger.error("Error loading llama2: {}", e);

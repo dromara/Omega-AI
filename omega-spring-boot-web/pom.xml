@@ -49,6 +49,9 @@
         </executions>
         <configuration>
           <mainClass>com.omega.boot.web.AppApplication</mainClass>
+          <jvmArguments>
+            -Dspring.devtools.restart.enabled=true
+          </jvmArguments>
         </configuration>
       </plugin>
     </plugins>
