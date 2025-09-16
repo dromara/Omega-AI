@@ -2,14 +2,18 @@ package com.omega.engine.nn.layer.dit.org;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.Map;
 
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.active.SiLULayer;
+import com.omega.engine.nn.network.CNN;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
+import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
  * DiTSwiGLUFFN
@@ -110,11 +114,11 @@ public class DiTSwiGLUFFN extends Layer {
     public void output() {
         // TODO Auto-generated method stub
     	w12.forward(input);
-    	
+
     	int[] shape = new int[] {number, 2, 1, hiddenSize};
     	Tensor_OP().getByChannel(w12.getOutput(), w1, shape, 0);
     	Tensor_OP().getByChannel(w12.getOutput(), w2, shape, 1);
-    	
+
     	act.forward(w1);
     	
     	Tensor_OP().mul(act.getOutput(), w2, wt);
@@ -270,9 +274,51 @@ public class DiTSwiGLUFFN extends Layer {
     	w12.accGrad(scale);
     	w3.accGrad(scale);
     }
+
+    public static void loadWeight(Map<String, Object> weightMap, DiTSwiGLUFFN block, boolean showLayers) {
+        if (showLayers) {
+            for (String key : weightMap.keySet()) {
+                System.out.println(key);
+            }
+        }
+        ClipModelUtils.loadData(block.w12.weight, weightMap, "w12.weight");
+        ClipModelUtils.loadData(block.w12.bias, weightMap, "w12.bias");
+        ClipModelUtils.loadData(block.w3.weight, weightMap, "w3.weight");
+        ClipModelUtils.loadData(block.w3.bias, weightMap, "w3.bias");
+    }
     
     public static void main(String[] args) {
-    	
+        int N = 4;
+        int C = 1;
+        int H = 1;
+        int W = 1152;
+
+
+        String inputPath = "c:\\temp\\dit.json";
+        Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
+        Tensor input = new Tensor(N, C, H, W, true);
+        ClipModelUtils.loadData(input, datas, "x", 4);
+
+        CNN nn = new CNN(null);
+        nn.CUDNN = true;
+        nn.number = N;
+
+        DiTSwiGLUFFN diTSwiGLUFFN = new DiTSwiGLUFFN(1152, 3072, 1152, true, nn);
+
+        String weight = "c:\\temp\\dit_weight.json";
+        loadWeight(LagJsonReader.readJsonFileSmallWeight(weight), diTSwiGLUFFN, true);
+
+        diTSwiGLUFFN.forward(input);
+        diTSwiGLUFFN.output.showShape();
+        diTSwiGLUFFN.output.showDMByNumber(1);
+
+        String deltaPath = "c:\\temp\\dit_delta.json";
+        Map<String, Object> datas2 = LagJsonReader.readJsonFileSmallWeight(deltaPath);
+        Tensor delta = new Tensor(N, C, H, W, true);
+        ClipModelUtils.loadData(delta, datas2, "delta", 4);
+
+        diTSwiGLUFFN.back(delta);
+        diTSwiGLUFFN.diff.showDMByNumber(2);
     }
     
 }

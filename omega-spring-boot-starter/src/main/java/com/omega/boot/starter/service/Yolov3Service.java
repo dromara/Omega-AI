@@ -1,5 +1,19 @@
 package com.omega.boot.starter.service;
 
+import java.io.File;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
 import com.omega.boot.starter.entity.ModelData;
 import com.omega.boot.starter.utils.FileUtils;
 import com.omega.boot.starter.utils.JarUrlUtils;
@@ -15,21 +29,8 @@ import com.omega.example.yolo.data.DataType;
 import com.omega.example.yolo.data.DetectionDataLoader;
 import com.omega.example.yolo.model.YoloBox;
 import com.omega.example.yolo.utils.LabelFileType;
-import com.omega.example.yolo.utils.YoloImageUtils;
-import jakarta.annotation.PostConstruct;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 
-import java.io.File;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import jakarta.annotation.PostConstruct;
 
 /**
  * Yolo3模型初始化类
@@ -71,12 +72,13 @@ public class Yolov3Service extends ModelAbstract{
             String name = this.modelData.getConfig().getStr("name");
             this.im_w = this.modelData.getConfig().getInt("image_width");
             this.im_h = this.modelData.getConfig().getInt("image_height");
-            Yolo netWork = new Yolo(LossType.yolov3, UpdaterType.adamw);
-            netWork.CUDNN = cudnn;
-            netWork.RUN_MODEL = RunModel.TEST;
-            ModelLoader.loadConfigToModel(netWork, path+ File.separator + cfg);
-            ModelUtils.loadModel(netWork, path+ File.separator + name);
-            return netWork;
+            Yolo network = new Yolo(LossType.yolov3, UpdaterType.adamw);
+            network.CUDNN = cudnn;
+            network.RUN_MODEL = RunModel.TEST;
+            ModelLoader.loadConfigToModel(network, path+ File.separator + cfg);
+            network.init();
+            ModelUtils.loadModel(network, path+ File.separator + name);
+            return network;
         } catch (Exception e) {
             logger.error("Error loading yolov3: {}", e);
         }
@@ -84,10 +86,9 @@ public class Yolov3Service extends ModelAbstract{
     }
 
     public String predict(String url) throws Exception {
-        Yolo netWork = getNetwork();
+        Yolo network = getNetwork();
         DetectionDataLoader data = new DetectionDataLoader(url, null, LabelFileType.txt, im_w, im_h, class_num, batchSize, DataType.yolov3);
-        MBSGDOptimizer optimizer = new MBSGDOptimizer(netWork, 10, 0.001f, batchSize, LearnRateUpdate.SMART_HALF, false);
-        List<YoloBox> draw_bbox = optimizer.showObjectRecognitionYoloV3(data, batchSize);
+        List<YoloBox> draw_bbox = MBSGDOptimizer.showObjectRecognitionYoloV3(network, data, batchSize);
         String[] labelset = new String[]{"unmask", "mask"};
         String outputPath = FileUtils.mkdir(JarUrlUtils.getJarPath() + File.separator + model_type + File.separator + UUID.randomUUID().toString());
         List<String> list = showImg(outputPath, data, class_num, draw_bbox, batchSize, false, im_w, im_h, labelset);

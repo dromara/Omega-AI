@@ -70,12 +70,13 @@ public class Yolov7Service extends ModelAbstract{
             String name = this.modelData.getConfig().getStr("name");
             this.im_w = this.modelData.getConfig().getInt("image_width");
             this.im_h = this.modelData.getConfig().getInt("image_height");
-            Yolo netWork = new Yolo(LossType.yolov7, UpdaterType.adamw);
-            netWork.CUDNN = cudnn;
-            netWork.RUN_MODEL = RunModel.TEST;
-            ModelLoader.loadConfigToModel(netWork, path+ File.separator + cfg);
-            ModelUtils.loadModel(netWork, path+ File.separator + name);
-            return netWork;
+            Yolo network = new Yolo(LossType.yolov7, UpdaterType.adamw);
+            network.CUDNN = cudnn;
+            network.RUN_MODEL = RunModel.TEST;
+            ModelLoader.loadConfigToModel(network, path+ File.separator + cfg);
+            network.init();
+            ModelUtils.loadModel(network, path+ File.separator + name);
+            return network;
         } catch (Exception e) {
             logger.error("Error loading yolo7: {}", e);
         }
@@ -85,8 +86,7 @@ public class Yolov7Service extends ModelAbstract{
     public String predict(String url) throws Exception {
         Yolo netWork = getNetwork();
         DetectionDataLoader data = new DetectionDataLoader(url, null, LabelFileType.txt, im_w, im_h, class_num, batchSize, DataType.yolov3);
-        MBSGDOptimizer optimizer = new MBSGDOptimizer(netWork, 10, 0.001f, batchSize, LearnRateUpdate.SMART_HALF, false);
-        List<YoloBox> draw_bbox = optimizer.showObjectRecognitionYoloV3(data, batchSize);
+        List<YoloBox> draw_bbox = MBSGDOptimizer.showObjectRecognitionYoloV3(netWork, data, batchSize);
         String[] labelset = new String[]{"unmask", "mask"};
         String outputPath = FileUtils.mkdir(JarUrlUtils.getJarPath() + File.separator + model_type) + File.separator + UUID.randomUUID().toString();
         List<String> list = showImg(outputPath, data, class_num, draw_bbox, batchSize, false, im_w, im_h, labelset);
