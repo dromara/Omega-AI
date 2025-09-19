@@ -36,10 +36,15 @@ Omega-AI：基于java打造的深度学习框架，帮助你快速搭建神经�
 - gitee: https://gitee.com/hay_lee/omega-llama3-base
 - github: https://github.com/haylee2025/omega-llama3-base
 
-chat模型权重：
+医疗问答模型权重：
 
 - gitee: https://gitee.com/hay_lee/omega-llama3-chat
 - github: https://github.com/haylee2025/omega-llama3-chat
+
+yolo检测模型权重：
+
+- https://gitee.com/hay_lee/omega-yolo-v3（口罩检测）
+- https://gitee.com/hay_lee/omega-yolo-v7（安全帽检测）
 
 2. 配置
 
@@ -49,6 +54,8 @@ application.yml
 model:
   path:
    - F:\LLM\llama3
+   - F:\LLM\yolov3
+   - F:\LLM\yolov7
 ```
 
 
