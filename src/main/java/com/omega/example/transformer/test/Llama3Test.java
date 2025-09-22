@@ -585,7 +585,73 @@ public class Llama3Test {
             e.printStackTrace();
         }
     }
-
+    
+    public static void llama3_monkey_zc_qa_sft() {
+        try {
+            boolean bias = false;
+            boolean dropout = false;
+            boolean flashAttention = false;
+            int batchSize = 8;
+            int max_len = 512;
+            int embedDim = 512;
+            int head_num = 16;
+            int nKVHeadNum = 8;
+            int decoderNum = 8;
+            String trainPath = "D:\\dataset\\zc\\zc.csv";
+            String vocabPath = "D:\\models\\llm\\bpe_tokenizer\\vocab.json";
+            String mergesPath = "D:\\models\\llm\\bpe_tokenizer\\merges.txt";
+            BPETokenizer3 tokenizer = new BPETokenizer3(vocabPath, mergesPath);
+            SFTDataset trainData = new SFTDataset(trainPath, max_len, batchSize, tokenizer);
+            Llama3 network = new Llama3(LossType.softmax_with_cross_entropy_idx, UpdaterType.adamw, head_num, nKVHeadNum, decoderNum, trainData.vocab_size, max_len, embedDim, bias, dropout, flashAttention);
+            network.learnRate = 1e-4f;
+            String model_path = "D:\\models\\llm\\llama3-26m-chinese.model";
+            ModelUtils.loadModel(network, model_path);
+            EDOptimizer optimizer = new EDOptimizer(network, batchSize, 30, 0.0001f, LearnRateUpdate.CONSTANT, false);
+            //			optimizer.lr_step = new int[] {1, 2, 4};
+            optimizer.trainLlama3_chinese_sft(trainData, 1, false);
+            String save_model_path = "D:\\models\\llama3-26m-zc-qa.model";
+            ModelUtils.saveModel(network, save_model_path);
+            network.RUN_MODEL = RunModel.TEST;
+            Scanner scanner = new Scanner(System.in);
+            Tensor testInput = null;
+            while (true) {
+                System.out.println("请输入中文:");
+                String input_txt = scanner.nextLine();
+                if (input_txt.equals("exit")) {
+                    break;
+                }
+                input_txt = input_txt.toLowerCase();
+                String qaStr = tokenizer.sos_str() + "user\n" + input_txt + tokenizer.eos_str() + "\n";
+                int[] idx = tokenizer.encodeInt(qaStr);
+                int startLen = idx.length;
+                Tensor input = loadByTxtToIdx(testInput, idx);
+                Tensor[] pos = RoPEKernel.getCosAndSin(input.number, network.embedDim, network.headNum);
+                for (int t = 0; t < max_len - startLen; t++) {
+                    network.time = input.number;
+                    Tensor cos = pos[0];
+                    Tensor sin = pos[1];
+                    Tensor output = network.forward(cos, sin, input);
+                    output.syncHost();
+                    int nextIDX = output2NextIDXTopN(output, idx.length - 1, 1, network.cudaManager);
+                    idx = Arrays.copyOf(idx, idx.length + 1);
+                    idx[idx.length - 1] = nextIDX;
+//                    System.out.println("chatbot:" + tokenizer.decode(idx));
+                    if (nextIDX == tokenizer.eos) {
+                        break;
+                    }
+                    input = loadByTxtToIdx(testInput, idx);
+                    RoPEKernel.getCosAndSin(input.number, network.embedDim, network.headNum, pos);
+                }
+                int[] awIdx = Arrays.copyOfRange(idx, startLen, idx.length);
+                System.out.println("chatbot:" + tokenizer.decode(awIdx).replaceAll("<s>assistant\n", ""));
+            }
+            scanner.close();
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
     public static Tensor loadByTxtToIdx(Tensor testInput, int[] idxs) {
         testInput = Tensor.createTensor(testInput, idxs.length, 1, 1, 1, true);
         for (int t = 0; t < idxs.length; t++) {
@@ -825,9 +891,11 @@ public class Llama3Test {
             //			llama3_monkey_sft();
             //			llama3_monkey_sft_test();
             //			llama3_monkey_med_sft();
-            			llama3_monkey_med_predict();
+//            			llama3_monkey_med_predict();
             //			llama3_monkey_sql_sft();
             //			llama3_monkey_sql_predict();
+        	llama3_monkey_zc_qa_sft();
+//        	llama3_monkey_med_predict();
         } catch (Exception e) {
             // TODO: handle exception
             e.printStackTrace();

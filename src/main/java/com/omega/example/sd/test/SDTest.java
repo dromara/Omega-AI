@@ -1162,8 +1162,9 @@ public class SDTest {
         int height = 32;
         int width = 32;
         int textEmbedDim = 768;
+        int maxContext = 1;
         
-        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, textEmbedDim, BinDataType.float32);
+        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, maxContext, textEmbedDim, BinDataType.float32);
         
         int unetHeadNum = 8;
         int[] downChannels = new int[]{128, 256, 512, 512};

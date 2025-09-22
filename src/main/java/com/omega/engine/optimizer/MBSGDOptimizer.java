@@ -2309,10 +2309,9 @@ public class MBSGDOptimizer extends Optimizer {
                     network.back(lossDiffs);
                     /**
                      * update
-
                      */
                     this.network.update();
-                    String msg = "training[" + this.trainIndex + "]{" + it + "} (lr:" + this.network.learnRate + ") [costTime:" + (System.nanoTime() - start) / 1e6 + "ms.]";
+                    String msg = "training[" + this.trainIndex + "]{" + (it + 1) + "/" + indexs.length + "} (lr:" + this.network.learnRate + ") [costTime:" + (System.nanoTime() - start) / 1e6 + "ms.]";
                     System.out.println(msg);
                     this.batchIndex++;
                 }
@@ -7003,7 +7002,7 @@ public class MBSGDOptimizer extends Optimizer {
                 this.network.learnRate = (float) (this.lr * Math.pow(batchIndex * 1.0f / burnIn * 1.0f, power));
             }
             Tensor latend = new Tensor(batchSize, trainingData.channel, trainingData.height, trainingData.width, true);
-            Tensor condInput = new Tensor(batchSize , 1, 1, trainingData.clipEmbd, true);
+            Tensor condInput = new Tensor(batchSize * trainingData.clipMaxTime, 1, 1, trainingData.clipEmbd, true);
             
             Tensor xt = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
             Tensor ut = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
@@ -7145,7 +7144,7 @@ public class MBSGDOptimizer extends Optimizer {
                 this.network.learnRate = (float) (this.lr * Math.pow(batchIndex * 1.0f / burnIn * 1.0f, power));
             }
             Tensor latend = new Tensor(batchSize, trainingData.channel, trainingData.height, trainingData.width, true);
-            Tensor condInput = new Tensor(batchSize , 1, 1, trainingData.clipEmbd, true);
+            Tensor condInput = new Tensor(batchSize * trainingData.clipMaxTime, 1, 1, trainingData.clipEmbd, true);
             
             Tensor xt = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
             Tensor ut = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
@@ -7253,11 +7252,13 @@ public class MBSGDOptimizer extends Optimizer {
                     String msg = "training[" + this.trainIndex+"]{" + it + "/" + indexs.length + "} (lr:" + this.network.learnRate + ") train_loss:" + this.currentError + " [costTime:" + (System.nanoTime() - start) / 1e6 + "ms.]";
                     System.out.println(msg);
                     this.batchIndex++;
-                    /**
-                     * update learning rate
-                     */
-                    this.updateLR(this.lr_step);
-                    updateLRDynamic(i * trainingData.count_it + it, this.trainTime * trainingData.count_it, 1e-6f);
+                    if(learnRateUpdate != LearnRateUpdate.CONSTANT) {
+                    	/**
+                         * update learning rate
+                         */
+                        this.updateLR(this.lr_step);
+                        updateLRDynamic(i * trainingData.count_it + it, this.trainTime * trainingData.count_it, 1e-6f);
+                    }
                 }
                
                 if (i > 0 && i % weightCount == 0) {

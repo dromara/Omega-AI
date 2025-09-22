@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.concurrent.CompletableFuture;
 
+import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MathUtils;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
@@ -24,6 +25,7 @@ public class LatendDataset extends BaseTokenizer {
 	public int height;
 	public int width;
 	public int clipEmbd;
+	public int clipMaxTime;
 	
     public int number = 0;
     public int count_it = 0;
@@ -48,7 +50,7 @@ public class LatendDataset extends BaseTokenizer {
     
 	private ICPlanKernel icplan;
 
-    public LatendDataset(String dataPath, String clipDataPath, int batchSize, int channel, int height, int width, int clipEmbd, BinDataType dataType) {
+    public LatendDataset(String dataPath, String clipDataPath, int batchSize, int channel, int height, int width, int clipMaxTime, int clipEmbd, BinDataType dataType) {
         this.dataType = dataType;
         if (dataType == BinDataType.unint16) {
             byteUnit = 2;
@@ -59,6 +61,7 @@ public class LatendDataset extends BaseTokenizer {
         this.height = height;
         this.width = width;
         this.clipEmbd = clipEmbd;
+        this.clipMaxTime = clipMaxTime;
         this.max_len = channel * height * width;
         this.batchSize = batchSize;
         loadBinCount();
@@ -77,7 +80,7 @@ public class LatendDataset extends BaseTokenizer {
             clipFile = new RandomAccessFile(clipDataPath, "r");
             number = (int) (file.length() / max_len / byteUnit);
             cache = new float[max_len];
-            clip_cache = new float[clipEmbd];
+            clip_cache = new float[clipMaxTime * clipEmbd];
         } catch (Exception e) {
             // TODO: handle exception
             e.printStackTrace();
@@ -102,8 +105,10 @@ public class LatendDataset extends BaseTokenizer {
             if ((index + 1) * max_len * byteUnit <= file.length()) {
                 //				System.out.println(index);
                 if (dataType == BinDataType.float32) {
-                    ModelUtils.readFloat(file, cache);
-                    ModelUtils.readFloat(clipFile, clip_cache);
+//                    ModelUtils.readFloat(file, cache);
+//                    ModelUtils.readFloat(clipFile, clip_cache);
+                	 ModelUtils.readFloatArray(file, cache);
+                     ModelUtils.readFloatArray(clipFile, clip_cache);
                 }
                 file.seek(file.getFilePointer());
                 clipFile.seek(clipFile.getFilePointer());
@@ -123,13 +128,13 @@ public class LatendDataset extends BaseTokenizer {
         try {
             if (idx * max_len * byteUnit <= file.length()) {
             	long fi = idx * max_len * byteUnit;
-            	long cfi = idx * clipEmbd * byteUnit;
+            	long cfi = idx * clipMaxTime * clipEmbd * byteUnit;
 //            	System.err.println(fi);
             	file.seek(fi);
                 clipFile.seek(cfi);
                 if (dataType == BinDataType.float32) {
-                    ModelUtils.readFloat(file, cache);
-                    ModelUtils.readFloat(clipFile, clip_cache);
+                    ModelUtils.readFloatArray(file, cache);
+                    ModelUtils.readFloatArray(clipFile, clip_cache);
                 }
                 
             } else {
@@ -206,8 +211,8 @@ public class LatendDataset extends BaseTokenizer {
                     for (int t = 0; t < max_len; t++) {
                         formatNotHeadToIdx(b, t, max_len, onceToken, input);
                     }
-                    for(int t = 0;t < clipEmbd;t++) {
-                    	formatNotHeadToIdx(b, t, clipEmbd, clipToken, label);
+                    for(int t = 0;t < clipMaxTime * clipEmbd;t++) {
+                    	formatNotHeadToIdx(b, t, clipMaxTime * clipEmbd, clipToken, label);
                     }
                 }
             } catch (Exception e) {
@@ -229,8 +234,8 @@ public class LatendDataset extends BaseTokenizer {
                     for (int t = 0; t < max_len; t++) {
                         formatNotHeadToIdx(b, t, max_len, onceToken, input);
                     }
-                    for(int t = 0;t < clipEmbd;t++) {
-                    	formatNotHeadToIdx(b, t, clipEmbd, clipToken, label);
+                    for(int t = 0;t < clipMaxTime * clipEmbd;t++) {
+                    	formatNotHeadToIdx(b, t, clipMaxTime * clipEmbd, clipToken, label);
                     }
                 }
             } catch (Exception e) {
@@ -247,12 +252,12 @@ public class LatendDataset extends BaseTokenizer {
             try {
                 for (int b = 0; b < batchSize; b++) {
                 	float[] onceToken = readIdxData();
-                	 float[] clipToken = clip_cache;
+                	float[] clipToken = clip_cache;
                 	for (int t = 0; t < max_len; t++) {
                 		formatNotHeadToIdx(b, t, onceToken, input);
                     }
-                	for(int t = 0;t < clipEmbd;t++) {
-                    	formatNotHeadToIdx(b, t, clipEmbd, clipToken, label);
+                	for(int t = 0;t < clipMaxTime * clipEmbd;t++) {
+                    	formatNotHeadToIdx(b, t, clipMaxTime * clipEmbd, clipToken, label);
                     }
                 }
             } catch (Exception e) {

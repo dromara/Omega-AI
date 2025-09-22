@@ -148,7 +148,7 @@ public class DatasetCreator {
             MBSGDOptimizer.showVideos(config.getStr("test_path"), num_frames, output, 0+"", mean, std);
         } else if (mode.equals("dataset")) {
 
-            LatendDataset dataLoaderLantend = new LatendDataset(outputDataPath, clipDataPath, batchSize, 24, 32, 32, textEmbedDim, BinDataType.float32);
+            LatendDataset dataLoaderLantend = new LatendDataset(outputDataPath, clipDataPath, batchSize, 24, 32, 32, 1, textEmbedDim, BinDataType.float32);
             Tensor latend = new Tensor(batchSize, dataLoaderLantend.channel, dataLoaderLantend.height, dataLoaderLantend.width, true);
             Tensor condInput = new Tensor(batchSize, 1, 1, dataLoaderLantend.clipEmbd, true);
 
@@ -265,7 +265,7 @@ public class DatasetCreator {
             MBSGDOptimizer.showVideos(config.getStr("test_path"), num_frames, output, 0+"", mean, std);
         } else if (mode.equals("dataset")) {
 
-            LatendDataset dataLoaderLantend = new LatendDataset(outputDataPath, clipDataPath, batchSize, 40, 32, 32, textEmbedDim, BinDataType.float32);
+            LatendDataset dataLoaderLantend = new LatendDataset(outputDataPath, clipDataPath, batchSize, 40, 32, 32, 1, textEmbedDim, BinDataType.float32);
             Tensor latend = new Tensor(batchSize, dataLoaderLantend.channel, dataLoaderLantend.height, dataLoaderLantend.width, true);
             Tensor condInput = new Tensor(batchSize, 1, 1, dataLoaderLantend.clipEmbd, true);
 

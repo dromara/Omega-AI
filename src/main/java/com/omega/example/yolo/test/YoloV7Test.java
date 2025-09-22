@@ -116,8 +116,9 @@ public class YoloV7Test {
             //			y.yolov3_show2();
             //			y.createMaskTrainTestDataSet();
 //            			y.yolov7_tiny_mask();
-            y.yolov7_tiny_mask_test();
+//            y.yolov7_tiny_mask_test();
 //            y.yolov7_tiny_helmet();
+            y.yolov7_tiny_helmet_test();
             //			y.yolov7_tiny_sm();
             //			y.yolov7_tiny_yz();
             //			y.yolov3_tiny_voc();
@@ -175,31 +176,36 @@ public class YoloV7Test {
     public void yolov7_tiny_helmet() {
         int im_w = 416;
         int im_h = 416;
-        int batchSize = 12;
+        int batchSize = 64;
         int class_num = 5;
         String[] labelset = new String[]{"none", "white", "yellow", "blue", "red"};
         try {
-            String cfg_path = "H:\\voc\\helmet_dataset\\yolov7-tiny-helmet.cfg";
-            String trainPath = "H:\\voc\\helmet\\resized\\train";
-            String trainLabelPath = "H:\\voc\\helmet\\resized\\train_label.txt";
-            String testPath = "H:\\voc\\helmet\\resized\\vail";
-            String testLabelPath = "H:\\voc\\helmet\\resized\\vail_label.txt";
-            String weightPath = "H:\\voc\\darknet_yolov7\\yolov7-tiny.conv.87";
+            String cfg_path = "D:\\dataset\\hetmet\\yolov7-tiny-helmet.cfg";
+            String trainPath = "D:\\dataset\\hetmet\\train";
+            String trainLabelPath = "D:\\dataset\\hetmet\\train_label.txt";
+            String testPath = "D:\\dataset\\hetmet\\vail";
+            String testLabelPath = "D:\\dataset\\hetmet\\vail_label.txt";
+//            String weightPath = "H:\\voc\\darknet_yolov7\\yolov7-tiny.conv.87";
             DetectionDataLoader trainData = new DetectionDataLoader(trainPath, trainLabelPath, LabelFileType.txt, im_w, im_h, class_num, batchSize, DataType.yolov3);
             DetectionDataLoader vailData = new DetectionDataLoader(testPath, testLabelPath, LabelFileType.txt, im_w, im_h, class_num, batchSize, DataType.yolov3);
             Yolo netWork = new Yolo(LossType.yolov7, UpdaterType.adamw);
             netWork.CUDNN = true;
             netWork.learnRate = 0.001f;
             ModelLoader.loadConfigToModel(netWork, cfg_path);
-            DarknetLoader.loadWeight(netWork, weightPath, 86, true);
+//            DarknetLoader.loadWeight(netWork, weightPath, 86, true);
             MBSGDOptimizer optimizer = new MBSGDOptimizer(netWork, 1000, 0.001f, batchSize, LearnRateUpdate.SMART_HALF, false);
+            optimizer.lr_step = new int[]{200, 500, 850};
             optimizer.trainObjectRecognitionOutputs(trainData, vailData);
             /**
+             * 导出模型
+             */
+            String save_model_path = "D:\\models\\yolov7-halmet.model";
+            ModelUtils.saveModel(netWork, save_model_path);
+            /**
              * 处理测试预测结果
-
              */
             List<YoloBox> draw_bbox = optimizer.showObjectRecognitionYoloV7(vailData, batchSize);
-            String outputPath = "H:\\voc\\helmet\\test_yolov7\\";
+            String outputPath = "D:\\dataset\\helmet\\test_yolov7\\";
             showImg(outputPath, vailData, class_num, draw_bbox, batchSize, false, im_w, im_h, labelset);
         } catch (Exception e) {
             // TODO: handle exception
@@ -214,6 +220,51 @@ public class YoloV7Test {
         }
     }
 
+    public void yolov7_tiny_helmet_test() {
+    	int im_w = 416;
+        int im_h = 416;
+        int batchSize = 64;
+        int class_num = 5;
+        String[] labelset = new String[]{"none", "white", "yellow", "blue", "red"};
+        try {
+        	String cfg_path = "D:\\dataset\\hetmet\\yolov7-tiny-helmet.cfg";
+           
+        	String testPath = "D:\\dataset\\hetmet\\vail";
+            String testLabelPath = "D:\\dataset\\hetmet\\vail_label.txt";
+
+            DetectionDataLoader vailData = new DetectionDataLoader(testPath, testLabelPath, LabelFileType.txt, im_w, im_h, class_num, batchSize, DataType.yolov3);
+            Yolo netWork = new Yolo(LossType.yolov7, UpdaterType.adamw);
+            netWork.CUDNN = true;
+            netWork.learnRate = 0.001f;
+            ModelLoader.loadConfigToModel(netWork, cfg_path);
+
+            MBSGDOptimizer optimizer = new MBSGDOptimizer(netWork, 1000, 0.001f, batchSize, LearnRateUpdate.SMART_HALF, false);
+            
+            /**
+             * 导出模型
+             */
+            String model_path = "D:\\models\\yolov7-halmet.model";
+            ModelUtils.loadModel(netWork, model_path);
+            
+            /**
+             * 处理测试预测结果
+             */
+            List<YoloBox> draw_bbox = optimizer.showObjectRecognitionYoloV7(vailData, batchSize);
+            String outputPath = "D:\\dataset\\hetmet\\test_yolov7\\";
+            showImg(outputPath, vailData, class_num, draw_bbox, batchSize, false, im_w, im_h, labelset);
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        } finally {
+            try {
+                CUDAMemoryManager.freeAll();
+            } catch (Exception e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+    }
+    
     public void yolov3_tiny_voc() {
         int im_w = 416;
         int im_h = 416;

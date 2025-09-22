@@ -248,7 +248,7 @@ public class DiT_TXTMainMoudue extends Layer {
     	Tensor t = timeEmbd.getOutput();
     	
     	Tensor cond = labelEmbd.getOutput();
-    	
+
     	for(int i = 0;i<depth;i++) {
     		DiT_TXTBlock block = blocks.get(i);
     		block.forward(x, t, cond, cos, sin);

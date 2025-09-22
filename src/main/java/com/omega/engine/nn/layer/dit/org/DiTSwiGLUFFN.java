@@ -13,7 +13,7 @@ import com.omega.engine.nn.network.CNN;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
-import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
@@ -284,10 +284,10 @@ public class DiTSwiGLUFFN extends Layer {
                 System.out.println(key);
             }
         }
-        ClipModelUtils.loadData(block.w12.weight, weightMap, "w12.weight");
-        ClipModelUtils.loadData(block.w12.bias, weightMap, "w12.bias");
-        ClipModelUtils.loadData(block.w3.weight, weightMap, "w3.weight");
-        ClipModelUtils.loadData(block.w3.bias, weightMap, "w3.bias");
+        ModeLoaderlUtils.loadData(block.w12.weight, weightMap, "w12.weight");
+        ModeLoaderlUtils.loadData(block.w12.bias, weightMap, "w12.bias");
+        ModeLoaderlUtils.loadData(block.w3.weight, weightMap, "w3.weight");
+        ModeLoaderlUtils.loadData(block.w3.bias, weightMap, "w3.bias");
     }
     
     public static void main(String[] args) {
@@ -300,7 +300,7 @@ public class DiTSwiGLUFFN extends Layer {
         String inputPath = "c:\\temp\\dit.json";
         Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
         Tensor input = new Tensor(N, C, H, W, true);
-        ClipModelUtils.loadData(input, datas, "x", 4);
+        ModeLoaderlUtils.loadData(input, datas, "x", 4);
 
         CNN nn = new CNN(null);
         nn.CUDNN = true;
@@ -318,7 +318,7 @@ public class DiTSwiGLUFFN extends Layer {
         String deltaPath = "c:\\temp\\dit_delta.json";
         Map<String, Object> datas2 = LagJsonReader.readJsonFileSmallWeight(deltaPath);
         Tensor delta = new Tensor(N, C, H, W, true);
-        ClipModelUtils.loadData(delta, datas2, "delta", 4);
+        ModeLoaderlUtils.loadData(delta, datas2, "delta", 4);
 
         diTSwiGLUFFN.back(delta);
         diTSwiGLUFFN.diff.showDMByNumber(2);

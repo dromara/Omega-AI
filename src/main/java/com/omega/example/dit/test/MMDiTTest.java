@@ -32,6 +32,7 @@ import com.omega.example.transformer.utils.bpe.BPETokenizerEN;
 import com.omega.example.transformer.utils.bpe.BinDataType;
 
 import jcuda.driver.JCudaDriver;
+import jcuda.runtime.JCuda;
 
 public class MMDiTTest {
 	
@@ -284,8 +285,9 @@ public class MMDiTTest {
         int height = 32;
         int width = 32;
         int textEmbedDim = 768;
+        int maxContext = 1;
         
-        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, textEmbedDim, BinDataType.float32);
+        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, maxContext, textEmbedDim, BinDataType.float32);
         
         int ditHeadNum = 12;
         int latendSize = 32;
@@ -295,7 +297,7 @@ public class MMDiTTest {
         int patchSize = 2;
         int hiddenSize = 768;
         
-        MMDiT dit = new MMDiT(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, 1, textEmbedDim, mlpRatio, false, false);
+        MMDiT dit = new MMDiT(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, maxContext, textEmbedDim, mlpRatio, false, false);
         dit.CUDNN = true;
         dit.learnRate = 1e-4f;
         
@@ -316,8 +318,9 @@ public class MMDiTTest {
         int height = 32;
         int width = 32;
         int textEmbedDim = 768;
+        int maxContext = 1;
         
-        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, textEmbedDim, BinDataType.float32);
+        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, maxContext, textEmbedDim, BinDataType.float32);
         
         int ditHeadNum = 12;
         int latendSize = 32;
@@ -327,7 +330,7 @@ public class MMDiTTest {
         int patchSize = 2;
         int hiddenSize = 768;
         
-        MMDiT dit = new MMDiT(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, 1, textEmbedDim, mlpRatio, false, false);
+        MMDiT dit = new MMDiT(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, maxContext, textEmbedDim, mlpRatio, false, false);
         dit.CUDNN = true;
         dit.learnRate = 1e-4f;
         
@@ -348,8 +351,9 @@ public class MMDiTTest {
         int height = 16;
         int width = 16;
         int textEmbedDim = 768;
+        int maxContext = 1;
         
-        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, textEmbedDim, BinDataType.float32);
+        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, maxContext, textEmbedDim, BinDataType.float32);
         
         int ditHeadNum = 16;
         int latendSize = 16;
@@ -392,8 +396,9 @@ public class MMDiTTest {
         int height = 16;
         int width = 16;
         int textEmbedDim = 768;
+        int maxContext = 1;
         
-        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, textEmbedDim, BinDataType.float32);
+        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, maxContext, textEmbedDim, BinDataType.float32);
         
         int[][] indexs = dataLoader.shuffle();
 
@@ -450,8 +455,9 @@ public class MMDiTTest {
         int height = 32;
         int width = 32;
         int textEmbedDim = 768;
+        int maxContext = 1;
         
-        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, textEmbedDim, BinDataType.float32);
+        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, maxContext, textEmbedDim, BinDataType.float32);
         
         int ditHeadNum = 12;
         int latendSize = 32;
@@ -463,7 +469,7 @@ public class MMDiTTest {
         
         float y_prob = 0.0f;
         
-        MMDiT_RoPE dit = new MMDiT_RoPE(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, 1, textEmbedDim, mlpRatio, false, false, y_prob);
+        MMDiT_RoPE dit = new MMDiT_RoPE(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, maxContext, textEmbedDim, mlpRatio, false, false, y_prob);
         dit.CUDNN = true;
         dit.learnRate = 1e-4f;
         
@@ -484,8 +490,9 @@ public class MMDiTTest {
         int height = 32;
         int width = 32;
         int textEmbedDim = 768;
+        int maxContext = 1;
         
-        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, textEmbedDim, BinDataType.float32);
+        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, maxContext, textEmbedDim, BinDataType.float32);
         
         int ditHeadNum = 12;
         int latendSize = 32;
@@ -497,7 +504,7 @@ public class MMDiTTest {
         
         float y_prob = 0.0f;
         
-        MMDiT_RoPE dit = new MMDiT_RoPE(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, 1, textEmbedDim, mlpRatio, true, false, y_prob);
+        MMDiT_RoPE dit = new MMDiT_RoPE(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, maxContext, textEmbedDim, mlpRatio, true, false, y_prob);
         dit.CUDNN = true;
         dit.learnRate = 1e-4f;
         
@@ -518,8 +525,9 @@ public class MMDiTTest {
         int height = 16;
         int width = 16;
         int textEmbedDim = 768;
+        int maxContext = 1;
         
-        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, textEmbedDim, BinDataType.float32);
+        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, maxContext, textEmbedDim, BinDataType.float32);
         
         int ditHeadNum = 12;
         int latendSize = 16;
@@ -555,8 +563,9 @@ public class MMDiTTest {
         int height = 16;
         int width = 16;
         int textEmbedDim = 768;
+        int maxContext = 1;
         
-        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, textEmbedDim, BinDataType.float32);
+        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, maxContext, textEmbedDim, BinDataType.float32);
         
         int ditHeadNum = 12;
         int latendSize = 16;
@@ -585,15 +594,16 @@ public class MMDiTTest {
 	
 	public static void mmdit_rope_icplan_vavae_train_by_latend() throws Exception {
 		String dataPath = "D:\\dataset\\amine\\dalle_vavae_latend.bin";
-        String clipDataPath = "D:\\dataset\\amine\\dalle_vavae_clip.bin";
+		String clipDataPath = "D:\\dataset\\amine\\dalle_full_clip.bin";
 
-        int batchSize = 128;
+        int batchSize = 80;
         int latendDim = 32;
         int height = 16;
         int width = 16;
         int textEmbedDim = 768;
+        int maxContext = 77;
         
-        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, textEmbedDim, BinDataType.float32);
+        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, maxContext, textEmbedDim, BinDataType.float32);
         
         int ditHeadNum = 12;
         int latendSize = 16;
@@ -605,20 +615,20 @@ public class MMDiTTest {
         
         float y_prob = 0.1f;
         
-        MMDiT_RoPE dit = new MMDiT_RoPE(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, 1, textEmbedDim, mlpRatio, false, false, y_prob);
+        MMDiT_RoPE dit = new MMDiT_RoPE(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, maxContext, textEmbedDim, mlpRatio, false, false, y_prob);
         dit.CUDNN = true;
         dit.learnRate = 2e-4f;
         
         ICPlan icplan = new ICPlan(dit.tensorOP);
         
-        String model_path = "D:\\models\\mmdit_txt\\mmdit_b2_12.model";
+        String model_path = "D:\\models\\mmdit_txt\\mmdit_b2_80.model";
         ModelUtils.loadModel(dit, model_path);
         
         //[0.36209077,0.34246936,0.03916853,-0.7581294,-0.50265115,-1.4848584,-0.25350654,0.0022692683,0.31434557,0.67406607,-1.113704,1.8375901,0.43925026,0.6293017,0.15503637,0.66651136,-0.42939582,1.1174294,-0.23904829,-0.51023465,0.20711847,0.27107316,-1.1623157,0.63862765,2.7858343,1.3301827,0.25827444,0.09076775,-0.73571634,-0.76543826,-0.2284536,-0.25473866]
         Tensor mean = new Tensor(latendDim, 1, 1, 1, new float[] {0.36209077f,0.34246936f,0.03916853f,-0.7581294f,-0.50265115f,-1.4848584f,-0.25350654f,0.0022692683f,0.31434557f,0.67406607f,-1.113704f,1.8375901f,0.43925026f,0.6293017f,0.15503637f,0.66651136f,-0.42939582f,1.1174294f,-0.23904829f,-0.51023465f,0.20711847f,0.27107316f,-1.1623157f,0.63862765f,2.7858343f,1.3301827f,0.25827444f,0.09076775f,-0.73571634f,-0.76543826f,-0.2284536f,-0.25473866f}, true);
         Tensor std = new Tensor(latendDim, 1, 1, 1, new float[] {4.0305715f,3.959789f,3.3429358f,3.5258765f,3.5461488f,3.2800286f,2.9791868f,3.5610123f,3.7220504f,3.6047544f,3.6217303f,3.6929665f,3.7137527f,3.547161f,3.129107f,3.2699404f,3.9751647f,3.5798419f,3.5755775f,2.993807f,3.307327f,2.9431422f,3.7664766f,4.361744f,2.782811f,3.50273f,4.6768026f,3.184667f,3.1453266f,3.689573f,4.50944f,4.19704f}, true);
 
-        MBSGDOptimizer optimizer = new MBSGDOptimizer(dit, 200, 0.00001f, batchSize, LearnRateUpdate.CONSTANT, false);
+        MBSGDOptimizer optimizer = new MBSGDOptimizer(dit, 200, 0.00001f, batchSize, LearnRateUpdate.GD_GECAY, false);
         
         optimizer.train_MMDiT_TXT_ICPlan(dataLoader, icplan, "D:\\models\\mmdit_txt\\", mean, std, 1f, 20);
         
@@ -698,8 +708,9 @@ public class MMDiTTest {
         int height = 32;
         int width = 32;
         int textEmbedDim = 768;
+        int maxContext = 1;
         
-        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, textEmbedDim, BinDataType.float32);
+        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, maxContext, textEmbedDim, BinDataType.float32);
 		
         Tensor latend = new Tensor(batchSize, dataLoader.channel, dataLoader.height, dataLoader.width, true);
         Tensor condInput = new Tensor(batchSize , 1, 1, dataLoader.clipEmbd, true);
@@ -1277,13 +1288,13 @@ public class MMDiTTest {
         
         float y_prob = 0.0f;
         
-        MMDiT_RoPE network = new MMDiT_RoPE(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, 1, textEmbedDim, mlpRatio, false, false, y_prob);
+        MMDiT_RoPE network = new MMDiT_RoPE(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, maxPositionEmbeddingsSize, textEmbedDim, mlpRatio, false, false, y_prob);
         network.CUDNN = true;
         network.learnRate = 1e-4f;
         
         IDDPM iddpm = new IDDPM(timeSteps, BetaType.linear, network.cudaManager);
 
-        String model_path = "D:\\test\\models\\mmdit\\anime_mmdit_480.model";
+        String model_path = "D:\\models\\mmdit_txt\\mmdit_b2_160.model";
         ModelUtils.loadModel(network, model_path);
         
         Tensor label = new Tensor(batchSize * dataLoader.maxContextLen, 1, 1, 1, true);
@@ -1328,9 +1339,127 @@ public class MMDiTTest {
             dataLoader.loadLabel_offset(label, 7, labels[7], eosIds);
             dataLoader.loadLabel_offset(label, 8, labels[8], eosIds);
             dataLoader.loadLabel_offset(label, 9, labels[9], eosIds);
-	        condInput = clip.get_clip_prompt_embeds(label, eosIds, condInput);
+	        condInput = clip.get_full_clip_prompt_embeds(label);
 	        MBSGDOptimizer.testDiT_IDDPM(3 + "_"+i, latend, noise, t, condInput, cos, sin, score, network, vae, iddpm, labels, "D:\\test\\dit4\\test2\\", latend_mean, latend_std, 1);
 	        System.out.println("finish create.");
+        }
+    }
+	
+	public static void mmdit_rope_icplan_vavae_test() throws Exception {
+		String labelPath = "D:\\dataset\\amine\\data.json";
+        String imgDirPath = "D:\\dataset\\amine\\256\\";
+        boolean horizontalFilp = true;
+        int imgSize = 256;
+        int maxContextLen = 77;
+        int batchSize = 10;
+        float[] mean = new float[]{0.5f, 0.5f, 0.5f};
+        float[] std = new float[]{0.5f, 0.5f, 0.5f};
+        String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
+        String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
+        BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+        SDImageDataLoaderEN dataLoader = new SDImageDataLoaderEN(bpe, labelPath, imgDirPath, imgSize, imgSize, maxContextLen, batchSize, horizontalFilp, mean, std);
+        
+        int maxPositionEmbeddingsSize = 77;
+        int vocabSize = 49408;
+        int headNum = 12;
+        int n_layers = 12;
+        int textEmbedDim = 768;
+        int intermediateSize = 3072;
+        ClipTextModel clip = new ClipTextModel(LossType.MSE, UpdaterType.adamw, headNum, maxContextLen, vocabSize, textEmbedDim, maxPositionEmbeddingsSize, intermediateSize, n_layers);
+        clip.CUDNN = true;
+        clip.time = maxContextLen;
+        clip.RUN_MODEL = RunModel.EVAL;
+        String clipWeight = "D:\\models\\CLIP-GmP-ViT-L-14\\CLIP-GmP-ViT-L-14.json";
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, "", false);
+
+        int latendDim = 32;
+        int num_res_blocks = 2;
+        int[] ch_mult = new int[]{1, 1, 2, 2, 4};
+        int ch = 128;
+        
+        VA_VAE vae = new VA_VAE(LossType.MSE, UpdaterType.adamw, latendDim, imgSize, ch_mult, ch, num_res_blocks, true);
+        vae.CUDNN = true;
+        vae.learnRate = 0.001f;
+        vae.RUN_MODEL = RunModel.EVAL;
+        String vaeWeight = "D:\\models\\vavae.json";
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
+        
+        int ditHeadNum = 12;
+        int latendSize = 16;
+        int depth = 12;
+        int timeSteps = 1000;
+        int mlpRatio = 4;
+        int patchSize = 2;
+        int hiddenSize = 768;
+        
+        float y_prob = 0.1f;
+        
+        MMDiT_RoPE network = new MMDiT_RoPE(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, maxPositionEmbeddingsSize, textEmbedDim, mlpRatio, false, false, y_prob);
+        network.CUDNN = true;
+        network.learnRate = 1e-4f;
+        
+        ICPlan icplan = new ICPlan(network.tensorOP);
+
+        String model_path = "D:\\models\\mmdit_txt\\mmdit_b2_80.model";
+        ModelUtils.loadModel(network, model_path);
+        
+        Tensor label = new Tensor(batchSize * dataLoader.maxContextLen, 1, 1, 1, true);
+        Tensor eosIds = new Tensor(batchSize, 1, 1, 1, true);
+        
+        Tensor condInput = null;
+        Tensor t = new Tensor(batchSize, 1, 1, 1, true);
+        Tensor noise = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+        Tensor latend = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+        
+        Tensor[] cs = RoPEKernel.getCosAndSin2D(network.time, network.hiddenSize, network.headNum);
+        Tensor cos = cs[0];
+        Tensor sin = cs[1];
+
+        Tensor latendMean = new Tensor(latendDim, 1, 1, 1, new float[] {0.36209077f,0.34246936f,0.03916853f,-0.7581294f,-0.50265115f,-1.4848584f,-0.25350654f,0.0022692683f,0.31434557f,0.67406607f,-1.113704f,1.8375901f,0.43925026f,0.6293017f,0.15503637f,0.66651136f,-0.42939582f,1.1174294f,-0.23904829f,-0.51023465f,0.20711847f,0.27107316f,-1.1623157f,0.63862765f,2.7858343f,1.3301827f,0.25827444f,0.09076775f,-0.73571634f,-0.76543826f,-0.2284536f,-0.25473866f}, true);
+        Tensor latendStd = new Tensor(latendDim, 1, 1, 1, new float[] {4.0305715f,3.959789f,3.3429358f,3.5258765f,3.5461488f,3.2800286f,2.9791868f,3.5610123f,3.7220504f,3.6047544f,3.6217303f,3.6929665f,3.7137527f,3.547161f,3.129107f,3.2699404f,3.9751647f,3.5798419f,3.5755775f,2.993807f,3.307327f,2.9431422f,3.7664766f,4.361744f,2.782811f,3.50273f,4.6768026f,3.184667f,3.1453266f,3.689573f,4.50944f,4.19704f}, true);
+        
+        network.RUN_MODEL = RunModel.TEST;
+        String[] labels = new String[10];
+        for(int i = 0;i<10;i++) {
+	        System.out.println("start create test images.");
+	        labels[0] = "A cat holding a sign that says hello world";
+	        labels[1] = "a vibrant anime mountain lands";
+	        labels[2] = "a highly detailed anime landscape,big tree on the water, epic sky,golden grass,detailed.";
+	        labels[3] = "a little girl standing on the beach";
+	        labels[4] = "fruit cream cake";
+	        labels[5] = "A cheerful cartoon character swings on a swing in a serene, colorful outdoor setting.";
+	        
+	        labels[6] = "A panda sleep on the water.";
+            labels[7] = "A woman with shoulder-length blonde hair wearing a dark blouse with a floral patterned collar.";
+            labels[8] = "A small, grey crochet plush toy of a cat with pink paws and a pink nose sits on a wooden surface.";
+            labels[9] = "A group of humpback whales is swimming in the ocean, with one whale prominently in the foreground and two others in the background. The water is clear, and the whales are surrounded by a multitude of bubbles, creating a dynamic underwater scene.";
+	        dataLoader.loadLabel_offset(label, 0, labels[0], eosIds);
+	        dataLoader.loadLabel_offset(label, 1, labels[1], eosIds);
+	        dataLoader.loadLabel_offset(label, 2, labels[2], eosIds);
+	        dataLoader.loadLabel_offset(label, 3, labels[3], eosIds);
+	        dataLoader.loadLabel_offset(label, 4, labels[4], eosIds);
+	        dataLoader.loadLabel_offset(label, 5, labels[5], eosIds);
+	        dataLoader.loadLabel_offset(label, 6, labels[6], eosIds);
+            dataLoader.loadLabel_offset(label, 7, labels[7], eosIds);
+            dataLoader.loadLabel_offset(label, 8, labels[8], eosIds);
+            dataLoader.loadLabel_offset(label, 9, labels[9], eosIds);
+	        condInput = clip.get_full_clip_prompt_embeds(label);
+	        
+	        RandomUtils.gaussianRandom(noise, 0, 1);
+            
+            Tensor sample = icplan.sample(network, noise, t, condInput, cos, sin, latend);
+            
+            icplan.latend_un_norm(sample, latendMean, latendStd);
+
+            Tensor result = vae.decode(sample);
+            
+            JCuda.cudaDeviceSynchronize();
+            
+            result.data = MatrixOperation.clampSelf(result.syncHost(), -1, 1);
+
+            DiTTest.showImgs("D:\\test\\dit_vavae\\dit_1\\" + i, result, mean, std);
+            
+            System.out.println("finish create.");
         }
     }
 	
@@ -1488,7 +1617,7 @@ public class MMDiTTest {
         	
 //        	mmdit_rope_iddpm_amine_train2();
         	
-        	testClip();
+//        	testClip();
         	
 //        	mmdit_rope_iddpm_amine_train_by_latend();
         	
@@ -1524,7 +1653,9 @@ public class MMDiTTest {
 
 //        	mmdit_rope_iddpm_vavae_train_by_latend_kl();
         	
-//        	mmdit_rope_icplan_vavae_train_by_latend();
+        	mmdit_rope_icplan_vavae_train_by_latend();
+        	
+//        	mmdit_rope_icplan_vavae_test();
         	
         } catch (Exception e) {
             // TODO: handle exception

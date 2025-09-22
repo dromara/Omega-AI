@@ -378,11 +378,6 @@ public class YoloV3Test {
         String[] labelset = new String[]{"unmask", "mask"};
         try {
             String cfg_path = "D:\\dataset\\mask\\yolov3-tiny-mask.cfg";
-            //			String trainPath = "H:\\voc\\mask\\data\\dataset\\train";
-            //			String trainLabelPath = "H:\\voc\\mask\\data\\dataset\\labels\\train_label.txt";
-            //
-            //			String testPath = "H:\\voc\\mask\\data\\dataset\\vail";
-            //			String testLabelPath = "H:\\voc\\mask\\data\\dataset\\labels\\vail_label.txt";
             String trainPath = "D:\\dataset\\mask\\resized\\train";
             String trainLabelPath = "D:\\dataset\\mask\\resized\\train_label.txt";
             String testPath = "D:\\dataset\\mask\\resized\\vail";

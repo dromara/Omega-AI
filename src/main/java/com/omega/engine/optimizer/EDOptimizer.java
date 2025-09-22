@@ -2683,8 +2683,8 @@ public class EDOptimizer extends Optimizer {
             Tensor[] cs = RoPEKernel.getCosAndSin(network.time, network.embedDim, network.headNum);
             Tensor cos = cs[0];
             Tensor sin = cs[1];
-            // int pad = trainingData.tokenizer.pad();
-            int pad = -1;
+             int pad = trainingData.tokenizer.pad();
+//            int pad = -1;
             trainingData.loadData(input, label, tmpInput, tmpLabel, 0);
             for (int i = 0; i < this.trainTime; i++) {
                 if (this.trainIndex >= this.minTrainTime) {

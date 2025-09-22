@@ -11,6 +11,12 @@ import java.util.stream.IntStream;
 import com.omega.engine.tensor.Tensor;
 
 public class ModelUtils {
+
+    private final static int CHUNK_FLOATS = 16384;
+    private final static int CHUNK_BYTES = CHUNK_FLOATS * 4;
+	
+    private static byte[] buffer = new byte[CHUNK_BYTES];
+    
     public static void saveIntData(RandomAccessFile outputStream, int[] data) throws IOException {
         writeInt(outputStream, data);
     }
@@ -85,7 +91,38 @@ public class ModelUtils {
             data.hostToDevice();
         }
     }
+    
+    public static void readFloatArray(RandomAccessFile inputStream, float[] data) throws IOException {
 
+        int totalFloats = data.length;
+        int processed = 0;
+
+        while (processed < totalFloats) {
+            int remainingFloats = totalFloats - processed;
+            int floatsToRead = Math.min(remainingFloats, CHUNK_FLOATS);
+            int bytesToRead = floatsToRead * 4;
+
+            // 使用readFully确保读取完整数据
+            if (bytesToRead > 0) {
+                inputStream.readFully(buffer, 0, bytesToRead);
+
+                // 处理数据
+                for (int i = 0; i < floatsToRead; i++) {
+                    int pos = i * 4;
+                    int fbit = (buffer[pos] & 0xFF) |
+                            ((buffer[pos + 1] & 0xFF) << 8) |
+                            ((buffer[pos + 2] & 0xFF) << 16) |
+                            ((buffer[pos + 3] & 0xFF) << 24);
+
+                    data[processed + i] = Float.intBitsToFloat(fbit);
+                }
+
+                processed += floatsToRead;
+            }
+        }
+
+    }
+    
     public static void readFloat(RandomAccessFile inputStream, float[] data) throws IOException {
         for (int i = 0; i < data.length; i++) {
             float v = readFloat(inputStream);

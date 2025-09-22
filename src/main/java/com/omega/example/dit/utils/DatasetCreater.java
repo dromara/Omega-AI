@@ -4,7 +4,10 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.List;
+import java.util.Map;
 
+import com.omega.common.utils.MathUtils;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.loss.LossType;
@@ -25,17 +28,44 @@ import jcuda.driver.JCudaDriver;
 
 public class DatasetCreater {
 	
+	/**
+     * 使用缓冲区批量写入
+     *
+     * @param outputStream
+     * @param data
+     * @throws IOException
+     */
+    public static void writeFloatArray(FileOutputStream writer, float[] data) throws IOException {
+        final int BUFFER_SIZE = 16384; // 16KB缓冲区
+        byte[] buffer = new byte[BUFFER_SIZE];
+        int bufferIndex = 0;
+
+        for (float value : data) {
+            int fbit = Float.floatToIntBits(value);
+
+            // 直接写入缓冲区（小端序）
+            buffer[bufferIndex++] = (byte) fbit ;
+            buffer[bufferIndex++] = (byte) (fbit >> 8);
+            buffer[bufferIndex++] = (byte) (fbit >> 16);
+            buffer[bufferIndex++] = (byte) (fbit >> 24);
+
+            if (bufferIndex >= BUFFER_SIZE) {
+            	writer.write(buffer, 0, bufferIndex);
+                bufferIndex = 0;
+            }
+        }
+
+        if (bufferIndex > 0) {
+        	writer.write(buffer, 0, bufferIndex);
+        }
+    }
 	
     public static void writeTensor(Tensor x, FileOutputStream writer) throws IOException {
 //        System.out.println("writing.");
         if(x.isHasGPU()){
         	x.syncHost();
         }
-        for(int i = 0;i<x.dataLength;i++) {
-        	float s = x.data[i];
-            byte[] bs = ModelUtils.float2byte(s);
-            writer.write(bs);
-        }
+        writeFloatArray(writer, x.data);
     }
     
     public static void createLatendDataset() {
@@ -44,13 +74,14 @@ public class DatasetCreater {
     		
 //    		String outputPath = "D:\\dataset\\amine\\dalle_latend.bin";
     		String clipDataPath = "D:\\dataset\\amine\\dalle_full_clip.bin";
+    		String clipMaskDataPath = "D:\\dataset\\amine\\dalle_clip_mask.bin";
     		
         	String labelPath = "D:\\dataset\\labels.json";
             String imgDirPath = "D:\\dataset\\images_256_256\\";
             boolean horizontalFilp = false;
             int imgSize = 256;
             int maxContextLen = 77;
-            int batchSize = 256;
+            int batchSize = 1000;
             float[] mean = new float[]{0.5f, 0.5f, 0.5f};
             float[] std = new float[]{0.5f, 0.5f, 0.5f};
             String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
@@ -97,6 +128,9 @@ public class DatasetCreater {
             File clipFile = new File(clipDataPath);
             FileOutputStream clipWriter = new FileOutputStream(clipFile);
             
+            File clipMaskFile = new File(clipMaskDataPath);
+            FileOutputStream clipMaskWriter = new FileOutputStream(clipMaskFile);
+            
 //            Tensor condInput = new Tensor(batchSize, 1, 1, textEmbedDim, true);
             
             for(int it = 0;it<indexs.length;it++) {
@@ -106,6 +140,7 @@ public class DatasetCreater {
 //                 writeTensor(latend, writer);
             	 Tensor condInput = clip.get_full_clip_prompt_embeds(label);
                  writeTensor(condInput, clipWriter);
+                 writeTensor(eosIds, clipMaskWriter);
                  System.out.println(it + "/" + indexs.length + " finish.");
             }
             
@@ -515,11 +550,165 @@ public class DatasetCreater {
     	
     }
     
+    public static void loadLabels(BPETokenizerEN tokenizer,List<Map<String, Object>> datas, int[] indexs, Tensor label, String[] labels, Tensor eos_idx, int maxContextLen) {
+        for (int i = 0; i < indexs.length; i++) {
+            int idx = indexs[i];
+            String text = datas.get(idx).get("en").toString();
+            labels[i] = text;
+            //			System.out.println(text);
+            int[] ids = tokenizer.encodeInt(text, maxContextLen);
+            float eos_id = 0;
+            for (int j = 0; j < maxContextLen; j++) {
+                if (j < ids.length) {
+                    label.data[i * maxContextLen + j] = ids[j];
+                } else {
+                    label.data[i * maxContextLen + j] = tokenizer.eos();
+                }
+                //获取第一个结束符位置
+                if(label.data[i * maxContextLen + j] == tokenizer.eos() && eos_id == 0) {
+                	eos_id = j;
+                }
+            }
+            eos_idx.data[i] = eos_id;
+        }
+        /**
+         * copy data to gpu.
+         */
+        label.hostToDevice();
+        eos_idx.hostToDevice();
+        //		System.out.println(JsonUtils.toJson(label.data));
+    }
+    
+    public static void createClipData() {
+    	
+    	int batchSize = 2000;
+    	int maxContextLen = 77;
+    	
+    	
+    	String clipDataPath = "D:\\dataset\\amine\\dalle_full_clip.bin";
+		String clipMaskDataPath = "D:\\dataset\\amine\\dalle_clip_mask.bin";
+    	
+//		String labelPath = "/root/gpufree-data/txt2img_2m/labels.json";
+    	String labelPath = "D:\\dataset\\labels.json";
+    	
+    	Tensor label = new Tensor(batchSize * 77, 1, 1, 1, true);
+        Tensor eosIds = new Tensor(batchSize, 1, 1, 1, true);
+        String[] labels = new String[batchSize];
+    	
+    	try {
+    		
+    		String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
+            String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
+            BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+    		
+            int maxPositionEmbeddingsSize = 77;
+            int vocabSize = 49408;
+            int headNum = 12;
+            int n_layers = 12;
+            int textEmbedDim = 768;
+            int intermediateSize = 3072;
+            ClipTextModel clip = new ClipTextModel(LossType.MSE, UpdaterType.adamw, headNum, maxContextLen, vocabSize, textEmbedDim, maxPositionEmbeddingsSize, intermediateSize, n_layers);
+            clip.CUDNN = true;
+            clip.time = maxContextLen;
+            clip.RUN_MODEL = RunModel.EVAL;
+            String clipWeight = "D:\\models\\CLIP-GmP-ViT-L-14\\CLIP-GmP-ViT-L-14.json";
+            ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, "", false);
+            
+    		List<Map<String, Object>> datas = LagJsonReader.readJsonDataSamll(labelPath);
+            int count = datas.size();
+            System.err.println("data count[" + count + "].");
+
+            int[][] indexs = MathUtils.orderInts(count, batchSize);
+            
+            File clipFile = new File(clipDataPath);
+            FileOutputStream clipWriter = new FileOutputStream(clipFile);
+            
+            File clipMaskFile = new File(clipMaskDataPath);
+            FileOutputStream clipMaskWriter = new FileOutputStream(clipMaskFile);
+            
+            for(int it = 0;it<indexs.length;it++) {
+            	 loadLabels(bpe, datas, indexs[it], label, labels, eosIds, maxContextLen);
+            	 Tensor condInput = clip.get_full_clip_prompt_embeds(label);
+            	 JCudaDriver.cuCtxSynchronize();
+                 writeTensor(condInput, clipWriter);
+                 writeTensor(eosIds, clipMaskWriter);
+                 System.out.println(it + "/" + indexs.length + " finish.");
+            }
+            
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    	
+    }
+    
+//    public static void createClipData() {
+//    	
+//    	int batchSize = 1000;
+//    	int maxContextLen = 77;
+//    	
+//    	
+//    	String clipDataPath = "/root/gpufree-data/dalle_full_clip.bin";
+//		String clipMaskDataPath = "/root/gpufree-data/dalle_clip_mask.bin";
+//    	
+//    	String labelPath = "/omega/dataset/labels.json";
+//    	
+//    	Tensor label = new Tensor(batchSize * maxContextLen, 1, 1, 1, true);
+//        Tensor eosIds = new Tensor(batchSize, 1, 1, 1, true);
+//        String[] labels = new String[batchSize];
+//    	
+//    	try {
+//    		
+//    		String vocabPath = "/omega/models/CLIP-GmP-ViT-L-14/vocab.json";
+//            String mergesPath = "/omega/models/CLIP-GmP-ViT-L-14/merges.txt";
+//            BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+//    		
+//            int maxPositionEmbeddingsSize = 77;
+//            int vocabSize = 49408;
+//            int headNum = 12;
+//            int n_layers = 12;
+//            int textEmbedDim = 768;
+//            int intermediateSize = 3072;
+//            ClipTextModel clip = new ClipTextModel(LossType.MSE, UpdaterType.adamw, headNum, maxContextLen, vocabSize, textEmbedDim, maxPositionEmbeddingsSize, intermediateSize, n_layers);
+//            clip.CUDNN = true;
+//            clip.time = maxContextLen;
+//            clip.RUN_MODEL = RunModel.EVAL;
+//            String clipWeight = "/omega/models/CLIP-GmP-ViT-L-14/CLIP-GmP-ViT-L-14.json";
+//            ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, "", false);
+//            
+//    		List<Map<String, Object>> datas = LagJsonReader.readJsonDataSamll(labelPath);
+//            int count = datas.size();
+//            System.err.println("data count[" + count + "].");
+//
+//            int[][] indexs = MathUtils.orderInts(count, batchSize);
+//            
+//            File clipFile = new File(clipDataPath);
+//            FileOutputStream clipWriter = new FileOutputStream(clipFile);
+//            
+//            File clipMaskFile = new File(clipMaskDataPath);
+//            FileOutputStream clipMaskWriter = new FileOutputStream(clipMaskFile);
+//            
+//            for(int it = 0;it<indexs.length;it++) {
+//            	 loadLabels(bpe, datas, indexs[it], label, labels, eosIds, maxContextLen);
+//            	 Tensor condInput = clip.get_full_clip_prompt_embeds(label);
+//            	 JCudaDriver.cuCtxSynchronize();
+//                 writeTensor(condInput, clipWriter);
+//                 writeTensor(eosIds, clipMaskWriter);
+//                 System.out.println(it + "/" + indexs.length + " finish.");
+//            }
+//            
+//        } catch (Exception e) {
+//            // TODO: handle exception
+//            e.printStackTrace();
+//        }
+//    	
+//    }
+    
     public static void main(String[] args) {	
 		 
         try {
 
-        	createLatendDataset();
+//        	createLatendDataset();
         	
 //        	createLatendDataset2();
         	
@@ -530,6 +719,8 @@ public class DatasetCreater {
 //        	test_vavae_latend();
         	
 //        	createLatendDataset3();
+        	
+        	createClipData();
         	
         } catch (Exception e) {
             // TODO: handle exception
