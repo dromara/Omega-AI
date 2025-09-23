@@ -1,5 +1,10 @@
 package com.omega.example.transformer.test;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Scanner;
+
 import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
@@ -24,11 +29,6 @@ import com.omega.example.transformer.utils.ModelUtils;
 import com.omega.example.transformer.utils.SentencePieceTokenizer;
 import com.omega.example.transformer.utils.bpe.BPETokenizer3;
 import com.omega.example.transformer.utils.bpe.BinDataType;
-
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Scanner;
 
 public class Llama3Test {
 	

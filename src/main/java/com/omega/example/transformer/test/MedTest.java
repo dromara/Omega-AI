@@ -1,6 +1,5 @@
 package com.omega.example.transformer.test;
 
-import java.io.Console;
 import java.util.Arrays;
 import java.util.Scanner;
 

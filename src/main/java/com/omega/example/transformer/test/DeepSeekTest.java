@@ -183,7 +183,7 @@ public class DeepSeekTest {
             boolean bias = false;
             boolean dropout = false;
             boolean flashAttention = false;
-            int max_len = 1024;
+            int max_len = 2048;
             int embedDim = 512;
             int headNum = 8;
             int nKVHeadNum = 2;
@@ -193,7 +193,7 @@ public class DeepSeekTest {
             String mergesPath = "D:\\test\\models\\mmdit\\6400_tokenizer\\merges.txt";
             BPETokenizer3 tokenizer = new BPETokenizer3(vocabPath, mergesPath);
             Llama3 network = new Llama3(LossType.softmax_with_cross_entropy_idx, UpdaterType.adamw, headNum, nKVHeadNum, decoderNum, vocabSize, max_len, embedDim, bias, dropout, flashAttention);
-            String model_path = "D:\\test\\models\\mmdit\\llama3-deepseek-distill-1024.model";
+            String model_path = "D:\\test\\models\\dit_xl2\\llama3-deepseek-distill-2048.model";
             ModelUtils.loadModel(network, model_path);
             network.RUN_MODEL = RunModel.TEST;
             Scanner scanner = new Scanner(System.in);
@@ -218,7 +218,7 @@ public class DeepSeekTest {
                     Tensor sin = pos[1];
                     Tensor output = network.forward(cos, sin, input);
                     output.syncHost();
-                    int nextIDX = Llama3Test.output2NextIDXTopN(output, idx.length - 1, 8, network.cudaManager);
+                    int nextIDX = Llama3Test.output2NextIDXTopN(output, idx.length - 1, 4, network.cudaManager);
                     idx = Arrays.copyOf(idx, idx.length + 1);
                     idx[idx.length - 1] = nextIDX;
                     if (nextIDX == tokenizer.eos) {

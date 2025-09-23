@@ -2123,7 +2123,7 @@ public class DiTTest {
         
         ICPlan icplan = new ICPlan(network.tensorOP);
         
-        String model_path = "D:\\test\\models\\dit_xl2\\dit_b2_2.model";
+        String model_path = "D:\\test\\models\\dit_xl2\\dit_b2_6.model";
         ModelUtils.loadModel(network, model_path);
         
         Tensor label = new Tensor(batchSize * dataLoader.maxContextLen, 1, 1, 1, true);
@@ -2151,7 +2151,7 @@ public class DiTTest {
             labels[2] = "a highly detailed anime landscape,big tree on the water, epic sky,golden grass,detailed.";
             labels[3] = "a little girl standing on the beach";
             labels[4] = "fruit cream cake";
-            labels[5] = "A cheerful cartoon character swings on a swing in a serene, colorful outdoor setting.";
+            labels[5] = "a yellow apple is placed on the plate";
             
 	        labels[6] = "A dog runing on the water.";
             labels[7] = "A woman with shoulder-length blonde hair wearing a dark blouse with a floral patterned collar.";

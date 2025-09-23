@@ -1,16 +1,22 @@
 package com.omega.example.transformer.utils.tokenizers;
 
-import com.omega.common.utils.JsonUtils;
-import com.omega.engine.nn.network.utils.ModelUtils;
-import com.omega.example.transformer.utils.SentencePieceTokenizer;
-import com.omega.example.transformer.utils.bpe.BPETokenizer3;
-import com.omega.example.transformer.utils.bpe.BinDataType;
-
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import com.omega.common.utils.JsonUtils;
+import com.omega.engine.nn.network.utils.ModelUtils;
+import com.omega.example.transformer.utils.bpe.BPETokenizer3;
+import com.omega.example.transformer.utils.bpe.BinDataType;
 
 public class BatchTokenizerUtils {
 	
@@ -224,118 +230,118 @@ public class BatchTokenizerUtils {
         System.out.println("Data has been written to the file.");
     }
 
-    public static void encodeMonkeyDatasetBySentencePiece(String dataPath, String outputPath, String tokenizerPath) {
-        try {
-            File file = new File(outputPath);
-            FileWriter writer = new FileWriter(file);
-            Map<String, String> once = new HashMap<String, String>();
-            String line = null;
-            FileInputStream fis = new FileInputStream(dataPath);
-            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(fis, "UTF-8"));
-            SentencePieceTokenizer tokenizer = new SentencePieceTokenizer(tokenizerPath);
-            int batchSize = 10000;
-            List<String> txtList = new ArrayList<String>();
-            String[] ids = new String[batchSize];
-            int i = 1;
-            while ((line = bufferedReader.readLine()) != null) {
-                once = JsonUtils.gson.fromJson(line, HashMap.class);
-                String txt = once.get("text");
-                if (txt.length() <= 512) {
-                    if (txt != null && !txt.equals("")) {
-                        txtList.add(txt);
-                    }
-                    if (i > 1 && i % batchSize == 0) {
-                        EncodeEx.encode(txtList, ids, tokenizer);
-                        write(txtList, ids, writer, tokenizer);
-                        txtList.clear();
-                    }
-                    System.out.println(i);
-                    i++;
-                }
-            }
-            if (txtList.size() > 0) {
-                EncodeEx.encode(txtList, ids, tokenizer);
-                write(txtList, ids, writer, tokenizer);
-            }
-            bufferedReader.close();
-            writer.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        System.out.println("Data has been written to the file.");
-    }
+//    public static void encodeMonkeyDatasetBySentencePiece(String dataPath, String outputPath, String tokenizerPath) {
+//        try {
+//            File file = new File(outputPath);
+//            FileWriter writer = new FileWriter(file);
+//            Map<String, String> once = new HashMap<String, String>();
+//            String line = null;
+//            FileInputStream fis = new FileInputStream(dataPath);
+//            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(fis, "UTF-8"));
+//            SentencePieceTokenizer tokenizer = new SentencePieceTokenizer(tokenizerPath);
+//            int batchSize = 10000;
+//            List<String> txtList = new ArrayList<String>();
+//            String[] ids = new String[batchSize];
+//            int i = 1;
+//            while ((line = bufferedReader.readLine()) != null) {
+//                once = JsonUtils.gson.fromJson(line, HashMap.class);
+//                String txt = once.get("text");
+//                if (txt.length() <= 512) {
+//                    if (txt != null && !txt.equals("")) {
+//                        txtList.add(txt);
+//                    }
+//                    if (i > 1 && i % batchSize == 0) {
+//                        EncodeEx.encode(txtList, ids, tokenizer);
+//                        write(txtList, ids, writer, tokenizer);
+//                        txtList.clear();
+//                    }
+//                    System.out.println(i);
+//                    i++;
+//                }
+//            }
+//            if (txtList.size() > 0) {
+//                EncodeEx.encode(txtList, ids, tokenizer);
+//                write(txtList, ids, writer, tokenizer);
+//            }
+//            bufferedReader.close();
+//            writer.close();
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+//        System.out.println("Data has been written to the file.");
+//    }
 
-    public static void encodeMonkeyDatasetBySentencePiece2Bin(String dataPath, String outputPath, String tokenizerPath, BinDataType dataType) {
-        try {
-            File file = new File(outputPath);
-            FileOutputStream writer = new FileOutputStream(file);
-            Map<String, String> once = new HashMap<String, String>();
-            String line = null;
-            FileInputStream fis = new FileInputStream(dataPath);
-            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(fis, "UTF-8"));
-            SentencePieceTokenizer tokenizer = new SentencePieceTokenizer(tokenizerPath);
-            int batchSize = 100000;
-            List<String> txtList = new ArrayList<String>();
-            String[] ids = new String[batchSize];
-            int i = 1;
-            while ((line = bufferedReader.readLine()) != null) {
-                once = JsonUtils.gson.fromJson(line, HashMap.class);
-                String txt = once.get("text");
-                if (txt.length() <= 512) {
-                    if (txt != null && !txt.equals("")) {
-                        txtList.add(txt);
-                    }
-                    if (i > 1 && i % batchSize == 0) {
-                        EncodeEx.encode(txtList, ids, tokenizer);
-                        writeBin(txtList, ids, writer, tokenizer, dataType);
-                        txtList.clear();
-                    }
-                    System.out.println(i);
-                    i++;
-                }
-            }
-            if (txtList.size() > 0) {
-                EncodeEx.encode(txtList, ids, tokenizer);
-                writeBin(txtList, ids, writer, tokenizer, dataType);
-            }
-            bufferedReader.close();
-            writer.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        System.out.println("Data has been written to the file.");
-    }
+//    public static void encodeMonkeyDatasetBySentencePiece2Bin(String dataPath, String outputPath, String tokenizerPath, BinDataType dataType) {
+//        try {
+//            File file = new File(outputPath);
+//            FileOutputStream writer = new FileOutputStream(file);
+//            Map<String, String> once = new HashMap<String, String>();
+//            String line = null;
+//            FileInputStream fis = new FileInputStream(dataPath);
+//            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(fis, "UTF-8"));
+//            SentencePieceTokenizer tokenizer = new SentencePieceTokenizer(tokenizerPath);
+//            int batchSize = 100000;
+//            List<String> txtList = new ArrayList<String>();
+//            String[] ids = new String[batchSize];
+//            int i = 1;
+//            while ((line = bufferedReader.readLine()) != null) {
+//                once = JsonUtils.gson.fromJson(line, HashMap.class);
+//                String txt = once.get("text");
+//                if (txt.length() <= 512) {
+//                    if (txt != null && !txt.equals("")) {
+//                        txtList.add(txt);
+//                    }
+//                    if (i > 1 && i % batchSize == 0) {
+//                        EncodeEx.encode(txtList, ids, tokenizer);
+//                        writeBin(txtList, ids, writer, tokenizer, dataType);
+//                        txtList.clear();
+//                    }
+//                    System.out.println(i);
+//                    i++;
+//                }
+//            }
+//            if (txtList.size() > 0) {
+//                EncodeEx.encode(txtList, ids, tokenizer);
+//                writeBin(txtList, ids, writer, tokenizer, dataType);
+//            }
+//            bufferedReader.close();
+//            writer.close();
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+//        System.out.println("Data has been written to the file.");
+//    }
 
-    public static void pretrainTXT2Bin(String dataPath, String outputPath, String tokenizerPath, BinDataType dataType) {
-        try {
-            File file = new File(outputPath);
-            FileOutputStream writer = new FileOutputStream(file);
-            String line = null;
-            FileInputStream fis = new FileInputStream(dataPath);
-            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(fis, "UTF-8"));
-            SentencePieceTokenizer tokenizer = new SentencePieceTokenizer(tokenizerPath);
-            int batchSize = 100000;
-            List<String> txtList = new ArrayList<String>();
-            int i = 1;
-            while ((line = bufferedReader.readLine()) != null) {
-                txtList.add(line);
-                if (i > 1 && i % batchSize == 0) {
-                    writeBin(txtList, writer, tokenizer, dataType);
-                    txtList.clear();
-                }
-                System.out.println(i);
-                i++;
-            }
-            if (txtList.size() > 0) {
-                writeBin(txtList, writer, tokenizer, dataType);
-            }
-            bufferedReader.close();
-            writer.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        System.out.println("Data has been written to the file.");
-    }
+//    public static void pretrainTXT2Bin(String dataPath, String outputPath, String tokenizerPath, BinDataType dataType) {
+//        try {
+//            File file = new File(outputPath);
+//            FileOutputStream writer = new FileOutputStream(file);
+//            String line = null;
+//            FileInputStream fis = new FileInputStream(dataPath);
+//            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(fis, "UTF-8"));
+//            SentencePieceTokenizer tokenizer = new SentencePieceTokenizer(tokenizerPath);
+//            int batchSize = 100000;
+//            List<String> txtList = new ArrayList<String>();
+//            int i = 1;
+//            while ((line = bufferedReader.readLine()) != null) {
+//                txtList.add(line);
+//                if (i > 1 && i % batchSize == 0) {
+//                    writeBin(txtList, writer, tokenizer, dataType);
+//                    txtList.clear();
+//                }
+//                System.out.println(i);
+//                i++;
+//            }
+//            if (txtList.size() > 0) {
+//                writeBin(txtList, writer, tokenizer, dataType);
+//            }
+//            bufferedReader.close();
+//            writer.close();
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+//        System.out.println("Data has been written to the file.");
+//    }
 
     public static void writeIn(List<String> txtList, String[] ids, FileWriter writer) throws IOException {
         System.out.println("writing.");
