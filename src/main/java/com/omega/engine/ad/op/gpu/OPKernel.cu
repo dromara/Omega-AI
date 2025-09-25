@@ -405,6 +405,37 @@ __global__ void mul_axis_kernel(int N, float *X, float *Y, float *R, int B, int 
 }
 
 extern "C"
+__global__ void mul_axis_kernel2(int N, float *X, float *Y, float *R, int axis)
+
+{
+
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+
+    if(i < N){
+
+    	int yi = i % axis;
+
+    	R[i] = X[i] * Y[yi];
+
+    } 
+
+}
+
+extern "C"
+__global__ void mul_axis_back_kernel(int N, float *X, float *Y, float *R, int WH)
+
+{
+
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if(i < N){
+		R[i] = 0;
+    	for(int wh = 0;wh<WH;wh++){
+			R[i] += x[i * WH + wh] * Y[i * WH + wh];
+		}
+    } 
+}
+
+extern "C"
 __global__ void mul_axis_back_left_kernel(int N, float *Y, float *delta, float *dx, int B, int C, int H, int W, int axis)
 {
     int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;

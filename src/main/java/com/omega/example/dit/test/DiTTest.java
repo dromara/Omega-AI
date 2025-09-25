@@ -2123,12 +2123,11 @@ public class DiTTest {
         
         ICPlan icplan = new ICPlan(network.tensorOP);
         
-        String model_path = "D:\\test\\models\\dit_xl2\\dit_b2_6.model";
+        String model_path = "D:\\test\\models\\dit_xl2\\dit_b2_2.model";
         ModelUtils.loadModel(network, model_path);
         
         Tensor label = new Tensor(batchSize * dataLoader.maxContextLen, 1, 1, 1, true);
-        Tensor eosIds = new Tensor(batchSize, 1, 1, 1, true);
-
+       
         Tensor condInput = null;
         Tensor t = new Tensor(batchSize, 1, 1, 1, true);
         
@@ -2144,30 +2143,30 @@ public class DiTTest {
 
         network.RUN_MODEL = RunModel.TEST;
         String[] labels = new String[10];
-        for(int i = 0;i<4;i++) {
+        for(int i = 0;i<10;i++) {
         	System.out.println("start create test images.");
             labels[0] = "A cat holding a sign that says hello world";
             labels[1] = "a vibrant anime mountain lands";
-            labels[2] = "a highly detailed anime landscape,big tree on the water, epic sky,golden grass,detailed.";
+            labels[2] = "a highly detailed anime landscape,big tree on the water, epic sky,golden grass,detailed";
             labels[3] = "a little girl standing on the beach";
             labels[4] = "fruit cream cake";
             labels[5] = "a yellow apple is placed on the plate";
             
-	        labels[6] = "A dog runing on the water.";
-            labels[7] = "A woman with shoulder-length blonde hair wearing a dark blouse with a floral patterned collar.";
-            labels[8] = "A small, grey crochet plush toy of a cat with pink paws and a pink nose sits on a wooden surface.";
-            labels[9] = "A group of humpback whales is swimming in the ocean, with one whale prominently in the foreground and two others in the background. The water is clear, and the whales are surrounded by a multitude of bubbles, creating a dynamic underwater scene.";
-            dataLoader.loadLabel_offset(label, 0, labels[0], eosIds);
-            dataLoader.loadLabel_offset(label, 1, labels[1], eosIds);
-            dataLoader.loadLabel_offset(label, 2, labels[2], eosIds);
-            dataLoader.loadLabel_offset(label, 3, labels[3], eosIds);
-            dataLoader.loadLabel_offset(label, 4, labels[4], eosIds);
-            dataLoader.loadLabel_offset(label, 5, labels[5], eosIds);
+	        labels[6] = "A corgi is taking a walk under the sea";
+            labels[7] = "A woman with shoulder-length blonde hair wearing a dark blouse with a floral patterned collar";
+            labels[8] = "A small, grey crochet plush toy of a cat with pink paws and a pink nose sits on a wooden surface";
+            labels[9] = "A group of humpback whales is swimming in the ocean, with one whale prominently in the foreground and two others in the background. The water is clear, and the whales are surrounded by a multitude of bubbles, creating a dynamic underwater scene";
+            dataLoader.loadLabel_offset(label, 0, labels[0]);
+            dataLoader.loadLabel_offset(label, 1, labels[1]);
+            dataLoader.loadLabel_offset(label, 2, labels[2]);
+            dataLoader.loadLabel_offset(label, 3, labels[3]);
+            dataLoader.loadLabel_offset(label, 4, labels[4]);
+            dataLoader.loadLabel_offset(label, 5, labels[5]);
             
-            dataLoader.loadLabel_offset(label, 6, labels[6], eosIds);
-            dataLoader.loadLabel_offset(label, 7, labels[7], eosIds);
-            dataLoader.loadLabel_offset(label, 8, labels[8], eosIds);
-            dataLoader.loadLabel_offset(label, 9, labels[9], eosIds);
+            dataLoader.loadLabel_offset(label, 6, labels[6]);
+            dataLoader.loadLabel_offset(label, 7, labels[7]);
+            dataLoader.loadLabel_offset(label, 8, labels[8]);
+            dataLoader.loadLabel_offset(label, 9, labels[9]);
             condInput = clip.get_full_clip_prompt_embeds(label);
 
             RandomUtils.gaussianRandom(noise, 0, 1);

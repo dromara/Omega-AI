@@ -188,6 +188,18 @@ public class TensorOP {
         }
     }
     
+    public void mulAxis(Tensor a, Tensor b, Tensor c, int axis) {
+        if (c.isHasGPU()) {
+            op.mul_axis_gpu(a, b, c, axis);
+        }
+    }
+    
+    public void mulAxisBack(Tensor a, Tensor b, Tensor c) {
+        if (c.isHasGPU()) {
+            op.mul_axis_back_gpu(a, b, c);
+        }
+    }
+    
     public void mul(Tensor a, Tensor b, Tensor c, int N, int C, int H, int W, int axis) {
         if (c.isHasGPU()) {
             op.mul_gpu(a, b, c, N, C, H, W, axis);
