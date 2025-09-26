@@ -121,7 +121,7 @@ __global__ void swish_backward(float *x, float *delta, float *diff, int n)
 		float so = (float) (1.0f / (1.0f + expf(-x[i])));
 		float dx_dy = so * delta[i];
 		float dx_ds = x[i] * delta[i] * so * (1.0f - so);
-    	output[i] = dx_dy + dx_ds;
+    	diff[i] = dx_dy + dx_ds;
     }
 }
 
