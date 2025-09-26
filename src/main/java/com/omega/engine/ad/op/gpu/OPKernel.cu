@@ -430,7 +430,7 @@ __global__ void mul_axis_back_kernel(int N, float *X, float *Y, float *R, int WH
     if(i < N){
 		R[i] = 0;
     	for(int wh = 0;wh<WH;wh++){
-			R[i] += x[i * WH + wh] * Y[i * WH + wh];
+			R[i] += X[i * WH + wh] * Y[i * WH + wh];
 		}
     } 
 }

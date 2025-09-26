@@ -2123,7 +2123,7 @@ public class DiTTest {
         
         ICPlan icplan = new ICPlan(network.tensorOP);
         
-        String model_path = "D:\\test\\models\\dit_xl2\\dit_b2_2.model";
+        String model_path = "D:\\test\\models\\dit_xl2\\dit_b2_6.model";
         ModelUtils.loadModel(network, model_path);
         
         Tensor label = new Tensor(batchSize * dataLoader.maxContextLen, 1, 1, 1, true);

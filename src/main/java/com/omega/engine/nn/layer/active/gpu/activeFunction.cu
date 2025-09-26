@@ -105,6 +105,27 @@ __global__ void sigmod_backward(float *output, float *delta, float *diff, int n)
 }
 
 extern "C"
+__global__ void swish_forward(float *x, float *output, int n)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if(i < n) {
+    	output[i] = (float) (1.0f / (1.0f + expf(-x[i]))) * x[i];
+    }
+}
+
+extern "C"
+__global__ void swish_backward(float *x, float *delta, float *diff, int n)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if(i < n) {
+		float so = (float) (1.0f / (1.0f + expf(-x[i])));
+		float dx_dy = so * delta[i];
+		float dx_ds = x[i] * delta[i] * so * (1.0f - so);
+    	output[i] = dx_dy + dx_ds;
+    }
+}
+
+extern "C"
 __global__ void sigmod_backward_temp(float *output, float *delta, float *diff, int n)
 {
     int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
