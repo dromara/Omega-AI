@@ -9,6 +9,8 @@ public abstract class ActiveFunctionLayer extends Layer {
     public abstract void forward(Tensor input, int batch, int step);
 
     public abstract void back(Tensor delta, int batch, int step);
+    
+    public abstract void back(Tensor delta, Tensor diff);
 
     public abstract void output(int batch, int step);
 

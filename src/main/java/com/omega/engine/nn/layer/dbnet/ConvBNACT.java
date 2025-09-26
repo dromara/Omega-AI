@@ -25,17 +25,23 @@ public class ConvBNACT extends Layer {
     
     private int kSize;
     
+    private int stride = 1;
+    
+    private int padding = 0;
+    
     public ConvolutionLayer conv1;
     public BNLayer bn;
     private ActiveFunctionLayer act1;
     
     private String actFn;
     
-    public ConvBNACT(int in_channels, int out_channels, int height, int width, int kSize, boolean bias, String actFn, Network network) {
+    public ConvBNACT(int in_channels, int out_channels, int height, int width, int kSize, int stride, int padding, boolean bias, String actFn, Network network) {
         this.channel = in_channels;
         this.height = height;
         this.width = width;
         this.kSize = kSize;
+        this.stride = stride;
+        this.padding = padding;
         this.bias = bias;
         this.oChannel = out_channels;
         this.actFn = actFn;
@@ -45,7 +51,7 @@ public class ConvBNACT extends Layer {
     }
 
     public void initLayers() {
-        this.conv1 = new ConvolutionLayer(channel, oChannel, width, height, kSize, kSize, 0, 1, bias, network);
+        this.conv1 = new ConvolutionLayer(channel, oChannel, width, height, kSize, kSize, padding, stride, bias, network);
     	this.bn = new BNLayer(network, BNType.conv_bn);
     	if(actFn.equals("relu")) {
     		this.act1 = new ReluLayer(network);
@@ -95,7 +101,7 @@ public class ConvBNACT extends Layer {
     @Override
     public void diff() {
         // TODO Auto-generated method stub
-    	act1.back(delta);
+    	act1.back(delta, act1.getOutput());
     	bn.back(act1.diff);
     	conv1.back(bn.diff);
     	this.diff = conv1.diff;

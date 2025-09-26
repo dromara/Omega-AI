@@ -3,52 +3,63 @@ package com.omega.engine.nn.layer.dbnet;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
-import com.omega.engine.nn.layer.AdaptiveAvgPool2DLayer;
-import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
-import com.omega.engine.nn.layer.active.ReluLayer;
-import com.omega.engine.nn.layer.active.SigmodLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.tensor.Tensor;
 
 /**
- * SEBlock
+ * ResidualUnit
  *
  * @author Administrator
  */
-public class SEBlock extends Layer {
+public class ResidualUnit extends Layer {
 
     private boolean bias = false;
     
-    private int num_mid_filter;
+    private int mid_channels;
     
-    public AdaptiveAvgPool2DLayer pool;
+    private int kSize;
+    
+    private int stride;
+    
+    private String act;
+    
+    private boolean use_se;
+    
+    public ConvBNACT conv0;
+    public ConvBNACT conv1;
+    public ConvBNACT conv2;
+    public SEBlock se;
 
-    public ConvolutionLayer conv1;
-    private ReluLayer act1;
-    public ConvolutionLayer conv2;
-    public SigmodLayer act2;
-
-
-    public SEBlock(int in_channels, int out_channels,int ratio, int height, int width, boolean bias, Network network) {
+    private boolean not_add = false;
+    
+    public ResidualUnit(int in_channels, int mid_channels, int out_channels, int height, int width, int kSize, int stride, String act, boolean use_se, boolean bias, Network network) {
         this.channel = in_channels;
         this.height = height;
         this.width = height;
         this.bias = bias;
+        this.stride = stride;
+        this.kSize = kSize;
+        this.act = act;
+        this.use_se = use_se;
         this.oChannel = out_channels;
-        this.num_mid_filter = out_channels / ratio;
+        this.mid_channels = mid_channels;
         this.initLayers();
-        this.oHeight = act2.oHeight;
-        this.oWidth = act2.oWidth;
+        this.oHeight = conv2.oHeight;
+        this.oWidth = conv2.oWidth;
     }
 
     public void initLayers() {
-    	this.pool = new AdaptiveAvgPool2DLayer(channel, height, width, 1, 1, network);
-        this.conv1 = new ConvolutionLayer(channel, num_mid_filter, pool.oWidth, pool.oHeight, 1, 1, 0, 1, bias, network);
-        this.act1 = new ReluLayer(network);
-        this.conv2 = new ConvolutionLayer(num_mid_filter, oChannel, act1.oWidth, act1.oHeight, 1, 1, 0, 1, bias, network);
-        this.act2 = new SigmodLayer(network);
+    	this.conv0 = new ConvBNACT(channel, mid_channels, height, width, 1, 1, 0, bias, act, network);
+        this.conv1 = new ConvBNACT(mid_channels, mid_channels, conv0.oHeight, conv0.width, kSize, stride, (kSize - 1)/2, bias, act, network);
+        if(use_se) {
+        	se = new SEBlock(mid_channels, mid_channels, 4, conv1.oHeight, conv1.oWidth, bias, network);
+        }
+        this.conv2 = new ConvBNACT(mid_channels, oChannel, conv1.oHeight, conv1.oWidth, 1, 1, 0, bias, act, network);
+        if(channel != oChannel || stride != 1) {
+        	not_add = true;
+        }
     }
 
     @Override
@@ -59,9 +70,7 @@ public class SEBlock extends Layer {
     
     public void init(Tensor input) {
     	this.number = input.number;
-    	if(output == null || output.number != number) {
-    		output = Tensor.createGPUTensor(output, number, oChannel, oHeight, oWidth, true);
-    	}
+
     }
     
     @Override
@@ -78,12 +87,21 @@ public class SEBlock extends Layer {
     @Override
     public void output() {
         // TODO Auto-generated method stub
-    	pool.forward(input);
-    	conv1.forward(pool.getOutput());
-    	act1.forward(conv1.getOutput());
-    	conv2.forward(act1.getOutput());
-    	act2.forward(conv2.getOutput());
-    	Tensor_OP().mulAxis(input, act2.getOutput(), output, act2.getOutput().number * act2.getOutput().channel);
+    	conv0.forward(input);
+    	conv1.forward(conv0.getOutput());
+    	Tensor y = conv1.getOutput();
+    	if(use_se){
+    		se.forward(y);
+    		y = se.getOutput();
+    	}
+    	
+    	conv2.forward(y);
+    	
+    	if(!not_add) {
+    		Tensor_OP().add(conv2.getOutput(), input, conv2.getOutput());
+    	}
+    	
+    	this.output = conv2.getOutput();
     }
     
     @Override
@@ -95,15 +113,24 @@ public class SEBlock extends Layer {
     @Override
     public void diff() {
         // TODO Auto-generated method stub
-    	Tensor_OP().mulAxisBack(diff, input, act2.input);
-    	act2.back(act2.input);
-    	conv2.back(act2.diff);
-    	act1.back(conv2.diff);
-    	conv1.back(act1.diff);
-    	pool.back(conv1.diff);
-    	Tensor_OP().mulAxis(diff, act2.getOutput(), output, act2.getOutput().number * act2.getOutput().channel);
-    	Tensor_OP().add(output, pool.diff, pool.diff);
-    	this.diff = pool.diff;
+    	
+    	conv2.back(delta);
+    	
+    	Tensor d = conv2.diff;
+    	
+    	if(use_se){
+    		se.back(d);
+    		d = se.diff;
+    	}
+    	
+    	conv1.back(d);
+    	conv0.back(conv1.diff);
+    	
+    	if(!not_add) {
+    		Tensor_OP().add(conv0.diff, delta, conv0.diff);
+    	}
+    	
+    	this.diff = conv0.diff;
     }
     
     @Override
@@ -179,8 +206,10 @@ public class SEBlock extends Layer {
     @Override
     public void update() {
         // TODO Auto-generated method stub
+    	conv0.update();
     	conv1.update();
     	conv2.update();
+    	se.update();
     }
 
     @Override
@@ -211,20 +240,26 @@ public class SEBlock extends Layer {
     }
 
     public void saveModel(RandomAccessFile outputStream) throws IOException {
+    	conv0.saveModel(outputStream);
     	conv1.saveModel(outputStream);
     	conv2.saveModel(outputStream);
+    	se.saveModel(outputStream);
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
+    	conv0.loadModel(inputStream);
     	conv1.loadModel(inputStream);
     	conv2.loadModel(inputStream);
+    	se.loadModel(inputStream);
     }
 
     @Override
     public void accGrad(float scale) {
         // TODO Auto-generated method stub
+    	conv0.accGrad(scale);
     	conv1.accGrad(scale);
     	conv2.accGrad(scale);
+    	se.accGrad(scale);
     }
 //    
 //    public static void loadWeight(Map<String, Object> weightMap, SEBlock block, boolean showLayers) {
