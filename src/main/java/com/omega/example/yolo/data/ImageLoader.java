@@ -52,8 +52,8 @@ public class ImageLoader {
         //		System.out.println(JsonUtils.toJson(y));
         //
         //		showImg(x, y, classes, outputPath);
-        //		formatImage();
-        resizeFormatImage();
+        		formatImage();
+//        resizeFormatImage();
         //		testFormatImage();
     }
 
@@ -111,10 +111,10 @@ public class ImageLoader {
             //			String labelPath = "H:\\voc\\sm\\VOC\\bbox.txt";
             //			String outputDirPath = "H:\\voc\\sm\\resized\\imgs\\";
             //			String labelTXTPath = "H:\\voc\\sm\\resized\\rlabels.txt";
-            String imgDirPath = "H:\\voc\\yz\\seal\\Images";
-            String labelPath = "H:\\voc\\yz\\seal\\bbox.txt";
-            String outputDirPath = "H:\\voc\\yz\\seal\\resized\\imgs\\";
-            String labelTXTPath = "H:\\voc\\yz\\seal\\resized\\rlabels.txt";
+            String imgDirPath = "D:\\dataset\\VOCData\\JPEGImages";
+            String labelPath = "D:\\dataset\\VOCData\\bbox.txt";
+            String outputDirPath = "D:\\dataset\\VOCData\\resized\\imgs\\";
+            String labelTXTPath = "D:\\dataset\\VOCData\\resized\\rlabels.txt";
             int width = 416;
             int height = 416;
             Map<String, float[]> labelMap = loadLabelDataForTXT(labelPath);

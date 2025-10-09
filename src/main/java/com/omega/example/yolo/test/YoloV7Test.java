@@ -13,6 +13,7 @@ import com.omega.engine.optimizer.MBSGDOptimizer;
 import com.omega.engine.optimizer.lr.LearnRateUpdate;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
+import com.omega.example.transformer.utils.LagJsonReader;
 import com.omega.example.transformer.utils.ModelUtils;
 import com.omega.example.yolo.data.DataType;
 import com.omega.example.yolo.data.DetectionDataLoader;
@@ -118,7 +119,11 @@ public class YoloV7Test {
 //            			y.yolov7_tiny_mask();
 //            y.yolov7_tiny_mask_test();
 //            y.yolov7_tiny_helmet();
-            y.yolov7_tiny_helmet_test();
+//            y.yolov7_tiny_helmet_test();
+//            y.createTrainVailByJson();
+//            y.createCarTrainTestDataSet();
+            y.yolov7_tiny_traffic();
+//            y.yolov7_tiny_traffic_test();
             //			y.yolov7_tiny_sm();
             //			y.yolov7_tiny_yz();
             //			y.yolov3_tiny_voc();
@@ -464,6 +469,100 @@ public class YoloV7Test {
         }
     }
     
+    public void yolov7_tiny_traffic() {
+        int im_w = 416;
+        int im_h = 416;
+        int batchSize = 64;
+        int class_num = 5;
+        String[] labelset = new String[]{"car", "person", "bus", "others", "van"};
+        try {
+        	String cfg_path = "D:\\dataset\\traffic\\yolov7-tiny-traffic.cfg";
+            String trainPath = "D:\\dataset\\traffic\\resized\\train";
+            String trainLabelPath = "D:\\dataset\\traffic\\resized\\train_label.txt";
+            String testPath = "D:\\dataset\\traffic\\resized\\vail";
+            String testLabelPath = "D:\\dataset\\traffic\\resized\\vail_label.txt";
+//            String weightPath = "H:\\voc\\darknet_yolov7\\yolov7-tiny.conv.87";
+            DetectionDataLoader trainData = new DetectionDataLoader(trainPath, trainLabelPath, LabelFileType.txt, im_w, im_h, class_num, batchSize, DataType.yolov3);
+            DetectionDataLoader vailData = new DetectionDataLoader(testPath, testLabelPath, LabelFileType.txt, im_w, im_h, class_num, batchSize, DataType.yolov3);
+            Yolo netWork = new Yolo(LossType.yolov7, UpdaterType.adamw);
+            netWork.CUDNN = true;
+            netWork.learnRate = 0.001f;
+            ModelLoader.loadConfigToModel(netWork, cfg_path);
+//            DarknetLoader.loadWeight(netWork, weightPath, 86, true);
+            MBSGDOptimizer optimizer = new MBSGDOptimizer(netWork, 500, 0.001f, batchSize, LearnRateUpdate.SMART_HALF, false);
+            optimizer.lr_step = new int[] {200,300,400};
+            optimizer.trainObjectRecognitionOutputs(trainData, vailData);
+            
+            /**
+             * 导出模型
+             */
+            String save_model_path = "D:\\models\\yolov7-traffic.model";
+            ModelUtils.saveModel(netWork, save_model_path);
+            
+            /**
+             * 处理测试预测结果
+             */
+            List<YoloBox> draw_bbox = optimizer.showObjectRecognitionYoloV7(vailData, batchSize);
+            String outputPath = "D:\\dataset\\traffic\\resized\\test_yolov7\\";
+            showImg(outputPath, vailData, class_num, draw_bbox, batchSize, false, im_w, im_h, labelset);
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        } finally {
+            try {
+                CUDAMemoryManager.freeAll();
+            } catch (Exception e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+    }
+    
+    public void yolov7_tiny_traffic_test() {
+        int im_w = 416;
+        int im_h = 416;
+        int batchSize = 32;
+        int class_num = 5;
+        String[] labelset = new String[]{"car", "person", "bus", "others", "van"};
+        try {
+        	String cfg_path = "D:\\dataset\\traffic\\yolov7-tiny-traffic.cfg";
+           
+        	String testPath = "D:\\dataset\\traffic\\resized\\vail";
+            String testLabelPath = "D:\\dataset\\traffic\\resized\\vail_label.txt";
+
+            DetectionDataLoader vailData = new DetectionDataLoader(testPath, testLabelPath, LabelFileType.txt, im_w, im_h, class_num, batchSize, DataType.yolov3);
+            Yolo netWork = new Yolo(LossType.yolov7, UpdaterType.adamw);
+            netWork.CUDNN = true;
+            netWork.learnRate = 0.001f;
+            ModelLoader.loadConfigToModel(netWork, cfg_path);
+
+            MBSGDOptimizer optimizer = new MBSGDOptimizer(netWork, 1000, 0.001f, batchSize, LearnRateUpdate.SMART_HALF, false);
+            
+            /**
+             * 导出模型
+             */
+            String model_path = "D:\\models\\yolov7-traffic.model";
+            ModelUtils.loadModel(netWork, model_path);
+            
+            /**
+             * 处理测试预测结果
+             */
+            List<YoloBox> draw_bbox = optimizer.showObjectRecognitionYoloV7(vailData, batchSize);
+            String outputPath = "D:\\dataset\\traffic\\resized\\test_yolov7\\";
+            showImg(outputPath, vailData, class_num, draw_bbox, batchSize, false, im_w, im_h, labelset);
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        } finally {
+            try {
+                CUDAMemoryManager.freeAll();
+            } catch (Exception e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+    }
+    
     public void yolov7_tiny_sm() {
         int im_w = 416;
         int im_h = 416;
@@ -583,7 +682,133 @@ public class YoloV7Test {
             }
         }
     }
+    
+    public void createTrainVailByJson() {
+    	  String trainJsonPath = "D:\\dataset\\VOCData\\train.json";
+    	  String testJsonPath = "D:\\dataset\\VOCData\\val.json";
+    	  String trainDataPath = "D:\\dataset\\VOCData\\train.txt";
+          String testDataPath = "D:\\dataset\\VOCData\\test.txt";
+          try {
+			
+        	  Map<String,Object> trainJson = LagJsonReader.readJsonFileSmallWeight(trainJsonPath);
+        	  Map<String,Object> testJson = LagJsonReader.readJsonFileSmallWeight(testJsonPath);
+        	  List<Map<String,Object>> trainList = (List<Map<String, Object>>) trainJson.get("images");
+        	  List<Map<String,Object>> valList = (List<Map<String, Object>>) testJson.get("images");
+        	  
+     		  File txt = new File(trainDataPath);
+              if (!txt.exists()) {
+                  txt.createNewFile(); // 创建新文件,有同名的文件的话直接覆盖
+              }
+              try (FileOutputStream fos = new FileOutputStream(txt);) {
+            	 for(Map<String,Object> once:trainList) {
+            		 String fileName = (String) once.get("file_name");
+            		 fileName += "\n";
+                     fos.write(fileName.getBytes());
+                 }
+                 fos.flush();
+              } catch (Exception e) {
+                 e.printStackTrace();
+              }
+        	  
+              File val = new File(testDataPath);
+              if (!val.exists()) {
+            	  val.createNewFile(); // 创建新文件,有同名的文件的话直接覆盖
+              }
+              try (FileOutputStream fos = new FileOutputStream(val);) {
+            	 for(Map<String,Object> once:valList) {
+            		 String fileName = (String) once.get("file_name");
+            		 fileName += "\n";
+                     fos.write(fileName.getBytes());
+                 }
+                 fos.flush();
+              } catch (Exception e) {
+                 e.printStackTrace();
+              }
 
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+    }
+    
+    public void createCarTrainTestDataSet() {
+        try {
+            int im_w = 416;
+            int im_h = 416;
+            int classNum = 5;
+            int batchSize = 64;
+            String trainDataPath = "D:\\dataset\\VOCData\\train.txt";
+            String testDataPath = "D:\\dataset\\VOCData\\test.txt";
+            String orgPath = "D:\\dataset\\VOCData\\resized\\imgs\\";
+            String orgLabelPath = "D:\\dataset\\VOCData\\resized\\rlabels.txt";
+            String trainPath = "D:\\dataset\\VOCData\\resized\\train\\";
+            String vailPath = "D:\\dataset\\VOCData\\resized\\vail\\";
+            String trainLabelPath = "D:\\dataset\\VOCData\\resized\\train_label.txt";
+            String vailLabelPath = "D:\\dataset\\VOCData\\resized\\vail_label.txt";
+            DetectionDataLoader orgData = new DetectionDataLoader(orgPath, orgLabelPath, LabelFileType.txt, im_w, im_h, classNum, batchSize, DataType.yolov3);
+            int trainSize = 16417;
+            int testSize = 2052;
+            Map<String, float[]> trainLabelData = new HashMap<String, float[]>();
+            Map<String, float[]> testLabelData = new HashMap<String, float[]>();
+            String[] trainNames = new String[trainSize];
+            String[] testNames = new String[testSize];
+            try (FileInputStream fin = new FileInputStream(trainDataPath); InputStreamReader reader = new InputStreamReader(fin); BufferedReader buffReader = new BufferedReader(reader);) {
+                String strTmp = "";
+                int idx = 0;
+                while ((strTmp = buffReader.readLine()) != null) {
+                    trainNames[idx] = strTmp.split(".jpg")[0];
+                    idx++;
+                }
+            } catch (Exception e) {
+                // TODO: handle exception
+                e.printStackTrace();
+            }
+            try (FileInputStream fin = new FileInputStream(testDataPath); InputStreamReader reader = new InputStreamReader(fin); BufferedReader buffReader = new BufferedReader(reader);) {
+                String strTmp = "";
+                int idx = 0;
+                while ((strTmp = buffReader.readLine()) != null) {
+                    testNames[idx] = strTmp.split(".jpg")[0];
+                    idx++;
+                }
+            } catch (Exception e) {
+                // TODO: handle exception
+                e.printStackTrace();
+            }
+            /**
+             * 复制文件
+
+             */
+            for (int b = 0; b < trainSize; b++) {
+                String filename = trainNames[b];
+                System.out.println(filename);
+                if (orgData.orgLabelData.get(filename).length <= 450) {
+                    File file = new File(orgPath + filename + ".jpg");
+                    File outFile = new File(trainPath + filename + ".jpg");
+                    copyFileUsingStream(file, outFile);
+                    trainLabelData.put(filename, orgData.orgLabelData.get(filename));
+                }
+            }
+            for (int b = 0; b < testSize; b++) {
+                String filename = testNames[b];
+                if (orgData.orgLabelData.get(filename).length <= 450) {
+                    File file = new File(orgPath + filename + ".jpg");
+                    File outFile = new File(vailPath + filename + ".jpg");
+                    copyFileUsingStream(file, outFile);
+                    testLabelData.put(filename, orgData.orgLabelData.get(filename));
+                }
+            }
+            /**
+             * 复制label
+
+             */
+            createLabelTXT(trainLabelPath, trainLabelData);
+            createLabelTXT(vailLabelPath, testLabelData);
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
     public void createMaskTrainTestDataSet() {
         try {
             int im_w = 416;

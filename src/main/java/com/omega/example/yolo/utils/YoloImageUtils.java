@@ -430,6 +430,7 @@ public class YoloImageUtils {
             int padh = 0;
             int w = data.getWeight();
             int h = data.getHeight();
+            System.err.println(w+":"+h);
             if (h > w) {
                 padw = new BigDecimal(h).subtract(new BigDecimal(w)).divide(new BigDecimal(2), BigDecimal.ROUND_DOWN).intValue();
             } else if (h < w) {
@@ -994,13 +995,13 @@ public class YoloImageUtils {
         //		System.out.println(JsonUtils.toJson(bbox));
         //		String filename = "000005.jpg";
         //		formatData(filename, imgDir, labelDir, imgOutDir, true);
-        //		String rootPath = "H:\\voc\\mask\\data\\";
-        //		String imgDir = rootPath + "\\JPEGImages";
-        //		String labelDir = rootPath + "\\Annotations";
-        //		String imgOutDir = rootPath + "\\imgs";
-        //		String bboxPath = rootPath + "\\yolov3.txt";
-        //
-        //		image2Yolo(imgDir, labelDir, imgOutDir, bboxPath, YoloVersion.yolov3_xyxy);
+//        		String rootPath = "D:\\dataset\\VOCData\\";
+//        		String imgDir = rootPath + "\\JPEGImages";
+//        		String labelDir = rootPath + "\\Annotations";
+//        		String imgOutDir = rootPath + "\\imgs";
+//        		String bboxPath = rootPath + "\\yolov7.txt";
+//        
+//        		image2Yolo(imgDir, labelDir, imgOutDir, bboxPath, YoloVersion.yolov3_xyxy);
         //		String rootPath = "H:\\voc\\helmet_dataset";
         //		String imgDir = rootPath + "\\JPEGImages";
         //		String labelPath = rootPath + "\\train_labels.csv";
@@ -1009,18 +1010,18 @@ public class YoloImageUtils {
         //		String[] labelSet = new String[] {"none","white","yellow","blue","red"};
         //
         //		image2YoloFormCSV(imgDir, labelPath, labelSet, imgOutDir, bboxPath, YoloVersion.yolov3_xyxy);
-        //		String rootPath = "H:\\voc\\test";
-        //		String rootPath = "H:\\voc\\yz\\seal";
-        //		String imgDir = rootPath + "\\Images";
-        //		String labelDir = rootPath + "\\Annotations";
-        //		String labelPath = rootPath + "\\labels.txt";
-        //		String bboxPath = rootPath + "\\bbox.txt";
-        //		String labelPath = rootPath + "\\train_labels.csv";
-        //		String[] labelSet = new String[] {"none","white","yellow","blue","red"};
-        //		xml2Yolo(imgDir, labelDir, labelPath, bboxPath);
+        		String rootPath = "D:\\dataset\\VOCData\\";
+//        		String rootPath = "H:\\voc\\yz\\seal";
+        		String imgDir = rootPath + "\\JPEGImages";
+        		String labelDir = rootPath + "\\Annotations";
+        		String labelPath = rootPath + "\\labels.txt";
+        		String bboxPath = rootPath + "\\bbox.txt";
+//        		String labelPath = rootPath + "\\train_labels.csv";
+//        		String[] labelSet = new String[] {"none","white","yellow","blue","red"};
+        		xml2Yolo(imgDir, labelDir, labelPath, bboxPath);
         //		csv2Yolo(imgDir, labelPath, bboxPath, labelSet);
-        String xmlPath = "D:\\1.xml";
-        testXML(xmlPath);
+//        String xmlPath = "D:\\1.xml";
+//        testXML(xmlPath);
     }
 }
 

@@ -6991,6 +6991,7 @@ public class MBSGDOptimizer extends Optimizer {
         }
     }
     
+    
     public void train_DiT_TXT_ICPlan(LatendDataset trainingData,ICPlan icplan,String weightPath, Tensor mean, Tensor std, float scale_factor, int weightCount) {
         // TODO Auto-generated method stub
         try {
@@ -7091,6 +7092,8 @@ public class MBSGDOptimizer extends Optimizer {
                      * current time error
                      */
                     if (this.loss.isHasGPU()) {
+//                    	network.tensorOP.sum(this.loss, sum_loss);
+//                    	float mse_loss = sum_loss.syncHost()[0] / this.batchSize;
                     	float mse_loss = MatrixOperation.sum(this.loss.syncHost()) / this.batchSize;
 //                    	System.out.println("mse_loss:" + mse_loss);
                         this.currentError = mse_loss;
@@ -7106,6 +7109,7 @@ public class MBSGDOptimizer extends Optimizer {
                     } else {
                         this.currentError = MatrixOperation.sum(this.loss.data) / this.batchSize;
                     }
+
                     train_loss += this.currentError;
                     String msg = "training[" + this.trainIndex+"]{" + it + "/" + indexs.length + "} (lr:" + this.network.learnRate + ") train_loss:" + this.currentError + " [costTime:" + (System.nanoTime() - start) / 1e6 + "ms.]";
                     System.out.println(msg);

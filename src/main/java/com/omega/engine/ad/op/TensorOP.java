@@ -360,7 +360,15 @@ public class TensorOP {
             b.data = MatrixOperation.sum(a.data, a.number, a.channel, a.height, a.width, axis);
         }
     }
-
+    
+    public void sum(Tensor a, Tensor b) {
+        if (b.isHasGPU()) {
+            op.sum_gpu(a, b);
+        } else {
+            b.data = MatrixOperation.sum(a.data, a.number, a.channel, a.height, a.width, 0);
+        }
+    }
+    
     public void sum_pow(Tensor a, Tensor b, double p, int axis) {
         if (b.isHasGPU()) {
             op.sum_pow_gpu(a, b, p, axis);

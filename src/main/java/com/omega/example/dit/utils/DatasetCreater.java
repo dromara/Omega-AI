@@ -314,6 +314,85 @@ public class DatasetCreater {
 
     }
     
+    public static void createLatendDatasetFullClip() {
+    	
+    	try {
+    		
+    		String outputPath = "/root/gpufree-data/txt2img_1m/vavae_1m_latend.bin";
+    		String clipDataPath = "/root/gpufree-data/txt2img_1m/vavae_1m_clip.bin";
+    		
+        	String labelPath = "/root/gpufree-data/txt2img_1m/labels.json";
+            String imgDirPath = "/root/gpufree-data/txt2img_1m/processed_images/";
+            boolean horizontalFilp = false;
+            int imgSize = 256;
+            int maxContextLen = 77;
+            int batchSize = 50;
+            float[] mean = new float[]{0.5f, 0.5f, 0.5f};
+            float[] std = new float[]{0.5f, 0.5f, 0.5f};
+            String vocabPath = "/omega/models/CLIP-GmP-ViT-L-14/vocab.json";
+            String mergesPath = "/omega/models/CLIP-GmP-ViT-L-14/merges.txt";
+            BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+            SDImageDataLoaderEN dataLoader = new SDImageDataLoaderEN(bpe, labelPath, imgDirPath, ".jpg", imgSize, imgSize, maxContextLen, batchSize, horizontalFilp, mean, std);
+
+            int maxPositionEmbeddingsSize = 77;
+            int vocabSize = 49408;
+            int headNum = 12;
+            int n_layers = 12;
+            int textEmbedDim = 768;
+            int intermediateSize = 3072;
+            ClipTextModel clip = new ClipTextModel(LossType.MSE, UpdaterType.adamw, headNum, maxContextLen, vocabSize, textEmbedDim, maxPositionEmbeddingsSize, intermediateSize, n_layers);
+            clip.CUDNN = true;
+            clip.time = maxContextLen;
+            clip.RUN_MODEL = RunModel.EVAL;
+            String clipWeight = "/omega/models/CLIP-GmP-ViT-L-14/CLIP-GmP-ViT-L-14.json";
+            ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, "", false);
+            
+            int latendDim = 32;
+            int num_res_blocks = 2;
+            int[] ch_mult = new int[]{1, 1, 2, 2, 4};
+            int ch = 128;
+            
+            VA_VAE vae = new VA_VAE(LossType.MSE, UpdaterType.adamw, latendDim, imgSize, ch_mult, ch, num_res_blocks, true);
+            vae.CUDNN = true;
+            vae.learnRate = 0.001f;
+            vae.RUN_MODEL = RunModel.EVAL;
+            String vaeWeight = "/omega/models/vavae.json";
+            ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
+            
+            int[][] indexs = dataLoader.order();
+            
+            Tensor input = new Tensor(batchSize, 3, dataLoader.img_h, dataLoader.img_w, true);
+            Tensor label = new Tensor(batchSize * dataLoader.maxContextLen, 1, 1, 1, true);
+            Tensor eosIds = new Tensor(batchSize, 1, 1, 1, true);
+            String[] labels = new String[batchSize];
+
+            File file = new File(outputPath);
+            FileOutputStream writer = new FileOutputStream(file);
+            
+            File clipFile = new File(clipDataPath);
+            FileOutputStream clipWriter = new FileOutputStream(clipFile);
+            
+            for(int it = 0;it<indexs.length;it++) {
+            	 long start = System.nanoTime();
+            	 dataLoader.loadData(indexs[it], input, label, labels, eosIds);
+            	 Tensor latend = vae.encode(input);
+                 JCudaDriver.cuCtxSynchronize();
+                 writeTensor(latend, writer);
+            	 Tensor condInput = clip.get_full_clip_prompt_embeds(label);
+            	 JCudaDriver.cuCtxSynchronize();
+                 writeTensor(condInput, clipWriter);
+                 System.out.println(it + "/" + indexs.length + " cost["+(System.nanoTime() - start)/1e6+"ms] finish.");
+            }
+            
+            System.out.println("create ["+dataLoader.count+"] finish.");
+           
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+
+    }
+    
     public static void createLatendDataset_vavae() {
     	
     	try {
@@ -502,6 +581,8 @@ public class DatasetCreater {
     	
         try {
         	RandomAccessFile file = new RandomAccessFile(dataPath, "r");
+        	
+        	file.seek(100000 * latend.getOnceSize() * 4);
         	
             int number = (int) (file.length() / latend.getOnceSize() / 4);
         	
@@ -720,7 +801,9 @@ public class DatasetCreater {
         	
 //        	createLatendDataset3();
         	
-        	createClipData();
+//        	createClipData();
+        	
+        	createLatendDatasetFullClip();
         	
         } catch (Exception e) {
             // TODO: handle exception

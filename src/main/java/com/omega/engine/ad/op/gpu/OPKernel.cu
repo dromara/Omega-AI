@@ -1,5 +1,5 @@
-#define BLOCK 1024
 #define FLT_MAX 3.402823466e+38F
+#define WARP_SIZE 32
 
 
 extern "C"
@@ -604,7 +604,6 @@ __global__ void sum_pow_channel_kernel(int N, double p, float *X, float *Y,int C
 
 
 extern "C"
-
 __global__ void sum_pow_height_kernel(int N, double p, float *X, float *Y,int C,int H,int W)
 
 {
@@ -625,10 +624,69 @@ __global__ void sum_pow_height_kernel(int N, double p, float *X, float *Y,int C,
 
 }
 
+extern "C"
+__global__ void gpuSumKernel(float *a, float *b, const int n) {
+    __shared__ float s[256];
+    int blockSize = 256;
+    const int i = threadIdx.x;
+    const int size = blockSize * 4;
+    const int j = blockIdx.x * size + i;
 
+    float sum = 0;
+    #pragma unroll
+    for (int offset = 0;
+        offset < size && j + offset < n;
+        offset += blockSize) {
+        sum += a[j + offset];
+    }
+    s[i] = sum;
+    __syncthreads();
+
+    #pragma unroll
+    for (int d = blockSize >> 1; d > WARP_SIZE; d >>= 1) {
+        if (i < d) {
+            s[i] = sum = sum + s[i + d];
+        }
+        __syncthreads();
+    }
+
+    // unrolled loop is slower
+    if (blockSize >= 64 && i < 32) {
+        s[i] = sum = sum + s[i + 32];
+    }
+    __syncthreads();
+
+    if (blockSize >= 32 && i < 16) {
+        s[i] = sum = sum + s[i + 16];
+    }
+    __syncthreads();
+
+    if (blockSize >= 16 && i < 8) {
+        s[i] = sum = sum + s[i + 8];
+    }
+    __syncthreads();
+
+    if (blockSize >= 8 && i < 4) {
+        s[i] = sum = sum + s[i + 4];
+    }
+    __syncthreads();
+
+    if (blockSize >= 4 && i < 2) {
+        s[i] = sum = sum + s[i + 2];
+    }
+    __syncthreads();
+
+    if (blockSize >= 2 && i < 1) {
+        s[i] = sum = sum + s[i + 1];
+    }
+    __syncthreads();
+
+    if (i == 0) {
+        b[blockIdx.x] = s[0];
+    }
+}
 
 extern "C"
-
 __global__ void max_kernel(int N, float *X, float *Y)
 
 {

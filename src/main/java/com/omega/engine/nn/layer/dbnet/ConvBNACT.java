@@ -3,6 +3,8 @@ package com.omega.engine.nn.layer.dbnet;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
+import com.omega.common.utils.MatrixUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.layer.ConvolutionLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;

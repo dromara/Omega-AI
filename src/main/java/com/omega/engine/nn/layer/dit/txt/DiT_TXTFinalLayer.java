@@ -70,7 +70,6 @@ public class DiT_TXTFinalLayer extends Layer {
     }
 
     public void initLayers() {
-        //		NanoGPT net = (NanoGPT) this.network;
     	this.finalNorm = new RMSLayer(1, 1, hidden_size, normParams, BNType.fully_bn, network);
         this.finalLinear = new FullyLayer(hidden_size, oWidth, bias, network);
         this.finalLinear.weight.clearGPU();

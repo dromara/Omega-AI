@@ -293,10 +293,19 @@ public class DiTCrossAttentionLayer2 extends Layer {
     public void initBack() {
         // TODO Auto-generated method stub
         if (this.dattn == null) {
-            this.dqt = Tensor.createGPUTensor(this.dqt, batchSize, headNum, time, dk, true);
-            this.dkt = Tensor.createGPUTensor(this.dkt, batchSize, headNum, kvTime, dk, true);
-            this.dvt = Tensor.createGPUTensor(this.dvt, batchSize, headNum, kvTime, dk, true);
-            this.dattn = Tensor.createGPUTensor(this.dattn, batchSize, headNum, time, kvTime, true);
+        	this.dqt = CUDAMemoryManager.getCache("cache_cross_dqt", batchSize, headNum, time, dk);
+        	this.dkt = CUDAMemoryManager.getCache("cache_cross_dkt", batchSize, headNum, kvTime, dk);
+        	this.dvt = CUDAMemoryManager.getCache("cache_cross_dvt", batchSize, headNum, kvTime, dk);
+        	this.dattn = CUDAMemoryManager.getCache("cache_cross_dattn", batchSize, headNum, time, kvTime);
+//            this.dqt = Tensor.createGPUTensor(this.dqt, batchSize, headNum, time, dk, true);
+//            this.dkt = Tensor.createGPUTensor(this.dkt, batchSize, headNum, kvTime, dk, true);
+//            this.dvt = Tensor.createGPUTensor(this.dvt, batchSize, headNum, kvTime, dk, true);
+//            this.dattn = Tensor.createGPUTensor(this.dattn, batchSize, headNum, time, kvTime, true);
+        }else {
+        	this.dqt.viewOrg(batchSize, headNum, time, dk);
+        	this.dkt.viewOrg(batchSize, headNum, kvTime, dk);
+        	this.dvt.viewOrg(batchSize, headNum, kvTime, dk);
+        	this.dattn.viewOrg(batchSize, headNum, time, kvTime);
         }
     }
 
@@ -514,9 +523,12 @@ public class DiTCrossAttentionLayer2 extends Layer {
         Tensor keyDelta = kt.view(batchSize * kvTime, 1, 1, headNum * dk);
         Tensor valueDelta = vt.view(batchSize * kvTime, 1, 1, headNum * dk);
 
-        this.qLinerLayer.back(queryDelta);
-        this.kLinerLayer.back(keyDelta);
-        this.vLinerLayer.back(valueDelta);
+        this.qLinerLayer.getOutput().viewOrg();
+        this.kLinerLayer.getOutput().viewOrg();
+        this.vLinerLayer.getOutput().viewOrg();
+        this.qLinerLayer.back(queryDelta, qLinerLayer.getOutput());
+        this.kLinerLayer.back(keyDelta, kLinerLayer.getOutput());
+        this.vLinerLayer.back(valueDelta, vLinerLayer.getOutput());
 
         Tensor_OP().add(this.kLinerLayer.diff, this.vLinerLayer.diff, this.kLinerLayer.diff);
         this.diff = qLinerLayer.diff;

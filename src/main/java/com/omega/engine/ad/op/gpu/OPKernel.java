@@ -75,6 +75,7 @@ public class OPKernel extends BaseKernel implements Serializable {
     private CUfunction sum_pow_gpu_function;
     private CUfunction sum_pow_channel_gpu_function;
     private CUfunction sum_pow_height_gpu_function;
+    private CUfunction sum_gpu_kernel_function;
     private CUfunction max_gpu_function;
     private CUfunction max_channel_gpu_function;
     private CUfunction max_backward_gpu_function;
@@ -162,6 +163,7 @@ public class OPKernel extends BaseKernel implements Serializable {
         sum_pow_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "sum_pow_kernel");
         sum_pow_channel_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "sum_pow_channel_kernel");
         sum_pow_height_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "sum_pow_height_kernel");
+        sum_gpu_kernel_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "gpuSumKernel");
         max_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "max_kernel");
         max_channel_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "max_channel_kernel");
         max_backward_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "max_backward_kernel");
@@ -1318,6 +1320,24 @@ public class OPKernel extends BaseKernel implements Serializable {
             e.printStackTrace();
         }
     }
+    
+    public void sum_gpu(Tensor a, Tensor y) {
+    	 try {
+    		 int blockSize = 256;
+    		 /**
+              * float *a, float *b, const int n
+              */
+             Pointer kernelParameter = Pointer.to(Pointer.to(a.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(new int[]{a.getDataLength()}));
+             checkCUDA(cuLaunchKernel(sum_gpu_kernel_function, CAFFE_GET_BLOCKS(a.getDataLength(), blockSize), 1, 1,      // Grid dimension
+            		 blockSize, 1, 1,      // Block dimension
+                     blockSize, null,               // Shared memory size and stream
+                     kernelParameter, null // Kernel- and extra parameters
+             ));
+    	 } catch (Exception e) {
+             // TODO: handle exception
+             e.printStackTrace();
+         }
+    }
 
     public void sum_pow_gpu(Tensor a, Tensor y, double p, int axis) {
         try {
@@ -2106,6 +2126,10 @@ public class OPKernel extends BaseKernel implements Serializable {
         return (N + CAFFE_CUDA_NUM_THREADS - 1) / CAFFE_CUDA_NUM_THREADS;
     }
 
+    public int CAFFE_GET_BLOCKS(int N,int blockSize) {
+        return (N + blockSize - 1) / blockSize;
+    }
+    
     public void checkCUDA(int code) {
         if (code != cudaError.cudaSuccess) {
             System.err.println("Error code " + code + ":" + cudaError.stringFor(code));
