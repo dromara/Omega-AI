@@ -7122,7 +7122,7 @@ public class MBSGDOptimizer extends Optimizer {
                 }
                
                 if (i > 0 && i % weightCount == 0) {
-                    String save_model_path = weightPath + "/dit_b2_" + i + ".model";
+                    String save_model_path = weightPath + "/dit_xl2_" + i + ".model";
                     ModelUtils.saveModel(network, save_model_path);
                 }
                 System.out.println("training[" + this.trainIndex + "] train loss:{" + train_loss / indexs.length + "} ");
