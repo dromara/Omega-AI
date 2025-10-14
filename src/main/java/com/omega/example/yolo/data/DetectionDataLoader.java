@@ -275,7 +275,6 @@ public class DetectionDataLoader extends BaseDataLoader {
         } else {
             /**
              * 加载input数据
-
              */
             FileDataLoader.load(imgDirPath, extName, idxSet, indexs, input.number, input, false);
         }

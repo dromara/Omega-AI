@@ -1973,7 +1973,46 @@ public class OPKernel extends BaseKernel implements Serializable {
             e.printStackTrace();
         }
     }
-
+    
+    public void cat_bacth_gpu(Tensor a, Tensor b, Tensor c) {
+        // TODO Auto-generated method stub
+        try {
+            int part_input_size = a.dataLength / 1;
+            this.copy_gpu(a, c, part_input_size, 0, 1, 0, 1);
+            part_input_size = b.dataLength / 1;
+            this.copy_gpu(b, c, part_input_size, 0, 1, 1 * a.dataLength, 1);
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void cat_bacth_back_gpu(Tensor c, Tensor a, Tensor b) {
+        // TODO Auto-generated method stub
+        try {
+            int part_input_size = a.dataLength / 1;
+            this.axpy_gpu(c, a, part_input_size, 1, 0, 1, 0, 1);
+            part_input_size = b.dataLength / 1;
+            this.axpy_gpu(c, b, part_input_size, 1, 1 * a.dataLength, 1, 0, 1);
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void cat_bacth_copy_gpu(Tensor c, Tensor a, Tensor b) {
+        // TODO Auto-generated method stub
+        try {
+            int part_input_size = a.dataLength / 1;
+            this.copy_gpu(c, a, part_input_size, 0, 1, 0, 1);
+            part_input_size = b.dataLength / 1;
+            this.copy_gpu(c, b, part_input_size, 1 * a.dataLength, 1, 0, 1);
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
     public void cat_gpu(Tensor a, Tensor b, Tensor c) {
         // TODO Auto-generated method stub
         try {

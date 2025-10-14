@@ -91,10 +91,10 @@ public class RMSKernel extends BaseKernel {
             //	    	input.showDM();
             for (int i = 0; i < 10; i++) {
                 rms.forward(input);
-                rms.getOutput().showDMByNumber(0);
+//                rms.getOutput().showDMByNumber(0);
                 rms.back(delta);
                 rms.diff.showDMByNumber(0);
-                rms.diffGamma.showDMByNumber(0);
+//                rms.diffGamma.showDMByNumber(0);
             }
         } catch (Exception e) {
             // TODO: handle exception

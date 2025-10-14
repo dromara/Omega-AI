@@ -95,10 +95,11 @@ public class DiTCaptionEmbeddingLayer extends Layer {
     public void init(Tensor input) {
         // TODO Auto-generated method stub
         this.number = input.number;
-        if(network.RUN_MODEL == RunModel.TRAIN && uncond_prob > 0 && (mask == null || mask.number != number)) {
-        	mask = Tensor.createGPUTensor(mask, number, 1, 1, 1, true);
+        int batchSize = number / token_num;
+        if(network.RUN_MODEL == RunModel.TRAIN && uncond_prob > 0 && (mask == null || mask.number != batchSize)) {
+        	mask = Tensor.createGPUTensor(mask, batchSize, 1, 1, 1, true);
         }
-        if(network.RUN_MODEL == RunModel.TRAIN && uncond_prob > 0 && y_embedding == null) {
+        if(network.RUN_MODEL == RunModel.TRAIN && uncond_prob > 0 && getY_embedding() == null) {
         	float[] data = RandomUtils.gaussianRandom(token_num * inChannel, 0.0f, 1.0f);
         	data = MatrixOperation.multiplication(data, (float) Math.pow(inChannel, 0.5));
         	y_embedding = new Tensor(1, 1, token_num, inChannel, data, true);
@@ -120,8 +121,8 @@ public class DiTCaptionEmbeddingLayer extends Layer {
         // TODO Auto-generated method stub
     	
     	if(network.RUN_MODEL == RunModel.TRAIN && uncond_prob > 0) {
-    		GPUOP.getInstance().cudaRandom(this.mask);
-    		kernel.tokenDrop(input, y_embedding, mask, input, uncond_prob);
+    		GPUOP.getInstance().cudaRandom(this.mask);//0-1
+    		kernel.tokenDrop(input, y_embedding, mask, input, y_embedding.dataLength, uncond_prob);
     	}
     	
         linear1.forward(input);
@@ -195,17 +196,14 @@ public class DiTCaptionEmbeddingLayer extends Layer {
         // TODO Auto-generated method stub
         /**
          * 参数初始化
-
          */
         this.init(input);
         /**
          * 设置输入
-
          */
         this.setInput(input);
         /**
          * 计算输出
-
          */
         this.output();
     }
@@ -259,7 +257,7 @@ public class DiTCaptionEmbeddingLayer extends Layer {
         linear1.saveModel(outputStream);
         linear2.saveModel(outputStream);
         if(uncond_prob > 0) {
-        	ModelUtils.saveParams(outputStream, y_embedding);
+        	ModelUtils.saveParams(outputStream, getY_embedding());
         }
     }
 
@@ -268,7 +266,7 @@ public class DiTCaptionEmbeddingLayer extends Layer {
         linear2.loadModel(inputStream);
         if(uncond_prob > 0) {
         	y_embedding = new Tensor(1, 1, token_num, inChannel, true);
-        	ModelUtils.loadParams(inputStream, y_embedding);
+        	ModelUtils.loadParams(inputStream, getY_embedding());
         }
     }
 
@@ -278,5 +276,9 @@ public class DiTCaptionEmbeddingLayer extends Layer {
         linear1.accGrad(scale);
         linear2.accGrad(scale);
     }
+
+	public Tensor getY_embedding() {
+		return y_embedding;
+	}
 }
 

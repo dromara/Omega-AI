@@ -87,23 +87,23 @@ public class SentencePieceTokenizer extends Tokenizer {
     }
 
     public static void main(String[] args) {
-        String tokenizer_path = "H:\\transformer_dataset\\tokenizer.model";
+        String tokenizer_path = "D:\\models\\t5\\spiece.model";
         //    	String tokenizer_path = "H:\\transformer_dataset\\chinese_sp.model";
         try {
             SentencePieceTokenizer t = new SentencePieceTokenizer(tokenizer_path);
-            //			String txt = "中国社会科学院语言研究所是中国社会科学院下设的一个汉语语言研究机构。";
-            //
-            //			String[] tokens = t.tokenize(txt);
-            //
-            //			System.out.println(JsonUtils.toJson(tokens));
-            //
-            //			int[] idx = t.encode(txt);
-            //
-            //			System.out.println(JsonUtils.toJson(idx));
-            //
-            //			String outText = t.decode(idx);
-            //
-            //			System.out.println(outText);
+			String txt = "a photo of a cat";
+
+			String[] tokens = t.tokenize(txt);
+
+			System.out.println(JsonUtils.toJson(tokens));
+
+			int[] idx = t.encodeInt(txt);
+
+			System.out.println(JsonUtils.toJson(idx));
+
+			String outText = t.decode(idx);
+
+			System.out.println(outText);
             //			String datasetPath = "H:\\transformer_dataset\\wikipedia-cn-20230720-filtered.json";
             //			String outputPath = "H:\\transformer_dataset\\wiki_idx_chatglm_voc.txt";
             //

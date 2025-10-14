@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.concurrent.CompletableFuture;
 
-import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MathUtils;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
@@ -126,21 +125,21 @@ public class LatendDataset extends BaseTokenizer {
     
     public float[] loadData(long idx) {
         try {
-            if (idx * max_len * byteUnit <= file.length()) {
-            	long fi = idx * max_len * byteUnit;
-            	long cfi = idx * clipMaxTime * clipEmbd * byteUnit;
+
+        	long fi = idx * max_len * byteUnit;
+        	long cfi = idx * clipMaxTime * clipEmbd * byteUnit;
 //            	System.err.println(fi);
-            	file.seek(fi);
+        	if(fi < file.length()) {
+        		file.seek(fi);
                 clipFile.seek(cfi);
                 if (dataType == BinDataType.float32) {
                     ModelUtils.readFloatArray(file, cache);
                     ModelUtils.readFloatArray(clipFile, clip_cache);
                 }
-                
-            } else {
-                initBinReader();
-                return loadData();
-            }
+        	}else {
+        		System.err.println("dataset index["+idx+"] is out.");
+        	}
+
         } catch (Exception e) {
             // TODO: handle exception
             e.printStackTrace();
@@ -171,21 +170,28 @@ public class LatendDataset extends BaseTokenizer {
         }
     }
     
+    public void loadData(int[] index,Tensor input, Tensor label) {
+    	input.hostToDevice();
+        label.hostToDevice();
+        cf = loadAsyncData(index, input, label);
+    }
+    
     public void loadData(int[] index,Tensor input, Tensor label, int it) {
         try {
             //			System.out.println(it);
-//        	long start = System.nanoTime();
-            if (isBin && it == count_it - 2) {
-                initBinReader();
-            }
             if (cf != null) {
-//            	long start22 = System.nanoTime();
                 boolean success = cf.get();
-                input.hostToDevice();
-                label.hostToDevice();
-                cf = loadAsyncData(index, input, label);
+                if(success){
+                	cf = null;
+                	loadData(index, input, label);
+                }
             } else {
                 cf = loadAsyncData(index, input, label);
+                boolean success = cf.get();
+                if(success){
+                	cf = null;
+                	loadData(index, input, label);
+                }
             }
 //            System.out.println("load cost:"+(System.nanoTime() - start)/1e6+"ms.");
         } catch (Exception e) {
@@ -227,17 +233,15 @@ public class LatendDataset extends BaseTokenizer {
     public CompletableFuture<Boolean> loadAsyncData(int[] index,Tensor input, Tensor label) {
         CompletableFuture<Boolean> cf = CompletableFuture.supplyAsync(() -> {
             try {
+//            	long start = System.nanoTime();
                 for (int b = 0; b < batchSize; b++) {
                 	int idx = index[b];
                     float[] onceToken = readIdxData(idx);
                     float[] clipToken = clip_cache;
-                    for (int t = 0; t < max_len; t++) {
-                        formatNotHeadToIdx(b, t, max_len, onceToken, input);
-                    }
-                    for(int t = 0;t < clipMaxTime * clipEmbd;t++) {
-                    	formatNotHeadToIdx(b, t, clipMaxTime * clipEmbd, clipToken, label);
-                    }
+                    System.arraycopy(onceToken, 0, input.data, b * onceToken.length, onceToken.length);
+                    System.arraycopy(clipToken, 0, label.data, b * clipToken.length, clipToken.length);
                 }
+//                System.out.println("load cost:"+(System.nanoTime() - start)/1e6+"ms.");
             } catch (Exception e) {
                 // TODO: handle exception
                 e.printStackTrace();

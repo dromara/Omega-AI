@@ -1,5 +1,20 @@
 package com.omega.example.yolo.test;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import com.omega.common.utils.ImageUtils;
 import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixOperation;
@@ -8,8 +23,11 @@ import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.loss.LossType;
 import com.omega.engine.model.DarknetLoader;
 import com.omega.engine.model.ModelLoader;
+import com.omega.engine.nn.layer.YoloLayer;
+import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.nn.network.Yolo;
 import com.omega.engine.optimizer.MBSGDOptimizer;
+import com.omega.engine.optimizer.Optimizer;
 import com.omega.engine.optimizer.lr.LearnRateUpdate;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
@@ -17,14 +35,14 @@ import com.omega.example.transformer.utils.LagJsonReader;
 import com.omega.example.transformer.utils.ModelUtils;
 import com.omega.example.yolo.data.DataType;
 import com.omega.example.yolo.data.DetectionDataLoader;
+import com.omega.example.yolo.data.ImageLoader;
 import com.omega.example.yolo.data.YoloDataTransform2;
 import com.omega.example.yolo.model.YoloBox;
 import com.omega.example.yolo.model.YoloDetection;
 import com.omega.example.yolo.utils.AnchorBoxUtils;
 import com.omega.example.yolo.utils.LabelFileType;
-
-import java.io.*;
-import java.util.*;
+import com.omega.example.yolo.utils.OMImage;
+import com.omega.example.yolo.utils.YoloUtils;
 
 public class YoloV7Test {
     public static void showImg(String outputPath, DetectionDataLoader dataSet, int class_num, List<YoloBox> score_bbox, int batchSize, boolean format, int im_w, int im_h, String[] labelset) {
@@ -122,8 +140,9 @@ public class YoloV7Test {
 //            y.yolov7_tiny_helmet_test();
 //            y.createTrainVailByJson();
 //            y.createCarTrainTestDataSet();
-            y.yolov7_tiny_traffic();
+//            y.yolov7_tiny_traffic();
 //            y.yolov7_tiny_traffic_test();
+            y.yolov7_tiny_traffic_test2();
             //			y.yolov7_tiny_sm();
             //			y.yolov7_tiny_yz();
             //			y.yolov3_tiny_voc();
@@ -562,6 +581,88 @@ public class YoloV7Test {
             }
         }
     }
+    
+    public void yolov7_tiny_traffic_test2() {
+    	
+    	try {
+
+       	    String[] labelset = new String[]{"car", "person", "bus", "others", "van"};
+       	    Yolo netWork = new Yolo(LossType.yolov7, UpdaterType.adamw);
+            netWork.CUDNN = true;
+            netWork.learnRate = 0.001f;
+            String cfg_path = "D:\\dataset\\traffic\\yolov7-tiny-traffic.cfg";
+            ModelLoader.loadConfigToModel(netWork, cfg_path);
+            netWork.init();
+            String model_path = "D:\\models\\yolov7-traffic.model";
+            ModelUtils.loadModel(netWork, model_path);
+            
+            Tensor input = new Tensor(1, 3, 416, 416, true);
+            
+            OMImage orig = ImageLoader.loadImage("D:\\test1.jpg");
+            ImageLoader.loadVailDataDetection(input, null, 0, orig, null, input.width, input.height, 0, 0);
+            input.hostToDevice();
+
+            netWork.RUN_MODEL = RunModel.TEST;
+            Tensor[] output = netWork.predicts(input);
+            
+            List<YoloBox> list = new ArrayList<YoloBox>();
+            YoloBox[] boxs = new YoloBox[input.number];
+            
+            for (int i = 0; i < netWork.outputLayers.size(); i++) {
+                YoloLayer layer = (YoloLayer) netWork.outputLayers.get(i);
+                YoloDetection[][] dets = YoloUtils.getYoloDetectionsV7(output[i], layer.anchors, layer.mask, layer.bbox_num, layer.outputs, layer.class_number,netWork.getHeight(), netWork.getWidth(), 0.5f);
+                for (int j = 0; j < dets.length; j++) {
+                    /**
+                     * nms
+                     */
+                    Optimizer.nmsSort(dets[j], dets[j].length, layer.class_number, 0.7f);
+                    if (boxs[j] != null) {
+                        boxs[j].getDets().addAll(new ArrayList<>(Arrays.asList(dets[j])));
+                    } else {
+                        YoloBox box = new YoloBox(dets[j]);
+                        boxs[j] = box;
+                    }
+                }
+            }
+            list.addAll(new ArrayList<YoloBox>(Arrays.asList(boxs)));
+            
+            System.out.println(list.size());
+            for (YoloBox yoloBox : boxs) {
+    			System.out.println(yoloBox.toString());
+    		}
+            
+            float[] once = MatrixOperation.multiplication(input.data, 255.0f);
+            int bbox_index = 0;
+ 
+            YoloBox box = list.get(bbox_index);
+            List<Integer> indexs = new ArrayList<Integer>();
+            for (int l = 0; l < box.getDets().size(); l++) {
+                if (box.getDets().get(l) != null && box.getDets().get(l).getObjectness() > 0 && !MatrixUtils.isZero(box.getDets().get(l).getProb())) {
+                    indexs.add(l);
+                }
+            }
+            int im_w = 416;
+            int im_h = 416;
+            String outputPath = "D:\\dataset\\traffic\\resized\\test_yolov7_\\";
+            int[][] bbox = new int[indexs.size()][5];
+            for (int i = 0; i < indexs.size(); i++) {
+                Integer index = indexs.get(i);
+                YoloDetection det = box.getDets().get(index);
+                bbox[i][0] = (int) det.getClasses();
+                bbox[i][1] = (int) ((det.getBbox()[0] - det.getBbox()[2] / 2.0f) * im_w);
+                bbox[i][2] = (int) ((det.getBbox()[1] - det.getBbox()[3] / 2.0f) * im_h);
+                bbox[i][3] = (int) ((det.getBbox()[0] + det.getBbox()[2] / 2.0f) * im_w);
+                bbox[i][4] = (int) ((det.getBbox()[1] + det.getBbox()[3] / 2.0f) * im_h);
+            }
+            ImageUtils utils = new ImageUtils();
+            utils.createRGBImage(outputPath + "_" + 0 + ".png", "png", ImageUtils.color2rgb2(once, im_w, im_h, false), im_w, im_h, bbox, labelset);
+            
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+    	
+   }
     
     public void yolov7_tiny_sm() {
         int im_w = 416;

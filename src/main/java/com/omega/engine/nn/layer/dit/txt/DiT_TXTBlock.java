@@ -381,13 +381,13 @@ public class DiT_TXTBlock extends Layer {
     	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dShift, shape, 3);
     	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dScale, shape, 4);
     	
-    	norm3.back(output);
+    	norm3.back(output, norm3.getOutput());
 
     	Tensor_OP().add(norm3.diff, delta, norm3.diff);
     	
     	cross_attn.back(norm3.diff, cos, sin);
 
-    	norm2.back(cross_attn.diff);
+    	norm2.back(cross_attn.diff, norm2.getOutput());
     	Tensor_OP().add(norm2.diff, norm3.diff, norm2.diff);
     	
     	Tensor_OP().mul_left_back(gate_msa, norm2.diff, output,  batchSize, time, 1, output.width, 1);
@@ -403,7 +403,7 @@ public class DiT_TXTBlock extends Layer {
     	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dShift, shape, 0);
     	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dScale, shape, 1);
 
-    	norm1.back(output);
+    	norm1.back(output, norm1.getOutput());
 
     	Tensor_OP().add(norm1.diff, norm2.diff, norm1.diff);
     	
