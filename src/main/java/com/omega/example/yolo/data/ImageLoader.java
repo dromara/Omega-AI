@@ -1,13 +1,26 @@
 package com.omega.example.yolo.data;
 
+import java.awt.image.BufferedImage;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import com.omega.common.task.ForkJobEngine;
-import com.omega.common.utils.*;
+import com.omega.common.utils.ImageUtils;
+import com.omega.common.utils.JsonUtils;
+import com.omega.common.utils.MatrixOperation;
+import com.omega.common.utils.MatrixUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.tensor.Tensor;
 import com.omega.example.yolo.utils.OMImage;
 import com.omega.example.yolo.utils.YoloImageUtils;
-
-import java.io.*;
-import java.util.*;
 
 /**
  * 图片加载组器
@@ -830,6 +843,17 @@ public class ImageLoader {
             System.out.println("=====================>:" + filePath);
         }
         return image;
+    }
+    
+    public static OMImage loadImage(BufferedImage oriImage) {
+    	OMImage image = null;
+    	try {
+    		image = YoloImageUtils.IU().loadOMImage(oriImage);
+    	} catch (Exception e) {
+    		// TODO: handle exception
+    		e.printStackTrace();
+    	}
+    	return image;
     }
 
     public static OMImage loadImage(String filePath) {
