@@ -53,7 +53,7 @@ public class DiT_TXT extends Network {
     
     public DiT_TXT(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int textEmbedDim, int maxContextLen, int mlpRatio,boolean learnSigma, float y_drop_prob) {
         this.lossFunction = LossFactory.create(lossType, this);
-//        this.weight_decay = 0.0f;
+        this.weight_decay = 0.0f;
         this.updater = updater;
         this.inChannel = inChannel;
         this.width = width;
@@ -169,8 +169,8 @@ public class DiT_TXT extends Network {
     		input_null = Tensor.createGPUTensor(input_null, input.number * 2, input.channel, input.height, input.width, true);
     		eps = Tensor.createGPUTensor(eps, input.number, channel, input.height, input.width, true);
     		uncond_eps = Tensor.createGPUTensor(uncond_eps, input.number, channel, input.height, input.width, true);
-    		head = Tensor.createGPUTensor(head, input.number * 2, channel, input.height, input.width, true);
-    		tail = Tensor.createGPUTensor(tail, input.number * 2, input.channel - channel, input.height, input.width, true);
+    		head = Tensor.createGPUTensor(head, input_null.number, channel, input.height, input.width, true);
+    		tail = Tensor.createGPUTensor(tail, input_null.number, input.channel - channel, input.height, input.width, true);
     	}
     	tensorOP.cat_batch(input, input, input_null);
         this.main.forward(input_null, t, context, cos, sin);
@@ -184,8 +184,8 @@ public class DiT_TXT extends Network {
         tensorOP.mul(eps, cfg_scale, eps);
         tensorOP.add(uncond_eps, eps, eps);
         tensorOP.cat_batch(eps, eps, head);
-        tensorOP.setByChannel(this.main.getOutput(), head, this.main.getOutput().shape(), 0);
-        tensorOP.setByChannel(this.main.getOutput(), tail, this.main.getOutput().shape(), channel);
+        tensorOP.getByChannel_back(this.main.getOutput(), head, this.main.getOutput().shape(), 0);
+        tensorOP.getByChannel_back(this.main.getOutput(), tail, this.main.getOutput().shape(), channel);
         tensorOP.getByNumber(this.main.getOutput(), out, 0, input.number);
         return out;
     }

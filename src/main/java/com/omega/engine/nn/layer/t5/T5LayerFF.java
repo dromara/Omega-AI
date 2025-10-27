@@ -1,54 +1,49 @@
-package com.omega.engine.nn.layer.transformer;
-
-import com.omega.engine.nn.layer.DropoutLayer;
-import com.omega.engine.nn.layer.FullyLayer;
-import com.omega.engine.nn.layer.Layer;
-import com.omega.engine.nn.layer.LayerType;
-import com.omega.engine.nn.layer.active.GeluLayer;
-import com.omega.engine.nn.layer.active.GeluType;
-import com.omega.engine.nn.network.Network;
-import com.omega.engine.tensor.Tensor;
-import com.omega.engine.updater.UpdaterFactory;
+package com.omega.engine.nn.layer.t5;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
+import com.omega.engine.nn.layer.Layer;
+import com.omega.engine.nn.layer.LayerType;
+import com.omega.engine.nn.layer.normalization.BNType;
+import com.omega.engine.nn.layer.normalization.RMSLayer;
+import com.omega.engine.nn.network.Network;
+import com.omega.engine.tensor.Tensor;
+import com.omega.engine.updater.UpdaterFactory;
+
 /**
- * PoswiseFeedForward Layer
- *
+ * T5LayerFF
  * @author Administrator
  */
-public class MLPLayer extends Layer {
-    private int embedDim = 0;
-    private int nChannel = 1;
+public class T5LayerFF extends Layer {
+    private int embed_size = 0;
+    private int ff_size = 1;
     private boolean bias = false;
-    private boolean dropout = false;
-    private FullyLayer linear1;
-    private GeluLayer active;
-    private FullyLayer linear2;
-    private DropoutLayer dropoutLayer;
 
-    public MLPLayer(int embedDim, int nChannel, boolean bias) {
-        this.embedDim = embedDim;
-        this.nChannel = nChannel;
+    public RMSLayer norm;
+    public DenseRelu dr;
+
+    public T5LayerFF(int embed_size, int ff_size, boolean bias) {
+        this.embed_size = embed_size;
+        this.ff_size = ff_size;
         this.bias = bias;
         this.oChannel = 1;
         this.oHeight = 1;
-        this.oWidth = embedDim;
+        this.oWidth = embed_size;
         this.initLayers();
     }
 
-    public MLPLayer(int embedDim, int nChannel, boolean bias, Network network) {
+    public T5LayerFF(int embed_size, int ff_size, boolean bias, Network network) {
         this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
         }
-        this.embedDim = embedDim;
-        this.nChannel = nChannel;
+        this.embed_size = embed_size;
+        this.ff_size = ff_size;
         this.bias = bias;
         this.oChannel = 1;
         this.oHeight = 1;
-        this.oWidth = embedDim;
+        this.oWidth = embed_size;
         this.initLayers();
     }
 
@@ -56,16 +51,8 @@ public class MLPLayer extends Layer {
     }
 
     public void initLayers() {
-        //		NanoGPT net = (NanoGPT) this.network;
-        this.linear1 = new FullyLayer(embedDim, nChannel, bias, network);
-        //		this.linear1.weight = new Tensor(1, 1, embedDim, nChannel, RandomUtils.uniform(this.embedDim * nChannel, 0.0f, 0.02f), true);
-        this.active = new GeluLayer(linear1, GeluType.TANH);
-        this.linear2 = new FullyLayer(nChannel, embedDim, bias, network);
-        //		this.linear2.weight = new Tensor(1, 1, nChannel, embedDim, RandomUtils.uniform(this.embedDim * nChannel, 0.0f, 0.02f), true);
-        //		this.linear2.weight = new Tensor(1, 1, nChannel, embedDim, RandomUtils.uniform(this.embedDim * nChannel, 0.0f, (0.02f / (float) Math.sqrt(2 * net.decoderNum))), true);
-        if (dropout) {
-            dropoutLayer = new DropoutLayer(0.1f, linear2);
-        }
+        this.norm = new RMSLayer(1, 1, embed_size, true, BNType.fully_bn, network);
+        this.dr = new DenseRelu(embed_size, ff_size, bias, network);
     }
 
     @Override
@@ -87,17 +74,12 @@ public class MLPLayer extends Layer {
     @Override
     public void output() {
         // TODO Auto-generated method stub
-        linear1.forward(input);
-        active.forward(linear1.getOutput());
-        linear2.forward(active.getOutput());
-        if (dropout) {
-            dropoutLayer.forward(linear2.getOutput());
-            this.output = dropoutLayer.getOutput();
-        } else {
-            this.output = linear2.getOutput();
-        }
+    	norm.forward(input);
+    	dr.forward(norm.getOutput());
+    	Tensor_OP().add(norm.getOutput(), dr.getOutput(), norm.getOutput());
+        this.output = norm.getOutput();
     }
-
+    
     @Override
     public Tensor getOutput() {
         // TODO Auto-generated method stub
@@ -107,17 +89,7 @@ public class MLPLayer extends Layer {
     @Override
     public void diff() {
         // TODO Auto-generated method stub
-        if (this.dropout) {
-            this.dropoutLayer.back(delta);
-            this.linear2.back(this.dropoutLayer.diff);
-        } else {
-            this.linear2.back(this.delta);
-        }
-        active.back(this.linear2.diff);
-        linear1.back(active.diff);
-        this.diff = this.linear1.diff;
-        //		System.out.println("mlp diff:");
-        //		diff.showDMByNumber(0);
+    	
     }
 
     @Override
@@ -125,17 +97,14 @@ public class MLPLayer extends Layer {
         // TODO Auto-generated method stub
         /**
          * 设置输入
-
          */
         this.setInput();
         /**
          * 参数初始化
-
          */
         this.init();
         /**
          * 计算输出
-
          */
         this.output();
     }
@@ -146,12 +115,10 @@ public class MLPLayer extends Layer {
         this.initBack();
         /**
          * 设置梯度
-
          */
         this.setDelta();
         /**
          * 计算梯度
-
          */
         this.diff();
         if (this.network.GRADIENT_CHECK) {
@@ -164,17 +131,14 @@ public class MLPLayer extends Layer {
         // TODO Auto-generated method stub
         /**
          * 设置输入
-
          */
         this.setInput(input);
         /**
          * 参数初始化
-
          */
         this.init();
         /**
          * 计算输出
-
          */
         this.output();
     }
@@ -201,8 +165,7 @@ public class MLPLayer extends Layer {
     @Override
     public void update() {
         // TODO Auto-generated method stub
-        linear1.update();
-        linear2.update();
+
     }
 
     @Override
@@ -233,20 +196,20 @@ public class MLPLayer extends Layer {
     }
 
     public void saveModel(RandomAccessFile outputStream) throws IOException {
-        linear1.saveModel(outputStream);
-        linear2.saveModel(outputStream);
+        norm.saveModel(outputStream);
+        dr.saveModel(outputStream);
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
-        linear1.loadModel(inputStream);
-        linear2.loadModel(inputStream);
+    	norm.loadModel(inputStream);
+    	dr.loadModel(inputStream);
     }
 
     @Override
     public void accGrad(float scale) {
         // TODO Auto-generated method stub
-        linear1.accGrad(scale);
-        linear2.accGrad(scale);
+    	norm.accGrad(scale);
+    	dr.accGrad(scale);
     }
 }
 

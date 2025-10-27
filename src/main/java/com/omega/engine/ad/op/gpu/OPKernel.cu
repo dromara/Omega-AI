@@ -1725,6 +1725,23 @@ __global__ void cat_width_back_kernel(int N, float *da, float *db, float *dy, in
 
 }
 
+extern "C"
+__global__ void cat_width_kernel2(int N, float *a, float *b, float *y, int AW, int BW) {
+
+    int tid = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+
+    if (tid < N) {
+		int W = AW + BW;
+        for (int i = 0; i < W; i++) {
+			if(i < AW){
+				y[tid * W + i] = a[tid * AW + i];
+			}else{
+				y[tid * W + i] = b[tid * BW + i - AW];
+			}
+        }
+    }
+
+}
 
 extern "C"
 __global__ void update_ema(int N,float *ema, float *model,float decay)

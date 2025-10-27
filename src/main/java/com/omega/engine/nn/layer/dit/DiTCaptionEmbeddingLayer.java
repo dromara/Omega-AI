@@ -10,6 +10,7 @@ import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.active.GeluLayer;
+import com.omega.engine.nn.layer.active.GeluType;
 import com.omega.engine.nn.layer.dit.kernel.TokenDropKernel;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
@@ -67,16 +68,17 @@ public class DiTCaptionEmbeddingLayer extends Layer {
     }
 
     public void initLayers() {
-        linear1 = new FullyLayer(inChannel, outChannel, bias, network);
+    	int hiddenSize = outChannel;
+        linear1 = new FullyLayer(inChannel, hiddenSize, bias, network);
 //        RandomUtils.xavier_uniform(linear1.weight, 1, inChannel, outChannel);
-        linear1.weight.setData(RandomUtils.normal_(inChannel * outChannel, 0.0f, 0.02f));
+        linear1.weight.setData(RandomUtils.normal_(inChannel * hiddenSize, 0.0f, 0.02f));
         if(linear1.bias != null) {
         	linear1.bias.clearGPU();
         }
-        act = new GeluLayer(linear1);
-        linear2 = new FullyLayer(outChannel, outChannel, bias, network);
+        act = new GeluLayer(linear1, GeluType.TANH);
+        linear2 = new FullyLayer(hiddenSize, outChannel, bias, network);
 //        RandomUtils.xavier_uniform(linear2.weight, 1, outChannel, outChannel);
-        linear2.weight.setData(RandomUtils.normal_(outChannel * outChannel, 0.0f, 0.02f));
+        linear2.weight.setData(RandomUtils.normal_(hiddenSize * outChannel, 0.0f, 0.02f));
         if(linear2.bias != null) {
         	linear2.bias.clearGPU();
         }
@@ -101,7 +103,7 @@ public class DiTCaptionEmbeddingLayer extends Layer {
         }
         if(network.RUN_MODEL == RunModel.TRAIN && uncond_prob > 0 && getY_embedding() == null) {
         	float[] data = RandomUtils.gaussianRandom(token_num * inChannel, 0.0f, 1.0f);
-        	data = MatrixOperation.multiplication(data, (float) Math.pow(inChannel, 0.5));
+        	data = MatrixOperation.division(data, (float) Math.pow(inChannel, 0.5));
         	y_embedding = new Tensor(1, 1, token_num, inChannel, data, true);
         }
     }

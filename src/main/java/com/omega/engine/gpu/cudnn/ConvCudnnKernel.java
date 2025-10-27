@@ -61,6 +61,7 @@ public class ConvCudnnKernel extends ConvBaseKernel {
         kernelDesc = new cudnnFilterDescriptor();
         yDesc = new cudnnTensorDescriptor();
         convDesc = new cudnnConvolutionDescriptor();
+
         JCudnn.cudnnCreateTensorDescriptor(xDesc);
         JCudnn.cudnnCreateFilterDescriptor(kernelDesc);
         JCudnn.cudnnCreateTensorDescriptor(yDesc);

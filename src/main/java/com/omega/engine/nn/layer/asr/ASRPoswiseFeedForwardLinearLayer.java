@@ -4,6 +4,7 @@ import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.active.GeluLayer;
+import com.omega.engine.nn.layer.active.GeluType;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
@@ -53,7 +54,7 @@ public class ASRPoswiseFeedForwardLinearLayer extends Layer {
 
     public void initLayers() {
         this.linear1 = new FullyLayer(embedDim, nChannel, bias, network);
-        this.relu1 = new GeluLayer(linear1);
+        this.relu1 = new GeluLayer(linear1, GeluType.TANH);
         this.linear2 = new FullyLayer(nChannel, embedDim, bias, network);
     }
 

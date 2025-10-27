@@ -722,7 +722,20 @@ public class GPUOP {
         // Clean up
         cublasDestroy(getHandle());
     }
-
+    
+    public int sgemm(int m, int n, int k, int ida, int idb, int idc, Pointer dA, Pointer dB, Pointer dC) {
+        try {
+            Pointer zero = Pointer.to(new float[]{0.0f});
+            Pointer one = Pointer.to(new float[]{1.0f});
+            int status = cublasSgemm(getHandle(), CUBLAS_OP_N, CUBLAS_OP_N, m, n, k, one, dA, ida, dB, idb, zero, dC, idc);
+            return status;
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+        return -99;
+    }
+    
     public cublasHandle getHandle() {
         return handle;
     }

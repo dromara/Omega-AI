@@ -6,6 +6,7 @@ import java.io.RandomAccessFile;
 
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.network.ASR;
+import com.omega.engine.nn.network.ClipTextModel;
 import com.omega.engine.nn.network.DiffusionUNetCond2;
 import com.omega.engine.nn.network.Llama2;
 import com.omega.engine.nn.network.Llama3;
@@ -27,6 +28,37 @@ import com.omega.engine.nn.network.vae.WFVAE;
 import com.omega.engine.tensor.Tensor;
 
 public class ModelUtils {
+	
+	public static void saveModel(ClipTextModel model, String outpath) {
+        File file = new File(outpath);
+        if (!file.exists()) {
+            try {
+                file.createNewFile();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+        try (RandomAccessFile rFile = new RandomAccessFile(file, "rw")) {
+            System.out.println("start save model...");
+            model.saveModel(rFile);
+            System.out.println("model save success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void loadModel(ClipTextModel model, String inputPath) {
+        try (RandomAccessFile File = new RandomAccessFile(inputPath, "r")) {
+            System.out.println("start load model...");
+            model.loadModel(File);
+            System.out.println("model load success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
 	
 	public static void saveModel(DiT_TXT model, String outpath) {
         File file = new File(outpath);

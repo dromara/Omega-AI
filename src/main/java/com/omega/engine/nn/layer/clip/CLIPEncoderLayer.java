@@ -2,6 +2,7 @@ package com.omega.engine.nn.layer.clip;
 
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
+import com.omega.engine.nn.layer.active.GeluType;
 import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.tensor.Tensor;
@@ -31,6 +32,8 @@ public class CLIPEncoderLayer extends Layer {
     private LNLayer norm2;
     private Tensor tmp1;
     private Tensor tmp2;
+    
+    private GeluType actType = GeluType.FAST;
 
     public CLIPEncoderLayer(int headNum, int time, int embedDim, int intermediateSize, boolean bias, boolean dropout, boolean mask) {
         this.headNum = headNum;
@@ -61,12 +64,30 @@ public class CLIPEncoderLayer extends Layer {
         this.mask = mask;
         this.initLayers();
     }
+    
+    public CLIPEncoderLayer(int headNum, int time, int embedDim, int intermediateSize, boolean bias, boolean dropout, boolean mask, GeluType actType, Network network) {
+        this.headNum = headNum;
+        this.network = network;
+        if (this.updater == null) {
+            this.setUpdater(UpdaterFactory.create(network));
+        }
+        this.time = time;
+        this.embedDim = embedDim;
+        this.intermediateSize = intermediateSize;
+        this.bias = bias;
+        this.oChannel = 1;
+        this.oHeight = 1;
+        this.oWidth = embedDim;
+        this.mask = mask;
+        this.actType = actType;
+        this.initLayers();
+    }
 
     public void initLayers() {
         norm1 = new LNLayer(this);
         attn = new CLIPAttentionLayer(embedDim, headNum, time, bias, false, mask, network);
         norm2 = new LNLayer(attn);
-        mlp = new CLIPMLPLayer(embedDim, intermediateSize, bias, network);
+        mlp = new CLIPMLPLayer(embedDim, intermediateSize, bias, actType, network);
     }
 
     @Override

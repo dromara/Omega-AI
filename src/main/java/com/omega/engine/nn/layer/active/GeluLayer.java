@@ -1,5 +1,7 @@
 package com.omega.engine.nn.layer.active;
 
+import java.util.Vector;
+
 import com.omega.common.task.Task;
 import com.omega.common.task.TaskEngine;
 import com.omega.engine.nn.layer.Layer;
@@ -8,8 +10,6 @@ import com.omega.engine.nn.layer.active.gpu.GeluKernel;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.tensor.Tensor;
 
-import java.util.Vector;
-
 /**
  * Relu active function Layer
  *
@@ -17,7 +17,7 @@ import java.util.Vector;
  */
 public class GeluLayer extends ActiveFunctionLayer {
     private GeluKernel kernel;
-    private boolean fast = false;
+    private GeluType geluType = GeluType.TANH;
 
     public GeluLayer() {
     }
@@ -26,8 +26,8 @@ public class GeluLayer extends ActiveFunctionLayer {
         this.setPreLayer(preLayer);
     }
 
-    public GeluLayer(Layer preLayer, boolean fast) {
-        this.fast = fast;
+    public GeluLayer(Layer preLayer, GeluType geluType) {
+        this.geluType = geluType;
         this.setPreLayer(preLayer);
     }
 
@@ -57,19 +57,12 @@ public class GeluLayer extends ActiveFunctionLayer {
     @Override
     public void output() {
         // TODO Auto-generated method stub
-        if (fast) {
+        if (geluType == GeluType.FAST) {
             kernel.fast_forward(input, output);
-        } else {
-            kernel.forward(input, output);
-        }
-    }
-
-    public void outputOld() {
-        // TODO Auto-generated method stub
-        if (fast) {
-            kernel.oldHalfForward(input, output);
-        } else {
-            kernel.oldForward(input, output);
+        }else if(geluType == GeluType.TANH) {
+        	kernel.forward(input, output);
+        }else {
+            kernel.forward_torch(input, output);
         }
     }
 
@@ -82,10 +75,12 @@ public class GeluLayer extends ActiveFunctionLayer {
     @Override
     public void diff() {
         // TODO Auto-generated method stub
-        if (fast) {
+        if (geluType == GeluType.FAST) {
             kernel.fast_backward(input, delta, diff);
-        } else {
-            kernel.backward(input, delta, diff);
+        }else if(geluType == GeluType.TANH) {
+        	kernel.backward(input, delta, diff);
+        }else {
+            kernel.backward_torch(input, delta, diff);
         }
     }
 
@@ -107,25 +102,6 @@ public class GeluLayer extends ActiveFunctionLayer {
 
          */
         this.output();
-    }
-
-    public void forwardOld() {
-        // TODO Auto-generated method stub
-        /**
-         * 参数初始化
-
-         */
-        this.init();
-        /**
-         * 设置输入
-
-         */
-        this.setInput();
-        /**
-         * 计算输出
-
-         */
-        this.outputOld();
     }
 
     @Override
@@ -234,45 +210,6 @@ public class GeluLayer extends ActiveFunctionLayer {
 
          */
         this.output();
-    }
-
-    public void forwardOld(Tensor input) {
-        // TODO Auto-generated method stub
-        /**
-         * 参数初始化
-
-         */
-        this.init(input);
-        /**
-         * 设置输入
-
-         */
-        this.setInput(input);
-        /**
-         * 计算输出
-
-         */
-        this.outputOld();
-    }
-
-    public void forwardOld(Tensor input, Tensor output) {
-        // TODO Auto-generated method stub
-        this.output = output;
-        /**
-         * 参数初始化
-
-         */
-        this.init(input);
-        /**
-         * 设置输入
-
-         */
-        this.setInput(input);
-        /**
-         * 计算输出
-
-         */
-        this.outputOld();
     }
 
     @Override

@@ -6,6 +6,7 @@ import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.active.GeluLayer;
+import com.omega.engine.nn.layer.active.GeluType;
 import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.GNLayer;
 import com.omega.engine.nn.layer.normalization.LNLayer;
@@ -154,7 +155,7 @@ public class UNetAttentionBlock extends Layer {
             ln3 = new LNLayer(attn, BNType.fully_bn, 1, 1, channel);
         }
         geglu1 = new FullyLayer(channel, 4 * channel, true, network);
-        gelu = new GeluLayer(geglu1);
+        gelu = new GeluLayer(geglu1, GeluType.TANH);
         geglu2 = new FullyLayer(4 * channel, channel, true, network);
         conv_out = new ConvolutionLayer(channel, channel, width, height, 1, 1, 0, 1, true, network);
     }

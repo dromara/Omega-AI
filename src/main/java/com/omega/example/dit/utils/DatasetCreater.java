@@ -11,6 +11,7 @@ import com.omega.common.utils.MathUtils;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.loss.LossType;
+import com.omega.engine.nn.layer.active.GeluType;
 import com.omega.engine.nn.network.ClipTextModel;
 import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.nn.network.utils.ModelUtils;
@@ -588,41 +589,21 @@ public class DatasetCreater {
         	
             System.err.println("count:"+number);
             
-            ModelUtils.readFloat(file, latend);
-            
-            Tensor output = vae.decode(latend);
-            
-            output.showShape();
-            output.syncHost();
-            output.data = MatrixOperation.clampSelf(output.data, -1, 1);
-            /**
-             * print image
-             */
-            MBSGDOptimizer.showImgs("D:\\test\\va_vae\\", output, "test", mean, std);
-            
-            ModelUtils.readFloat(file, latend);
-            
-            output = vae.decode(latend);
-            
-            output.showShape();
-            output.syncHost();
-            output.data = MatrixOperation.clampSelf(output.data, -1, 1);
-            /**
-             * print image
-             */
-            MBSGDOptimizer.showImgs("D:\\test\\va_vae\\", output, "test2", mean, std);
-            
-            ModelUtils.readFloat(file, latend);
-            
-            output = vae.decode(latend);
-            
-            output.showShape();
-            output.syncHost();
-            output.data = MatrixOperation.clampSelf(output.data, -1, 1);
-            /**
-             * print image
-             */
-            MBSGDOptimizer.showImgs("D:\\test\\va_vae\\", output, "test3", mean, std);
+            for(int i = 0;i<100;i++) {
+
+                ModelUtils.readFloat(file, latend);
+                
+                Tensor output = vae.decode(latend);
+                
+                output.showShape();
+                output.syncHost();
+                output.data = MatrixOperation.clampSelf(output.data, -1, 1);
+                /**
+                 * print image
+                 */
+                MBSGDOptimizer.showImgs("D:\\test\\va_vae\\", output, "test_"+i, mean, std);
+                
+            }
             
         } catch (Exception e) {
             // TODO: handle exception
@@ -723,6 +704,84 @@ public class DatasetCreater {
     	
     }
     
+
+    public static void createTwoClip() {
+    	
+    	try {
+
+    		int batchSize = 200;
+        	int maxContextLen = 77;
+    		
+    		String clipDataPath = "D:\\dataset\\amine\\vavae_2clip.bin";
+    		
+    		String labelPath = "D:\\dataset\\labels.json";
+    		
+        	Tensor label = new Tensor(batchSize * 77, 1, 1, 1, true);
+            Tensor eosIds = new Tensor(batchSize, 1, 1, 1, true);
+            String[] labels = new String[batchSize];
+    		
+    		String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
+            String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
+            BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+    		
+            int time = maxContextLen;
+            int maxPositionEmbeddingsSize = 77;
+            int vocabSize = 49408;
+            int headNum = 20;
+            int n_layers = 32;
+            int textEmbedDim = 1280;
+            int intermediateSize = 5120;
+            ClipTextModel clip = new ClipTextModel(LossType.MSE, UpdaterType.adamw, headNum, time, vocabSize, textEmbedDim, maxPositionEmbeddingsSize, intermediateSize, n_layers, GeluType.NONE);
+            clip.id = "0";
+            clip.CUDNN = true;
+            clip.time = maxContextLen;
+            clip.RUN_MODEL = RunModel.EVAL;
+            String model_path = "D:\\models\\CLIP-ViT-bigG-14\\CLIP-ViT-bigG-14.model";
+            com.omega.example.transformer.utils.ModelUtils.loadModel(clip, model_path);
+
+            int headNum2 = 12;
+            int n_layers2 = 12;
+            int textEmbedDim2 = 768;
+            int intermediateSize2 = 3072;
+            ClipTextModel clip2 = new ClipTextModel(LossType.MSE, UpdaterType.adamw, headNum2, time, vocabSize, textEmbedDim2, maxPositionEmbeddingsSize, intermediateSize2, n_layers2, GeluType.FAST);
+            clip2.id = "1";
+            clip2.CUDNN = true;
+            clip2.time = time;
+            clip2.RUN_MODEL = RunModel.EVAL;
+            String model_path2 = "D:\\models\\clip-vit-large-patch14\\clip-vit-large-patch14.model";
+            com.omega.example.transformer.utils.ModelUtils.loadModel(clip2, model_path2);
+            
+    		List<Map<String, Object>> datas = LagJsonReader.readJsonDataSamll(labelPath);
+            int count = datas.size();
+            System.err.println("data count[" + count + "].");
+
+            int[][] indexs = MathUtils.orderInts(count, batchSize);
+            
+            File clipFile = new File(clipDataPath);
+            FileOutputStream clipWriter = new FileOutputStream(clipFile);
+            
+            Tensor condInputCat = new Tensor(batchSize * 77, 1, 1, textEmbedDim2 + textEmbedDim, true);
+            
+            for(int it = 0;it<indexs.length;it++) {
+            	 loadLabels(bpe, datas, indexs[it], label, labels, eosIds, maxContextLen);
+            	 Tensor condInput2 = clip2.get_full_clip_prompt_embeds(label);
+            	 Tensor condInput = clip.get_full_clip_prompt_embeds(label);
+            	 
+            	 clip.tensorOP.cat_width(condInput2, condInput, condInputCat, condInput2.width, condInput.width);
+            	 
+            	 JCudaDriver.cuCtxSynchronize();
+                 writeTensor(condInputCat, clipWriter);
+                 System.out.println(it + "/" + indexs.length + " finish.");
+            }
+            
+    	}catch (Exception e) {
+			// TODO: handle exception
+    		e.printStackTrace();
+		}	
+    	
+    }
+    
+    
 //    public static void createClipData() {
 //    	
 //    	int batchSize = 1000;
@@ -797,13 +856,15 @@ public class DatasetCreater {
         	
 //        	testLatendData();
         	
-//        	test_vavae_latend();
+        	test_vavae_latend();
         	
 //        	createLatendDataset3();
         	
 //        	createClipData();
         	
-        	createLatendDatasetFullClip();
+//        	createLatendDatasetFullClip();
+        	
+//        	createTwoClip();
         	
         } catch (Exception e) {
             // TODO: handle exception

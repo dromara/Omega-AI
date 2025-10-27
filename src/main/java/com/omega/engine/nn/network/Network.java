@@ -28,6 +28,7 @@ import java.util.Map;
  * @author Administrator
  */
 public abstract class Network {
+	public String id;
     public boolean CUDNN = false;
     public boolean gradCacheMode = false;
     public CUDAManager cudaManager;

@@ -44,6 +44,8 @@ import com.omega.example.yolo.utils.LabelFileType;
 import com.omega.example.yolo.utils.OMImage;
 import com.omega.example.yolo.utils.YoloUtils;
 
+import jcuda.runtime.JCuda;
+
 public class YoloV7Test {
     public static void showImg(String outputPath, DetectionDataLoader dataSet, int class_num, List<YoloBox> score_bbox, int batchSize, boolean format, int im_w, int im_h, String[] labelset) {
         ImageUtils utils = new ImageUtils();
@@ -142,7 +144,8 @@ public class YoloV7Test {
 //            y.createCarTrainTestDataSet();
 //            y.yolov7_tiny_traffic();
 //            y.yolov7_tiny_traffic_test();
-            y.yolov7_tiny_traffic_test2();
+//            y.yolov7_tiny_traffic_test2();
+            y.yolov7_tiny_traffic_test3();
             //			y.yolov7_tiny_sm();
             //			y.yolov7_tiny_yz();
             //			y.yolov3_tiny_voc();
@@ -582,6 +585,116 @@ public class YoloV7Test {
         }
     }
     
+    public void yolov7_tiny_traffic_test3() {
+    	
+    	try {
+
+       	    String[] labelset = new String[]{"car", "person", "bus", "others", "van"};
+       	    Yolo netWork = new Yolo(LossType.yolov7, UpdaterType.adamw);
+       	    netWork.RUN_MODEL = RunModel.TEST;
+            netWork.CUDNN = true;
+            netWork.learnRate = 0.001f;
+            String cfg_path = "D:\\dataset\\traffic\\yolov7-tiny-traffic.cfg";
+            ModelLoader.loadConfigToModel(netWork, cfg_path);
+            netWork.init();
+            String model_path = "D:\\models\\yolov7-traffic.model";
+            ModelUtils.loadModel(netWork, model_path);
+
+            long start = System.currentTimeMillis();
+            Tensor input = new Tensor(1, 3, 416, 416, true);
+            
+            OMImage orig = ImageLoader.loadImage("D:\\test1.jpg");
+            ImageLoader.loadVailDataDetection(input, null, 0, orig, null, input.width, input.height, 0, 0);
+            System.err.println("loadImage:"+(System.currentTimeMillis() - start));
+            input.hostToDevice();
+            System.err.println("hostToDevice:"+(System.currentTimeMillis() - start));
+
+            //先执行第一次预测
+//            Tensor[] outputFirst = netWork.predicts(input);
+            for(int i = 0;i<10;i++) {
+            	 JCuda.cudaDeviceSynchronize();
+                 long start0 = System.nanoTime();
+                 long start1 = System.nanoTime();
+                 orig = ImageLoader.loadImage("D:\\test1.jpg");
+                 System.err.println("load image:"+(System.nanoTime() - start1)/1e6+"ms.");
+                 long start2 = System.nanoTime();
+                 ImageLoader.loadVailDataDetection(input, null, 0, orig, null, input.width, input.height, 0, 0);
+                 System.err.println("format image:"+(System.nanoTime() - start2)/1e6+"ms.");
+                 long start3 = System.nanoTime();
+                 input.hostToDevice();
+                 System.err.println("h2d:"+(System.nanoTime() - start3)/1e6+"ms.");
+                 long start4 = System.nanoTime();
+                 Tensor[] output = netWork.predicts(input);
+                 JCuda.cudaDeviceSynchronize();
+                 System.err.println("predict:"+(System.nanoTime() - start4)/1e6+"ms.");
+                 System.err.println("all:"+(System.nanoTime() - start0)/1e6+"ms.");
+            }
+
+//            List<YoloBox> list = new ArrayList<YoloBox>();
+//            YoloBox[] boxs = new YoloBox[input.number];
+//            
+//            
+//            for (int i = 0; i < netWork.outputLayers.size(); i++) {
+//                YoloLayer layer = (YoloLayer) netWork.outputLayers.get(i);
+//                YoloDetection[][] dets = YoloUtils.getYoloDetectionsV7(output[i], layer.anchors, layer.mask, layer.bbox_num, layer.outputs, layer.class_number,netWork.getHeight(), netWork.getWidth(), 0.5f);
+//                for (int j = 0; j < dets.length; j++) {
+//                    /**
+//                     * nms
+//                     */
+//                    Optimizer.nmsSort(dets[j], dets[j].length, layer.class_number, 0.7f);
+//                    if (boxs[j] != null) {
+//                        boxs[j].getDets().addAll(new ArrayList<>(Arrays.asList(dets[j])));
+//                    } else {
+//                        YoloBox box = new YoloBox(dets[j]);
+//                        boxs[j] = box;
+//                    }
+//                }
+//            }
+//            list.addAll(new ArrayList<YoloBox>(Arrays.asList(boxs)));
+//            
+//            System.out.println(list.size());
+//            for (YoloBox yoloBox : boxs) {
+//    			List<YoloDetection> dets = yoloBox.getDets();
+//    			System.err.println(dets.size());
+////    			for (YoloDetection yoloDetection : dets) {
+////					System.out.println(yoloDetection.getClasses() + "- " + Arrays.toString(yoloDetection.getBbox()));
+////				}
+//    		}
+//            
+//            float[] once = MatrixOperation.multiplication(input.data, 255.0f);
+//            int bbox_index = 0;
+// 
+//            YoloBox box = list.get(bbox_index);
+//            List<Integer> indexs = new ArrayList<Integer>();
+//            for (int l = 0; l < box.getDets().size(); l++) {
+//                if (box.getDets().get(l) != null && box.getDets().get(l).getObjectness() > 0 && !MatrixUtils.isZero(box.getDets().get(l).getProb())) {
+//                    indexs.add(l);
+//                }
+//            }
+//            int im_w = 416;
+//            int im_h = 416;
+//            
+//            int[][] bbox = new int[indexs.size()][5];
+//            for (int i = 0; i < indexs.size(); i++) {
+//                Integer index = indexs.get(i);
+//                YoloDetection det = box.getDets().get(index);
+//                bbox[i][0] = (int) det.getClasses();
+//                bbox[i][1] = (int) ((det.getBbox()[0] - det.getBbox()[2] / 2.0f) * im_w);
+//                bbox[i][2] = (int) ((det.getBbox()[1] - det.getBbox()[3] / 2.0f) * im_h);
+//                bbox[i][3] = (int) ((det.getBbox()[0] + det.getBbox()[2] / 2.0f) * im_w);
+//                bbox[i][4] = (int) ((det.getBbox()[1] + det.getBbox()[3] / 2.0f) * im_h);
+//            }
+//            ImageUtils utils = new ImageUtils();
+//            utils.createRGBImage(outputPath + "_" + 0 + ".png", "png", ImageUtils.color2rgb2(once, im_w, im_h, false), im_w, im_h, bbox, labelset);
+//            utils.showRGBImage(ImageUtils.color2rgb2(once, im_w, im_h, false), im_w, im_h, bbox, labelset);
+            
+            
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+    	
+   }
+    
     public void yolov7_tiny_traffic_test2() {
     	
     	try {
@@ -626,14 +739,13 @@ public class YoloV7Test {
             }
             list.addAll(new ArrayList<YoloBox>(Arrays.asList(boxs)));
             
-            System.out.println(list.size());
-            for (YoloBox yoloBox : boxs) {
-    			System.out.println(yoloBox.toString());
-    		}
+//            System.out.println(list.size());
+//            for (YoloBox yoloBox : boxs) {
+//    			System.out.println(yoloBox.toString());
+//    		}
             
             float[] once = MatrixOperation.multiplication(input.data, 255.0f);
             int bbox_index = 0;
- 
             YoloBox box = list.get(bbox_index);
             List<Integer> indexs = new ArrayList<Integer>();
             for (int l = 0; l < box.getDets().size(); l++) {

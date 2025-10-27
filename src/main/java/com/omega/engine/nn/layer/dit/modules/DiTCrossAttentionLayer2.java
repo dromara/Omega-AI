@@ -69,6 +69,8 @@ public class DiTCrossAttentionLayer2 extends Layer {
 
     private Tensor temp_out;
     private Tensor temp_key_out;
+    
+    private int[] p_0213 = new int[] {0, 2, 1, 3};
 
     public DiTCrossAttentionLayer2(int embedDim, int kvDim, int headNum, int time, int kvTime, boolean bias, boolean qkNorm) {
     	this.qkNorm = qkNorm;
@@ -328,9 +330,9 @@ public class DiTCrossAttentionLayer2 extends Layer {
         Tensor query = this.qLinerLayer.getOutput().view(batchSize, time, headNum, dk);
         Tensor key = this.kLinerLayer.getOutput().view(batchSize, kvTime, headNum, dk);
         Tensor value = this.vLinerLayer.getOutput().view(batchSize, kvTime, headNum, dk);
-        Tensor_OP().permute(query, qt, new int[]{0, 2, 1, 3});
-        Tensor_OP().permute(key, kt, new int[]{0, 2, 1, 3});
-        Tensor_OP().permute(value, vt, new int[]{0, 2, 1, 3});
+        Tensor_OP().permute(query, qt, p_0213);
+        Tensor_OP().permute(key, kt, p_0213);
+        Tensor_OP().permute(value, vt, p_0213);
         
   	 	if(qkNorm) {
         	qNorm.forward(qt);
@@ -364,9 +366,9 @@ public class DiTCrossAttentionLayer2 extends Layer {
          * apply RoPE
          */
         ropeKernel.forward2d(cos, sin, query, rq, time, headNum, dk);
-        Tensor_OP().permute(rq, qt, new int[]{0, 2, 1, 3});
-        Tensor_OP().permute(key, kt, new int[]{0, 2, 1, 3});
-        Tensor_OP().permute(value, vt, new int[]{0, 2, 1, 3});
+        Tensor_OP().permute(rq, qt, p_0213);
+        Tensor_OP().permute(key, kt, p_0213);
+        Tensor_OP().permute(value, vt, p_0213);
  
         if(qkNorm) {
         	qNorm.forward(qt);
@@ -390,16 +392,16 @@ public class DiTCrossAttentionLayer2 extends Layer {
         this.qLinerLayer.forward(this.input, temp_out);
         Tensor query = this.qLinerLayer.getOutput().view(batchSize, time, headNum, dk);
         ropeKernel.forward2d(cos, sin, query, rq, time, headNum, dk);
-        Tensor_OP().permute(rq, qt, new int[]{0, 2, 1, 3});
+        Tensor_OP().permute(rq, qt, p_0213);
 
         this.kLinerLayer.forward(context, temp_key_out);
         Tensor key = temp_key_out.view(batchSize, kvTime, headNum, dk);
-        Tensor_OP().permute(key, kt, new int[]{0, 2, 1, 3});
+        Tensor_OP().permute(key, kt, p_0213);
         
         temp_key_out.viewOrg();
         this.vLinerLayer.forward(context, temp_key_out);
         Tensor value = this.vLinerLayer.getOutput().view(batchSize, kvTime, headNum, dk);
-        Tensor_OP().permute(value, vt, new int[]{0, 2, 1, 3});
+        Tensor_OP().permute(value, vt, p_0213);
  
         if(qkNorm) {
         	qNorm.forward(qt, qt);
@@ -480,13 +482,13 @@ public class DiTCrossAttentionLayer2 extends Layer {
         if(qkNorm) {
         	qNorm.back(dqt);
         	kNorm.back(dkt);
-        	Tensor_OP().permute(qNorm.diff, qt, new int[]{0, 2, 1, 3});
-            Tensor_OP().permute(kNorm.diff, kt, new int[]{0, 2, 1, 3});
+        	Tensor_OP().permute(qNorm.diff, qt, p_0213);
+            Tensor_OP().permute(kNorm.diff, kt, p_0213);
         }else {
-        	Tensor_OP().permute(dqt, qt, new int[]{0, 2, 1, 3});
-            Tensor_OP().permute(dkt, kt, new int[]{0, 2, 1, 3});
+        	Tensor_OP().permute(dqt, qt, p_0213);
+            Tensor_OP().permute(dkt, kt, p_0213);
         }
-        Tensor_OP().permute(dvt, vt, new int[]{0, 2, 1, 3});
+        Tensor_OP().permute(dvt, vt, p_0213);
         Tensor queryDelta = qt.view(batchSize * time, 1, 1, headNum * dk);
         Tensor keyDelta = kt.view(batchSize * kvTime, 1, 1, headNum * dk);
         Tensor valueDelta = vt.view(batchSize * kvTime, 1, 1, headNum * dk);
@@ -508,11 +510,11 @@ public class DiTCrossAttentionLayer2 extends Layer {
         if(qkNorm) {
          	qNorm.back(dqt);
          	kNorm.back(dkt);
-         	Tensor_OP().permute(qNorm.diff, qt, new int[]{0, 2, 1, 3});
-            Tensor_OP().permute(kNorm.diff, kt, new int[]{0, 2, 1, 3});
+         	Tensor_OP().permute(qNorm.diff, qt, p_0213);
+            Tensor_OP().permute(kNorm.diff, kt, p_0213);
          }else {
-         	Tensor_OP().permute(dqt, qt, new int[]{0, 2, 1, 3});
-            Tensor_OP().permute(dkt, kt, new int[]{0, 2, 1, 3});
+         	Tensor_OP().permute(dqt, qt, p_0213);
+            Tensor_OP().permute(dkt, kt, p_0213);
          }
          Tensor_OP().permute(dvt, vt, new int[]{0, 2, 1, 3});
         /**

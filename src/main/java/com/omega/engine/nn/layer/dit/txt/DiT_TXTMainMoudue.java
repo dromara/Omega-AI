@@ -52,6 +52,9 @@ public class DiT_TXTMainMoudue extends Layer {
     
     private float y_drop_prob = 0.0f;
     
+    private int[] xShape;
+    private int[] yShape;
+    
     public DiT_TXTMainMoudue(int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int textEmbedDim, int maxContextLen, int mlpRatio, boolean learnSigma, float y_drop_prob, Network network) {
 		this.network = network;
         if (this.updater == null) {
@@ -225,18 +228,21 @@ public class DiT_TXTMainMoudue extends Layer {
     	 * x: (N, T, patch_size**2 * C)
          * imgs: (N, C, H, W)
     	 */
-    	int h = height/patchSize;
-    	int w = width/patchSize;
-    	int[] xShape = new int[] {number, h, w, patchSize, patchSize, oChannel};
-    	int[] yShape = new int[] {number, oChannel, h, patchSize, w, patchSize};
+    	if(xShape == null) {
+    		int h = height/patchSize;
+        	int w = width/patchSize;
+        	xShape = new int[] {number, h, w, patchSize, patchSize, oChannel};
+        	yShape = new int[] {number, oChannel, h, patchSize, w, patchSize};
+    	}
+    	
     	Tensor_OP().permute(finalLayer.getOutput(), this.output, xShape, yShape, new int[] {0, 5, 1, 3, 2, 4});
     	
     }
     
     public void output(Tensor tc,Tensor label,Tensor cos,Tensor sin) {
-    	
+
     	patchEmbd.forward(input);
-    	
+
     	Tensor_OP().addAxis(patchEmbd.getOutput(), posEmbd, patchEmbd.getOutput(), posEmbd.channel * posEmbd.width);
     	
     	timeEmbd.forward(tc);
@@ -248,13 +254,13 @@ public class DiT_TXTMainMoudue extends Layer {
     	Tensor t = timeEmbd.getOutput();
     	
     	Tensor cond = labelEmbd.getOutput();
-
+    	
     	for(int i = 0;i<depth;i++) {
     		DiT_TXTBlock block = blocks.get(i);
     		block.forward(x, t, cond, cos, sin);
     		x = block.getOutput();
     	}
-    	
+
     	finalLayer.forward(x, t);
     	
     	/**
@@ -262,13 +268,14 @@ public class DiT_TXTMainMoudue extends Layer {
     	 * x: (N, T, patch_size**2 * C)
          * imgs: (N, C, H, W)
     	 */
-    	int h = height/patchSize;
-    	int w = width/patchSize;
-
-    	int[] xShape = new int[] {number, h, w, patchSize, patchSize, oChannel};
-    	int[] yShape = new int[] {number, oChannel, h, patchSize, w, patchSize};
+    	if(xShape == null) {
+    		int h = height/patchSize;
+        	int w = width/patchSize;
+        	xShape = new int[] {number, h, w, patchSize, patchSize, oChannel};
+        	yShape = new int[] {number, oChannel, h, patchSize, w, patchSize};
+    	}
     	Tensor_OP().permute(finalLayer.getOutput(), this.output, xShape, yShape, new int[] {0, 5, 1, 3, 2, 4});
-    	
+
     }
 
     @Override
@@ -283,10 +290,10 @@ public class DiT_TXTMainMoudue extends Layer {
     	/**
     	 * unpatchify back
     	 */
-    	int h = height/patchSize;
-    	int w = width/patchSize;
-    	int[] yShape = new int[] {number, oChannel, h, patchSize, w, patchSize};
-    	int[] xShape = new int[] {number, h, w, patchSize, patchSize, oChannel};
+//    	int h = height/patchSize;
+//    	int w = width/patchSize;
+//    	int[] yShape = new int[] {number, oChannel, h, patchSize, w, patchSize};
+//    	int[] xShape = new int[] {number, h, w, patchSize, patchSize, oChannel};
     	Tensor_OP().permute(delta, finalLayer.getOutput(), yShape, xShape, new int[] {0, 2, 4, 3, 5, 1});
     	
     	finalLayer.back(finalLayer.getOutput(), dtc);
@@ -311,28 +318,26 @@ public class DiT_TXTMainMoudue extends Layer {
         // TODO Auto-generated method stub
 //    	delta.showDM("total-delta");
 //    	delta.showDMByOffsetRed(0,10, "delta");
+    	
     	/**
     	 * unpatchify back
     	 */
-    	int h = height/patchSize;
-    	int w = width/patchSize;
-    	int[] yShape = new int[] {number, oChannel, h, patchSize, w, patchSize};
-    	int[] xShape = new int[] {number, h, w, patchSize, patchSize, oChannel};
+//    	int h = height/patchSize;
+//    	int w = width/patchSize;
+//    	int[] yShape = new int[] {number, oChannel, h, patchSize, w, patchSize};
+//    	int[] xShape = new int[] {number, h, w, patchSize, patchSize, oChannel};
     	Tensor_OP().permute(delta, finalLayer.getOutput(), yShape, xShape, new int[] {0, 2, 4, 3, 5, 1});
     	
     	finalLayer.back(finalLayer.getOutput(), dtc);
-    	
+
     	Tensor dy = finalLayer.diff;
-//    	dy.showDMByOffsetRed(0,10, "dy");
-//    	dy.showDM("in-block-diff");
+
      	for(int i = depth - 1;i>=0;i--) {
      		DiT_TXTBlock block = blocks.get(i);
     		block.back(dy, dtc, dtxt, cos, sin);
     		dy = block.diff;
-//    		dy.showDM("in-block-diff");
-//    		dy.showDMByOffsetRed(0,10, i+"");
     	}
-     	
+
      	labelEmbd.back(dtxt);
      	
      	timeEmbd.back(dtc);
@@ -467,9 +472,9 @@ public class DiT_TXTMainMoudue extends Layer {
          * 计算梯度
          */
         this.diff(cos, sin);
-        if (this.network.GRADIENT_CHECK) {
-            this.gradientCheck();
-        }
+//        if (this.network.GRADIENT_CHECK) {
+//            this.gradientCheck();
+//        }
     }
     
     @Override

@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import com.omega.common.data.utils.DataTransforms;
 import com.omega.common.utils.ImageUtils;
@@ -15,6 +16,7 @@ import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.check.BaseCheck;
 import com.omega.engine.gpu.CUDAModules;
+import com.omega.engine.gpu.GPUOP;
 import com.omega.engine.nn.data.BaseData;
 import com.omega.engine.nn.grad.GradClipping;
 import com.omega.engine.nn.layer.Layer;
@@ -6991,8 +6993,7 @@ public class MBSGDOptimizer extends Optimizer {
         }
     }
     
-    
-    public void train_DiT_TXT_ICPlan(LatendDataset trainingData,ICPlan icplan,String weightPath, Tensor mean, Tensor std, float scale_factor, int weightCount) {
+    public void train_DiT_TXT_ICPlan2(LatendDataset trainingData,ICPlan icplan,String weightPath, Tensor mean, Tensor std, float scale_factor, int weightCount) {
         // TODO Auto-generated method stub
         try {
 
@@ -7035,16 +7036,18 @@ public class MBSGDOptimizer extends Optimizer {
                  */
                 for (int it = 0; it < indexs.length; it++) {
                     long start = System.nanoTime();
+                   
                     if (Math.abs(this.currentError) <= this.error) {
                         break;
                     }
                     
                     icplan.t(t);
-
-                    RandomUtils.gaussianRandom(noise, 0, 1);
                     
+                    GPUOP.getInstance().cudaRandn(noise);
+//                    RandomUtils.gaussianRandom(noise, 0, 1);
+
                     trainingData.loadData(indexs[it], latend, condInput, it);
-                    JCudaDriver.cuCtxSynchronize();
+
                     icplan.latend_norm(latend, mean, std);    
                     network.tensorOP.mul(latend, scale_factor, latend);
                    
@@ -7053,13 +7056,15 @@ public class MBSGDOptimizer extends Optimizer {
                      */
                     icplan.compute_xt(t, noise, latend, xt);
                     icplan.compute_ut(t, noise, latend, ut);
+
 //                    xt.showDM();
 //                    ut.showDM("ut");
+
                     /**
                      * forward
                      */
                     Tensor output = network.forward(xt, t, condInput, cos, sin);
-
+                  
                     /**
                      * loss
                      */
@@ -7069,23 +7074,25 @@ public class MBSGDOptimizer extends Optimizer {
                      * loss diff
                      */
                     this.lossDiff = network.lossDiff(output, ut);
+
 //                    lossDiff.showDM();
                     icplan.cosine_similarity_loss(output, ut, cosine_similarity_loss);
                     
                     icplan.cosine_similarity_loss_back(output, ut, cosine_similarity_loss);
-                    
+
                     network.tensorOP.add(lossDiff, cosine_similarity_loss, lossDiff);
-                    
+      
                     /**
                      * back
                      */
                     network.back(lossDiff, cos, sin);
-                    
+
                     /**
                      * update
                      */
                     network.update();
                     JCudaDriver.cuCtxSynchronize();
+
                     /**
                      * current time error
                      */
@@ -7112,6 +7119,7 @@ public class MBSGDOptimizer extends Optimizer {
                     String msg = "training[" + this.trainIndex+"]{" + it + "/" + indexs.length + "} (lr:" + this.network.learnRate + ") train_loss:" + this.currentError + " [costTime:" + (System.nanoTime() - start) / 1e6 + "ms.]";
                     System.out.println(msg);
                     this.batchIndex++;
+
 //                    /**
 //                     * update learning rate
 //                     */

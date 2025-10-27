@@ -20,6 +20,7 @@ import static jcuda.runtime.JCuda.cudaMalloc;
 public class CUDAMemoryManager {
     public static Map<String, CUdeviceptr> deviceMap = new HashMap<String, CUdeviceptr>();
     public static Map<String, Pointer> pointerMap = new HashMap<String, Pointer>();
+    public static Map<String, Pointer> permute_pointerMap = new HashMap<String, Pointer>();
     public static List<CUdeviceptr> cu_deviceptrs = new ArrayList<CUdeviceptr>();
     public static List<Pointer> cu_porints = new ArrayList<Pointer>();
     public static GPUWorkspace workspace = new GPUWorkspace();
@@ -222,5 +223,20 @@ public class CUDAMemoryManager {
 		checkCUDA(JCuda.cudaFree(pointer), "free" + pointer.toString());
 		porints.remove(pointer);
 	}
+	
+	public Pointer getPermutePointer(int[] permutes, long type) {
+		String key = "";
+		for(int id:permutes) {
+			key = key + id + ",";
+		}
+		Pointer p = permute_pointerMap.get(key);
+		if(p != null) {
+			return p;
+		}
+		p = getCUPointer(permutes.length, type);
+		permute_pointerMap.put(key, p);
+		return p;
+	}
+	
 }
 

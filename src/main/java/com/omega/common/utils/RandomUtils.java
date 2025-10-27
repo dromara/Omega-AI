@@ -381,9 +381,11 @@ public class RandomUtils {
         if (output.data == null) {
             output.data = new float[output.dataLength];
         }
+//        long start2 = System.nanoTime();
         for (int i = 0; i < output.dataLength; i++) {
             output.data[i] = (float) (getInstance().nextGaussian() * std + mean);
         }
+//        System.err.println((System.nanoTime() - start2)/1e6+"ms22222.");
         if (output.isHasGPU()) {
             output.hostToDevice();
         }

@@ -59,6 +59,8 @@ public class DiT_TXTBlock extends Layer {
     public Tensor scale_mlp;
     public Tensor gate_mlp;
     
+    private int[] shape;
+    
     public DiT_TXTBlock(int embedDim, int cEmbedDim, int textStateDim, int time, int textTime, int mlpHiddenDim, int headNum, boolean bias, boolean qkNorm) {
         this.embedDim = embedDim;
         this.cEmbedDim = cEmbedDim;
@@ -130,6 +132,9 @@ public class DiT_TXTBlock extends Layer {
         // TODO Auto-generated method stub
         this.number = input.number;
         this.batchSize = number / time;
+        if(shape == null) {
+        	shape= new int[] {batchSize, 6, 1, embedDim};
+        }
         if(attnInput == null || attnInput.number != number) {
         	attnInput = Tensor.createGPUTensor(attnInput, input.number, input.channel, input.height, input.width, true);
         	shift_msa = Tensor.createGPUTensor(this.shift_msa, batchSize, 1, 1, embedDim, true);
@@ -156,6 +161,9 @@ public class DiT_TXTBlock extends Layer {
         // TODO Auto-generated method stub
         this.number = input.number;
         this.batchSize = number / time;
+        if(shape == null) {
+        	shape= new int[] {batchSize, 6, 1, embedDim};
+        }
         if(attnInput == null || attnInput.number != number) {
         	attnInput = Tensor.createGPUTensor(attnInput, input.number, input.channel, input.height, input.width, true);
         	shift_msa = Tensor.createGPUTensor(this.shift_msa, batchSize, 1, 1, embedDim, true);
@@ -211,8 +219,6 @@ public class DiT_TXTBlock extends Layer {
     	
     	adaLN_modulation.forward(modulationAct.getOutput());
     	
-    	int[] shape = new int[] {batchSize, 6, 1, embedDim};
-
     	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), shift_msa, shape, 0);
     	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), scale_msa, shape, 1);
     	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), gate_msa, shape, 2);
@@ -254,8 +260,6 @@ public class DiT_TXTBlock extends Layer {
     	
     	adaLN_modulation.forward(modulationAct.getOutput());
     	
-    	int[] shape = new int[] {batchSize, 6, 1, embedDim};
-
     	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), shift_msa, shape, 0);
     	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), scale_msa, shape, 1);
     	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), gate_msa, shape, 2);
@@ -269,7 +273,7 @@ public class DiT_TXTBlock extends Layer {
     	norm1.forward(input);
     	modulate(norm1.getOutput(), shift_msa, scale_msa, attnInput);
     	attn.forward(attnInput, cos , sin);
-
+    	
     	Tensor_OP().mul(attn.getOutput(), gate_msa, crossAttnInput, batchSize, time, 1, crossAttnInput.width, 1);
     	Tensor_OP().add(input, crossAttnInput, crossAttnInput);
 
@@ -285,9 +289,12 @@ public class DiT_TXTBlock extends Layer {
     	 */
     	norm3.forward(crossAttnOut);
     	modulate(norm3.getOutput(), shift_mlp, scale_mlp, mlpInput);
+
     	mlp.forward(mlpInput);
+
     	Tensor_OP().mul(mlp.getOutput(), gate_mlp, output, batchSize, time, 1, output.width, 1);
     	Tensor_OP().add(crossAttnOut, output, output);
+
     }
     
     @Override
@@ -309,8 +316,6 @@ public class DiT_TXTBlock extends Layer {
     }
     
     public void diff(Tensor dtc,Tensor dText) {
-    	
-    	int[] shape = new int[] {batchSize, 6, 1, embedDim};
     	
     	Tensor_OP().mul_left_back(gate_mlp, delta, output,  batchSize, time, 1, output.width, 1);
     	mlp.back(output);
@@ -366,8 +371,7 @@ public class DiT_TXTBlock extends Layer {
     	/**
     	 * x3 = x2 + gate_mlp.unsqueeze(1) * self.mlp(modulate(self.norm3(x2), shift_mlp, scale_mlp))
     	 */
-    	int[] shape = new int[] {batchSize, 6, 1, embedDim};
-    	
+
     	Tensor_OP().mul_left_back(gate_mlp, delta, output,  batchSize, time, 1, output.width, 1);
     	mlp.back(output);
     	Tensor_OP().mul_right_back(mlp.getOutput(), delta, gate_mlp, batchSize, time, 1, output.width, 1);
@@ -511,11 +515,6 @@ public class DiT_TXTBlock extends Layer {
         /**
          * 计算输出
          */
-//        if(network.RUN_MODEL == RunModel.EVAL) {
-//        	this.output_eval(tc, text, cos, sin);
-//        }else {
-//        	this.output(tc, text, cos, sin);
-//        }
         this.output(tc, text, cos, sin);
     }
 

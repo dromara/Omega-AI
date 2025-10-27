@@ -9,6 +9,7 @@ import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.active.GeluLayer;
+import com.omega.engine.nn.layer.active.GeluType;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.tensor.Tensor;
@@ -65,7 +66,7 @@ public class MMDiTMLPLayer extends Layer {
         if(this.linear1.bias != null) {
         	this.linear1.bias.clearGPU();
         }
-        this.active = new GeluLayer(linear1);
+        this.active = new GeluLayer(linear1, GeluType.TANH);
         this.linear2 = new FullyLayer(nChannel, embedDim, bias, network);
         RandomUtils.xavier_uniform(this.linear2.weight, 1, nChannel, embedDim);
 //        this.linear2.weight.setData(RandomUtils.xavierUniform(embedDim * nChannel, nChannel, embedDim, 1.0f));

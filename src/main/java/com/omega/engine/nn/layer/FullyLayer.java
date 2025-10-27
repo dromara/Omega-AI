@@ -27,6 +27,9 @@ public class FullyLayer extends Layer {
     //	private cudaStream_t dwStream;
     //
     //	private cudaStream_t dxStream;
+    
+    private Tensor oneVec;
+    
     public FullyLayer(int inputNum, int outputNum) {
         this.channel = 1;
         this.height = 1;
@@ -131,6 +134,9 @@ public class FullyLayer extends Layer {
                 this.diffW = new Tensor(1, 1, oWidth, width, true, true);
                 if (hasBias) {
                     this.diffB = new Tensor(1, 1, 1, oWidth, true);
+                    int bs = output.number * output.channel * output.height;
+                    this.oneVec = new Tensor(bs, 1, 1, 1, true);
+                    this.oneVec.fill(1.0f, this.network.tensorOP.op);
                 }
             }
         }
@@ -141,6 +147,9 @@ public class FullyLayer extends Layer {
             this.diffW = new Tensor(1, 1, oWidth, width, true, true);
             if (hasBias) {
                 this.diffB = new Tensor(1, 1, 1, oWidth, true);
+                int bs = output.number * output.channel * output.height;
+                this.oneVec = new Tensor(bs, 1, 1, 1, true);
+                this.oneVec.fill(1.0f, this.network.tensorOP.op);
             }
         }
     }
@@ -292,7 +301,19 @@ public class FullyLayer extends Layer {
         //
         //		GPUOP.checkCUBLASResult(JCublas2.cublasSetStream(GPU_OP().getHandle(), defaultStream));
         if (hasBias) {
-            kernel.backwardBias(diffB, delta);
+        	/**
+        	 * 			checkCUBLAS(cublasSgemm(cublas_handle,
+										CUBLAS_OP_N, CUBLAS_OP_N,
+										cur_params->C_out, 1, batch_size,
+										&Salpha,
+										(float *)dlayer_input[i + 1], cur_params->C_out,
+										(float *)one_vec, batch_size,
+										&Sbeta,
+										(float *)cur_params->db, cur_params->C_out));
+        	 */
+        	int bs = delta.number * delta.channel * delta.height;
+        	GPU_OP().sgemm(delta.width, 1, bs, delta.width, bs, delta.width, delta.getGpuData(), oneVec.getGpuData(), diffB.getGpuData());
+//            kernel.backwardBias(diffB, delta);
         }
     }
 
@@ -324,7 +345,21 @@ public class FullyLayer extends Layer {
         //		JCuda.cudaStreamSynchronize(dxStream);
         //		GPUOP.checkCUBLASResult(JCublas2.cublasSetStream(GPU_OP().getHandle(), defaultStream));
         if (hasBias) {
-            kernel.backwardBias(diffB, delta);
+        	/**
+        	 * 			checkCUBLAS(cublasSgemm(cublas_handle,
+										CUBLAS_OP_N, CUBLAS_OP_N,
+										cur_params->C_out, 1, batch_size,
+										&Salpha,
+										(float *)dlayer_input[i + 1], cur_params->C_out,
+										(float *)one_vec, batch_size,
+										&Sbeta,
+										(float *)cur_params->db, cur_params->C_out));
+        	 */
+        	int bs = delta.number * delta.channel * delta.height;
+        	GPU_OP().sgemm(delta.width, 1, bs, delta.width, bs, delta.width, delta.getGpuData(), oneVec.getGpuData(), diffB.getGpuData());
+
+//            kernel.backwardBias(diffB, delta);
+
         }
     }
 

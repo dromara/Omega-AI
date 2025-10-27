@@ -697,6 +697,14 @@ public class TensorOP {
             //			c.data = MatrixOperation.add(a.data, b.data);
         }
     }
+    
+    public void cat_width(Tensor a, Tensor b, Tensor c, int aw, int bw) {
+        if (a.isHasGPU()) {
+            op.cat_width_gpu(a, b, c, aw, bw);
+        } else {
+            //			c.data = MatrixOperation.add(a.data, b.data);
+        }
+    }
 
     public void cat_width_back(Tensor c, Tensor a, Tensor b) {
         if (a.isHasGPU()) {

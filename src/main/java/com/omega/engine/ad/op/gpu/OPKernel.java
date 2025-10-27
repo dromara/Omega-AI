@@ -108,6 +108,7 @@ public class OPKernel extends BaseKernel implements Serializable {
     private CUfunction mul_axis_back_right_function;
     private CUfunction cat_width_function;
     private CUfunction cat_width_back_function;
+    private CUfunction cat_width_function2;
     private CUfunction update_ema_function;
     
     public OPKernel(CUDAManager cudaManager) {
@@ -196,6 +197,7 @@ public class OPKernel extends BaseKernel implements Serializable {
         mul_axis_back_right_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "mul_axis_back_right_kernel");
         cat_width_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "cat_width_kernel");
         cat_width_back_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "cat_width_back_kernel");
+        cat_width_function2 = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "cat_width_kernel2");
         update_ema_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "update_ema");
     }
 
@@ -1760,12 +1762,15 @@ public class OPKernel extends BaseKernel implements Serializable {
         try {
             int[] strides_in = getStrides(x.shape());
             int[] strides_out = getStrides(y.shape());
-            Pointer permutes_p = this.getCudaManager().getMemoryManager().getCUPointer(permutes.length, Sizeof.INT);
+//          Pointer permutes_p = this.getCudaManager().getMemoryManager().getCUPointer(permutes.length, Sizeof.INT);
+//          Pointer sip = this.getCudaManager().getMemoryManager().getCUPointer(strides_in.length, Sizeof.INT);
+//          Pointer sop = this.getCudaManager().getMemoryManager().getCUPointer(strides_out.length, Sizeof.INT);
+            Pointer permutes_p = this.getCudaManager().getMemoryManager().getPermutePointer(permutes, Sizeof.INT);
+            Pointer sip = this.getCudaManager().getMemoryManager().getPermutePointer(strides_in, Sizeof.INT);
+            Pointer sop = this.getCudaManager().getMemoryManager().getPermutePointer(strides_out, Sizeof.INT);
             JCuda.cudaMemcpy(permutes_p, Pointer.to(permutes), permutes.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
-            Pointer sip = this.getCudaManager().getMemoryManager().getCUPointer(permutes.length, Sizeof.INT);
-            JCuda.cudaMemcpy(sip, Pointer.to(strides_in), permutes.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
-            Pointer sop = this.getCudaManager().getMemoryManager().getCUPointer(permutes.length, Sizeof.INT);
-            JCuda.cudaMemcpy(sop, Pointer.to(strides_out), permutes.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
+            JCuda.cudaMemcpy(sip, Pointer.to(strides_in), strides_in.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
+            JCuda.cudaMemcpy(sop, Pointer.to(strides_out), strides_out.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
             /**
              * int N, float *data_in, float *data_out, int *perms, int *strides_in, int *strides_out, int NUM_AXES
              */
@@ -1775,9 +1780,9 @@ public class OPKernel extends BaseKernel implements Serializable {
                     0, null,               // Shared memory size and stream
                     kernelParameter, null // Kernel- and extra parameters
             ));
-            this.getCudaManager().getMemoryManager().freeCUPointer(permutes_p);
-            this.getCudaManager().getMemoryManager().freeCUPointer(sip);
-            this.getCudaManager().getMemoryManager().freeCUPointer(sop);
+//            this.getCudaManager().getMemoryManager().freeCUPointer(permutes_p);
+//            this.getCudaManager().getMemoryManager().freeCUPointer(sip);
+//            this.getCudaManager().getMemoryManager().freeCUPointer(sop);
         } catch (Exception e) {
             // TODO: handle exception
             e.printStackTrace();
@@ -1788,15 +1793,18 @@ public class OPKernel extends BaseKernel implements Serializable {
         try {
             int[] strides_in = getStrides(x.shape());
             int[] strides_out = getStrides(y.shape());
-            Pointer permutes_p = this.getCudaManager().getMemoryManager().getCUPointer(permutes.length, Sizeof.INT);
+//            Pointer permutes_p = this.getCudaManager().getMemoryManager().getCUPointer(permutes.length, Sizeof.INT);
+//            Pointer sip = this.getCudaManager().getMemoryManager().getCUPointer(strides_in.length, Sizeof.INT);
+//            Pointer sop = this.getCudaManager().getMemoryManager().getCUPointer(strides_out.length, Sizeof.INT);
+            Pointer permutes_p = this.getCudaManager().getMemoryManager().getPermutePointer(permutes, Sizeof.INT);
+            Pointer sip = this.getCudaManager().getMemoryManager().getPermutePointer(strides_in, Sizeof.INT);
+            Pointer sop = this.getCudaManager().getMemoryManager().getPermutePointer(strides_out, Sizeof.INT);            
             JCuda.cudaMemcpy(permutes_p, Pointer.to(permutes), permutes.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
-            Pointer sip = this.getCudaManager().getMemoryManager().getCUPointer(permutes.length, Sizeof.INT);
-            JCuda.cudaMemcpy(sip, Pointer.to(strides_in), permutes.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
-            Pointer sop = this.getCudaManager().getMemoryManager().getCUPointer(permutes.length, Sizeof.INT);
-            JCuda.cudaMemcpy(sop, Pointer.to(strides_out), permutes.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
+            JCuda.cudaMemcpy(sip, Pointer.to(strides_in), strides_in.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
+            JCuda.cudaMemcpy(sop, Pointer.to(strides_out), strides_out.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
+
             /**
              * int N, float *data_in, float *data_out, int *perms, int *strides_in, int *strides_out, int NUM_AXES
-
              */
             Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{x.getDataLength()}), Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(permutes_p), Pointer.to(sip), Pointer.to(sop), Pointer.to(new int[]{permutes.length}));
             checkCUDA(cuLaunchKernel(permute_add_gpu_function, CAFFE_GET_BLOCKS(x.getDataLength()), 1, 1,      // Grid dimension
@@ -1804,9 +1812,9 @@ public class OPKernel extends BaseKernel implements Serializable {
                     0, null,               // Shared memory size and stream
                     kernelParameter, null // Kernel- and extra parameters
             ));
-            this.getCudaManager().getMemoryManager().freeCUPointer(permutes_p);
-            this.getCudaManager().getMemoryManager().freeCUPointer(sip);
-            this.getCudaManager().getMemoryManager().freeCUPointer(sop);
+//            this.getCudaManager().getMemoryManager().freeCUPointer(permutes_p);
+//            this.getCudaManager().getMemoryManager().freeCUPointer(sip);
+//            this.getCudaManager().getMemoryManager().freeCUPointer(sop);
         } catch (Exception e) {
             // TODO: handle exception
             e.printStackTrace();
@@ -1817,12 +1825,16 @@ public class OPKernel extends BaseKernel implements Serializable {
         try {
             int[] strides_in = getStrides(xSahpe);
             int[] strides_out = getStrides(ySahpe);
-            Pointer permutes_p = this.getCudaManager().getMemoryManager().getCUPointer(permutes.length, Sizeof.INT);
+//            Pointer permutes_p = this.getCudaManager().getMemoryManager().getCUPointer(permutes.length, Sizeof.INT);
+//            Pointer sip = this.getCudaManager().getMemoryManager().getCUPointer(permutes.length, Sizeof.INT);
+//            Pointer sop = this.getCudaManager().getMemoryManager().getCUPointer(permutes.length, Sizeof.INT);
+            Pointer permutes_p = this.getCudaManager().getMemoryManager().getPermutePointer(permutes, Sizeof.INT);
+            Pointer sip = this.getCudaManager().getMemoryManager().getPermutePointer(strides_in, Sizeof.INT);
+            Pointer sop = this.getCudaManager().getMemoryManager().getPermutePointer(strides_out, Sizeof.INT);   
             JCuda.cudaMemcpy(permutes_p, Pointer.to(permutes), permutes.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
-            Pointer sip = this.getCudaManager().getMemoryManager().getCUPointer(permutes.length, Sizeof.INT);
-            JCuda.cudaMemcpy(sip, Pointer.to(strides_in), permutes.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
-            Pointer sop = this.getCudaManager().getMemoryManager().getCUPointer(permutes.length, Sizeof.INT);
-            JCuda.cudaMemcpy(sop, Pointer.to(strides_out), permutes.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
+            JCuda.cudaMemcpy(sip, Pointer.to(strides_in), strides_in.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
+            JCuda.cudaMemcpy(sop, Pointer.to(strides_out), strides_out.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
+
             /**
              * int N, float *data_in, float *data_out, int *perms, int *strides_in, int *strides_out, int NUM_AXES
              */
@@ -1832,9 +1844,9 @@ public class OPKernel extends BaseKernel implements Serializable {
                     0, null,               // Shared memory size and stream
                     kernelParameter, null // Kernel- and extra parameters
             ));
-            this.getCudaManager().getMemoryManager().freeCUPointer(permutes_p);
-            this.getCudaManager().getMemoryManager().freeCUPointer(sip);
-            this.getCudaManager().getMemoryManager().freeCUPointer(sop);
+//            this.getCudaManager().getMemoryManager().freeCUPointer(permutes_p);
+//            this.getCudaManager().getMemoryManager().freeCUPointer(sip);
+//            this.getCudaManager().getMemoryManager().freeCUPointer(sop);
         } catch (Exception e) {
             // TODO: handle exception
             e.printStackTrace();
@@ -1845,12 +1857,16 @@ public class OPKernel extends BaseKernel implements Serializable {
         try {
             int[] strides_in = getStrides(xSahpe);
             int[] strides_out = getStrides(ySahpe);
-            Pointer permutes_p = this.getCudaManager().getMemoryManager().getCUPointer(permutes.length, Sizeof.INT);
+//            Pointer permutes_p = this.getCudaManager().getMemoryManager().getCUPointer(permutes.length, Sizeof.INT);
+//            Pointer sip = this.getCudaManager().getMemoryManager().getCUPointer(permutes.length, Sizeof.INT);
+//            Pointer sop = this.getCudaManager().getMemoryManager().getCUPointer(permutes.length, Sizeof.INT);
+            Pointer permutes_p = this.getCudaManager().getMemoryManager().getPermutePointer(permutes, Sizeof.INT);
+            Pointer sip = this.getCudaManager().getMemoryManager().getPermutePointer(strides_in, Sizeof.INT);
+            Pointer sop = this.getCudaManager().getMemoryManager().getPermutePointer(strides_out, Sizeof.INT);   
             JCuda.cudaMemcpy(permutes_p, Pointer.to(permutes), permutes.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
-            Pointer sip = this.getCudaManager().getMemoryManager().getCUPointer(permutes.length, Sizeof.INT);
-            JCuda.cudaMemcpy(sip, Pointer.to(strides_in), permutes.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
-            Pointer sop = this.getCudaManager().getMemoryManager().getCUPointer(permutes.length, Sizeof.INT);
-            JCuda.cudaMemcpy(sop, Pointer.to(strides_out), permutes.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
+            JCuda.cudaMemcpy(sip, Pointer.to(strides_in), strides_in.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
+            JCuda.cudaMemcpy(sop, Pointer.to(strides_out), strides_out.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
+
             /**
              * int N, float *data_in, float *data_out, int *perms, int *strides_in, int *strides_out, int NUM_AXES
              */
@@ -1860,9 +1876,9 @@ public class OPKernel extends BaseKernel implements Serializable {
                     0, null,               // Shared memory size and stream
                     kernelParameter, null // Kernel- and extra parameters
             ));
-            this.getCudaManager().getMemoryManager().freeCUPointer(permutes_p);
-            this.getCudaManager().getMemoryManager().freeCUPointer(sip);
-            this.getCudaManager().getMemoryManager().freeCUPointer(sop);
+//            this.getCudaManager().getMemoryManager().freeCUPointer(permutes_p);
+//            this.getCudaManager().getMemoryManager().freeCUPointer(sip);
+//            this.getCudaManager().getMemoryManager().freeCUPointer(sop);
         } catch (Exception e) {
             // TODO: handle exception
             e.printStackTrace();
@@ -2059,6 +2075,25 @@ public class OPKernel extends BaseKernel implements Serializable {
              */
             Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{a.number * a.channel * a.height}), Pointer.to(a.getGpuData()), Pointer.to(b.getGpuData()), Pointer.to(c.getGpuData()), Pointer.to(new int[]{a.width}));
             checkCUDA(cuLaunchKernel(cat_width_function, CAFFE_GET_BLOCKS(a.number * a.channel * a.height), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameter, null // Kernel- and extra parameters
+            ));
+        	
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void cat_width_gpu(Tensor a, Tensor b, Tensor c, int aw, int bw) {
+        // TODO Auto-generated method stub
+        try {
+        	/**
+             * int N, float *a, float *b, float *y, int W
+             */
+            Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{a.number * a.channel * a.height}), Pointer.to(a.getGpuData()), Pointer.to(b.getGpuData()), Pointer.to(c.getGpuData()), Pointer.to(new int[]{a.width}), Pointer.to(new int[]{b.width}));
+            checkCUDA(cuLaunchKernel(cat_width_function2, CAFFE_GET_BLOCKS(a.number * a.channel * a.height), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameter, null // Kernel- and extra parameters

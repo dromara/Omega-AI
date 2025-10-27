@@ -36,6 +36,8 @@ public class DiTSwiGLUFFN extends Layer {
     private Tensor w2;
     
     private Tensor wt;
+    
+    private int[] shape;
 
     public DiTSwiGLUFFN(int inChannel, int hiddenSize, int outChannel, boolean bias) {
         this.inChannel = inChannel;
@@ -118,7 +120,10 @@ public class DiTSwiGLUFFN extends Layer {
         // TODO Auto-generated method stub
     	w12.forward(input);
 
-    	int[] shape = new int[] {number, 2, 1, hiddenSize};
+    	if(shape == null) {
+    		shape = new int[] {number, 2, 1, hiddenSize};
+    	}
+    	
     	Tensor_OP().getByChannel(w12.getOutput(), w1, shape, 0);
     	Tensor_OP().getByChannel(w12.getOutput(), w2, shape, 1);
 
@@ -146,8 +151,7 @@ public class DiTSwiGLUFFN extends Layer {
     	Tensor_OP().mul(w3.diff, w2, wt); 
     	
     	act.back(wt);
-    	
-    	int[] shape = new int[] {number, 2, 1, hiddenSize};
+
     	Tensor_OP().setByChannel(w12.getOutput(), act.diff, shape, 0);
     	
     	//wt = w2Delta

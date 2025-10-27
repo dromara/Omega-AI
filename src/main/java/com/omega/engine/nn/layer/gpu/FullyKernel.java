@@ -1,5 +1,7 @@
 package com.omega.engine.nn.layer.gpu;
 
+import static jcuda.driver.JCudaDriver.cuLaunchKernel;
+
 import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
@@ -11,8 +13,6 @@ import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUfunction;
 import jcuda.runtime.cudaError;
-
-import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 
 public class FullyKernel extends BaseKernel {
     private CUfunction function;
@@ -175,7 +175,7 @@ public class FullyKernel extends BaseKernel {
             e.printStackTrace();
         }
     }
-
+    
     public void backwardBias(Tensor diffB, Tensor delta) {
         try {
             diffB.clearGPU();

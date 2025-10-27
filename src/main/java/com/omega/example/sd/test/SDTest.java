@@ -7,6 +7,7 @@ import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.loss.LossType;
+import com.omega.engine.nn.layer.active.GeluType;
 import com.omega.engine.nn.network.ClipText;
 import com.omega.engine.nn.network.ClipTextModel;
 import com.omega.engine.nn.network.DiffusionUNetCond;
@@ -538,7 +539,111 @@ public class SDTest {
             output.showDM("output");
         }
     }
-
+    
+    public static void test_clip_b14_text() {
+        int maxContextLen = 77;
+        String vocabPath = "D:\\models\\CLIP-ViT-bigG-14\\vocab.json";
+        String mergesPath = "D:\\models\\CLIP-ViT-bigG-14\\merges.txt";
+        BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+        int time = maxContextLen;
+        int maxPositionEmbeddingsSize = 77;
+        int vocabSize = 49408;
+        int headNum = 20;
+        int n_layers = 32;
+        int textEmbedDim = 1280;
+        int intermediateSize = 5120;
+        ClipTextModel clip = new ClipTextModel(LossType.MSE, UpdaterType.adamw, headNum, time, vocabSize, textEmbedDim, maxPositionEmbeddingsSize, intermediateSize, n_layers, GeluType.NONE);
+        clip.id = "0";
+        clip.CUDNN = true;
+        clip.time = time;
+        clip.RUN_MODEL = RunModel.EVAL;
+//        String clipWeight = "D:\\models\\CLIP-ViT-bigG-14\\CLIP-ViT-bigG-14.json";
+//        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, n_layers, true);
+        String model_path = "D:\\models\\CLIP-ViT-bigG-14\\CLIP-ViT-bigG-14.model";
+        ModelUtils.loadModel(clip, model_path);
+        
+        int headNum2 = 12;
+        int n_layers2 = 12;
+        int textEmbedDim2 = 768;
+        int intermediateSize2 = 3072;
+        ClipTextModel clip2 = new ClipTextModel(LossType.MSE, UpdaterType.adamw, headNum2, time, vocabSize, textEmbedDim2, maxPositionEmbeddingsSize, intermediateSize2, n_layers2, GeluType.FAST);
+        clip2.id = "1";
+        clip2.CUDNN = true;
+        clip2.time = time;
+        clip2.RUN_MODEL = RunModel.EVAL;
+        String model_path2 = "D:\\models\\clip-vit-large-patch14\\clip-vit-large-patch14.model";
+        ModelUtils.loadModel(clip2, model_path2);
+        
+        Tensor label = new Tensor(maxContextLen, 1, 1, 1, true);
+        
+        String[] txts = new String[]{"A photo of a Maine Coon cat with heterochromatic eyes, one eye is sapphire blue, the other eye is emerald green. It is wearing a miniature top hat. the cat is holding a sign made from weathered wood. Written on the sign in hand-painted script are the words 'long CLIP is long and long CAT is lovely!'."};
+        for (int i = 0; i < 1; i++) {
+            String txt = txts[i];
+            System.err.println(txt);
+            int[] ids = bpe.encodeInt(txt, maxContextLen);
+            for (int j = 0; j < maxContextLen; j++) {
+                if (j < ids.length) {
+                    label.data[j] = ids[j];
+                } else {
+                    label.data[j] = 0;
+                }
+            }
+            label.hostToDevice();
+            label.showDM();
+            Tensor output = clip.get_full_clip_prompt_embeds(label);
+            output.showDM("output");
+            
+            Tensor output2 = clip2.get_full_clip_prompt_embeds(label);
+            output2.showDM("output2");
+            
+        }
+//        String save_model_path = "D:\\models\\CLIP-ViT-bigG-14\\CLIP-ViT-bigG-14.model";
+//        ModelUtils.saveModel(clip, save_model_path);
+    }
+    
+    public static void test_clip_l14_text() {
+        int maxContextLen = 77;
+        String vocabPath = "D:\\models\\CLIP-GmP-ViT-L-14\\vocab.json";
+        String mergesPath = "D:\\models\\CLIP-GmP-ViT-L-14\\merges.txt";
+        BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+        int time = maxContextLen;
+        int maxPositionEmbeddingsSize = 77;
+        int vocabSize = 49408;
+        int headNum = 12;
+        int n_layers = 12;
+        int textEmbedDim = 768;
+        int intermediateSize = 3072;
+        ClipTextModel clip = new ClipTextModel(LossType.MSE, UpdaterType.adamw, headNum, time, vocabSize, textEmbedDim, maxPositionEmbeddingsSize, intermediateSize, n_layers, GeluType.FAST);
+        clip.CUDNN = true;
+        clip.time = time;
+        clip.RUN_MODEL = RunModel.EVAL;
+//        String clipWeight = "D:\\models\\CLIP-GmP-ViT-L-14\\CLIP-GmP-ViT-L-14.json";
+//        String clipWeight = "D:\\models\\clip-vit-large-patch14\\clip-vit-large-patch14.json";
+//        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, n_layers, true);
+        String model_path = "D:\\models\\clip-vit-large-patch14\\clip-vit-large-patch14.model";
+        ModelUtils.loadModel(clip, model_path);
+        Tensor label = new Tensor(maxContextLen, 1, 1, 1, true);
+        String[] txts = new String[]{"A photo of a Maine Coon cat with heterochromatic eyes, one eye is sapphire blue, the other eye is emerald green. It is wearing a miniature top hat. the cat is holding a sign made from weathered wood. Written on the sign in hand-painted script are the words 'long CLIP is long and long CAT is lovely!'."};
+        for (int i = 0; i < 1; i++) {
+            String txt = txts[i];
+            System.err.println(txt);
+            int[] ids = bpe.encodeInt(txt, maxContextLen);
+            for (int j = 0; j < maxContextLen; j++) {
+                if (j < ids.length) {
+                    label.data[j] = ids[j];
+                } else {
+                    label.data[j] = 0;
+                }
+            }
+            label.hostToDevice();
+            label.showDM();
+            Tensor output = clip.get_full_clip_prompt_embeds(label);
+            output.showDM("output");
+        }
+//      String save_model_path = "D:\\models\\clip-vit-large-patch14\\clip-vit-large-patch14.model";
+//      ModelUtils.saveModel(clip, save_model_path);
+    }
+    
     public static void sd_train_pokem() throws Exception {
         String tokenizerPath = "H:\\clip\\CLIP\\clip_cn\\vocab.txt";
         String labelPath = "H:\\vae_dataset\\pokemon-blip\\data.json";
@@ -1368,7 +1473,11 @@ public class SDTest {
         	
 //        	tiny_sd_predict_anime_32();
         	
-        	tiny_sd_test_anime();
+//        	tiny_sd_test_anime();
+        	
+        	test_clip_b14_text();
+        	
+//        	test_clip_l14_text();
         	
         } catch (Exception e) {
             // TODO: handle exception

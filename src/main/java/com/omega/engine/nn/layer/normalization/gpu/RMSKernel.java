@@ -225,7 +225,6 @@ public class RMSKernel extends BaseKernel {
             checkBatch(input);
             /**
              * float *__restrict__ out, const float *__restrict__ inp,const float *__restrict__ weight, int N, int C
-
              */
             forwardParameters = Pointer.to(Pointer.to(output.getGpuData()), Pointer.to(input.getGpuData()), Pointer.to(gamma.getGpuData()), Pointer.to(new int[]{B}), Pointer.to(new int[]{W}));
             int grid_size = (int) Math.ceil((float) (B * 32 + CAFFE_CUDA_NUM_THREADS - 1) / CAFFE_CUDA_NUM_THREADS);

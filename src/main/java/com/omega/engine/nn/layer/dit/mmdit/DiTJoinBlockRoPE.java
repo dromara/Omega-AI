@@ -181,12 +181,12 @@ public class DiTJoinBlockRoPE extends Layer {
         // TODO Auto-generated method stub
         if (this.dattn == null) {
 //            this.dattn = Tensor.createGPUTensor(this.dattn, batchSize, headNum, time, time, true);
-        	this.dattn = CUDAMemoryManager.getCache("dit_block_dattn", batchSize, headNum, time, time);
+        	this.dattn = CUDAMemoryManager.getCache("mmdit_block_dattn", batchSize, headNum, time, time);
             if(pre_only) {
 //            	dattn_cx = Tensor.createGPUTensor(this.dattn_cx, batchSize * textTime, 1, 1, embedDim, true);
-            	this.dattn_cx = CUDAMemoryManager.getCache("dit_block_dattn_cx", batchSize * textTime, 1, 1, embedDim);
+            	this.dattn_cx = CUDAMemoryManager.getCache("mmdit_block_dattn_cx", batchSize * textTime, 1, 1, embedDim);
 //            	cx_diff = Tensor.createGPUTensor(this.cx_diff, batchSize * textTime, 1, 1, embedDim, true);
-            	this.cx_diff = CUDAMemoryManager.getCache("dit_block_cx_diff", batchSize * textTime, 1, 1, embedDim);
+            	this.cx_diff = CUDAMemoryManager.getCache("mmdit_block_cx_diff", batchSize * textTime, 1, 1, embedDim);
             }
         } else {
             dattn.viewOrg();

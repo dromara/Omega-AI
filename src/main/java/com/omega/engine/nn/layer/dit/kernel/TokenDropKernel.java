@@ -10,6 +10,8 @@ import com.omega.engine.tensor.Tensor;
 
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
+import jcuda.jcudnn.JCudnn;
+import jcuda.runtime.JCuda;
 import jcuda.runtime.cudaError;
 
 public class TokenDropKernel extends CUDAKernel {
@@ -69,6 +71,7 @@ public class TokenDropKernel extends CUDAKernel {
 
     public void tokenDrop(Tensor x, Tensor param, Tensor mask, Tensor output, int W, float prob) {
         try {
+      
             /**
              * 设置入参
              * const size_t size, const float *x, float *param, float *mask, float *out, const int len, float prob

@@ -66,6 +66,9 @@ public class DiTAttentionLayer2 extends Layer {
     private boolean qkNorm = false;
     
     private Tensor temp_out;
+    
+    private int[] p_0213 = new int[]{0, 2, 1, 3};
+    
 
     public DiTAttentionLayer2(int embedDim, int headNum, int time, boolean bias, boolean qkNorm) {
         this.bias = bias;
@@ -265,9 +268,9 @@ public class DiTAttentionLayer2 extends Layer {
         Tensor query = this.getqLinerLayer().getOutput().view(batchSize, time, headNum, dk);
         Tensor key = this.getkLinerLayer().getOutput().view(batchSize, time, headNum, dk);
         Tensor value = this.getvLinerLayer().getOutput().view(batchSize, time, headNum, dk);
-        Tensor_OP().permute(query, qt, new int[]{0, 2, 1, 3});
-        Tensor_OP().permute(key, kt, new int[]{0, 2, 1, 3});
-        Tensor_OP().permute(value, vt, new int[]{0, 2, 1, 3});
+        Tensor_OP().permute(query, qt, p_0213);
+        Tensor_OP().permute(key, kt, p_0213);
+        Tensor_OP().permute(value, vt, p_0213);
         
    	 	if(qkNorm) {
         	qNorm.forward(qt);
@@ -300,9 +303,9 @@ public class DiTAttentionLayer2 extends Layer {
         ropeKernel.forward2d(cos, sin, query, rq, time, headNum, dk);
         ropeKernel.forward2d(cos, sin, key, rk, time, headNum, dk);
         
-        Tensor_OP().permute(rq, qt, new int[]{0, 2, 1, 3});
-        Tensor_OP().permute(rk, kt, new int[]{0, 2, 1, 3});
-        Tensor_OP().permute(value, vt, new int[]{0, 2, 1, 3});
+        Tensor_OP().permute(rq, qt, p_0213);
+        Tensor_OP().permute(rk, kt, p_0213);
+        Tensor_OP().permute(value, vt, p_0213);
 
         if(qkNorm) {
         	qNorm.forward(qt);
@@ -333,11 +336,11 @@ public class DiTAttentionLayer2 extends Layer {
         temp_out.viewOrg();
         this.getvLinerLayer().forward(input, temp_out);
         Tensor value = temp_out.view(batchSize, time, headNum, dk);
-        Tensor_OP().permute(value, vt, new int[]{0, 2, 1, 3});
+        Tensor_OP().permute(value, vt, p_0213);
         temp_out.viewOrg();
         
-        Tensor_OP().permute(rq, qt, new int[]{0, 2, 1, 3});
-        Tensor_OP().permute(rk, kt, new int[]{0, 2, 1, 3});
+        Tensor_OP().permute(rq, qt, p_0213);
+        Tensor_OP().permute(rk, kt, p_0213);
 
         if(qkNorm) {
         	qNorm.forward(qt, qt);
@@ -416,11 +419,11 @@ public class DiTAttentionLayer2 extends Layer {
         if(qkNorm) {
         	qNorm.back(dqt);
         	kNorm.back(dkt);
-        	Tensor_OP().permute(qNorm.diff, qt, new int[]{0, 2, 1, 3});
-            Tensor_OP().permute(kNorm.diff, kt, new int[]{0, 2, 1, 3});
+        	Tensor_OP().permute(qNorm.diff, qt, p_0213);
+            Tensor_OP().permute(kNorm.diff, kt, p_0213);
         }else {
-        	Tensor_OP().permute(dqt, qt, new int[]{0, 2, 1, 3});
-            Tensor_OP().permute(dkt, kt, new int[]{0, 2, 1, 3});
+        	Tensor_OP().permute(dqt, qt, p_0213);
+            Tensor_OP().permute(dkt, kt, p_0213);
         }
         Tensor_OP().permute(dvt, vt, new int[]{0, 2, 1, 3});
         Tensor queryDelta = qt.view(batchSize * time, 1, 1, headNum * dk);
@@ -445,13 +448,13 @@ public class DiTAttentionLayer2 extends Layer {
          if(qkNorm) {
          	qNorm.back(dqt);
          	kNorm.back(dkt);
-         	Tensor_OP().permute(qNorm.diff, qt, new int[]{0, 2, 1, 3});
-            Tensor_OP().permute(kNorm.diff, kt, new int[]{0, 2, 1, 3});
+         	Tensor_OP().permute(qNorm.diff, qt, p_0213);
+            Tensor_OP().permute(kNorm.diff, kt, p_0213);
          }else {
-         	Tensor_OP().permute(dqt, qt, new int[]{0, 2, 1, 3});
-            Tensor_OP().permute(dkt, kt, new int[]{0, 2, 1, 3});
+         	Tensor_OP().permute(dqt, qt, p_0213);
+            Tensor_OP().permute(dkt, kt, p_0213);
          }
-         Tensor_OP().permute(dvt, vt, new int[]{0, 2, 1, 3});
+         Tensor_OP().permute(dvt, vt, p_0213);
          /**
           * RoPE backward
           */
@@ -507,12 +510,10 @@ public class DiTAttentionLayer2 extends Layer {
     	if(network.RUN_MODEL == RunModel.EVAL) {
     		/**
              * 参数初始化
-
              */
             this.init_eval(input);
             /**
              * 设置输入
-
              */
             this.setInput(input);
             /**
@@ -523,17 +524,14 @@ public class DiTAttentionLayer2 extends Layer {
     	}else {
     		/**
              * 参数初始化
-
              */
             this.init(input);
             /**
              * 设置输入
-
              */
             this.setInput(input);
             /**
              * 计算输出
-
              */
             this.output(cos, sin);
     	}  
