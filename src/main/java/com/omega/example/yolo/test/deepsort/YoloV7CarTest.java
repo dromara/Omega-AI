@@ -2,10 +2,22 @@ package com.omega.example.yolo.test.deepsort;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Transparency;
+import java.awt.color.ColorSpace;
 import java.awt.image.BufferedImage;
+import java.awt.image.ColorModel;
+import java.awt.image.ComponentColorModel;
+import java.awt.image.ComponentSampleModel;
+import java.awt.image.DataBuffer;
+import java.awt.image.DataBufferByte;
+import java.awt.image.Raster;
+import java.awt.image.WritableRaster;
 import java.io.File;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.swing.ImageIcon;
 import javax.swing.JFrame;
@@ -15,7 +27,6 @@ import javax.swing.SwingConstants;
 
 import org.bytedeco.javacv.FFmpegFrameGrabber;
 import org.bytedeco.javacv.Frame;
-import org.bytedeco.javacv.Java2DFrameUtils;
 
 import com.omega.engine.loss.LossType;
 import com.omega.engine.model.ModelLoader;
@@ -39,8 +50,7 @@ public class YoloV7CarTest {
 	private Yolo netWork;
 	private Tensor input = new Tensor(1, 3, 416, 416, true);
 	private final String[] labelset = new String[] { "car", "person", "bus", "others", "van" };
-	
-	
+
 	private final String cfg_path = "D:\\workspace-ai\\omega-ai\\models\\yolov7-tiny-traffic.cfg";
 	private final String model_path = "D:\\workspace-ai\\omega-ai\\models\\yolov7-traffic.model";
 	private final String car_video_path = "E:\\car_detect.mp4";
@@ -64,8 +74,7 @@ public class YoloV7CarTest {
 		mainFrame.setSize(500, 500);
 		mainFrame.setLocationRelativeTo(null);
 		mainFrame.setVisible(true);
-		
-		
+
 		tracker = new SORTTracker();
 
 		FFmpegFrameGrabber grabber = null;
@@ -82,20 +91,19 @@ public class YoloV7CarTest {
 		if (null == grabber || null == grabImage) {
 			JLabel unsupport = new JLabel("不支持的解码格式");
 			unsupport.setHorizontalAlignment(SwingConstants.CENTER);
-			
+
 			mainPanel.removeAll();
 			mainPanel.add(unsupport);
 			mainPanel.revalidate();
 			mainPanel.repaint();
-			
+
 			return;
 		}
 
 		// 初始化
-		BufferedImage firstFrame = Java2DFrameUtils.toBufferedImage(grabImage);
+		BufferedImage firstFrame = toBufferedImage(grabImage);
 		initYoloNet(firstFrame);
 
-		
 		while (true) {
 			// 由于是本地视频，并且需要看视频，按照帧率处理
 			frame = grabber.grabAtFrameRate();
@@ -109,24 +117,34 @@ public class YoloV7CarTest {
 				continue;
 			}
 
-			BufferedImage bufferedImage = Java2DFrameUtils.toBufferedImage(frame);
+			BufferedImage bufferedImage = toBufferedImage(frame);
 
 			List<Detection> detections = runYOLODetection(bufferedImage);
 
 			List<Track> activeTracks = tracker.update(detections);
 
 			BufferedImage newBufferedImage = ImageTools.letterbox(bufferedImage, input.width, input.height);
-			
+			int sec = (int) (grabber.getTimestamp() / 1000f / 1000f);
+
+			Set<Integer> set = new HashSet<>();
 			for (Track track : activeTracks) {
-				ImageTools.drawRect(newBufferedImage, track.bbox.x, track.bbox.y, track.bbox.width, track.bbox.height, Color.RED);
-				ImageTools.drawText(newBufferedImage, track.trackId +"_"+ track.label, track.bbox.x,track.bbox.y, Color.RED);
+				set.add(track.trackId);
+			}
+
+			for (Track track : activeTracks) {
+				ImageTools.drawRect(newBufferedImage, track.bbox.x, track.bbox.y, track.bbox.width, track.bbox.height,
+						Color.RED);
+				ImageTools.drawText(newBufferedImage, track.trackId + "_" + track.label, track.bbox.x, track.bbox.y,
+						Color.RED);
+				ImageTools.drawText(newBufferedImage, sec + "秒", 20, 20, Color.RED);
+				ImageTools.drawText(newBufferedImage, set.size() + "辆", 50, 20, Color.RED);
 			}
 
 			mainPanel.removeAll();
 			mainPanel.add(new JLabel(new ImageIcon(newBufferedImage)));
 			mainPanel.revalidate();
 			mainPanel.repaint();
-			
+
 		}
 
 		grabber.close();
@@ -207,4 +225,24 @@ public class YoloV7CarTest {
 		// 由于首次运行需要创建gpu空间，这边假设先拿一帧处理，进行第一次预测
 		Tensor[] outputFirst = netWork.predicts(input);
 	}
+
+	
+	public BufferedImage toBufferedImage(Frame frame) {
+		ByteBuffer buffer = (ByteBuffer) frame.image[0].position(0);
+
+		byte[] framePixels = new byte[buffer.limit()];
+		buffer.get(framePixels);
+
+		ColorSpace cs = ColorSpace.getInstance(ColorSpace.CS_sRGB);
+
+		ColorModel cm = new ComponentColorModel(cs, false, false, Transparency.OPAQUE, DataBuffer.TYPE_BYTE);
+		WritableRaster wr = Raster.createWritableRaster(new ComponentSampleModel(DataBuffer.TYPE_BYTE, frame.imageWidth,
+				frame.imageHeight, frame.imageChannels, frame.imageStride, new int[] { 2, 1, 0 }), null);
+		byte[] bufferPixels = ((DataBufferByte) wr.getDataBuffer()).getData();
+
+		System.arraycopy(framePixels, 0, bufferPixels, 0, framePixels.length);
+
+		return new BufferedImage(cm, wr, false, null);
+	}
+
 }
