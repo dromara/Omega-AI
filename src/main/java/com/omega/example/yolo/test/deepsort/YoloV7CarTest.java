@@ -14,6 +14,7 @@ import java.awt.image.Raster;
 import java.awt.image.WritableRaster;
 import java.io.File;
 import java.nio.ByteBuffer;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -80,6 +81,7 @@ public class YoloV7CarTest {
 		FFmpegFrameGrabber grabber = null;
 		try {
 			grabber = new FFmpegFrameGrabber(new File(car_video_path));
+			grabber.setFrameRate(30);
 			grabber.start();
 		} catch (org.bytedeco.javacv.FFmpegFrameGrabber.Exception e) {
 			e.printStackTrace();
@@ -125,6 +127,7 @@ public class YoloV7CarTest {
 
 			BufferedImage newBufferedImage = ImageTools.letterbox(bufferedImage, input.width, input.height);
 			int sec = (int) (grabber.getTimestamp() / 1000f / 1000f);
+			String formatTime = formatTime(sec);
 
 			Set<Integer> set = new HashSet<>();
 			for (Track track : activeTracks) {
@@ -136,8 +139,9 @@ public class YoloV7CarTest {
 						Color.RED);
 				ImageTools.drawText(newBufferedImage, track.trackId + "_" + track.label, track.bbox.x, track.bbox.y,
 						Color.RED);
-				ImageTools.drawText(newBufferedImage, sec + "秒", 20, 20, Color.RED);
-				ImageTools.drawText(newBufferedImage, set.size() + "辆", 50, 20, Color.RED);
+				ImageTools.drawText(newBufferedImage, "时间" + formatTime, 20, 20, Color.RED);
+				//由于帧率设置为30，SORTTracker maxAge也为30，这里是初步估计的结果
+				ImageTools.drawText(newBufferedImage, "每秒" + set.size() + "辆", 150, 20, Color.RED);
 			}
 
 			mainPanel.removeAll();
@@ -226,6 +230,16 @@ public class YoloV7CarTest {
 		Tensor[] outputFirst = netWork.predicts(input);
 	}
 
+	public String formatTime(int seconds) {
+        Duration duration = Duration.ofSeconds(seconds);
+        long hours = duration.toHours();
+        long minutes = duration.toMinutes();
+        long remainingSeconds = duration.getSeconds() % 60;
+
+        // 格式化输出为HH:mm:ss格式
+//        String formattedTime = String.format("%02d:%02d:%02d", hours, minutes, remainingSeconds);
+        return String.format("%02d:%02d", minutes, remainingSeconds);
+	}
 	
 	public BufferedImage toBufferedImage(Frame frame) {
 		ByteBuffer buffer = (ByteBuffer) frame.image[0].position(0);

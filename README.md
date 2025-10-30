@@ -65,9 +65,9 @@ public static void main(String[] args) {
 ![输入图片说明](images/QQ%E6%88%AA%E5%9B%BE20230413155027.png)
 
 ### yolo目标识别算法系列
-#### [基于yolo算法目标识别](#yolo-banana-detection-demo)
+#### [基于yolo算法目标追踪识别](#yolo-car-tracker-deepsort-demo)
 
-![输入图片说明](images/11.png)![输入图片说明](images/49.png)![输入图片说明](images/32.png)![输入图片说明](images/41.png)
+![输入图片说明](images/yolo_car_demo.gif)
 
 #### [基于yolov3口罩佩戴识别](#yolov3-mask-demo口罩佩戴识别)
 
@@ -839,6 +839,98 @@ public void yolov1_tiny() {
 			}
 		}
 		
+	}
+```
+#### yolo car-tracker-deepsort demo
+``` java
+public void run() throws Exception {
+
+		JFrame mainFrame = new JFrame("Omega-ai-车辆追踪-演示");
+		mainFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		mainFrame.add(mainPanel);
+		JLabel loading = new JLabel("正在加载视频以及模型...");
+		loading.setHorizontalAlignment(SwingConstants.CENTER);
+		mainPanel.add(loading);
+		mainFrame.setSize(500, 500);
+		mainFrame.setLocationRelativeTo(null);
+		mainFrame.setVisible(true);
+
+		tracker = new SORTTracker();
+
+		FFmpegFrameGrabber grabber = null;
+		try {
+			grabber = new FFmpegFrameGrabber(new File(car_video_path));
+			grabber.setFrameRate(30);
+			grabber.start();
+		} catch (org.bytedeco.javacv.FFmpegFrameGrabber.Exception e) {
+			e.printStackTrace();
+		}
+
+		Frame frame = null;
+
+		Frame grabImage = grabber.grabImage();
+		if (null == grabber || null == grabImage) {
+			JLabel unsupport = new JLabel("不支持的解码格式");
+			unsupport.setHorizontalAlignment(SwingConstants.CENTER);
+
+			mainPanel.removeAll();
+			mainPanel.add(unsupport);
+			mainPanel.revalidate();
+			mainPanel.repaint();
+
+			return;
+		}
+
+		// 初始化
+		BufferedImage firstFrame = toBufferedImage(grabImage);
+		initYoloNet(firstFrame);
+
+		while (true) {
+			// 由于是本地视频，并且需要看视频，按照帧率处理
+			frame = grabber.grabAtFrameRate();
+
+			if (null == frame) {
+				break;
+			}
+
+			if (frame.type != Frame.Type.VIDEO || null == frame.image) {
+				frame.close();
+				continue;
+			}
+
+			BufferedImage bufferedImage = toBufferedImage(frame);
+
+			List<Detection> detections = runYOLODetection(bufferedImage);
+
+			List<Track> activeTracks = tracker.update(detections);
+
+			BufferedImage newBufferedImage = ImageTools.letterbox(bufferedImage, input.width, input.height);
+			int sec = (int) (grabber.getTimestamp() / 1000f / 1000f);
+			String formatTime = formatTime(sec);
+
+			Set<Integer> set = new HashSet<>();
+			for (Track track : activeTracks) {
+				set.add(track.trackId);
+			}
+
+			for (Track track : activeTracks) {
+				ImageTools.drawRect(newBufferedImage, track.bbox.x, track.bbox.y, track.bbox.width, track.bbox.height,
+						Color.RED);
+				ImageTools.drawText(newBufferedImage, track.trackId + "_" + track.label, track.bbox.x, track.bbox.y,
+						Color.RED);
+				ImageTools.drawText(newBufferedImage, "时间" + formatTime, 20, 20, Color.RED);
+				//由于帧率设置为30，SORTTracker maxAge也为30，这里是初步估计的结果
+				ImageTools.drawText(newBufferedImage, "每秒" + set.size() + "辆", 150, 20, Color.RED);
+			}
+
+			mainPanel.removeAll();
+			mainPanel.add(new JLabel(new ImageIcon(newBufferedImage)));
+			mainPanel.revalidate();
+			mainPanel.repaint();
+
+		}
+
+		grabber.close();
 	}
 ```
 
