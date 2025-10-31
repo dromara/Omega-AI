@@ -13,11 +13,11 @@
 
     <properties>
         <java.version>1.8</java.version>
-        <jcuda.version>11.8.0</jcuda.version>
-        <javacv.version>1.5.4</javacv.version>
-        <ffmpeg.version>4.3.1-1.5.4</ffmpeg.version>
-        <opencv.version>4.4.0-1.5.4</opencv.version>
-        <openblas.version>0.3.10-1.5.4</openblas.version>
+        <jcuda.version>12.6.0</jcuda.version>
+        <javacv.version>1.5.12</javacv.version>
+        <ffmpeg.version>7.1.1-1.5.12</ffmpeg.version>
+        <opencv.version>4.11.0-1.5.12</opencv.version>
+        <openblas.version>0.3.30-1.5.12</openblas.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <resource.delimiter>@</resource.delimiter>
@@ -129,11 +129,19 @@
         </dependency>
 
         <!-- javacv 完整依赖  如果遇到环境问题 将下面 JavaCV  Openblas FFmpeg OpenCV相关依赖注释掉  采用这个 -->
-        <!--        -->
-       <dependency>
+        <!--
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>javacv-platform</artifactId>
+            <version>1.5.12</version>
+        </dependency>
+        -->
+        
+        <!--javacv库主要应用在音视频，如不需要可以注释掉以下依赖及相关demo文件 -->
+        <dependency>
 			<groupId>org.bytedeco</groupId>
 			<artifactId>javacv</artifactId>
-			<version>1.5.12</version>
+			<version>${javacv.version}</version>
 			<exclusions>
 				<exclusion>
 					<groupId>org.openjfx</groupId>
@@ -144,53 +152,61 @@
 		<dependency>
 			<groupId>org.bytedeco</groupId>
 			<artifactId>ffmpeg</artifactId>
-			<version>7.1.1-1.5.12</version>
+			<version>${ffmpeg.version}</version>
 			<classifier>windows-x86_64</classifier>
 		</dependency>
-		<dependency>
+		
+		<!--视频生成暂时需要以下依赖，如果是MAC自行增加classifier为macos-x86_64-->
+		<!--opencv在windows上使用需要用微软的jdk，因为新jdk都自带dll动态库，导致无法正常引用，jdk1.8不影响-->
+		
+		<!--<dependency>
 			<groupId>org.bytedeco</groupId>
 			<artifactId>ffmpeg</artifactId>
-			<version>7.1.1-1.5.12</version>
+			<version>${ffmpeg.version}</version>
 			<classifier>linux-x86_64</classifier>
-		</dependency>
-        <dependency>
+		</dependency>-->
+		
+        <!--<dependency>
 			<groupId>org.bytedeco</groupId>
 			<artifactId>openblas</artifactId>
-			<version>0.3.30-1.5.12</version>
+			<version>${openblas.version}</version>
 		</dependency>
 
 		<dependency>
 			<groupId>org.bytedeco</groupId>
 			<artifactId>openblas</artifactId>
-			<version>0.3.30-1.5.12</version>
+			<version>${openblas.version}</version>
 			<classifier>windows-x86_64</classifier>
-		</dependency>
-		<dependency>
+		</dependency>-->
+		
+		<!--<dependency>
 			<groupId>org.bytedeco</groupId>
 			<artifactId>openblas</artifactId>
-			<version>0.3.30-1.5.12</version>
+			<version>${openblas.version}</version>
 			<classifier>linux-x86_64</classifier>
-		</dependency>
+		</dependency>-->
         
-        <dependency>
+        <!--<dependency>
 			<groupId>org.bytedeco</groupId>
 			<artifactId>opencv</artifactId>
-			<version>4.11.0-1.5.12</version>
+			<version>${opencv.version}</version>
 		</dependency>
 
 		<dependency>
 			<groupId>org.bytedeco</groupId>
 			<artifactId>opencv</artifactId>
-			<version>4.11.0-1.5.12</version>
+			<version>${opencv.version}</version>
 			<classifier>windows-x86_64</classifier>
-		</dependency>
-		<dependency>
+		</dependency>-->
+		
+		<!--<dependency>
 			<groupId>org.bytedeco</groupId>
 			<artifactId>opencv</artifactId>
-			<version>4.11.0-1.5.12</version>
+			<version>${opencv.version}</version>
 			<classifier>linux-x86_64</classifier>
-		</dependency>
-
+		</dependency>-->
+		
+        
     </dependencies>
 
     <build>
@@ -209,7 +225,7 @@
                             <transformers>
                                 <transformer
                                         implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>com.omega.example.dit.test.DiTTest
+                                    <mainClass>com.omega.example.transformer.test.DeepSeekTest
                                     </mainClass> <!-- 修改为你的 main 类 -->
                                 </transformer>
                             </transformers>
