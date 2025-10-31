@@ -425,7 +425,7 @@ public class DiTAttentionLayer2 extends Layer {
         	Tensor_OP().permute(dqt, qt, p_0213);
             Tensor_OP().permute(dkt, kt, p_0213);
         }
-        Tensor_OP().permute(dvt, vt, new int[]{0, 2, 1, 3});
+        Tensor_OP().permute(dvt, vt, p_0213);
         Tensor queryDelta = qt.view(batchSize * time, 1, 1, headNum * dk);
         Tensor keyDelta = kt.view(batchSize * time, 1, 1, headNum * dk);
         Tensor valueDelta = vt.view(batchSize * time, 1, 1, headNum * dk);
@@ -561,12 +561,10 @@ public class DiTAttentionLayer2 extends Layer {
         this.initBack();
         /**
          * 设置梯度
-
          */
         this.setDelta(delta);
         /**
          * 计算梯度
-
          */
         this.diff(cos, sin);
         if (this.network.GRADIENT_CHECK) {

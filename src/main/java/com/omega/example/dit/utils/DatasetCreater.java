@@ -709,10 +709,10 @@ public class DatasetCreater {
     	
     	try {
 
-    		int batchSize = 200;
+    		int batchSize = 64;
         	int maxContextLen = 77;
     		
-    		String clipDataPath = "D:\\dataset\\amine\\vavae_2clip.bin";
+    		String clipDataPath = "D:\\dataset\\amine\\vavae_2clip2.bin";
     		
     		String labelPath = "D:\\dataset\\labels.json";
     		
@@ -763,7 +763,9 @@ public class DatasetCreater {
             Tensor condInputCat = new Tensor(batchSize * 77, 1, 1, textEmbedDim2 + textEmbedDim, true);
             
             for(int it = 0;it<indexs.length;it++) {
+            	 long start  = System.nanoTime();
             	 loadLabels(bpe, datas, indexs[it], label, labels, eosIds, maxContextLen);
+            	 System.out.println((System.nanoTime() - start)/1e6);
             	 Tensor condInput2 = clip2.get_full_clip_prompt_embeds(label);
             	 Tensor condInput = clip.get_full_clip_prompt_embeds(label);
             	 
@@ -771,7 +773,7 @@ public class DatasetCreater {
             	 
             	 JCudaDriver.cuCtxSynchronize();
                  writeTensor(condInputCat, clipWriter);
-                 System.out.println(it + "/" + indexs.length + " finish.");
+                 System.out.println(it + "/" + indexs.length + "["+(System.nanoTime() - start)/1e6+"ms] finish.");
             }
             
     	}catch (Exception e) {
@@ -856,7 +858,7 @@ public class DatasetCreater {
         	
 //        	testLatendData();
         	
-        	test_vavae_latend();
+//        	test_vavae_latend();
         	
 //        	createLatendDataset3();
         	
@@ -864,7 +866,7 @@ public class DatasetCreater {
         	
 //        	createLatendDatasetFullClip();
         	
-//        	createTwoClip();
+        	createTwoClip();
         	
         } catch (Exception e) {
             // TODO: handle exception

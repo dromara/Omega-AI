@@ -9,7 +9,7 @@ import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.layer.InputLayer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.SoftmaxWithCrossEntropyLayer;
-import com.omega.engine.nn.layer.dit.txt.DiT_TXTMainMoudue;
+import com.omega.engine.nn.layer.dit.sana.SanaDiTMainMoudue;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.NetworkType;
 import com.omega.engine.nn.network.RunModel;
@@ -24,7 +24,7 @@ import jcuda.runtime.JCuda;
  *
  * @author Administrator
  */
-public class DiT_TXT extends Network {
+public class SanaDiT extends Network {
 	
     public int inChannel;
     public int width;
@@ -42,7 +42,7 @@ public class DiT_TXT extends Network {
     private float y_drop_prob = 0.0f;
     
     private InputLayer inputLayer;
-    public DiT_TXTMainMoudue main;
+    public SanaDiTMainMoudue main;
     
     private Tensor input_null;
     private Tensor eps;
@@ -50,7 +50,7 @@ public class DiT_TXT extends Network {
     private Tensor head;
     private Tensor tail;
     
-    public DiT_TXT(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int textEmbedDim, int maxContextLen, int mlpRatio,boolean learnSigma, float y_drop_prob) {
+    public SanaDiT(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int textEmbedDim, int maxContextLen, int mlpRatio,boolean learnSigma, float y_drop_prob) {
         this.lossFunction = LossFactory.create(lossType, this);
         this.weight_decay = 0.0f;
         this.updater = updater;
@@ -75,7 +75,7 @@ public class DiT_TXT extends Network {
     	
         this.inputLayer = new InputLayer(inChannel, height, width);
         
-        main = new DiT_TXTMainMoudue(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, textEmbedDim, maxContextLen, mlpRatio, learnSigma, y_drop_prob, this);
+        main = new SanaDiTMainMoudue(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, textEmbedDim, maxContextLen, mlpRatio, learnSigma, y_drop_prob, this);
         
         this.addLayer(inputLayer);
         this.addLayer(main);
@@ -131,16 +131,7 @@ public class DiT_TXT extends Network {
         return this.main.getOutput();
     }
     
-    public Tensor forward(Tensor input, Tensor t, Tensor context, Tensor cos, Tensor sin) {
-        /**
-         * 设置输入数据
-         */
-        this.setInputData(input);
-        this.main.forward(input, t, context, cos, sin);
-        return this.main.getOutput();
-    }
-    
-    public Tensor forward_with_cfg(Tensor input, Tensor t, Tensor context, Tensor cos, Tensor sin, Tensor eps, float cfg_scale) {
+    public Tensor forward_with_cfg(Tensor input, Tensor t, Tensor context, Tensor eps, float cfg_scale) {
         /**
          * 设置输入数据
          */
@@ -149,7 +140,7 @@ public class DiT_TXT extends Network {
     		uncond_eps = Tensor.createGPUTensor(uncond_eps, input.number, input.channel, input.height, input.width, true);
     	}
     	tensorOP.cat_batch(input, input, input_null);
-        this.main.forward(input_null, t, context, cos, sin);
+        this.main.forward(input_null, t, context);
         tensorOP.cat_bacth_copy(this.main.getOutput(), eps, uncond_eps);
         /**
          * out = uncond_eps + cfg_scale * (eps - uncond_eps)
@@ -160,7 +151,7 @@ public class DiT_TXT extends Network {
         return eps;
     }
     
-    public Tensor forward_with_cfg(Tensor input, Tensor t, Tensor context, Tensor cos, Tensor sin, Tensor out, float cfg_scale, int channel) {
+    public Tensor forward_with_cfg(Tensor input, Tensor t, Tensor context, Tensor out, float cfg_scale, int channel) {
         /**
          * 设置输入数据
          */
@@ -172,7 +163,7 @@ public class DiT_TXT extends Network {
     		tail = Tensor.createGPUTensor(tail, input_null.number, input.channel - channel, input.height, input.width, true);
     	}
     	tensorOP.cat_batch(input, input, input_null);
-        this.main.forward(input_null, t, context, cos, sin);
+        this.main.forward(input_null, t, context);
         tensorOP.getByChannel(this.main.getOutput(), head, this.main.getOutput().shape(), 0, channel);
         tensorOP.getByChannel(this.main.getOutput(), tail, this.main.getOutput().shape(), channel, tail.channel);
         tensorOP.cat_bacth_copy(head, eps, uncond_eps);
@@ -209,21 +200,6 @@ public class DiT_TXT extends Network {
         //		this.unet.diff.showDMByOffset(0, 100, "unet.diff");
     }
     
-    public void back(Tensor lossDiff,Tensor cos, Tensor sin) {
-        // TODO Auto-generated method stub
-        //		lossDiff.showDMByNumber(0);
-        initBack();
-        /**
-         * 设置误差
-         * 将误差值输入到最后一层
-         */
-        //		lossDiff.showDMByOffset(0, 100, "lossDiff");
-        this.setLossDiff(lossDiff);
-        //		lossDiff.showDM("lossDiff");
-        this.main.back(lossDiff, cos, sin);
-        //		this.unet.diff.showDMByOffset(0, 100, "unet.diff");
-    }
-
     @Override
     public Tensor loss(Tensor output, Tensor label) {
         // TODO Auto-generated method stub

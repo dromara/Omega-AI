@@ -218,6 +218,9 @@ public class CLIPAttentionLayer extends Layer {
             this.attn = CUDAMemoryManager.getCache(network.id+"clip-attn-attn", batchSize, headNum, time, time);
             // [batch_size, len_q, n_heads * dim_v]
             this.oi = CUDAMemoryManager.getCache(network.id+"clip-attn-oi", batchSize * time, 1, 1, embedDim);
+            
+            this.output = CUDAMemoryManager.getCache(network.id+"clip-attn-output", batchSize * time, 1, 1, embedDim);
+            
         } else {
             if (this.qt == null || this.qt.number != this.batchSize) {
                 // [batch_size，time，head_num，d_k]
@@ -309,8 +312,8 @@ public class CLIPAttentionLayer extends Layer {
         scaledDotProductAttention(qt, kt, vt);
         Tensor vaccum = temp;
         attentionKernel.unpermute(vaccum, oi, batchSize, time, headNum, dk);
-        this.getoLinerLayer().forward(oi);
-        this.output = this.getoLinerLayer().getOutput();
+        this.getoLinerLayer().forward(oi, output);
+//        this.output = this.getoLinerLayer().getOutput();
         if (dropout) {
             dropoutLayer2.forward(this.getoLinerLayer().getOutput());
             this.output = dropoutLayer2.getOutput();
@@ -391,17 +394,14 @@ public class CLIPAttentionLayer extends Layer {
         // TODO Auto-generated method stub
         /**
          * 参数初始化
-
          */
         this.init(input);
         /**
          * 设置输入
-
          */
         this.setInput(input);
         /**
          * 计算输出
-
          */
         this.output();
     }

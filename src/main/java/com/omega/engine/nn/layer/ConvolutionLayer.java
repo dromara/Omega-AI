@@ -29,6 +29,7 @@ public class ConvolutionLayer extends Layer {
     public int kHeight = 0;
     public int stride = 1;
     public int padding = 0;
+    public int groups = 1;
     private ConvBaseKernel kernel;
     private BiasKernel biasKernel;
 
@@ -283,7 +284,11 @@ public class ConvolutionLayer extends Layer {
         }
         if (kernel == null) {
             if (this.network.CUDNN) {
-                kernel = new ConvCudnnKernel(this.network, channel, height, width, kernelNum, kHeight, kWidth, stride, padding, cuda());
+                if(groups > 1) {
+                	kernel = new ConvCudnnKernel(this.network, channel, height, width, kernelNum, kHeight, kWidth, stride, padding, groups, cuda());
+                }else {
+                	kernel = new ConvCudnnKernel(this.network, channel, height, width, kernelNum, kHeight, kWidth, stride, padding, cuda());
+                }
             } else {
                 kernel = new ConvKernel(channel, height, width, kernelNum, kHeight, kWidth, stride, padding, cuda());
             }
@@ -301,7 +306,11 @@ public class ConvolutionLayer extends Layer {
         }
         if (kernel == null) {
             if (this.network.CUDNN) {
-                kernel = new ConvCudnnKernel(this.network, channel, height, width, kernelNum, kHeight, kWidth, stride, padding, cuda());
+            	if(groups > 1) {
+                	kernel = new ConvCudnnKernel(this.network, channel, height, width, kernelNum, kHeight, kWidth, stride, padding, groups, cuda());
+                }else {
+                	kernel = new ConvCudnnKernel(this.network, channel, height, width, kernelNum, kHeight, kWidth, stride, padding, cuda());
+                }
             } else {
                 kernel = new ConvKernel(channel, height, width, kernelNum, kHeight, kWidth, stride, padding, cuda());
             }
@@ -321,7 +330,7 @@ public class ConvolutionLayer extends Layer {
         	if (this.hasBias) {
                 this.diffB = new Tensor(1, 1, 1, kernelNum, true);
             }
-            this.diffW = new Tensor(this.kernelNum, this.channel, this.kHeight, this.kWidth, true);
+            this.diffW = new Tensor(this.kernelNum, this.channel/groups, this.kHeight, this.kWidth, true);
         }
     }
     
@@ -448,17 +457,14 @@ public class ConvolutionLayer extends Layer {
         // TODO Auto-generated method stub
         /**
          * 参数初始化
-
          */
         this.init();
         /**
          * 设置输入
-
          */
         this.setInput();
         /**
          * 计算输出
-
          */
         this.output();
     }
@@ -470,12 +476,10 @@ public class ConvolutionLayer extends Layer {
         initBack();
         /**
          * 设置梯度
-
          */
         this.setDelta();
         /**
          * 计算梯度
-
          */
         this.diff();
         //		System.out.println(JsonUtils.toJson(diffW.data));
@@ -654,5 +658,12 @@ public class ConvolutionLayer extends Layer {
             }
         }
     }
+
+	public void setGroups(int groups) {
+		this.groups = groups;
+		int dataLength = kernelNum * (channel/groups) * kHeight * kWidth;
+		this.weight = Tensor.createTensor(weight, kernelNum, channel/groups, kHeight, kWidth, RandomUtils.kaiming_uniform(dataLength, this.channel * kHeight * kWidth, this.paramsInit), true);
+		
+	}
 }
 

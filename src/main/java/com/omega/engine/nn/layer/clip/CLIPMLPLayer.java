@@ -164,17 +164,14 @@ public class CLIPMLPLayer extends Layer {
         // TODO Auto-generated method stub
         /**
          * 设置输入
-
          */
         this.setInput(input);
         /**
          * 参数初始化
-
          */
         this.init();
         /**
          * 计算输出
-
          */
         this.output();
     }

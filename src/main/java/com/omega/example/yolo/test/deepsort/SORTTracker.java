@@ -17,7 +17,7 @@ class SORTTracker {
     public SORTTracker() {
         this.tracks = new ArrayList<>();
         this.nextId = 1;
-        this.maxAge = 30; // 目标丢失30帧后删除
+        this.maxAge = 5; // 目标丢失30帧后删除
         this.minHits = 3; // 匹配3次后才确认显示
         this.iouThreshold = 0.3; // IOU阈值
     }

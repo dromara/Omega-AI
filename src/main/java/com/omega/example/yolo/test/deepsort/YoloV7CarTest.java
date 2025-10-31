@@ -41,9 +41,9 @@ public class YoloV7CarTest {
 	private final String[] labelset = new String[] { "car", "person", "bus", "others", "van" };
 	
 	
-	private final String cfg_path = "D:\\workspace-ai\\omega-ai\\models\\yolov7-tiny-traffic.cfg";
-	private final String model_path = "D:\\workspace-ai\\omega-ai\\models\\yolov7-traffic.model";
-	private final String car_video_path = "E:\\car_detect.mp4";
+	private final String cfg_path = "D:\\dataset\\traffic\\yolov7-tiny-traffic.cfg";
+	private final String model_path = "D:\\models\\yolov7-traffic.model";
+	private final String car_video_path = "D:\\dataset\\traffic\\test.mp4";
 
 	public static void main(String[] args) throws Exception {
 
@@ -110,11 +110,19 @@ public class YoloV7CarTest {
 			}
 
 			BufferedImage bufferedImage = Java2DFrameUtils.toBufferedImage(frame);
-
+			
+			long start = System.nanoTime();
+			
 			List<Detection> detections = runYOLODetection(bufferedImage);
-
+			
+			System.out.println((System.nanoTime() - start)/1e6+"ms.1");
+			
+			long start2 = System.nanoTime();
+			
 			List<Track> activeTracks = tracker.update(detections);
-
+			
+			System.out.println((System.nanoTime() - start2)/1e6+"ms.2");
+			
 			BufferedImage newBufferedImage = ImageTools.letterbox(bufferedImage, input.width, input.height);
 			
 			for (Track track : activeTracks) {
@@ -140,8 +148,9 @@ public class YoloV7CarTest {
 	private List<Detection> runYOLODetection(BufferedImage image) {
 
 		List<Detection> detections = new ArrayList<>();
-
+		long start = System.nanoTime();
 		OMImage orig = ImageLoader.loadImage(image);
+		System.out.println((System.nanoTime() - start)/1e6+"ms.0");
 		ImageLoader.loadVailDataDetection(input, null, 0, orig, null, input.width, input.height, 0, 0);
 		input.hostToDevice();
 

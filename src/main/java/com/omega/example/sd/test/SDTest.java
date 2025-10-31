@@ -552,6 +552,7 @@ public class SDTest {
         int n_layers = 32;
         int textEmbedDim = 1280;
         int intermediateSize = 5120;
+        
         ClipTextModel clip = new ClipTextModel(LossType.MSE, UpdaterType.adamw, headNum, time, vocabSize, textEmbedDim, maxPositionEmbeddingsSize, intermediateSize, n_layers, GeluType.NONE);
         clip.id = "0";
         clip.CUDNN = true;
