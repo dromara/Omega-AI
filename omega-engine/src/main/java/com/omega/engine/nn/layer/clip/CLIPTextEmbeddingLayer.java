@@ -201,9 +201,13 @@ public class CLIPTextEmbeddingLayer extends Layer {
     }
 
     public void saveModel(RandomAccessFile outputStream) throws IOException {
+        this.getTokenEmbedding().saveModel(outputStream);
+        this.positionEmbedding.saveModel(outputStream);
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
+    	this.getTokenEmbedding().loadModel(inputStream);
+    	this.positionEmbedding.loadModel(inputStream);
     }
 
     @Override

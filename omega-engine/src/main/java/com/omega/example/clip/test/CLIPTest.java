@@ -11,7 +11,7 @@ import com.omega.engine.nn.network.ClipVision;
 import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
-import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.transformer.tokenizer.bertTokenizer.BertTokenizer;
 import com.omega.example.transformer.utils.LagJsonReader;
 import com.omega.example.yolo.data.ImageLoader;
@@ -63,7 +63,7 @@ public class CLIPTest {
         network.time = 50;
         network.CUDNN = true;
         String clipWeight = "H:\\model\\clip_vision_weights.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), network, true);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), network, true);
         Tensor input = new Tensor(4, 3, imgSize, imgSize, true);
         imageProcessor(input);
         network.forward(input);
@@ -113,7 +113,7 @@ public class CLIPTest {
         network.time = time;
         network.RUN_MODEL = RunModel.TEST;
         String clipWeight = "H:\\model\\clip_cn_vit-b-16.json";
-        ClipModelUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), network, true);
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(clipWeight), network, true);
         String vocab_file = "H:\\clip\\CLIP\\clip_cn\\vocab.txt";
         boolean do_lower_case = true;
         boolean tokenize_chinese_chars = true;

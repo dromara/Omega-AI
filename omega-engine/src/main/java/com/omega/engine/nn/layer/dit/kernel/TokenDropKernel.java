@@ -10,6 +10,8 @@ import com.omega.engine.tensor.Tensor;
 
 import jcuda.Pointer;
 import jcuda.driver.CUfunction;
+import jcuda.jcudnn.JCudnn;
+import jcuda.runtime.JCuda;
 import jcuda.runtime.cudaError;
 
 public class TokenDropKernel extends CUDAKernel {
@@ -67,6 +69,25 @@ public class TokenDropKernel extends CUDAKernel {
         return (N + CAFFE_CUDA_NUM_THREADS - 1) / CAFFE_CUDA_NUM_THREADS;
     }
 
+    public void tokenDrop(Tensor x, Tensor param, Tensor mask, Tensor output, int W, float prob) {
+        try {
+      
+            /**
+             * 设置入参
+             * const size_t size, const float *x, float *param, float *mask, float *out, const int len, float prob
+             */
+            kernelParameters = Pointer.to(Pointer.to(new long[]{x.dataLength}), Pointer.to(x.getGpuData()), Pointer.to(param.getGpuData()), Pointer.to(mask.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{W}), Pointer.to(new float[]{prob}));
+            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(x.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameters, null // Kernel- and extra parameters
+            );
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
     public void tokenDrop(Tensor x, Tensor param, Tensor mask, Tensor output, float prob) {
         try {
             /**

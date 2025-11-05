@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Map;
 
+import com.omega.common.utils.RandomUtils;
+import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -12,7 +14,7 @@ import com.omega.engine.nn.network.CNN;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
-import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
@@ -35,6 +37,8 @@ public class DiTSwiGLUFFN extends Layer {
     private Tensor w2;
     
     private Tensor wt;
+    
+    private int[] shape;
 
     public DiTSwiGLUFFN(int inChannel, int hiddenSize, int outChannel, boolean bias) {
         this.inChannel = inChannel;
@@ -73,9 +77,11 @@ public class DiTSwiGLUFFN extends Layer {
         this.act = new SiLULayer(network);
 
         this.w12 = new FullyLayer(inChannel, hiddenSize * 2, bias, network);
-        
+        RandomUtils.xavier_uniform(w12.weight, 1, outChannel, outChannel);
+        w12.bias.clearGPU();
         this.w3 = new FullyLayer(hiddenSize, outChannel, bias, network);
-        
+        RandomUtils.xavier_uniform(w12.weight, 1, outChannel, outChannel);
+        w3.bias.clearGPU();
     }
 
     @Override
@@ -102,7 +108,10 @@ public class DiTSwiGLUFFN extends Layer {
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
-
+    	if(w3.diff == null || w3.diff.number != number) {
+    		w3.diff = CUDAMemoryManager.getCache("cache_w3.diff", w3.input.shape());
+    		w12.diff = CUDAMemoryManager.getCache("cache_w12.diff", w12.input.shape());
+    	}
     }
 
     @Override
@@ -115,7 +124,10 @@ public class DiTSwiGLUFFN extends Layer {
         // TODO Auto-generated method stub
     	w12.forward(input);
 
-    	int[] shape = new int[] {number, 2, 1, hiddenSize};
+    	if(shape == null) {
+    		shape = new int[] {number, 2, 1, hiddenSize};
+    	}
+    	
     	Tensor_OP().getByChannel(w12.getOutput(), w1, shape, 0);
     	Tensor_OP().getByChannel(w12.getOutput(), w2, shape, 1);
 
@@ -143,8 +155,7 @@ public class DiTSwiGLUFFN extends Layer {
     	Tensor_OP().mul(w3.diff, w2, wt); 
     	
     	act.back(wt);
-    	
-    	int[] shape = new int[] {number, 2, 1, hiddenSize};
+
     	Tensor_OP().setByChannel(w12.getOutput(), act.diff, shape, 0);
     	
     	//wt = w2Delta
@@ -281,10 +292,10 @@ public class DiTSwiGLUFFN extends Layer {
                 System.out.println(key);
             }
         }
-        ClipModelUtils.loadData(block.w12.weight, weightMap, "w12.weight");
-        ClipModelUtils.loadData(block.w12.bias, weightMap, "w12.bias");
-        ClipModelUtils.loadData(block.w3.weight, weightMap, "w3.weight");
-        ClipModelUtils.loadData(block.w3.bias, weightMap, "w3.bias");
+        ModeLoaderlUtils.loadData(block.w12.weight, weightMap, "w12.weight");
+        ModeLoaderlUtils.loadData(block.w12.bias, weightMap, "w12.bias");
+        ModeLoaderlUtils.loadData(block.w3.weight, weightMap, "w3.weight");
+        ModeLoaderlUtils.loadData(block.w3.bias, weightMap, "w3.bias");
     }
     
     public static void main(String[] args) {
@@ -297,7 +308,7 @@ public class DiTSwiGLUFFN extends Layer {
         String inputPath = "c:\\temp\\dit.json";
         Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
         Tensor input = new Tensor(N, C, H, W, true);
-        ClipModelUtils.loadData(input, datas, "x", 4);
+        ModeLoaderlUtils.loadData(input, datas, "x", 4);
 
         CNN nn = new CNN(null);
         nn.CUDNN = true;
@@ -315,7 +326,7 @@ public class DiTSwiGLUFFN extends Layer {
         String deltaPath = "c:\\temp\\dit_delta.json";
         Map<String, Object> datas2 = LagJsonReader.readJsonFileSmallWeight(deltaPath);
         Tensor delta = new Tensor(N, C, H, W, true);
-        ClipModelUtils.loadData(delta, datas2, "delta", 4);
+        ModeLoaderlUtils.loadData(delta, datas2, "delta", 4);
 
         diTSwiGLUFFN.back(delta);
         diTSwiGLUFFN.diff.showDMByNumber(2);

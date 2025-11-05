@@ -8,6 +8,7 @@ import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.active.GeluLayer;
+import com.omega.engine.nn.layer.active.GeluType;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
@@ -61,7 +62,7 @@ public class DiTSimpleHeadLayer extends Layer {
         if(this.linear1.bias != null) {
         	this.linear1.bias.clearGPU();
         }
-        this.active = new GeluLayer(linear1);
+        this.active = new GeluLayer(linear1, GeluType.TANH);
         this.linear2 = new FullyLayer((inDim + outDim), outDim, bias, addParamLayer, network);
         this.linear2.weight.setData(RandomUtils.xavierUniform((inDim + outDim) * outDim, (inDim + outDim), outDim, 1.0f));
         if(this.linear2.bias != null) {

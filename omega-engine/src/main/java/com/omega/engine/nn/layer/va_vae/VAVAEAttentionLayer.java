@@ -130,8 +130,9 @@ public class VAVAEAttentionLayer extends Layer {
             x = gn.getOutput();
         }
         attn.forward(x);
-        attn.getOutput().showDMByOffsetRed(0, 100, "h_");
+//        attn.getOutput().showDMByOffsetRed(0, 100, "h_");
         Tensor_OP().add(this.input, attn.getOutput(), output);
+//        output.showDMByOffsetRed(0, height * width, "attn-out");
     }
 
     @Override

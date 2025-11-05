@@ -16,6 +16,7 @@ import jcuda.runtime.cudaError;
 import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 
 public class AttentionKernel extends BaseKernel {
+	
     private CUfunction permute_function;
     private CUfunction unpermute_function;
     private CUfunction permute_backward_function;
@@ -44,7 +45,11 @@ public class AttentionKernel extends BaseKernel {
     private CUfunction softmax_backward_2_function;
     private CUfunction softmax_backward_unmask_2_function;
     private CUfunction softmax_backward_unmask_kv_function;
-
+    
+    private Pointer outDivKernelParameters;
+    private CUfunction out_div_last_dim_function;
+    private CUfunction out_div_last_dim_back_function;
+    
     public AttentionKernel(CUDAManager cudaManager) {
         super(cudaManager);
         init();
@@ -244,6 +249,12 @@ public class AttentionKernel extends BaseKernel {
             }
             if (add_mask_function == null) {
                 add_mask_function = getCudaManager().getLocalFunctionByModule("AttentionKernel.cu", "add_mask");
+            }
+            if(out_div_last_dim_function == null) {
+            	out_div_last_dim_function = getCudaManager().getLocalFunctionByModule("AttentionKernel.cu", "out_div_last_dim");
+            }
+            if(out_div_last_dim_back_function == null) {
+            	out_div_last_dim_back_function = getCudaManager().getLocalFunctionByModule("AttentionKernel.cu", "out_div_last_dim_back");
             }
         } catch (Exception e) {
             // TODO: handle exception
@@ -785,7 +796,6 @@ public class AttentionKernel extends BaseKernel {
             /**
              * 设置入参
              * float* datt, const float* att, int B, int T, int C, float scale
-
              */
             int block_size = 256;
             softmaxBackwardParameters = Pointer.to(Pointer.to(datt.getGpuData()), Pointer.to(att.getGpuData()), Pointer.to(new int[]{B}), Pointer.to(new int[]{T}), Pointer.to(new int[]{T2}), Pointer.to(new float[]{scale}));
@@ -802,6 +812,41 @@ public class AttentionKernel extends BaseKernel {
         }
     }
 
+    public void outDivLastDim(Tensor input, Tensor output) {
+        try {
+            /**
+             * 设置入参
+             * int N, int C, int H, int W, int oh, float *input, float *output
+             */
+        	outDivKernelParameters = Pointer.to(Pointer.to(new int[]{output.dataLength}), Pointer.to(new int[]{output.channel}), Pointer.to(new int[]{output.height}), Pointer.to(new int[]{output.width}), Pointer.to(new int[]{input.height - 1}), Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()));
+            checkCUDA(cuLaunchKernel(out_div_last_dim_function, this.CAFFE_GET_BLOCKS(output.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1, 0, null,               // Shared memory size and stream
+                    outDivKernelParameters, null // Kernel- and extra parameters
+            ));
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void outDivLastDimBack(Tensor input, Tensor dy) {
+        try {
+            /**
+             * 设置入参
+             * int N, int C, int H, int W, int oh, float *input,float *do
+             */
+        	int N = input.number * input.channel * input.width;
+        	outDivKernelParameters = Pointer.to(Pointer.to(new int[]{N}), Pointer.to(new int[]{dy.channel}), Pointer.to(new int[]{dy.height}), Pointer.to(new int[]{dy.width}), Pointer.to(new int[]{input.height - 1}), Pointer.to(input.getGpuData()), Pointer.to(dy.getGpuData()));
+            checkCUDA(cuLaunchKernel(out_div_last_dim_back_function, this.CAFFE_GET_BLOCKS(N), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1, 0, null,               // Shared memory size and stream
+                    outDivKernelParameters, null // Kernel- and extra parameters
+            ));
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
     public int get_number_of_blocks(int array_size, int block_size) {
         return array_size / block_size + ((array_size % block_size > 0) ? 1 : 0);
     }

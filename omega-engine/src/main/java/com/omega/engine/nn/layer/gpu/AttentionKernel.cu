@@ -1103,3 +1103,45 @@ __global__ void add_mask(int N, int C,int H,int W, float *input, float *mask,flo
 	output[id] += mask[b * W + w];
 
 }
+
+extern "C"
+__global__ void out_div_last_dim(int N, int C,int H,int W, int oh, float *input,float *output)
+{
+    int id = (blockIdx.x + blockIdx.y * gridDim.x) * blockDim.x + threadIdx.x;
+    if(id >= N) return;
+	int IH = (H + 1);
+	int b = id / C / H / W;
+	int c = id / H / W % C;
+	int h = id % (H * W) / W;
+    int w = id % W;
+	
+	output[id] = input[b * C * IH * W + c * IH * W + h * W + w] / (input[b * C * IH * W + c * IH * W + oh * W + w] + 1e-8f);
+
+}
+
+extern "C"
+__global__ void out_div_last_dim_back(int N, int C,int H,int W, int oh, float *input,float *dout)
+{
+    int id = (blockIdx.x + blockIdx.y * gridDim.x) * blockDim.x + threadIdx.x;
+    if(id >= N) return;
+	
+	int b = id / C / W;
+	int c = id / W % C;
+    int w = id % W;
+	
+	float db = 0.0f;
+	
+	int IH = (H + 1);
+	
+	for(int h = 0;h<H;h++){
+		float dy = dout[b * C * H * W + c * H * W + h * W + w];
+		float av = input[b * C * IH * W + c * IH * W + h * W + w];
+		float bv = input[b * C * IH * W + c * IH * W + oh * W + w] + 1e-8f;
+		db += -dy * av / (bv * bv);
+		float da = dy / bv;
+		input[b * C * IH * W + c * IH * W + h * W + w] = da;
+	}
+	
+	input[b * C * IH * W + c * IH * W + oh * W + w] = db;
+	
+}

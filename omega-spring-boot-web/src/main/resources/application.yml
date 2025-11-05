@@ -1,4 +1,9 @@
 spring:
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 100MB
+      max-request-size: 100MB
   thymeleaf:
     prefix: classpath:/templates/
     suffix: .html
@@ -12,4 +17,4 @@ model:
   # 是否使用cudnn加速,使用cudnn加速，需要安装cudnn
   cudnn: false
   path:
-   - D:\Desktop\yolo\yolo_v3
+#   - D:\Desktop\yolo\yolo_v3

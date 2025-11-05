@@ -5,6 +5,7 @@ import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.active.GeluLayer;
+import com.omega.engine.nn.layer.active.GeluType;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.tensor.Tensor;
@@ -22,6 +23,7 @@ public class CLIPMLPLayer extends Layer {
     private int embedDim = 0;
     private int nChannel = 1;
     private boolean bias = false;
+    private GeluType actType = GeluType.FAST;
     private FullyLayer linear1;
     private GeluLayer active;
     private FullyLayer linear2;
@@ -49,13 +51,28 @@ public class CLIPMLPLayer extends Layer {
         this.oWidth = embedDim;
         this.initLayers();
     }
-
+    
+    public CLIPMLPLayer(int embedDim, int nChannel, boolean bias, GeluType actType, Network network) {
+        this.network = network;
+        if (this.updater == null) {
+            this.setUpdater(UpdaterFactory.create(network));
+        }
+        this.embedDim = embedDim;
+        this.nChannel = nChannel;
+        this.actType = actType;
+        this.bias = bias;
+        this.oChannel = 1;
+        this.oHeight = 1;
+        this.oWidth = embedDim;
+        this.initLayers();
+    }
+    
     public static void main(String[] args) {
     }
 
     public void initLayers() {
         this.linear1 = new FullyLayer(embedDim, nChannel, bias, network);
-        this.active = new GeluLayer(getLinear1(), true);
+        this.active = new GeluLayer(getLinear1(), actType);
         this.linear2 = new FullyLayer(nChannel, embedDim, bias, network);
     }
 
@@ -79,8 +96,8 @@ public class CLIPMLPLayer extends Layer {
     public void output() {
         // TODO Auto-generated method stub
         if (network.RUN_MODEL == RunModel.EVAL) {
-            Tensor cache = CUDAMemoryManager.getCache("CLIIP_mlp_cache", input.number, 1, 1, nChannel);
-            Tensor cache2 = CUDAMemoryManager.getCache("CLIIP_mlp_cache2", input.number, 1, 1, embedDim);
+            Tensor cache = CUDAMemoryManager.getCache(network.id+"CLIIP_mlp_cache", input.number, 1, 1, nChannel);
+            Tensor cache2 = CUDAMemoryManager.getCache(network.id+"CLIIP_mlp_cache2", input.number, 1, 1, embedDim);
             getLinear1().forward(input, cache);
             active.forward(getLinear1().getOutput(), cache);
             getLinear2().forward(active.getOutput(), cache2);
@@ -147,17 +164,14 @@ public class CLIPMLPLayer extends Layer {
         // TODO Auto-generated method stub
         /**
          * 设置输入
-
          */
         this.setInput(input);
         /**
          * 参数初始化
-
          */
         this.init();
         /**
          * 计算输出
-
          */
         this.output();
     }

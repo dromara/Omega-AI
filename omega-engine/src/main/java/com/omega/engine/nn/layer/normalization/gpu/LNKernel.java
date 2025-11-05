@@ -10,7 +10,7 @@ import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
-import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
 
 import jcuda.Pointer;
@@ -226,12 +226,12 @@ public class LNKernel extends BaseKernel {
         String inputPath = "D:\\models\\opensora_lx.json";
 	    Map<String, Object> datas2 = LagJsonReader.readJsonFileSmallWeight(inputPath);
 	    Tensor input2 = new Tensor(N2, T2, 1, W2, true);
-	    ClipModelUtils.loadData(input2, datas2, "lx", 3);
+	    ModeLoaderlUtils.loadData(input2, datas2, "lx", 3);
         
         String dxPath = "D:\\models\\opensora_dlx.json";
 	    Map<String, Object> datas3 = LagJsonReader.readJsonFileSmallWeight(dxPath);
 	    Tensor delta2 = new Tensor(N2, T2, 1, W2, true);
-	    ClipModelUtils.loadData(delta2, datas3, "dlx", 3);
+	    ModeLoaderlUtils.loadData(delta2, datas3, "dlx", 3);
 	    
         Transformer tf = new Transformer();
         tf.number = N * T;

@@ -91,10 +91,10 @@ public class RMSKernel extends BaseKernel {
             //	    	input.showDM();
             for (int i = 0; i < 10; i++) {
                 rms.forward(input);
-                rms.getOutput().showDMByNumber(0);
+//                rms.getOutput().showDMByNumber(0);
                 rms.back(delta);
                 rms.diff.showDMByNumber(0);
-                rms.diffGamma.showDMByNumber(0);
+//                rms.diffGamma.showDMByNumber(0);
             }
         } catch (Exception e) {
             // TODO: handle exception
@@ -225,7 +225,6 @@ public class RMSKernel extends BaseKernel {
             checkBatch(input);
             /**
              * float *__restrict__ out, const float *__restrict__ inp,const float *__restrict__ weight, int N, int C
-
              */
             forwardParameters = Pointer.to(Pointer.to(output.getGpuData()), Pointer.to(input.getGpuData()), Pointer.to(gamma.getGpuData()), Pointer.to(new int[]{B}), Pointer.to(new int[]{W}));
             int grid_size = (int) Math.ceil((float) (B * 32 + CAFFE_CUDA_NUM_THREADS - 1) / CAFFE_CUDA_NUM_THREADS);

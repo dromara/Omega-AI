@@ -5,6 +5,7 @@ import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.active.GeluLayer;
+import com.omega.engine.nn.layer.active.GeluType;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.tensor.Tensor;
@@ -51,7 +52,7 @@ public class BertIntermediateLayer extends Layer {
 
     public void initLayers() {
         this.linear = new FullyLayer(width, oWidth, true, network);
-        this.active = new GeluLayer(linear, true);
+        this.active = new GeluLayer(linear, GeluType.NONE);
     }
 
     @Override
@@ -76,10 +77,10 @@ public class BertIntermediateLayer extends Layer {
         if (network.RUN_MODEL == RunModel.EVAL) {
             Tensor cache = CUDAMemoryManager.getCache("CLIIP_inter_cache", input.number, 1, 1, oWidth);
             linear.forward(input, cache);
-            active.forwardOld(linear.getOutput(), cache);
+            active.forward(linear.getOutput(), cache);
         } else {
             linear.forward(input);
-            active.forwardOld(linear.getOutput());
+            active.forward(linear.getOutput());
         }
         this.output = active.getOutput();
     }

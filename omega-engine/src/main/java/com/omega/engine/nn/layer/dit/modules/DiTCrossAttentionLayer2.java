@@ -17,7 +17,6 @@ import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.gpu.AttentionKernel;
 import com.omega.engine.nn.layer.gpu.RoPEKernel;
 import com.omega.engine.nn.layer.normalization.BNType;
-import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.layer.normalization.RMSLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
@@ -25,7 +24,7 @@ import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 import com.omega.engine.updater.UpdaterType;
-import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
@@ -70,6 +69,8 @@ public class DiTCrossAttentionLayer2 extends Layer {
 
     private Tensor temp_out;
     private Tensor temp_key_out;
+    
+    private int[] p_0213 = new int[] {0, 2, 1, 3};
 
     public DiTCrossAttentionLayer2(int embedDim, int kvDim, int headNum, int time, int kvTime, boolean bias, boolean qkNorm) {
     	this.qkNorm = qkNorm;
@@ -164,14 +165,14 @@ public class DiTCrossAttentionLayer2 extends Layer {
                 System.out.println(key);
             }
         }
-        ClipModelUtils.loadData(network.qLinerLayer.weight, weightMap, "query.weight");
-        ClipModelUtils.loadData(network.qLinerLayer.bias, weightMap, "query.bias");
-        ClipModelUtils.loadData(network.kLinerLayer.weight, weightMap, "key.weight");
-        ClipModelUtils.loadData(network.kLinerLayer.bias, weightMap, "key.bias");
-        ClipModelUtils.loadData(network.vLinerLayer.weight, weightMap, "value.weight");
-        ClipModelUtils.loadData(network.vLinerLayer.bias, weightMap, "value.bias");
-        ClipModelUtils.loadData(network.oLinerLayer.weight, weightMap, "out_proj.weight");
-        ClipModelUtils.loadData(network.oLinerLayer.bias, weightMap, "out_proj.bias");
+        ModeLoaderlUtils.loadData(network.qLinerLayer.weight, weightMap, "query.weight");
+        ModeLoaderlUtils.loadData(network.qLinerLayer.bias, weightMap, "query.bias");
+        ModeLoaderlUtils.loadData(network.kLinerLayer.weight, weightMap, "key.weight");
+        ModeLoaderlUtils.loadData(network.kLinerLayer.bias, weightMap, "key.bias");
+        ModeLoaderlUtils.loadData(network.vLinerLayer.weight, weightMap, "value.weight");
+        ModeLoaderlUtils.loadData(network.vLinerLayer.bias, weightMap, "value.bias");
+        ModeLoaderlUtils.loadData(network.oLinerLayer.weight, weightMap, "out_proj.weight");
+        ModeLoaderlUtils.loadData(network.oLinerLayer.bias, weightMap, "out_proj.bias");
     }
 
     public static boolean same(Tensor a, Tensor b) {
@@ -194,25 +195,25 @@ public class DiTCrossAttentionLayer2 extends Layer {
         }
     	
         this.qLinerLayer = new FullyLayer(embedDim, embedDim, bias, this.network);
-        this.qLinerLayer.weight.setData(RandomUtils.xavierUniform(this.embedDim * this.embedDim, this.embedDim, this.embedDim,  1.0f));
+        RandomUtils.xavier_uniform(this.qLinerLayer.weight, 1, embedDim, embedDim);
         if(this.qLinerLayer.bias != null) {
         	this.qLinerLayer.bias.clearGPU();
         }
-        //		this.qLinerLayer.weight = new Tensor(1, 1, embedDim, embedDim, RandomUtils.order(this.embedDim * this.embedDim, 0.01f, 0.01f), true);
         this.kLinerLayer = new FullyLayer(kvDim, embedDim, bias, this.network);
-        this.kLinerLayer.weight.setData(RandomUtils.xavierUniform(this.kvDim * this.embedDim, this.kvDim, this.embedDim,  1.0f));
+        RandomUtils.xavier_uniform(this.kLinerLayer.weight, 1, kvDim, embedDim);
+//        this.kLinerLayer.weight.setData(RandomUtils.xavierUniform(this.kvDim * this.embedDim, this.kvDim, this.embedDim,  1.0f));
         if(this.kLinerLayer.bias != null) {
         	this.kLinerLayer.bias.clearGPU();
         }
-        //		this.kLinerLayer.weight = new Tensor(1, 1, embedDim, kvDim, RandomUtils.order(this.embedDim * this.kvDim, 0.01f, 0.01f), true);
         this.vLinerLayer = new FullyLayer(kvDim, embedDim, bias, this.network);
-        this.vLinerLayer.weight.setData(RandomUtils.xavierUniform(this.kvDim * this.embedDim, this.kvDim, this.embedDim,  1.0f));
+//        this.vLinerLayer.weight.setData(RandomUtils.xavierUniform(this.kvDim * this.embedDim, this.kvDim, this.embedDim,  1.0f));
+        RandomUtils.xavier_uniform(this.vLinerLayer.weight, 1, kvDim, embedDim);
         if(this.vLinerLayer.bias != null) {
         	this.vLinerLayer.bias.clearGPU();
         }
-        //		this.vLinerLayer.weight = new Tensor(1, 1, embedDim, kvDim, RandomUtils.order(this.embedDim * this.kvDim, 0.01f, 0.01f), true);
         this.oLinerLayer = new FullyLayer(embedDim, embedDim, bias, this.network);
-        this.oLinerLayer.weight.setData(RandomUtils.xavierUniform(this.embedDim * this.embedDim, this.embedDim, this.embedDim,  1.0f));
+//        this.oLinerLayer.weight.setData(RandomUtils.xavierUniform(this.embedDim * this.embedDim, this.embedDim, this.embedDim,  1.0f));
+        RandomUtils.xavier_uniform(this.oLinerLayer.weight, 1, embedDim, embedDim);
         if(this.oLinerLayer.bias != null) {
         	this.oLinerLayer.bias.clearGPU();
         }
@@ -294,10 +295,19 @@ public class DiTCrossAttentionLayer2 extends Layer {
     public void initBack() {
         // TODO Auto-generated method stub
         if (this.dattn == null) {
-            this.dqt = Tensor.createGPUTensor(this.dqt, batchSize, headNum, time, dk, true);
-            this.dkt = Tensor.createGPUTensor(this.dkt, batchSize, headNum, kvTime, dk, true);
-            this.dvt = Tensor.createGPUTensor(this.dvt, batchSize, headNum, kvTime, dk, true);
-            this.dattn = Tensor.createGPUTensor(this.dattn, batchSize, headNum, time, kvTime, true);
+        	this.dqt = CUDAMemoryManager.getCache("cache_cross_dqt", batchSize, headNum, time, dk);
+        	this.dkt = CUDAMemoryManager.getCache("cache_cross_dkt", batchSize, headNum, kvTime, dk);
+        	this.dvt = CUDAMemoryManager.getCache("cache_cross_dvt", batchSize, headNum, kvTime, dk);
+        	this.dattn = CUDAMemoryManager.getCache("cache_cross_dattn", batchSize, headNum, time, kvTime);
+//            this.dqt = Tensor.createGPUTensor(this.dqt, batchSize, headNum, time, dk, true);
+//            this.dkt = Tensor.createGPUTensor(this.dkt, batchSize, headNum, kvTime, dk, true);
+//            this.dvt = Tensor.createGPUTensor(this.dvt, batchSize, headNum, kvTime, dk, true);
+//            this.dattn = Tensor.createGPUTensor(this.dattn, batchSize, headNum, time, kvTime, true);
+        }else {
+        	this.dqt.viewOrg(batchSize, headNum, time, dk);
+        	this.dkt.viewOrg(batchSize, headNum, kvTime, dk);
+        	this.dvt.viewOrg(batchSize, headNum, kvTime, dk);
+        	this.dattn.viewOrg(batchSize, headNum, time, kvTime);
         }
     }
 
@@ -320,9 +330,9 @@ public class DiTCrossAttentionLayer2 extends Layer {
         Tensor query = this.qLinerLayer.getOutput().view(batchSize, time, headNum, dk);
         Tensor key = this.kLinerLayer.getOutput().view(batchSize, kvTime, headNum, dk);
         Tensor value = this.vLinerLayer.getOutput().view(batchSize, kvTime, headNum, dk);
-        Tensor_OP().permute(query, qt, new int[]{0, 2, 1, 3});
-        Tensor_OP().permute(key, kt, new int[]{0, 2, 1, 3});
-        Tensor_OP().permute(value, vt, new int[]{0, 2, 1, 3});
+        Tensor_OP().permute(query, qt, p_0213);
+        Tensor_OP().permute(key, kt, p_0213);
+        Tensor_OP().permute(value, vt, p_0213);
         
   	 	if(qkNorm) {
         	qNorm.forward(qt);
@@ -356,9 +366,9 @@ public class DiTCrossAttentionLayer2 extends Layer {
          * apply RoPE
          */
         ropeKernel.forward2d(cos, sin, query, rq, time, headNum, dk);
-        Tensor_OP().permute(rq, qt, new int[]{0, 2, 1, 3});
-        Tensor_OP().permute(key, kt, new int[]{0, 2, 1, 3});
-        Tensor_OP().permute(value, vt, new int[]{0, 2, 1, 3});
+        Tensor_OP().permute(rq, qt, p_0213);
+        Tensor_OP().permute(key, kt, p_0213);
+        Tensor_OP().permute(value, vt, p_0213);
  
         if(qkNorm) {
         	qNorm.forward(qt);
@@ -382,16 +392,16 @@ public class DiTCrossAttentionLayer2 extends Layer {
         this.qLinerLayer.forward(this.input, temp_out);
         Tensor query = this.qLinerLayer.getOutput().view(batchSize, time, headNum, dk);
         ropeKernel.forward2d(cos, sin, query, rq, time, headNum, dk);
-        Tensor_OP().permute(rq, qt, new int[]{0, 2, 1, 3});
+        Tensor_OP().permute(rq, qt, p_0213);
 
         this.kLinerLayer.forward(context, temp_key_out);
         Tensor key = temp_key_out.view(batchSize, kvTime, headNum, dk);
-        Tensor_OP().permute(key, kt, new int[]{0, 2, 1, 3});
+        Tensor_OP().permute(key, kt, p_0213);
         
         temp_key_out.viewOrg();
         this.vLinerLayer.forward(context, temp_key_out);
         Tensor value = this.vLinerLayer.getOutput().view(batchSize, kvTime, headNum, dk);
-        Tensor_OP().permute(value, vt, new int[]{0, 2, 1, 3});
+        Tensor_OP().permute(value, vt, p_0213);
  
         if(qkNorm) {
         	qNorm.forward(qt, qt);
@@ -472,19 +482,22 @@ public class DiTCrossAttentionLayer2 extends Layer {
         if(qkNorm) {
         	qNorm.back(dqt);
         	kNorm.back(dkt);
-        	Tensor_OP().permute(qNorm.diff, qt, new int[]{0, 2, 1, 3});
-            Tensor_OP().permute(kNorm.diff, kt, new int[]{0, 2, 1, 3});
+        	Tensor_OP().permute(qNorm.diff, qt, p_0213);
+            Tensor_OP().permute(kNorm.diff, kt, p_0213);
         }else {
-        	Tensor_OP().permute(dqt, qt, new int[]{0, 2, 1, 3});
-            Tensor_OP().permute(dkt, kt, new int[]{0, 2, 1, 3});
+        	Tensor_OP().permute(dqt, qt, p_0213);
+            Tensor_OP().permute(dkt, kt, p_0213);
         }
-        Tensor_OP().permute(dvt, vt, new int[]{0, 2, 1, 3});
+        Tensor_OP().permute(dvt, vt, p_0213);
         Tensor queryDelta = qt.view(batchSize * time, 1, 1, headNum * dk);
         Tensor keyDelta = kt.view(batchSize * kvTime, 1, 1, headNum * dk);
         Tensor valueDelta = vt.view(batchSize * kvTime, 1, 1, headNum * dk);
-        this.qLinerLayer.back(queryDelta);
-        this.kLinerLayer.back(keyDelta);
-        this.vLinerLayer.back(valueDelta);
+        this.qLinerLayer.getOutput().viewOrg();
+        this.kLinerLayer.getOutput().viewOrg();
+        this.vLinerLayer.getOutput().viewOrg();
+        this.qLinerLayer.back(queryDelta, qLinerLayer.getOutput());
+        this.kLinerLayer.back(keyDelta, kLinerLayer.getOutput());
+        this.vLinerLayer.back(valueDelta, vLinerLayer.getOutput());
         Tensor_OP().add(this.kLinerLayer.diff, this.vLinerLayer.diff, this.kLinerLayer.diff);
         this.diff = qLinerLayer.diff;
     }
@@ -500,11 +513,11 @@ public class DiTCrossAttentionLayer2 extends Layer {
         if(qkNorm) {
          	qNorm.back(dqt);
          	kNorm.back(dkt);
-         	Tensor_OP().permute(qNorm.diff, qt, new int[]{0, 2, 1, 3});
-            Tensor_OP().permute(kNorm.diff, kt, new int[]{0, 2, 1, 3});
+         	Tensor_OP().permute(qNorm.diff, qt, p_0213);
+            Tensor_OP().permute(kNorm.diff, kt, p_0213);
          }else {
-         	Tensor_OP().permute(dqt, qt, new int[]{0, 2, 1, 3});
-            Tensor_OP().permute(dkt, kt, new int[]{0, 2, 1, 3});
+         	Tensor_OP().permute(dqt, qt, p_0213);
+            Tensor_OP().permute(dkt, kt, p_0213);
          }
          Tensor_OP().permute(dvt, vt, new int[]{0, 2, 1, 3});
         /**
@@ -515,9 +528,12 @@ public class DiTCrossAttentionLayer2 extends Layer {
         Tensor keyDelta = kt.view(batchSize * kvTime, 1, 1, headNum * dk);
         Tensor valueDelta = vt.view(batchSize * kvTime, 1, 1, headNum * dk);
 
-        this.qLinerLayer.back(queryDelta);
-        this.kLinerLayer.back(keyDelta);
-        this.vLinerLayer.back(valueDelta);
+        this.qLinerLayer.getOutput().viewOrg();
+        this.kLinerLayer.getOutput().viewOrg();
+        this.vLinerLayer.getOutput().viewOrg();
+        this.qLinerLayer.back(queryDelta, qLinerLayer.getOutput());
+        this.kLinerLayer.back(keyDelta, kLinerLayer.getOutput());
+        this.vLinerLayer.back(valueDelta, vLinerLayer.getOutput());
 
         Tensor_OP().add(this.kLinerLayer.diff, this.vLinerLayer.diff, this.kLinerLayer.diff);
         this.diff = qLinerLayer.diff;

@@ -15,7 +15,7 @@ import com.omega.engine.nn.network.CNN;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
-import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
@@ -485,46 +485,46 @@ public class OpenSoraDiTMoudue extends Layer {
             }
         }
         
-        ClipModelUtils.loadData(block.patchEmbd.patchEmbedding.weight, weightMap, "x_embedder.proj.weight", 5);
-        ClipModelUtils.loadData(block.patchEmbd.patchEmbedding.bias, weightMap, "x_embedder.proj.bias");
+        ModeLoaderlUtils.loadData(block.patchEmbd.patchEmbedding.weight, weightMap, "x_embedder.proj.weight", 5);
+        ModeLoaderlUtils.loadData(block.patchEmbd.patchEmbedding.bias, weightMap, "x_embedder.proj.bias");
         
-        ClipModelUtils.loadData(block.labelEmbd.linear1.weight, weightMap, "y_embedder.y_proj.fc1.weight");
-        ClipModelUtils.loadData(block.labelEmbd.linear1.bias, weightMap, "y_embedder.y_proj.fc1.bias");
-        ClipModelUtils.loadData(block.labelEmbd.linear2.weight, weightMap, "y_embedder.y_proj.fc2.weight");
-        ClipModelUtils.loadData(block.labelEmbd.linear2.bias, weightMap, "y_embedder.y_proj.fc2.bias");
+        ModeLoaderlUtils.loadData(block.labelEmbd.linear1.weight, weightMap, "y_embedder.y_proj.fc1.weight");
+        ModeLoaderlUtils.loadData(block.labelEmbd.linear1.bias, weightMap, "y_embedder.y_proj.fc1.bias");
+        ModeLoaderlUtils.loadData(block.labelEmbd.linear2.weight, weightMap, "y_embedder.y_proj.fc2.weight");
+        ModeLoaderlUtils.loadData(block.labelEmbd.linear2.bias, weightMap, "y_embedder.y_proj.fc2.bias");
         
-        ClipModelUtils.loadData(block.timeEmbd.linear1.weight, weightMap, "t_embedder.mlp.0.weight");
-        ClipModelUtils.loadData(block.timeEmbd.linear1.bias, weightMap, "t_embedder.mlp.0.bias");
-        ClipModelUtils.loadData(block.timeEmbd.linear2.weight, weightMap, "t_embedder.mlp.2.weight");
-        ClipModelUtils.loadData(block.timeEmbd.linear2.bias, weightMap, "t_embedder.mlp.2.bias");
+        ModeLoaderlUtils.loadData(block.timeEmbd.linear1.weight, weightMap, "t_embedder.mlp.0.weight");
+        ModeLoaderlUtils.loadData(block.timeEmbd.linear1.bias, weightMap, "t_embedder.mlp.0.bias");
+        ModeLoaderlUtils.loadData(block.timeEmbd.linear2.weight, weightMap, "t_embedder.mlp.2.weight");
+        ModeLoaderlUtils.loadData(block.timeEmbd.linear2.bias, weightMap, "t_embedder.mlp.2.bias");
         
         for(int i = 0;i<block.depth;i++) {
         	OpenSoraDiTBlock jb = block.blocks.get(i);
         	
-        	ClipModelUtils.loadData(jb.attn.qLinerLayer.weight, weightMap, "blocks."+i+".attn.q.weight");
-        	ClipModelUtils.loadData(jb.attn.qLinerLayer.bias, weightMap, "blocks."+i+".attn.q.bias");
-            ClipModelUtils.loadData(jb.attn.kLinerLayer.weight, weightMap, "blocks."+i+".attn.k.weight");
-            ClipModelUtils.loadData(jb.attn.kLinerLayer.bias, weightMap, "blocks."+i+".attn.k.bias");
-            ClipModelUtils.loadData(jb.attn.vLinerLayer.weight, weightMap, "blocks."+i+".attn.v.weight");
-            ClipModelUtils.loadData(jb.attn.vLinerLayer.bias, weightMap, "blocks."+i+".attn.v.bias");
-            ClipModelUtils.loadData(jb.attn.oLinerLayer.weight, weightMap, "blocks."+i+".attn.proj.weight");
-            ClipModelUtils.loadData(jb.attn.oLinerLayer.bias, weightMap, "blocks."+i+".attn.proj.bias");
+        	ModeLoaderlUtils.loadData(jb.attn.qLinerLayer.weight, weightMap, "blocks."+i+".attn.q.weight");
+        	ModeLoaderlUtils.loadData(jb.attn.qLinerLayer.bias, weightMap, "blocks."+i+".attn.q.bias");
+            ModeLoaderlUtils.loadData(jb.attn.kLinerLayer.weight, weightMap, "blocks."+i+".attn.k.weight");
+            ModeLoaderlUtils.loadData(jb.attn.kLinerLayer.bias, weightMap, "blocks."+i+".attn.k.bias");
+            ModeLoaderlUtils.loadData(jb.attn.vLinerLayer.weight, weightMap, "blocks."+i+".attn.v.weight");
+            ModeLoaderlUtils.loadData(jb.attn.vLinerLayer.bias, weightMap, "blocks."+i+".attn.v.bias");
+            ModeLoaderlUtils.loadData(jb.attn.oLinerLayer.weight, weightMap, "blocks."+i+".attn.proj.weight");
+            ModeLoaderlUtils.loadData(jb.attn.oLinerLayer.bias, weightMap, "blocks."+i+".attn.proj.bias");
             
-            ClipModelUtils.loadData(jb.mlp.linear1.weight, weightMap, "blocks."+i+".mlp.fc1.weight");
-            ClipModelUtils.loadData(jb.mlp.linear1.bias, weightMap, "blocks."+i+".mlp.fc1.bias");
-            ClipModelUtils.loadData(jb.mlp.linear2.weight, weightMap, "blocks."+i+".mlp.fc2.weight");
-            ClipModelUtils.loadData(jb.mlp.linear2.bias, weightMap, "blocks."+i+".mlp.fc2.bias");
+            ModeLoaderlUtils.loadData(jb.mlp.linear1.weight, weightMap, "blocks."+i+".mlp.fc1.weight");
+            ModeLoaderlUtils.loadData(jb.mlp.linear1.bias, weightMap, "blocks."+i+".mlp.fc1.bias");
+            ModeLoaderlUtils.loadData(jb.mlp.linear2.weight, weightMap, "blocks."+i+".mlp.fc2.weight");
+            ModeLoaderlUtils.loadData(jb.mlp.linear2.bias, weightMap, "blocks."+i+".mlp.fc2.bias");
             
-            ClipModelUtils.loadData(jb.adaLN_modulation.weight, weightMap, "blocks."+i+".adaLN_modulation.1.weight");
-            ClipModelUtils.loadData(jb.adaLN_modulation.bias, weightMap, "blocks."+i+".adaLN_modulation.1.bias");
+            ModeLoaderlUtils.loadData(jb.adaLN_modulation.weight, weightMap, "blocks."+i+".adaLN_modulation.1.weight");
+            ModeLoaderlUtils.loadData(jb.adaLN_modulation.bias, weightMap, "blocks."+i+".adaLN_modulation.1.bias");
         }
         
-        ClipModelUtils.loadData(block.finalLayer.finalLinear.weight, weightMap, "final_layer.linear.weight");
-        ClipModelUtils.loadData(block.finalLayer.finalLinear.bias, weightMap, "final_layer.linear.bias");
-        ClipModelUtils.loadData(block.finalLayer.m_linear1.weight, weightMap, "final_layer.adaLN_modulation_l1.weight");
-        ClipModelUtils.loadData(block.finalLayer.m_linear1.bias, weightMap, "final_layer.adaLN_modulation_l1.bias");
-        ClipModelUtils.loadData(block.finalLayer.m_linear2.weight, weightMap, "final_layer.adaLN_modulation_l2.weight");
-        ClipModelUtils.loadData(block.finalLayer.m_linear2.bias, weightMap, "final_layer.adaLN_modulation_l2.bias");
+        ModeLoaderlUtils.loadData(block.finalLayer.finalLinear.weight, weightMap, "final_layer.linear.weight");
+        ModeLoaderlUtils.loadData(block.finalLayer.finalLinear.bias, weightMap, "final_layer.linear.bias");
+        ModeLoaderlUtils.loadData(block.finalLayer.m_linear1.weight, weightMap, "final_layer.adaLN_modulation_l1.weight");
+        ModeLoaderlUtils.loadData(block.finalLayer.m_linear1.bias, weightMap, "final_layer.adaLN_modulation_l1.bias");
+        ModeLoaderlUtils.loadData(block.finalLayer.m_linear2.weight, weightMap, "final_layer.adaLN_modulation_l2.weight");
+        ModeLoaderlUtils.loadData(block.finalLayer.m_linear2.bias, weightMap, "final_layer.adaLN_modulation_l2.bias");
         
     }
     
@@ -559,12 +559,12 @@ public class OpenSoraDiTMoudue extends Layer {
         String inputPath = "D:\\models\\opensora_input.json";
 	    Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
 	    Tensor input = new Tensor(N, C * T, H, W, true);
-	    ClipModelUtils.loadData(input, datas, "input", 5);
+	    ModeLoaderlUtils.loadData(input, datas, "input", 5);
       
 	    String txtPath = "D:\\models\\opensora_txt.json";
 	    Map<String, Object> txt_datas = LagJsonReader.readJsonFileSmallWeight(txtPath);
 	    Tensor txt = new Tensor(N, TT, 1, TEM, true);
-	    ClipModelUtils.loadData(txt, txt_datas, "txt", 3);
+	    ModeLoaderlUtils.loadData(txt, txt_datas, "txt", 3);
 	    txt.view(N * TT, 1, 1, TEM);
 	    
 	    Tensor t = new Tensor(N, 1, 1, 1, new float[] {1, 20}, true);
@@ -572,7 +572,7 @@ public class OpenSoraDiTMoudue extends Layer {
 	    String dxPath = "D:\\models\\opensora_dx.json";
 	    Map<String, Object> datas3 = LagJsonReader.readJsonFileSmallWeight(dxPath);
 	    Tensor dx = new Tensor(N, 2 * C * T, H, W, true);
-	    ClipModelUtils.loadData(dx, datas3, "dx", 5);
+	    ModeLoaderlUtils.loadData(dx, datas3, "dx", 5);
 	    
 	    dit.forward(input, t, txt);
 	    

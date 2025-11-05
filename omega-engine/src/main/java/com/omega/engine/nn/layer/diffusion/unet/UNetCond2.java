@@ -15,7 +15,7 @@ import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
-import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
 import jcuda.runtime.JCuda;
 
@@ -108,203 +108,203 @@ public class UNetCond2 extends Layer {
          * t_proj
 
          */
-        ClipModelUtils.loadData(network.t_embd.linear1.weight, weightMap, "time_embedding.linear_1.weight");
-        ClipModelUtils.loadData(network.t_embd.linear1.bias, weightMap, "time_embedding.linear_1.bias");
-        ClipModelUtils.loadData(network.t_embd.linear2.weight, weightMap, "time_embedding.linear_2.weight");
-        ClipModelUtils.loadData(network.t_embd.linear2.bias, weightMap, "time_embedding.linear_2.bias");
+        ModeLoaderlUtils.loadData(network.t_embd.linear1.weight, weightMap, "time_embedding.linear_1.weight");
+        ModeLoaderlUtils.loadData(network.t_embd.linear1.bias, weightMap, "time_embedding.linear_1.bias");
+        ModeLoaderlUtils.loadData(network.t_embd.linear2.weight, weightMap, "time_embedding.linear_2.weight");
+        ModeLoaderlUtils.loadData(network.t_embd.linear2.bias, weightMap, "time_embedding.linear_2.bias");
         /**
          * conv_in
 
          */
-        ClipModelUtils.loadData(network.conv_in.weight, weightMap, "unet.encoders.0.0.weight");
-        ClipModelUtils.loadData(network.conv_in.bias, weightMap, "unet.encoders.0.0.bias");
+        ModeLoaderlUtils.loadData(network.conv_in.weight, weightMap, "unet.encoders.0.0.weight");
+        ModeLoaderlUtils.loadData(network.conv_in.bias, weightMap, "unet.encoders.0.0.bias");
         for (int i = 0; i < 2; i++) {
             int idx = i * 2 + 1;
             /**
              * resnet block
 
              */
-            network.downs.get(i).res[0].gn_feature.gamma = ClipModelUtils.loadData(network.downs.get(i).res[0].gn_feature.gamma, weightMap, 1, "unet.encoders." + idx + ".0.groupnorm_feature.weight");
-            network.downs.get(i).res[0].gn_feature.beta = ClipModelUtils.loadData(network.downs.get(i).res[0].gn_feature.beta, weightMap, 1, "unet.encoders." + idx + ".0.groupnorm_feature.bias");
-            ClipModelUtils.loadData(network.downs.get(i).res[0].conv_feature.weight, weightMap, "unet.encoders." + idx + ".0.conv_feature.weight");
-            ClipModelUtils.loadData(network.downs.get(i).res[0].conv_feature.bias, weightMap, "unet.encoders." + idx + ".0.conv_feature.bias");
-            ClipModelUtils.loadData(network.downs.get(i).res[0].temb.linear.weight, weightMap, "unet.encoders." + idx + ".0.linear_time.weight");
-            ClipModelUtils.loadData(network.downs.get(i).res[0].temb.linear.bias, weightMap, "unet.encoders." + idx + ".0.linear_time.bias");
-            network.downs.get(i).res[0].gn_merged.gamma = ClipModelUtils.loadData(network.downs.get(i).res[0].gn_merged.gamma, weightMap, 1, "unet.encoders." + idx + ".0.groupnorm_merged.weight");
-            network.downs.get(i).res[0].gn_merged.beta = ClipModelUtils.loadData(network.downs.get(i).res[0].gn_merged.beta, weightMap, 1, "unet.encoders." + idx + ".0.groupnorm_merged.bias");
-            ClipModelUtils.loadData(network.downs.get(i).res[0].conv_merged.weight, weightMap, "unet.encoders." + idx + ".0.conv_merged.weight");
-            ClipModelUtils.loadData(network.downs.get(i).res[0].conv_merged.bias, weightMap, "unet.encoders." + idx + ".0.conv_merged.bias");
-            network.downs.get(i).res[0].residual_layer.weight = ClipModelUtils.loadData(network.downs.get(i).res[0].residual_layer.weight, weightMap, 4, "unet.encoders." + idx + ".0.residual_layer.weight");
-            ClipModelUtils.loadData(network.downs.get(i).res[0].residual_layer.bias, weightMap, "unet.encoders." + idx + ".0.residual_layer.bias");
+            network.downs.get(i).res[0].gn_feature.gamma = ModeLoaderlUtils.loadData(network.downs.get(i).res[0].gn_feature.gamma, weightMap, 1, "unet.encoders." + idx + ".0.groupnorm_feature.weight");
+            network.downs.get(i).res[0].gn_feature.beta = ModeLoaderlUtils.loadData(network.downs.get(i).res[0].gn_feature.beta, weightMap, 1, "unet.encoders." + idx + ".0.groupnorm_feature.bias");
+            ModeLoaderlUtils.loadData(network.downs.get(i).res[0].conv_feature.weight, weightMap, "unet.encoders." + idx + ".0.conv_feature.weight");
+            ModeLoaderlUtils.loadData(network.downs.get(i).res[0].conv_feature.bias, weightMap, "unet.encoders." + idx + ".0.conv_feature.bias");
+            ModeLoaderlUtils.loadData(network.downs.get(i).res[0].temb.linear.weight, weightMap, "unet.encoders." + idx + ".0.linear_time.weight");
+            ModeLoaderlUtils.loadData(network.downs.get(i).res[0].temb.linear.bias, weightMap, "unet.encoders." + idx + ".0.linear_time.bias");
+            network.downs.get(i).res[0].gn_merged.gamma = ModeLoaderlUtils.loadData(network.downs.get(i).res[0].gn_merged.gamma, weightMap, 1, "unet.encoders." + idx + ".0.groupnorm_merged.weight");
+            network.downs.get(i).res[0].gn_merged.beta = ModeLoaderlUtils.loadData(network.downs.get(i).res[0].gn_merged.beta, weightMap, 1, "unet.encoders." + idx + ".0.groupnorm_merged.bias");
+            ModeLoaderlUtils.loadData(network.downs.get(i).res[0].conv_merged.weight, weightMap, "unet.encoders." + idx + ".0.conv_merged.weight");
+            ModeLoaderlUtils.loadData(network.downs.get(i).res[0].conv_merged.bias, weightMap, "unet.encoders." + idx + ".0.conv_merged.bias");
+            network.downs.get(i).res[0].residual_layer.weight = ModeLoaderlUtils.loadData(network.downs.get(i).res[0].residual_layer.weight, weightMap, 4, "unet.encoders." + idx + ".0.residual_layer.weight");
+            ModeLoaderlUtils.loadData(network.downs.get(i).res[0].residual_layer.bias, weightMap, "unet.encoders." + idx + ".0.residual_layer.bias");
             /**
              * attn block
 
              */
-            network.downs.get(i).attns[0].gn.gamma = ClipModelUtils.loadData(network.downs.get(i).attns[0].gn.gamma, weightMap, 1, "unet.encoders." + idx + ".1.groupnorm.weight");
-            network.downs.get(i).attns[0].gn.beta = ClipModelUtils.loadData(network.downs.get(i).attns[0].gn.beta, weightMap, 1, "unet.encoders." + idx + ".1.groupnorm.bias");
-            network.downs.get(i).attns[0].conv_in.weight = ClipModelUtils.loadData(network.downs.get(i).attns[0].conv_in.weight, weightMap, 4, "unet.encoders." + idx + ".1.conv_input.weight");
-            ClipModelUtils.loadData(network.downs.get(i).attns[0].conv_in.bias, weightMap, "unet.encoders." + idx + ".1.conv_input.bias");
-            network.downs.get(i).attns[0].ln1.gamma = ClipModelUtils.loadData(network.downs.get(i).attns[0].ln1.gamma, weightMap, 1, "unet.encoders." + idx + ".1.layernorm_1.weight");
-            network.downs.get(i).attns[0].ln1.beta = ClipModelUtils.loadData(network.downs.get(i).attns[0].ln1.beta, weightMap, 1, "unet.encoders." + idx + ".1.layernorm_1.bias");
-            ClipModelUtils.loadData(network.downs.get(i).attns[0].attn.qkvLinerLayer.weight, weightMap, "unet.encoders." + idx + ".1.attention_1.in_proj.weight");
-            ClipModelUtils.loadData(network.downs.get(i).attns[0].attn.oLinerLayer.weight, weightMap, "unet.encoders." + idx + ".1.attention_1.out_proj.weight");
-            ClipModelUtils.loadData(network.downs.get(i).attns[0].attn.oLinerLayer.bias, weightMap, "unet.encoders." + idx + ".1.attention_1.out_proj.bias");
-            network.downs.get(i).attns[0].ln2.gamma = ClipModelUtils.loadData(network.downs.get(i).attns[0].ln2.gamma, weightMap, 1, "unet.encoders." + idx + ".1.layernorm_2.weight");
-            network.downs.get(i).attns[0].ln2.beta = ClipModelUtils.loadData(network.downs.get(i).attns[0].ln2.beta, weightMap, 1, "unet.encoders." + idx + ".1.layernorm_2.bias");
-            ClipModelUtils.loadData(network.downs.get(i).attns[0].cross_attn.qLinerLayer.weight, weightMap, "unet.encoders." + idx + ".1.attention_2.q_proj.weight");
-            ClipModelUtils.loadData(network.downs.get(i).attns[0].cross_attn.kLinerLayer.weight, weightMap, "unet.encoders." + idx + ".1.attention_2.k_proj.weight");
-            ClipModelUtils.loadData(network.downs.get(i).attns[0].cross_attn.vLinerLayer.weight, weightMap, "unet.encoders." + idx + ".1.attention_2.v_proj.weight");
-            ClipModelUtils.loadData(network.downs.get(i).attns[0].cross_attn.oLinerLayer.weight, weightMap, "unet.encoders." + idx + ".1.attention_2.out_proj.weight");
-            ClipModelUtils.loadData(network.downs.get(i).attns[0].cross_attn.oLinerLayer.bias, weightMap, "unet.encoders." + idx + ".1.attention_2.out_proj.bias");
-            network.downs.get(i).attns[0].ln3.gamma = ClipModelUtils.loadData(network.downs.get(i).attns[0].ln3.gamma, weightMap, 1, "unet.encoders." + idx + ".1.layernorm_3.weight");
-            network.downs.get(i).attns[0].ln3.beta = ClipModelUtils.loadData(network.downs.get(i).attns[0].ln3.beta, weightMap, 1, "unet.encoders." + idx + ".1.layernorm_3.bias");
-            ClipModelUtils.loadData(network.downs.get(i).attns[0].geglu1.weight, weightMap, "unet.encoders." + idx + ".1.linear_geglu_1.weight");
-            ClipModelUtils.loadData(network.downs.get(i).attns[0].geglu1.bias, weightMap, "unet.encoders." + idx + ".1.linear_geglu_1.bias");
-            ClipModelUtils.loadData(network.downs.get(i).attns[0].geglu2.weight, weightMap, "unet.encoders." + idx + ".1.linear_geglu_2.weight");
-            ClipModelUtils.loadData(network.downs.get(i).attns[0].geglu2.bias, weightMap, "unet.encoders." + idx + ".1.linear_geglu_2.bias");
-            network.downs.get(i).attns[0].conv_out.weight = ClipModelUtils.loadData(network.downs.get(i).attns[0].conv_out.weight, weightMap, 4, "unet.encoders." + idx + ".1.conv_output.weight");
-            ClipModelUtils.loadData(network.downs.get(i).attns[0].conv_out.bias, weightMap, "unet.encoders." + idx + ".1.conv_output.bias");
-            ClipModelUtils.loadData(network.downs.get(i).down.weight, weightMap, "unet.encoders." + (idx + 1) + ".0.weight");
-            ClipModelUtils.loadData(network.downs.get(i).down.bias, weightMap, "unet.encoders." + (idx + 1) + ".0.bias");
+            network.downs.get(i).attns[0].gn.gamma = ModeLoaderlUtils.loadData(network.downs.get(i).attns[0].gn.gamma, weightMap, 1, "unet.encoders." + idx + ".1.groupnorm.weight");
+            network.downs.get(i).attns[0].gn.beta = ModeLoaderlUtils.loadData(network.downs.get(i).attns[0].gn.beta, weightMap, 1, "unet.encoders." + idx + ".1.groupnorm.bias");
+            network.downs.get(i).attns[0].conv_in.weight = ModeLoaderlUtils.loadData(network.downs.get(i).attns[0].conv_in.weight, weightMap, 4, "unet.encoders." + idx + ".1.conv_input.weight");
+            ModeLoaderlUtils.loadData(network.downs.get(i).attns[0].conv_in.bias, weightMap, "unet.encoders." + idx + ".1.conv_input.bias");
+            network.downs.get(i).attns[0].ln1.gamma = ModeLoaderlUtils.loadData(network.downs.get(i).attns[0].ln1.gamma, weightMap, 1, "unet.encoders." + idx + ".1.layernorm_1.weight");
+            network.downs.get(i).attns[0].ln1.beta = ModeLoaderlUtils.loadData(network.downs.get(i).attns[0].ln1.beta, weightMap, 1, "unet.encoders." + idx + ".1.layernorm_1.bias");
+            ModeLoaderlUtils.loadData(network.downs.get(i).attns[0].attn.qkvLinerLayer.weight, weightMap, "unet.encoders." + idx + ".1.attention_1.in_proj.weight");
+            ModeLoaderlUtils.loadData(network.downs.get(i).attns[0].attn.oLinerLayer.weight, weightMap, "unet.encoders." + idx + ".1.attention_1.out_proj.weight");
+            ModeLoaderlUtils.loadData(network.downs.get(i).attns[0].attn.oLinerLayer.bias, weightMap, "unet.encoders." + idx + ".1.attention_1.out_proj.bias");
+            network.downs.get(i).attns[0].ln2.gamma = ModeLoaderlUtils.loadData(network.downs.get(i).attns[0].ln2.gamma, weightMap, 1, "unet.encoders." + idx + ".1.layernorm_2.weight");
+            network.downs.get(i).attns[0].ln2.beta = ModeLoaderlUtils.loadData(network.downs.get(i).attns[0].ln2.beta, weightMap, 1, "unet.encoders." + idx + ".1.layernorm_2.bias");
+            ModeLoaderlUtils.loadData(network.downs.get(i).attns[0].cross_attn.qLinerLayer.weight, weightMap, "unet.encoders." + idx + ".1.attention_2.q_proj.weight");
+            ModeLoaderlUtils.loadData(network.downs.get(i).attns[0].cross_attn.kLinerLayer.weight, weightMap, "unet.encoders." + idx + ".1.attention_2.k_proj.weight");
+            ModeLoaderlUtils.loadData(network.downs.get(i).attns[0].cross_attn.vLinerLayer.weight, weightMap, "unet.encoders." + idx + ".1.attention_2.v_proj.weight");
+            ModeLoaderlUtils.loadData(network.downs.get(i).attns[0].cross_attn.oLinerLayer.weight, weightMap, "unet.encoders." + idx + ".1.attention_2.out_proj.weight");
+            ModeLoaderlUtils.loadData(network.downs.get(i).attns[0].cross_attn.oLinerLayer.bias, weightMap, "unet.encoders." + idx + ".1.attention_2.out_proj.bias");
+            network.downs.get(i).attns[0].ln3.gamma = ModeLoaderlUtils.loadData(network.downs.get(i).attns[0].ln3.gamma, weightMap, 1, "unet.encoders." + idx + ".1.layernorm_3.weight");
+            network.downs.get(i).attns[0].ln3.beta = ModeLoaderlUtils.loadData(network.downs.get(i).attns[0].ln3.beta, weightMap, 1, "unet.encoders." + idx + ".1.layernorm_3.bias");
+            ModeLoaderlUtils.loadData(network.downs.get(i).attns[0].geglu1.weight, weightMap, "unet.encoders." + idx + ".1.linear_geglu_1.weight");
+            ModeLoaderlUtils.loadData(network.downs.get(i).attns[0].geglu1.bias, weightMap, "unet.encoders." + idx + ".1.linear_geglu_1.bias");
+            ModeLoaderlUtils.loadData(network.downs.get(i).attns[0].geglu2.weight, weightMap, "unet.encoders." + idx + ".1.linear_geglu_2.weight");
+            ModeLoaderlUtils.loadData(network.downs.get(i).attns[0].geglu2.bias, weightMap, "unet.encoders." + idx + ".1.linear_geglu_2.bias");
+            network.downs.get(i).attns[0].conv_out.weight = ModeLoaderlUtils.loadData(network.downs.get(i).attns[0].conv_out.weight, weightMap, 4, "unet.encoders." + idx + ".1.conv_output.weight");
+            ModeLoaderlUtils.loadData(network.downs.get(i).attns[0].conv_out.bias, weightMap, "unet.encoders." + idx + ".1.conv_output.bias");
+            ModeLoaderlUtils.loadData(network.downs.get(i).down.weight, weightMap, "unet.encoders." + (idx + 1) + ".0.weight");
+            ModeLoaderlUtils.loadData(network.downs.get(i).down.bias, weightMap, "unet.encoders." + (idx + 1) + ".0.bias");
         }
-        network.down_res.gn_feature.gamma = ClipModelUtils.loadData(network.down_res.gn_feature.gamma, weightMap, 1, "unet.encoders.5.0.groupnorm_feature.weight");
-        network.down_res.gn_feature.beta = ClipModelUtils.loadData(network.down_res.gn_feature.beta, weightMap, 1, "unet.encoders.5.0.groupnorm_feature.bias");
-        ClipModelUtils.loadData(network.down_res.conv_feature.weight, weightMap, "unet.encoders.5.0.conv_feature.weight");
-        ClipModelUtils.loadData(network.down_res.conv_feature.bias, weightMap, "unet.encoders.5.0.conv_feature.bias");
-        ClipModelUtils.loadData(network.down_res.temb.linear.weight, weightMap, "unet.encoders.5.0.linear_time.weight");
-        ClipModelUtils.loadData(network.down_res.temb.linear.bias, weightMap, "unet.encoders.5.0.linear_time.bias");
-        network.down_res.gn_merged.gamma = ClipModelUtils.loadData(network.down_res.gn_merged.gamma, weightMap, 1, "unet.encoders.5.0.groupnorm_merged.weight");
-        network.down_res.gn_merged.beta = ClipModelUtils.loadData(network.down_res.gn_merged.beta, weightMap, 1, "unet.encoders.5.0.groupnorm_merged.bias");
-        ClipModelUtils.loadData(network.down_res.conv_merged.weight, weightMap, "unet.encoders.5.0.conv_merged.weight");
-        ClipModelUtils.loadData(network.down_res.conv_merged.bias, weightMap, "unet.encoders.5.0.conv_merged.bias");
+        network.down_res.gn_feature.gamma = ModeLoaderlUtils.loadData(network.down_res.gn_feature.gamma, weightMap, 1, "unet.encoders.5.0.groupnorm_feature.weight");
+        network.down_res.gn_feature.beta = ModeLoaderlUtils.loadData(network.down_res.gn_feature.beta, weightMap, 1, "unet.encoders.5.0.groupnorm_feature.bias");
+        ModeLoaderlUtils.loadData(network.down_res.conv_feature.weight, weightMap, "unet.encoders.5.0.conv_feature.weight");
+        ModeLoaderlUtils.loadData(network.down_res.conv_feature.bias, weightMap, "unet.encoders.5.0.conv_feature.bias");
+        ModeLoaderlUtils.loadData(network.down_res.temb.linear.weight, weightMap, "unet.encoders.5.0.linear_time.weight");
+        ModeLoaderlUtils.loadData(network.down_res.temb.linear.bias, weightMap, "unet.encoders.5.0.linear_time.bias");
+        network.down_res.gn_merged.gamma = ModeLoaderlUtils.loadData(network.down_res.gn_merged.gamma, weightMap, 1, "unet.encoders.5.0.groupnorm_merged.weight");
+        network.down_res.gn_merged.beta = ModeLoaderlUtils.loadData(network.down_res.gn_merged.beta, weightMap, 1, "unet.encoders.5.0.groupnorm_merged.bias");
+        ModeLoaderlUtils.loadData(network.down_res.conv_merged.weight, weightMap, "unet.encoders.5.0.conv_merged.weight");
+        ModeLoaderlUtils.loadData(network.down_res.conv_merged.bias, weightMap, "unet.encoders.5.0.conv_merged.bias");
         /**
          * mids
 
          */
-        network.mids.res_head.gn_feature.gamma = ClipModelUtils.loadData(network.mids.res_head.gn_feature.gamma, weightMap, 1, "unet.bottleneck.0.groupnorm_feature.weight");
-        network.mids.res_head.gn_feature.beta = ClipModelUtils.loadData(network.mids.res_head.gn_feature.beta, weightMap, 1, "unet.bottleneck.0.groupnorm_feature.bias");
-        ClipModelUtils.loadData(network.mids.res_head.conv_feature.weight, weightMap, "unet.bottleneck.0.conv_feature.weight");
-        ClipModelUtils.loadData(network.mids.res_head.conv_feature.bias, weightMap, "unet.bottleneck.0.conv_feature.bias");
-        ClipModelUtils.loadData(network.mids.res_head.temb.linear.weight, weightMap, "unet.bottleneck.0.linear_time.weight");
-        ClipModelUtils.loadData(network.mids.res_head.temb.linear.bias, weightMap, "unet.bottleneck.0.linear_time.bias");
-        network.mids.res_head.gn_merged.gamma = ClipModelUtils.loadData(network.mids.res_head.gn_merged.gamma, weightMap, 1, "unet.bottleneck.0.groupnorm_merged.weight");
-        network.mids.res_head.gn_merged.beta = ClipModelUtils.loadData(network.mids.res_head.gn_merged.beta, weightMap, 1, "unet.bottleneck.0.groupnorm_merged.bias");
-        ClipModelUtils.loadData(network.mids.res_head.conv_merged.weight, weightMap, "unet.bottleneck.0.conv_merged.weight");
-        ClipModelUtils.loadData(network.mids.res_head.conv_merged.bias, weightMap, "unet.bottleneck.0.conv_merged.bias");
+        network.mids.res_head.gn_feature.gamma = ModeLoaderlUtils.loadData(network.mids.res_head.gn_feature.gamma, weightMap, 1, "unet.bottleneck.0.groupnorm_feature.weight");
+        network.mids.res_head.gn_feature.beta = ModeLoaderlUtils.loadData(network.mids.res_head.gn_feature.beta, weightMap, 1, "unet.bottleneck.0.groupnorm_feature.bias");
+        ModeLoaderlUtils.loadData(network.mids.res_head.conv_feature.weight, weightMap, "unet.bottleneck.0.conv_feature.weight");
+        ModeLoaderlUtils.loadData(network.mids.res_head.conv_feature.bias, weightMap, "unet.bottleneck.0.conv_feature.bias");
+        ModeLoaderlUtils.loadData(network.mids.res_head.temb.linear.weight, weightMap, "unet.bottleneck.0.linear_time.weight");
+        ModeLoaderlUtils.loadData(network.mids.res_head.temb.linear.bias, weightMap, "unet.bottleneck.0.linear_time.bias");
+        network.mids.res_head.gn_merged.gamma = ModeLoaderlUtils.loadData(network.mids.res_head.gn_merged.gamma, weightMap, 1, "unet.bottleneck.0.groupnorm_merged.weight");
+        network.mids.res_head.gn_merged.beta = ModeLoaderlUtils.loadData(network.mids.res_head.gn_merged.beta, weightMap, 1, "unet.bottleneck.0.groupnorm_merged.bias");
+        ModeLoaderlUtils.loadData(network.mids.res_head.conv_merged.weight, weightMap, "unet.bottleneck.0.conv_merged.weight");
+        ModeLoaderlUtils.loadData(network.mids.res_head.conv_merged.bias, weightMap, "unet.bottleneck.0.conv_merged.bias");
         /**
          * attn
 
          */
-        network.mids.attns.gn.gamma = ClipModelUtils.loadData(network.mids.attns.gn.gamma, weightMap, 1, "unet.bottleneck.1.groupnorm.weight");
-        network.mids.attns.gn.beta = ClipModelUtils.loadData(network.mids.attns.gn.beta, weightMap, 1, "unet.bottleneck.1.groupnorm.bias");
-        network.mids.attns.conv_in.weight = ClipModelUtils.loadData(network.mids.attns.conv_in.weight, weightMap, 4, "unet.bottleneck.1.conv_input.weight");
-        ClipModelUtils.loadData(network.mids.attns.conv_in.bias, weightMap, "unet.bottleneck.1.conv_input.bias");
-        network.mids.attns.ln1.gamma = ClipModelUtils.loadData(network.mids.attns.ln1.gamma, weightMap, 1, "unet.bottleneck.1.layernorm_1.weight");
-        network.mids.attns.ln1.beta = ClipModelUtils.loadData(network.mids.attns.ln1.beta, weightMap, 1, "unet.bottleneck.1.layernorm_1.bias");
-        ClipModelUtils.loadData(network.mids.attns.attn.qkvLinerLayer.weight, weightMap, "unet.bottleneck.1.attention_1.in_proj.weight");
-        ClipModelUtils.loadData(network.mids.attns.attn.oLinerLayer.weight, weightMap, "unet.bottleneck.1.attention_1.out_proj.weight");
-        ClipModelUtils.loadData(network.mids.attns.attn.oLinerLayer.bias, weightMap, "unet.bottleneck.1.attention_1.out_proj.bias");
-        network.mids.attns.ln2.gamma = ClipModelUtils.loadData(network.mids.attns.ln2.gamma, weightMap, 1, "unet.bottleneck.1.layernorm_2.weight");
-        network.mids.attns.ln2.beta = ClipModelUtils.loadData(network.mids.attns.ln2.beta, weightMap, 1, "unet.bottleneck.1.layernorm_2.bias");
-        ClipModelUtils.loadData(network.mids.attns.cross_attn.qLinerLayer.weight, weightMap, "unet.bottleneck.1.attention_2.q_proj.weight");
-        ClipModelUtils.loadData(network.mids.attns.cross_attn.kLinerLayer.weight, weightMap, "unet.bottleneck.1.attention_2.k_proj.weight");
-        ClipModelUtils.loadData(network.mids.attns.cross_attn.vLinerLayer.weight, weightMap, "unet.bottleneck.1.attention_2.v_proj.weight");
-        ClipModelUtils.loadData(network.mids.attns.cross_attn.oLinerLayer.weight, weightMap, "unet.bottleneck.1.attention_2.out_proj.weight");
-        ClipModelUtils.loadData(network.mids.attns.cross_attn.oLinerLayer.bias, weightMap, "unet.bottleneck.1.attention_2.out_proj.bias");
-        network.mids.attns.ln3.gamma = ClipModelUtils.loadData(network.mids.attns.ln3.gamma, weightMap, 1, "unet.bottleneck.1.layernorm_3.weight");
-        network.mids.attns.ln3.beta = ClipModelUtils.loadData(network.mids.attns.ln3.beta, weightMap, 1, "unet.bottleneck.1.layernorm_3.bias");
-        ClipModelUtils.loadData(network.mids.attns.geglu1.weight, weightMap, "unet.bottleneck.1.linear_geglu_1.weight");
-        ClipModelUtils.loadData(network.mids.attns.geglu1.bias, weightMap, "unet.bottleneck.1.linear_geglu_1.bias");
-        ClipModelUtils.loadData(network.mids.attns.geglu2.weight, weightMap, "unet.bottleneck.1.linear_geglu_2.weight");
-        ClipModelUtils.loadData(network.mids.attns.geglu2.bias, weightMap, "unet.bottleneck.1.linear_geglu_2.bias");
-        network.mids.attns.conv_out.weight = ClipModelUtils.loadData(network.mids.attns.conv_out.weight, weightMap, 4, "unet.bottleneck.1.conv_output.weight");
-        ClipModelUtils.loadData(network.mids.attns.conv_out.bias, weightMap, "unet.bottleneck.1.conv_output.bias");
-        network.mids.res_fail.gn_feature.gamma = ClipModelUtils.loadData(network.mids.res_fail.gn_feature.gamma, weightMap, 1, "unet.bottleneck.2.groupnorm_feature.weight");
-        network.mids.res_fail.gn_feature.beta = ClipModelUtils.loadData(network.mids.res_fail.gn_feature.beta, weightMap, 1, "unet.bottleneck.2.groupnorm_feature.bias");
-        ClipModelUtils.loadData(network.mids.res_fail.conv_feature.weight, weightMap, "unet.bottleneck.2.conv_feature.weight");
-        ClipModelUtils.loadData(network.mids.res_fail.conv_feature.bias, weightMap, "unet.bottleneck.2.conv_feature.bias");
-        ClipModelUtils.loadData(network.mids.res_fail.temb.linear.weight, weightMap, "unet.bottleneck.2.linear_time.weight");
-        ClipModelUtils.loadData(network.mids.res_fail.temb.linear.bias, weightMap, "unet.bottleneck.2.linear_time.bias");
-        network.mids.res_fail.gn_merged.gamma = ClipModelUtils.loadData(network.mids.res_fail.gn_merged.gamma, weightMap, 1, "unet.bottleneck.2.groupnorm_merged.weight");
-        network.mids.res_fail.gn_merged.beta = ClipModelUtils.loadData(network.mids.res_fail.gn_merged.beta, weightMap, 1, "unet.bottleneck.2.groupnorm_merged.bias");
-        ClipModelUtils.loadData(network.mids.res_fail.conv_merged.weight, weightMap, "unet.bottleneck.2.conv_merged.weight");
-        ClipModelUtils.loadData(network.mids.res_fail.conv_merged.bias, weightMap, "unet.bottleneck.2.conv_merged.bias");
+        network.mids.attns.gn.gamma = ModeLoaderlUtils.loadData(network.mids.attns.gn.gamma, weightMap, 1, "unet.bottleneck.1.groupnorm.weight");
+        network.mids.attns.gn.beta = ModeLoaderlUtils.loadData(network.mids.attns.gn.beta, weightMap, 1, "unet.bottleneck.1.groupnorm.bias");
+        network.mids.attns.conv_in.weight = ModeLoaderlUtils.loadData(network.mids.attns.conv_in.weight, weightMap, 4, "unet.bottleneck.1.conv_input.weight");
+        ModeLoaderlUtils.loadData(network.mids.attns.conv_in.bias, weightMap, "unet.bottleneck.1.conv_input.bias");
+        network.mids.attns.ln1.gamma = ModeLoaderlUtils.loadData(network.mids.attns.ln1.gamma, weightMap, 1, "unet.bottleneck.1.layernorm_1.weight");
+        network.mids.attns.ln1.beta = ModeLoaderlUtils.loadData(network.mids.attns.ln1.beta, weightMap, 1, "unet.bottleneck.1.layernorm_1.bias");
+        ModeLoaderlUtils.loadData(network.mids.attns.attn.qkvLinerLayer.weight, weightMap, "unet.bottleneck.1.attention_1.in_proj.weight");
+        ModeLoaderlUtils.loadData(network.mids.attns.attn.oLinerLayer.weight, weightMap, "unet.bottleneck.1.attention_1.out_proj.weight");
+        ModeLoaderlUtils.loadData(network.mids.attns.attn.oLinerLayer.bias, weightMap, "unet.bottleneck.1.attention_1.out_proj.bias");
+        network.mids.attns.ln2.gamma = ModeLoaderlUtils.loadData(network.mids.attns.ln2.gamma, weightMap, 1, "unet.bottleneck.1.layernorm_2.weight");
+        network.mids.attns.ln2.beta = ModeLoaderlUtils.loadData(network.mids.attns.ln2.beta, weightMap, 1, "unet.bottleneck.1.layernorm_2.bias");
+        ModeLoaderlUtils.loadData(network.mids.attns.cross_attn.qLinerLayer.weight, weightMap, "unet.bottleneck.1.attention_2.q_proj.weight");
+        ModeLoaderlUtils.loadData(network.mids.attns.cross_attn.kLinerLayer.weight, weightMap, "unet.bottleneck.1.attention_2.k_proj.weight");
+        ModeLoaderlUtils.loadData(network.mids.attns.cross_attn.vLinerLayer.weight, weightMap, "unet.bottleneck.1.attention_2.v_proj.weight");
+        ModeLoaderlUtils.loadData(network.mids.attns.cross_attn.oLinerLayer.weight, weightMap, "unet.bottleneck.1.attention_2.out_proj.weight");
+        ModeLoaderlUtils.loadData(network.mids.attns.cross_attn.oLinerLayer.bias, weightMap, "unet.bottleneck.1.attention_2.out_proj.bias");
+        network.mids.attns.ln3.gamma = ModeLoaderlUtils.loadData(network.mids.attns.ln3.gamma, weightMap, 1, "unet.bottleneck.1.layernorm_3.weight");
+        network.mids.attns.ln3.beta = ModeLoaderlUtils.loadData(network.mids.attns.ln3.beta, weightMap, 1, "unet.bottleneck.1.layernorm_3.bias");
+        ModeLoaderlUtils.loadData(network.mids.attns.geglu1.weight, weightMap, "unet.bottleneck.1.linear_geglu_1.weight");
+        ModeLoaderlUtils.loadData(network.mids.attns.geglu1.bias, weightMap, "unet.bottleneck.1.linear_geglu_1.bias");
+        ModeLoaderlUtils.loadData(network.mids.attns.geglu2.weight, weightMap, "unet.bottleneck.1.linear_geglu_2.weight");
+        ModeLoaderlUtils.loadData(network.mids.attns.geglu2.bias, weightMap, "unet.bottleneck.1.linear_geglu_2.bias");
+        network.mids.attns.conv_out.weight = ModeLoaderlUtils.loadData(network.mids.attns.conv_out.weight, weightMap, 4, "unet.bottleneck.1.conv_output.weight");
+        ModeLoaderlUtils.loadData(network.mids.attns.conv_out.bias, weightMap, "unet.bottleneck.1.conv_output.bias");
+        network.mids.res_fail.gn_feature.gamma = ModeLoaderlUtils.loadData(network.mids.res_fail.gn_feature.gamma, weightMap, 1, "unet.bottleneck.2.groupnorm_feature.weight");
+        network.mids.res_fail.gn_feature.beta = ModeLoaderlUtils.loadData(network.mids.res_fail.gn_feature.beta, weightMap, 1, "unet.bottleneck.2.groupnorm_feature.bias");
+        ModeLoaderlUtils.loadData(network.mids.res_fail.conv_feature.weight, weightMap, "unet.bottleneck.2.conv_feature.weight");
+        ModeLoaderlUtils.loadData(network.mids.res_fail.conv_feature.bias, weightMap, "unet.bottleneck.2.conv_feature.bias");
+        ModeLoaderlUtils.loadData(network.mids.res_fail.temb.linear.weight, weightMap, "unet.bottleneck.2.linear_time.weight");
+        ModeLoaderlUtils.loadData(network.mids.res_fail.temb.linear.bias, weightMap, "unet.bottleneck.2.linear_time.bias");
+        network.mids.res_fail.gn_merged.gamma = ModeLoaderlUtils.loadData(network.mids.res_fail.gn_merged.gamma, weightMap, 1, "unet.bottleneck.2.groupnorm_merged.weight");
+        network.mids.res_fail.gn_merged.beta = ModeLoaderlUtils.loadData(network.mids.res_fail.gn_merged.beta, weightMap, 1, "unet.bottleneck.2.groupnorm_merged.bias");
+        ModeLoaderlUtils.loadData(network.mids.res_fail.conv_merged.weight, weightMap, "unet.bottleneck.2.conv_merged.weight");
+        ModeLoaderlUtils.loadData(network.mids.res_fail.conv_merged.bias, weightMap, "unet.bottleneck.2.conv_merged.bias");
         /**
          * ups
 
          */
-        network.up_res.gn_feature.gamma = ClipModelUtils.loadData(network.up_res.gn_feature.gamma, weightMap, 1, "unet.decoders.0.0.groupnorm_feature.weight");
-        network.up_res.gn_feature.beta = ClipModelUtils.loadData(network.up_res.gn_feature.beta, weightMap, 1, "unet.decoders.0.0.groupnorm_feature.bias");
-        ClipModelUtils.loadData(network.up_res.conv_feature.weight, weightMap, "unet.decoders.0.0.conv_feature.weight");
-        ClipModelUtils.loadData(network.up_res.conv_feature.bias, weightMap, "unet.decoders.0.0.conv_feature.bias");
-        ClipModelUtils.loadData(network.up_res.temb.linear.weight, weightMap, "unet.decoders.0.0.linear_time.weight");
-        ClipModelUtils.loadData(network.up_res.temb.linear.bias, weightMap, "unet.decoders.0.0.linear_time.bias");
-        network.up_res.gn_merged.gamma = ClipModelUtils.loadData(network.up_res.gn_merged.gamma, weightMap, 1, "unet.decoders.0.0.groupnorm_merged.weight");
-        network.up_res.gn_merged.beta = ClipModelUtils.loadData(network.up_res.gn_merged.beta, weightMap, 1, "unet.decoders.0.0.groupnorm_merged.bias");
-        ClipModelUtils.loadData(network.up_res.conv_merged.weight, weightMap, "unet.decoders.0.0.conv_merged.weight");
-        ClipModelUtils.loadData(network.up_res.conv_merged.bias, weightMap, "unet.decoders.0.0.conv_merged.bias");
-        network.up_res.residual_layer.weight = ClipModelUtils.loadData(network.up_res.residual_layer.weight, weightMap, 4, "unet.decoders.0.0.residual_layer.weight");
-        ClipModelUtils.loadData(network.up_res.residual_layer.bias, weightMap, "unet.decoders.0.0.residual_layer.bias");
+        network.up_res.gn_feature.gamma = ModeLoaderlUtils.loadData(network.up_res.gn_feature.gamma, weightMap, 1, "unet.decoders.0.0.groupnorm_feature.weight");
+        network.up_res.gn_feature.beta = ModeLoaderlUtils.loadData(network.up_res.gn_feature.beta, weightMap, 1, "unet.decoders.0.0.groupnorm_feature.bias");
+        ModeLoaderlUtils.loadData(network.up_res.conv_feature.weight, weightMap, "unet.decoders.0.0.conv_feature.weight");
+        ModeLoaderlUtils.loadData(network.up_res.conv_feature.bias, weightMap, "unet.decoders.0.0.conv_feature.bias");
+        ModeLoaderlUtils.loadData(network.up_res.temb.linear.weight, weightMap, "unet.decoders.0.0.linear_time.weight");
+        ModeLoaderlUtils.loadData(network.up_res.temb.linear.bias, weightMap, "unet.decoders.0.0.linear_time.bias");
+        network.up_res.gn_merged.gamma = ModeLoaderlUtils.loadData(network.up_res.gn_merged.gamma, weightMap, 1, "unet.decoders.0.0.groupnorm_merged.weight");
+        network.up_res.gn_merged.beta = ModeLoaderlUtils.loadData(network.up_res.gn_merged.beta, weightMap, 1, "unet.decoders.0.0.groupnorm_merged.bias");
+        ModeLoaderlUtils.loadData(network.up_res.conv_merged.weight, weightMap, "unet.decoders.0.0.conv_merged.weight");
+        ModeLoaderlUtils.loadData(network.up_res.conv_merged.bias, weightMap, "unet.decoders.0.0.conv_merged.bias");
+        network.up_res.residual_layer.weight = ModeLoaderlUtils.loadData(network.up_res.residual_layer.weight, weightMap, 4, "unet.decoders.0.0.residual_layer.weight");
+        ModeLoaderlUtils.loadData(network.up_res.residual_layer.bias, weightMap, "unet.decoders.0.0.residual_layer.bias");
         /**
          * conv_in
 
          */
         for (int i = 0; i < 2; i++) {
             int idx = i * 2 + 1;
-            ClipModelUtils.loadData(network.ups.get(i).up.conv.weight, weightMap, "unet.decoders." + idx + ".0.conv.weight");
-            ClipModelUtils.loadData(network.ups.get(i).up.conv.bias, weightMap, "unet.decoders." + idx + ".0.conv.bias");
+            ModeLoaderlUtils.loadData(network.ups.get(i).up.conv.weight, weightMap, "unet.decoders." + idx + ".0.conv.weight");
+            ModeLoaderlUtils.loadData(network.ups.get(i).up.conv.bias, weightMap, "unet.decoders." + idx + ".0.conv.bias");
             int idx2 = i * 2 + 2;
             /**
              * resnet block
 
              */
-            network.ups.get(i).res[0].gn_feature.gamma = ClipModelUtils.loadData(network.ups.get(i).res[0].gn_feature.gamma, weightMap, 1, "unet.decoders." + idx2 + ".0.groupnorm_feature.weight");
-            network.ups.get(i).res[0].gn_feature.beta = ClipModelUtils.loadData(network.ups.get(i).res[0].gn_feature.beta, weightMap, 1, "unet.decoders." + idx2 + ".0.groupnorm_feature.bias");
-            ClipModelUtils.loadData(network.ups.get(i).res[0].conv_feature.weight, weightMap, "unet.decoders." + idx2 + ".0.conv_feature.weight");
-            ClipModelUtils.loadData(network.ups.get(i).res[0].conv_feature.bias, weightMap, "unet.decoders." + idx2 + ".0.conv_feature.bias");
-            ClipModelUtils.loadData(network.ups.get(i).res[0].temb.linear.weight, weightMap, "unet.decoders." + idx2 + ".0.linear_time.weight");
-            ClipModelUtils.loadData(network.ups.get(i).res[0].temb.linear.bias, weightMap, "unet.decoders." + idx2 + ".0.linear_time.bias");
-            network.ups.get(i).res[0].gn_merged.gamma = ClipModelUtils.loadData(network.ups.get(i).res[0].gn_merged.gamma, weightMap, 1, "unet.decoders." + idx2 + ".0.groupnorm_merged.weight");
-            network.ups.get(i).res[0].gn_merged.beta = ClipModelUtils.loadData(network.ups.get(i).res[0].gn_merged.beta, weightMap, 1, "unet.decoders." + idx2 + ".0.groupnorm_merged.bias");
-            ClipModelUtils.loadData(network.ups.get(i).res[0].conv_merged.weight, weightMap, "unet.decoders." + idx2 + ".0.conv_merged.weight");
-            ClipModelUtils.loadData(network.ups.get(i).res[0].conv_merged.bias, weightMap, "unet.decoders." + idx2 + ".0.conv_merged.bias");
-            network.ups.get(i).res[0].residual_layer.weight = ClipModelUtils.loadData(network.ups.get(i).res[0].residual_layer.weight, weightMap, 4, "unet.decoders." + idx2 + ".0.residual_layer.weight");
-            ClipModelUtils.loadData(network.ups.get(i).res[0].residual_layer.bias, weightMap, "unet.decoders." + idx2 + ".0.residual_layer.bias");
+            network.ups.get(i).res[0].gn_feature.gamma = ModeLoaderlUtils.loadData(network.ups.get(i).res[0].gn_feature.gamma, weightMap, 1, "unet.decoders." + idx2 + ".0.groupnorm_feature.weight");
+            network.ups.get(i).res[0].gn_feature.beta = ModeLoaderlUtils.loadData(network.ups.get(i).res[0].gn_feature.beta, weightMap, 1, "unet.decoders." + idx2 + ".0.groupnorm_feature.bias");
+            ModeLoaderlUtils.loadData(network.ups.get(i).res[0].conv_feature.weight, weightMap, "unet.decoders." + idx2 + ".0.conv_feature.weight");
+            ModeLoaderlUtils.loadData(network.ups.get(i).res[0].conv_feature.bias, weightMap, "unet.decoders." + idx2 + ".0.conv_feature.bias");
+            ModeLoaderlUtils.loadData(network.ups.get(i).res[0].temb.linear.weight, weightMap, "unet.decoders." + idx2 + ".0.linear_time.weight");
+            ModeLoaderlUtils.loadData(network.ups.get(i).res[0].temb.linear.bias, weightMap, "unet.decoders." + idx2 + ".0.linear_time.bias");
+            network.ups.get(i).res[0].gn_merged.gamma = ModeLoaderlUtils.loadData(network.ups.get(i).res[0].gn_merged.gamma, weightMap, 1, "unet.decoders." + idx2 + ".0.groupnorm_merged.weight");
+            network.ups.get(i).res[0].gn_merged.beta = ModeLoaderlUtils.loadData(network.ups.get(i).res[0].gn_merged.beta, weightMap, 1, "unet.decoders." + idx2 + ".0.groupnorm_merged.bias");
+            ModeLoaderlUtils.loadData(network.ups.get(i).res[0].conv_merged.weight, weightMap, "unet.decoders." + idx2 + ".0.conv_merged.weight");
+            ModeLoaderlUtils.loadData(network.ups.get(i).res[0].conv_merged.bias, weightMap, "unet.decoders." + idx2 + ".0.conv_merged.bias");
+            network.ups.get(i).res[0].residual_layer.weight = ModeLoaderlUtils.loadData(network.ups.get(i).res[0].residual_layer.weight, weightMap, 4, "unet.decoders." + idx2 + ".0.residual_layer.weight");
+            ModeLoaderlUtils.loadData(network.ups.get(i).res[0].residual_layer.bias, weightMap, "unet.decoders." + idx2 + ".0.residual_layer.bias");
             /**
              * attn block
 
              */
-            network.ups.get(i).attns[0].gn.gamma = ClipModelUtils.loadData(network.ups.get(i).attns[0].gn.gamma, weightMap, 1, "unet.decoders." + idx2 + ".1.groupnorm.weight");
-            network.ups.get(i).attns[0].gn.beta = ClipModelUtils.loadData(network.ups.get(i).attns[0].gn.beta, weightMap, 1, "unet.decoders." + idx2 + ".1.groupnorm.bias");
-            network.ups.get(i).attns[0].conv_in.weight = ClipModelUtils.loadData(network.ups.get(i).attns[0].conv_in.weight, weightMap, 4, "unet.decoders." + idx2 + ".1.conv_input.weight");
-            ClipModelUtils.loadData(network.ups.get(i).attns[0].conv_in.bias, weightMap, "unet.decoders." + idx2 + ".1.conv_input.bias");
-            network.ups.get(i).attns[0].ln1.gamma = ClipModelUtils.loadData(network.ups.get(i).attns[0].ln1.gamma, weightMap, 1, "unet.decoders." + idx2 + ".1.layernorm_1.weight");
-            network.ups.get(i).attns[0].ln1.beta = ClipModelUtils.loadData(network.ups.get(i).attns[0].ln1.beta, weightMap, 1, "unet.decoders." + idx2 + ".1.layernorm_1.bias");
-            ClipModelUtils.loadData(network.ups.get(i).attns[0].attn.qkvLinerLayer.weight, weightMap, "unet.decoders." + idx2 + ".1.attention_1.in_proj.weight");
-            ClipModelUtils.loadData(network.ups.get(i).attns[0].attn.oLinerLayer.weight, weightMap, "unet.decoders." + idx2 + ".1.attention_1.out_proj.weight");
-            ClipModelUtils.loadData(network.ups.get(i).attns[0].attn.oLinerLayer.bias, weightMap, "unet.decoders." + idx2 + ".1.attention_1.out_proj.bias");
-            network.ups.get(i).attns[0].ln2.gamma = ClipModelUtils.loadData(network.ups.get(i).attns[0].ln2.gamma, weightMap, 1, "unet.decoders." + idx2 + ".1.layernorm_2.weight");
-            network.ups.get(i).attns[0].ln2.beta = ClipModelUtils.loadData(network.ups.get(i).attns[0].ln2.beta, weightMap, 1, "unet.decoders." + idx2 + ".1.layernorm_2.bias");
-            ClipModelUtils.loadData(network.ups.get(i).attns[0].cross_attn.qLinerLayer.weight, weightMap, "unet.decoders." + idx2 + ".1.attention_2.q_proj.weight");
-            ClipModelUtils.loadData(network.ups.get(i).attns[0].cross_attn.kLinerLayer.weight, weightMap, "unet.decoders." + idx2 + ".1.attention_2.k_proj.weight");
-            ClipModelUtils.loadData(network.ups.get(i).attns[0].cross_attn.vLinerLayer.weight, weightMap, "unet.decoders." + idx2 + ".1.attention_2.v_proj.weight");
-            ClipModelUtils.loadData(network.ups.get(i).attns[0].cross_attn.oLinerLayer.weight, weightMap, "unet.decoders." + idx2 + ".1.attention_2.out_proj.weight");
-            ClipModelUtils.loadData(network.ups.get(i).attns[0].cross_attn.oLinerLayer.bias, weightMap, "unet.decoders." + idx2 + ".1.attention_2.out_proj.bias");
-            network.ups.get(i).attns[0].ln3.gamma = ClipModelUtils.loadData(network.ups.get(i).attns[0].ln3.gamma, weightMap, 1, "unet.decoders." + idx2 + ".1.layernorm_3.weight");
-            network.ups.get(i).attns[0].ln3.beta = ClipModelUtils.loadData(network.ups.get(i).attns[0].ln3.beta, weightMap, 1, "unet.decoders." + idx2 + ".1.layernorm_3.bias");
-            ClipModelUtils.loadData(network.ups.get(i).attns[0].geglu1.weight, weightMap, "unet.decoders." + idx2 + ".1.linear_geglu_1.weight");
-            ClipModelUtils.loadData(network.ups.get(i).attns[0].geglu1.bias, weightMap, "unet.decoders." + idx2 + ".1.linear_geglu_1.bias");
-            ClipModelUtils.loadData(network.ups.get(i).attns[0].geglu2.weight, weightMap, "unet.decoders." + idx2 + ".1.linear_geglu_2.weight");
-            ClipModelUtils.loadData(network.ups.get(i).attns[0].geglu2.bias, weightMap, "unet.decoders." + idx2 + ".1.linear_geglu_2.bias");
-            network.ups.get(i).attns[0].conv_out.weight = ClipModelUtils.loadData(network.ups.get(i).attns[0].conv_out.weight, weightMap, 4, "unet.decoders." + idx2 + ".1.conv_output.weight");
-            ClipModelUtils.loadData(network.ups.get(i).attns[0].conv_out.bias, weightMap, "unet.decoders." + idx2 + ".1.conv_output.bias");
+            network.ups.get(i).attns[0].gn.gamma = ModeLoaderlUtils.loadData(network.ups.get(i).attns[0].gn.gamma, weightMap, 1, "unet.decoders." + idx2 + ".1.groupnorm.weight");
+            network.ups.get(i).attns[0].gn.beta = ModeLoaderlUtils.loadData(network.ups.get(i).attns[0].gn.beta, weightMap, 1, "unet.decoders." + idx2 + ".1.groupnorm.bias");
+            network.ups.get(i).attns[0].conv_in.weight = ModeLoaderlUtils.loadData(network.ups.get(i).attns[0].conv_in.weight, weightMap, 4, "unet.decoders." + idx2 + ".1.conv_input.weight");
+            ModeLoaderlUtils.loadData(network.ups.get(i).attns[0].conv_in.bias, weightMap, "unet.decoders." + idx2 + ".1.conv_input.bias");
+            network.ups.get(i).attns[0].ln1.gamma = ModeLoaderlUtils.loadData(network.ups.get(i).attns[0].ln1.gamma, weightMap, 1, "unet.decoders." + idx2 + ".1.layernorm_1.weight");
+            network.ups.get(i).attns[0].ln1.beta = ModeLoaderlUtils.loadData(network.ups.get(i).attns[0].ln1.beta, weightMap, 1, "unet.decoders." + idx2 + ".1.layernorm_1.bias");
+            ModeLoaderlUtils.loadData(network.ups.get(i).attns[0].attn.qkvLinerLayer.weight, weightMap, "unet.decoders." + idx2 + ".1.attention_1.in_proj.weight");
+            ModeLoaderlUtils.loadData(network.ups.get(i).attns[0].attn.oLinerLayer.weight, weightMap, "unet.decoders." + idx2 + ".1.attention_1.out_proj.weight");
+            ModeLoaderlUtils.loadData(network.ups.get(i).attns[0].attn.oLinerLayer.bias, weightMap, "unet.decoders." + idx2 + ".1.attention_1.out_proj.bias");
+            network.ups.get(i).attns[0].ln2.gamma = ModeLoaderlUtils.loadData(network.ups.get(i).attns[0].ln2.gamma, weightMap, 1, "unet.decoders." + idx2 + ".1.layernorm_2.weight");
+            network.ups.get(i).attns[0].ln2.beta = ModeLoaderlUtils.loadData(network.ups.get(i).attns[0].ln2.beta, weightMap, 1, "unet.decoders." + idx2 + ".1.layernorm_2.bias");
+            ModeLoaderlUtils.loadData(network.ups.get(i).attns[0].cross_attn.qLinerLayer.weight, weightMap, "unet.decoders." + idx2 + ".1.attention_2.q_proj.weight");
+            ModeLoaderlUtils.loadData(network.ups.get(i).attns[0].cross_attn.kLinerLayer.weight, weightMap, "unet.decoders." + idx2 + ".1.attention_2.k_proj.weight");
+            ModeLoaderlUtils.loadData(network.ups.get(i).attns[0].cross_attn.vLinerLayer.weight, weightMap, "unet.decoders." + idx2 + ".1.attention_2.v_proj.weight");
+            ModeLoaderlUtils.loadData(network.ups.get(i).attns[0].cross_attn.oLinerLayer.weight, weightMap, "unet.decoders." + idx2 + ".1.attention_2.out_proj.weight");
+            ModeLoaderlUtils.loadData(network.ups.get(i).attns[0].cross_attn.oLinerLayer.bias, weightMap, "unet.decoders." + idx2 + ".1.attention_2.out_proj.bias");
+            network.ups.get(i).attns[0].ln3.gamma = ModeLoaderlUtils.loadData(network.ups.get(i).attns[0].ln3.gamma, weightMap, 1, "unet.decoders." + idx2 + ".1.layernorm_3.weight");
+            network.ups.get(i).attns[0].ln3.beta = ModeLoaderlUtils.loadData(network.ups.get(i).attns[0].ln3.beta, weightMap, 1, "unet.decoders." + idx2 + ".1.layernorm_3.bias");
+            ModeLoaderlUtils.loadData(network.ups.get(i).attns[0].geglu1.weight, weightMap, "unet.decoders." + idx2 + ".1.linear_geglu_1.weight");
+            ModeLoaderlUtils.loadData(network.ups.get(i).attns[0].geglu1.bias, weightMap, "unet.decoders." + idx2 + ".1.linear_geglu_1.bias");
+            ModeLoaderlUtils.loadData(network.ups.get(i).attns[0].geglu2.weight, weightMap, "unet.decoders." + idx2 + ".1.linear_geglu_2.weight");
+            ModeLoaderlUtils.loadData(network.ups.get(i).attns[0].geglu2.bias, weightMap, "unet.decoders." + idx2 + ".1.linear_geglu_2.bias");
+            network.ups.get(i).attns[0].conv_out.weight = ModeLoaderlUtils.loadData(network.ups.get(i).attns[0].conv_out.weight, weightMap, 4, "unet.decoders." + idx2 + ".1.conv_output.weight");
+            ModeLoaderlUtils.loadData(network.ups.get(i).attns[0].conv_out.bias, weightMap, "unet.decoders." + idx2 + ".1.conv_output.bias");
         }
-        ClipModelUtils.loadData(network.conv_out.weight, weightMap, "unet.decoders.5.0.weight");
-        ClipModelUtils.loadData(network.conv_out.bias, weightMap, "unet.decoders.5.0.bias");
-        network.norm.gamma = ClipModelUtils.loadData(network.norm.gamma, weightMap, 1, "final.groupnorm.weight");
-        network.norm.beta = ClipModelUtils.loadData(network.norm.beta, weightMap, 1, "final.groupnorm.bias");
-        ClipModelUtils.loadData(network.conv_final.weight, weightMap, "final.conv.weight");
-        ClipModelUtils.loadData(network.conv_final.bias, weightMap, "final.conv.bias");
+        ModeLoaderlUtils.loadData(network.conv_out.weight, weightMap, "unet.decoders.5.0.weight");
+        ModeLoaderlUtils.loadData(network.conv_out.bias, weightMap, "unet.decoders.5.0.bias");
+        network.norm.gamma = ModeLoaderlUtils.loadData(network.norm.gamma, weightMap, 1, "final.groupnorm.weight");
+        network.norm.beta = ModeLoaderlUtils.loadData(network.norm.beta, weightMap, 1, "final.groupnorm.bias");
+        ModeLoaderlUtils.loadData(network.conv_final.weight, weightMap, "final.conv.weight");
+        ModeLoaderlUtils.loadData(network.conv_final.bias, weightMap, "final.conv.bias");
     }
 
     public static void main(String[] args) {

@@ -25,8 +25,9 @@ public class OpenSoraDITTest {
         int height = 32;
         int width = 32;
         int textEmbedDim = 768;
+        int maxContext = 1;
         
-        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim * numFrames, height, width, textEmbedDim, BinDataType.float32);
+        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim * numFrames, height, width, 1, textEmbedDim, BinDataType.float32);
 		
         int ditHeadNum = 12;
         int depth = 12;

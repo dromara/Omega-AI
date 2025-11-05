@@ -149,7 +149,6 @@ public class BiasKernel extends BaseKernel {
                 /**
                  * 设置入参
                  * float* data_im,float* data_col,int n,int height,int width,int kh,int kw,int s,int p,int oh,int ow
-
                  */
                 backKernelParameters = Pointer.to(Pointer.to(diffB.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(new int[]{delta.getNumber()}), Pointer.to(new int[]{delta.getWidth()}));
                 this.N = delta.number;
@@ -172,7 +171,6 @@ public class BiasKernel extends BaseKernel {
             /**
              * 设置入参
              * float *bias_updates, float *delta, int batch, int n, int size
-
              */
             backConvKernelParameters = Pointer.to(Pointer.to(diffB.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(new int[]{delta.number}), Pointer.to(new int[]{delta.channel}), Pointer.to(new int[]{delta.height * delta.width}));
             this.N = delta.number;

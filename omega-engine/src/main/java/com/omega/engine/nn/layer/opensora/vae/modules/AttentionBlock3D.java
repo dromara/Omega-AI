@@ -18,7 +18,7 @@ import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
-import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
@@ -118,17 +118,17 @@ public class AttentionBlock3D extends Layer {
             }
         }
         
-        network.norm.norm.gamma = ClipModelUtils.loadData(network.norm.norm.gamma, weightMap, 1, "norm.weight");
-        network.norm.norm.beta = ClipModelUtils.loadData(network.norm.norm.beta, weightMap, 1, "norm.bias");
+        network.norm.norm.gamma = ModeLoaderlUtils.loadData(network.norm.norm.gamma, weightMap, 1, "norm.weight");
+        network.norm.norm.beta = ModeLoaderlUtils.loadData(network.norm.norm.beta, weightMap, 1, "norm.bias");
         
-        ClipModelUtils.loadData(network.qLinerLayer.weight, weightMap, "q.conv.weight", 5);
-        ClipModelUtils.loadData(network.qLinerLayer.bias, weightMap, "q.conv.bias");
-        ClipModelUtils.loadData(network.kLinerLayer.weight, weightMap, "k.conv.weight", 5);
-        ClipModelUtils.loadData(network.kLinerLayer.bias, weightMap, "k.conv.bias");
-        ClipModelUtils.loadData(network.vLinerLayer.weight, weightMap, "v.conv.weight", 5);
-        ClipModelUtils.loadData(network.vLinerLayer.bias, weightMap, "v.conv.bias");
-        ClipModelUtils.loadData(network.oLinerLayer.weight, weightMap, "proj_out.conv.weight", 5);
-        ClipModelUtils.loadData(network.oLinerLayer.bias, weightMap, "proj_out.conv.bias");
+        ModeLoaderlUtils.loadData(network.qLinerLayer.weight, weightMap, "q.conv.weight", 5);
+        ModeLoaderlUtils.loadData(network.qLinerLayer.bias, weightMap, "q.conv.bias");
+        ModeLoaderlUtils.loadData(network.kLinerLayer.weight, weightMap, "k.conv.weight", 5);
+        ModeLoaderlUtils.loadData(network.kLinerLayer.bias, weightMap, "k.conv.bias");
+        ModeLoaderlUtils.loadData(network.vLinerLayer.weight, weightMap, "v.conv.weight", 5);
+        ModeLoaderlUtils.loadData(network.vLinerLayer.bias, weightMap, "v.conv.bias");
+        ModeLoaderlUtils.loadData(network.oLinerLayer.weight, weightMap, "proj_out.conv.weight", 5);
+        ModeLoaderlUtils.loadData(network.oLinerLayer.bias, weightMap, "proj_out.conv.bias");
     }
 
     public static boolean same(Tensor a, Tensor b) {

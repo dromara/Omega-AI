@@ -351,7 +351,7 @@
     }
 
     /* 图片消息样式 */
-    .image-message {
+    .image-message, .video-message {
       max-width: 100%;
       margin: 5px 0;
       border-radius: 8px;
@@ -359,7 +359,7 @@
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     }
 
-    .image-message img {
+    .image-message img, .video-message video {
       max-width: 100%;
       max-height: 300px;
       display: block;
@@ -552,6 +552,18 @@
       color: #7098c8;
     }
 
+    /* 文件类型指示器 */
+    .file-type-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 6px;
+      background: rgba(90, 16, 240, 0.3);
+      border-radius: 4px;
+      font-size: 0.7rem;
+      margin-left: 8px;
+    }
+
     /* 滚动条样式 */
     .chat-window::-webkit-scrollbar, #messageInput::-webkit-scrollbar {
       width: 5px;
@@ -708,8 +720,8 @@
 
   <div class="input-area" id="inputArea">
     <textarea id="messageInput" placeholder="输入您的消息... (按Ctrl+Enter发送)"></textarea>
-    <input type="file" id="fileInput" accept="image/*" style="display: none;">
-    <button class="file-upload-button" id="uploadButton">📁 上传图片</button>
+    <input type="file" id="fileInput" accept="image/*,video/*" style="display: none;">
+    <button class="file-upload-button" id="uploadButton">📁 上传文件</button>
     <button id="sendButton">发送</button>
   </div>
 </div>
@@ -823,7 +835,7 @@
       if (!welcomeMessage) {
         addMessage('您好！我是Omega-AI深度学习框架构建的llama模型网络训练的大模型聊天助手。请问有什么我可以帮助您的吗？', false);
       }
-    } else {
+    } if (modelInfo.type === 'yolov7') {
       // 视觉模型：显示上传按钮，隐藏输入框和发送按钮
       messageInput.style.display = 'none';
       sendButton.style.display = 'none';
@@ -832,11 +844,21 @@
       document.getElementById('tishiyu').style.display = 'none';
 
       // 添加使用说明
-      addMessage('请上传图片进行目标检测分析，支持JPG、PNG等常见图片格式。', false);
+      addMessage('请上传图片或视频进行目标检测分析，支持JPG、PNG、MP4、AVI常见格式。', false);
+    }else if(modelInfo.type === 'yolov3'){
+      // 视觉模型：显示上传按钮，隐藏输入框和发送按钮
+      messageInput.style.display = 'none';
+      sendButton.style.display = 'none';
+      uploadButton.style.display = 'block';
+
+      document.getElementById('tishiyu').style.display = 'none';
+
+      // 添加使用说明
+      addMessage('请上传图片或视频进行目标检测分析，支持JPG、PNG常见格式。', false);
     }
   }
 
-  function addMessage(content, isUser, imageData = null, detectionResult = null) {
+  function addMessage(content, isUser, fileData = null, fileType = null, detectionResult = null) {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
 
@@ -857,20 +879,36 @@
       `;
     }
 
+    // 添加文件类型指示器
+    if (fileType) {
+      const fileTypeIndicator = document.createElement('span');
+      fileTypeIndicator.className = 'file-type-indicator';
+      fileTypeIndicator.innerHTML = `${fileType === 'image' ? '🖼️ 图片' : '🎬 视频'}`;
+      header.appendChild(fileTypeIndicator);
+    }
+
     const contentDiv = document.createElement('div');
     contentDiv.className = 'message-content';
 
-    if (imageData) {
-      // 添加图片消息
-      const imageContainer = document.createElement('div');
-      imageContainer.className = 'image-message';
+    if (fileData) {
+      // 添加文件消息
+      const fileContainer = document.createElement('div');
+      fileContainer.className = fileType === 'image' ? 'image-message' : 'video-message';
 
-      const img = document.createElement('img');
-      img.src = imageData;
-      img.alt = isUser ? '上传的图片' : '分析结果';
+      if (fileType === 'image') {
+        const img = document.createElement('img');
+        img.src = fileData;
+        img.alt = isUser ? '上传的图片' : '分析结果';
+        fileContainer.appendChild(img);
+      } else {
+        const video = document.createElement('video');
+        video.src = fileData;
+        video.controls = true;
+        video.alt = isUser ? '上传的视频' : '分析结果';
+        fileContainer.appendChild(video);
+      }
 
-      imageContainer.appendChild(img);
-      contentDiv.appendChild(imageContainer);
+      contentDiv.appendChild(fileContainer);
 
       if (content) {
         const textDiv = document.createElement('div');
@@ -900,7 +938,7 @@
         const buttonsDiv = document.createElement('div');
         buttonsDiv.className = 'action-buttons';
         buttonsDiv.innerHTML = `
-          <button class="action-button download-button" onclick="downloadImage('${imageData}')">
+          <button class="action-button download-button" onclick="downloadFile('${detectionResult.fileUrl}')">
             下载检测结果
           </button>
         `;
@@ -990,7 +1028,7 @@
     }
   }
 
-  // 图片上传功能
+  // 文件上传功能
   uploadButton.addEventListener('click', () => {
     fileInput.click();
   });
@@ -999,34 +1037,45 @@
     if (!e.target.files.length) return;
 
     const file = e.target.files[0];
-    if (!file.type.match('image.*')) {
-      alert('请上传图片文件！');
+    const modelInfo = getModelInfo(currentModel);
+
+    if (modelInfo.type !== 'yolov3' && modelInfo.type !== 'yolov7') {
       return;
     }
 
-    const modelInfo = getModelInfo(currentModel);
-    if (modelInfo.type !== 'yolov3' && modelInfo.type !== 'yolov7') {
+    // 检查文件类型
+    const fileType = file.type.split('/')[0]; // 'image' 或 'video'
+    const allowedImageTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    const allowedVideoTypes = ['video/mp4', 'video/avi', 'video/x-msvideo'];
+
+    if (fileType === 'image' && !allowedImageTypes.includes(file.type)) {
+      alert('请上传JPG、PNG或GIF格式的图片！');
+      return;
+    }
+
+    if (fileType === 'video' && !allowedVideoTypes.includes(file.type)) {
+      alert('请上传MP4或AVI格式的视频！');
       return;
     }
 
     const reader = new FileReader();
 
     reader.onload = async (e) => {
-      const imageData = e.target.result;
+      const fileData = e.target.result;
 
-      // 显示用户上传的图片
-      addMessage('图片已上传', true, imageData);
+      // 显示用户上传的文件
+      addMessage(`${fileType === 'image' ? '图片' : '视频'}已上传`, true, fileData, fileType);
 
       // 显示正在分析指示器
       showTypingIndicator();
 
       try {
-        // 发送图片到后端进行检测
+        // 发送文件到后端进行检测
         const formData = new FormData();
         formData.append('file', file);
         formData.append('model', currentModel);
 
-        const url = modelInfo.type === 'yolov3' ? '/yolov3/image' : '/yolov7/image';
+        const url = modelInfo.type === 'yolov3' ? '/yolov3/analyze' : '/yolov7/analyze';
 
         const response = await fetch(url, {
           method: 'POST',
@@ -1042,25 +1091,75 @@
         // 隐藏正在输入指示器
         hideTypingIndicator();
 
-        // 显示检测结果 - 使用后端返回的处理后图片
-        addMessage('图片分析完成', false, "data:image/jpeg;base64," + result.fileBase64, result);
+        // 显示检测结果 - 使用后端返回的文件路径
+        if (fileType === 'image') {
+          addMessage('图片分析完成', false, result.fileUrl, 'image', result);
+        } else {
+          addMessage('视频分析完成', false, result.fileUrl, 'video', result);
+        }
 
       } catch (error) {
         hideTypingIndicator();
-        addMessage('图片分析失败，请重试', false);
+        addMessage(`${fileType === 'image' ? '图片' : '视频'}分析失败，请重试`, false);
         console.error('检测错误:', error);
       }
     };
 
-    reader.readAsDataURL(file);
+    if (fileType === 'image') {
+      reader.readAsDataURL(file);
+    } else {
+      // 对于视频，我们只显示上传的文件，不读取为DataURL
+      // 在实际应用中，您可能需要使用URL.createObjectURL(file)
+      const objectUrl = URL.createObjectURL(file);
+      // 显示用户上传的文件
+      addMessage('视频已上传', true, objectUrl, 'video');
+
+      // 显示正在分析指示器
+      showTypingIndicator();
+
+      try {
+        // 发送文件到后端进行检测
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('model', currentModel);
+
+        const url = modelInfo.type === 'yolov3' ? '/yolov3/analyze' : '/yolov7/analyze';
+
+        const response = await fetch(url, {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!response.ok) {
+          throw new Error('检测请求失败');
+        }
+
+        const result = await response.json();
+
+        // 隐藏正在输入指示器
+        hideTypingIndicator();
+
+        // 显示检测结果 - 使用后端返回的文件路径
+        addMessage('视频分析完成', false, result.fileUrl, 'video', result);
+
+      } catch (error) {
+        hideTypingIndicator();
+        addMessage('视频分析失败，请重试', false);
+        console.error('检测错误:', error);
+      }
+
+      // 清理对象URL
+      URL.revokeObjectURL(objectUrl);
+    }
+
     fileInput.value = '';
   });
 
-  // 下载图片功能
-  window.downloadImage = function(imageData) {
+  // 下载文件功能
+  window.downloadFile = function(filePath) {
     const link = document.createElement('a');
-    link.href = imageData;
-    link.download = `detection-result-${new Date().getTime()}.jpg`;
+    link.href = filePath;
+    link.download = `detection-result-${new Date().getTime()}.${filePath.split('.').pop()}`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

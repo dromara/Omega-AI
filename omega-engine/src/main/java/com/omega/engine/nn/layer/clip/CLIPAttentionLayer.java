@@ -205,19 +205,22 @@ public class CLIPAttentionLayer extends Layer {
             this.vt.viewOrg();
         }
         if (network.RUN_MODEL == RunModel.EVAL) {
-            this.qt = CUDAMemoryManager.getCache("clip-attn-qt", batchSize, headNum, time, dk);
-            this.kt = CUDAMemoryManager.getCache("clip-attn-kt", batchSize, headNum, time, dk);
-            this.vt = CUDAMemoryManager.getCache("clip-attn-vt", batchSize, headNum, time, dk);
+            this.qt = CUDAMemoryManager.getCache(network.id+"clip-attn-qt", batchSize, headNum, time, dk);
+            this.kt = CUDAMemoryManager.getCache(network.id+"clip-attn-kt", batchSize, headNum, time, dk);
+            this.vt = CUDAMemoryManager.getCache(network.id+"clip-attn-vt", batchSize, headNum, time, dk);
             // [batch_size，n_heads，len_q，len_k]
             if (time < dk) {
-                this.temp = CUDAMemoryManager.getCache("clip-attn-temp1", batchSize, headNum, time, dk);
+                this.temp = CUDAMemoryManager.getCache(network.id+"clip-attn-temp1", batchSize, headNum, time, dk);
             } else {
-                this.temp = CUDAMemoryManager.getCache("clip-attn-temp2", batchSize, headNum, time, time);
+                this.temp = CUDAMemoryManager.getCache(network.id+"clip-attn-temp2", batchSize, headNum, time, time);
             }
             // [batch_size，n_heads，len_q，len_k]
-            this.attn = CUDAMemoryManager.getCache("clip-attn-attn", batchSize, headNum, time, time);
+            this.attn = CUDAMemoryManager.getCache(network.id+"clip-attn-attn", batchSize, headNum, time, time);
             // [batch_size, len_q, n_heads * dim_v]
-            this.oi = CUDAMemoryManager.getCache("clip-attn-oi", batchSize * time, 1, 1, embedDim);
+            this.oi = CUDAMemoryManager.getCache(network.id+"clip-attn-oi", batchSize * time, 1, 1, embedDim);
+            
+            this.output = CUDAMemoryManager.getCache(network.id+"clip-attn-output", batchSize * time, 1, 1, embedDim);
+            
         } else {
             if (this.qt == null || this.qt.number != this.batchSize) {
                 // [batch_size，time，head_num，d_k]
@@ -243,7 +246,7 @@ public class CLIPAttentionLayer extends Layer {
         }
         if (mask && (attnMask == null || attnMask.number != batchSize)) {
             if (network.RUN_MODEL == RunModel.EVAL) {
-                this.attnMask = CUDAMemoryManager.getCache("clip-attn-mask", batchSize, headNum, time, time);
+                this.attnMask = CUDAMemoryManager.getCache(network.id+"clip-attn-mask", batchSize, headNum, time, time);
             } else {
                 attnMask = Tensor.createGPUTensor(attnMask, batchSize, headNum, time, time, true);
             }
@@ -292,9 +295,9 @@ public class CLIPAttentionLayer extends Layer {
     }
 
     public void eval() {
-        Tensor qfo = CUDAMemoryManager.getCache("clip_attn_qfo_cache", batchSize * time, 1, 1, embedDim);
-        Tensor kfo = CUDAMemoryManager.getCache("clip_attn_kfo_cache", batchSize * time, 1, 1, embedDim);
-        Tensor vfo = CUDAMemoryManager.getCache("clip_attn_vfo_cache", batchSize * time, 1, 1, embedDim);
+        Tensor qfo = CUDAMemoryManager.getCache(network.id+"clip_attn_qfo_cache", batchSize * time, 1, 1, embedDim);
+        Tensor kfo = CUDAMemoryManager.getCache(network.id+"clip_attn_kfo_cache", batchSize * time, 1, 1, embedDim);
+        Tensor vfo = CUDAMemoryManager.getCache(network.id+"clip_attn_vfo_cache", batchSize * time, 1, 1, embedDim);
         this.getqLinerLayer().forward(this.input, qfo);
         this.getkLinerLayer().forward(this.input, kfo);
         this.getvLinerLayer().forward(this.input, vfo);
@@ -309,8 +312,8 @@ public class CLIPAttentionLayer extends Layer {
         scaledDotProductAttention(qt, kt, vt);
         Tensor vaccum = temp;
         attentionKernel.unpermute(vaccum, oi, batchSize, time, headNum, dk);
-        this.getoLinerLayer().forward(oi);
-        this.output = this.getoLinerLayer().getOutput();
+        this.getoLinerLayer().forward(oi, output);
+//        this.output = this.getoLinerLayer().getOutput();
         if (dropout) {
             dropoutLayer2.forward(this.getoLinerLayer().getOutput());
             this.output = dropoutLayer2.getOutput();
@@ -391,17 +394,14 @@ public class CLIPAttentionLayer extends Layer {
         // TODO Auto-generated method stub
         /**
          * 参数初始化
-
          */
         this.init(input);
         /**
          * 设置输入
-
          */
         this.setInput(input);
         /**
          * 计算输出
-
          */
         this.output();
     }

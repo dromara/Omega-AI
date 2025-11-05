@@ -54,6 +54,10 @@ public class RoPEKernel extends BaseKernel {
     private CUfunction backward_32_function;
     private CUfunction forward_all_32_function;
     private CUfunction backward_all_32_function;
+    
+    private CUfunction forward_2d_igone_function;
+    private CUfunction backward_2d_igone_function;
+    
     private int CAFFE_CUDA_NUM_THREADS = 1024;
     /**
      * 前向方法参数
@@ -317,6 +321,12 @@ public class RoPEKernel extends BaseKernel {
             if(backward_2d_function == null) {
             	backward_2d_function = getCudaManager().getLocalFunctionByModule("RoPEKernel.cu", "rope_2d_back");
             }
+            if (forward_2d_igone_function == null) {
+            	forward_2d_igone_function = getCudaManager().getLocalFunctionByModule("RoPEKernel.cu", "rope_2d_norm_igone");
+            }
+            if(backward_2d_igone_function == null) {
+            	backward_2d_igone_function = getCudaManager().getLocalFunctionByModule("RoPEKernel.cu", "rope_2d_back_igone");
+            }
         } catch (Exception e) {
             // TODO: handle exception
             e.printStackTrace();
@@ -400,6 +410,44 @@ public class RoPEKernel extends BaseKernel {
         }
     }
 
+    public void forward2d(Tensor cos, Tensor sin, Tensor input, Tensor output,int T,int HN,int HS, int igone) {
+        try {
+           
+            /**
+             * float* x, float* out,float* cos,float* sin, int N, int T, int headNum,int headSize
+             */
+            forwardParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(cos.getGpuData()), Pointer.to(sin.getGpuData()), Pointer.to(new int[]{input.dataLength}), Pointer.to(new int[]{T}), Pointer.to(new int[]{HN}), Pointer.to(new int[]{HS}), Pointer.to(new int[]{igone}));
+
+            checkCUDA(cuLaunchKernel(forward_2d_igone_function, this.CAFFE_GET_BLOCKS(input.dataLength/2), 1, 1,      // Grid dimension
+            		CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    forwardParameters, null // Kernel- and extra parameters
+            ));
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void backward2d(Tensor cos, Tensor sin, Tensor delta, Tensor diff,int T,int HN,int HS, int igone) {
+        try {
+           
+            /**
+             * float* delta, float* diff,float* cos, float* sin, int N, int T, int headNum,int headSize
+             */
+        	backwardParameters = Pointer.to(Pointer.to(delta.getGpuData()), Pointer.to(diff.getGpuData()), Pointer.to(cos.getGpuData()), Pointer.to(sin.getGpuData()), Pointer.to(new int[]{delta.dataLength}), Pointer.to(new int[]{T}), Pointer.to(new int[]{HN}), Pointer.to(new int[]{HS}), Pointer.to(new int[]{igone}));
+
+            checkCUDA(cuLaunchKernel(backward_2d_igone_function, this.CAFFE_GET_BLOCKS(delta.dataLength/2), 1, 1,      // Grid dimension
+            		CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    backwardParameters, null // Kernel- and extra parameters
+            ));
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
     public void forward(Tensor cos, Tensor sin, Tensor q, Tensor k, Tensor qo, Tensor ko) {
         try {
             int nrow = q.number * q.channel;

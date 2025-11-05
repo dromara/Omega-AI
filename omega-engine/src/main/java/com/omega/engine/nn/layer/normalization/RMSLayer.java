@@ -55,26 +55,28 @@ public class RMSLayer extends NormalizationLayer {
 
     public RMSLayer(Layer preLayer) {
         this.setPreLayer(preLayer);
-        this.hasParams = false;
+        this.hasParams = true;
         this.setUpdater(UpdaterFactory.create(this.network));
     }
 
     public RMSLayer(Layer preLayer, boolean hasBias) {
         this.setPreLayer(preLayer);
         this.hasBias = false;
-        this.hasParams = false;
+        this.hasParams = true;
         this.setUpdater(UpdaterFactory.create(this.network));
     }
 
     public RMSLayer(Network network) {
         this.network = network;
         network.paramLayers.add(this);
+        this.hasParams = true;
         this.setUpdater(UpdaterFactory.create(this.network));
     }
 
     public RMSLayer(Network network, boolean hasBias) {
         this.network = network;
         this.hasBias = false;
+        this.hasParams = true;
         network.paramLayers.add(this);
         this.setUpdater(UpdaterFactory.create(this.network));
     }
@@ -420,7 +422,26 @@ public class RMSLayer extends NormalizationLayer {
             this.gradientCheck();
         }
     }
-
+    
+    public void back(Tensor delta, Tensor diff) {
+        // TODO Auto-generated method stub
+    	this.diff = diff;
+        this.initBack(delta);
+        /**
+         * 设置梯度
+         *
+         */
+        this.setDelta(delta);
+        /**
+         * 计算梯度
+         *
+         */
+        this.diff();
+        if (this.network.GRADIENT_CHECK) {
+            this.gradientCheck();
+        }
+    }
+    
     @Override
     public void backTemp() {
         // TODO Auto-generated method stub

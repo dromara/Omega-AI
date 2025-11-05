@@ -83,6 +83,7 @@ public class DiTTimeEmbeddingLayer extends Layer {
 //        emb.initFactor(T, d_model);
         linear1 = new FullyLayer(d_model, dim, bias, network);
         linear1.weight.setData(RandomUtils.normal_(d_model * dim, 0.0f, 0.02f));
+//        linear1.weight.showDM("l1");
         if(linear1.bias != null) {
         	linear1.bias.clearGPU();
         }

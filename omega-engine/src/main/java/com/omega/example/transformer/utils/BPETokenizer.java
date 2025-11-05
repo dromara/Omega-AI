@@ -97,15 +97,15 @@ public class BPETokenizer {
         //			sort.add(action,action);
         //		});
         //		System.out.println(JsonUtils.toJson(sort));
-        String tokenizer_path = "H:\\transformer_dataset\\tokenizer.model";
-        try {
-            Map<Integer, String> vocab = new HashMap<Integer, String>();
-            SentencePieceTokenizer tokenizer = new SentencePieceTokenizer(tokenizer_path, 64789, vocab);
-            System.out.println(JsonUtils.toJson(vocab));
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
+//        String tokenizer_path = "H:\\transformer_dataset\\tokenizer.model";
+//        try {
+//            Map<Integer, String> vocab = new HashMap<Integer, String>();
+//            SentencePieceTokenizer tokenizer = new SentencePieceTokenizer(tokenizer_path, 64789, vocab);
+//            System.out.println(JsonUtils.toJson(vocab));
+//        } catch (IOException e) {
+//            // TODO Auto-generated catch block
+//            e.printStackTrace();
+//        }
     }
 
     public void loadMerges() {

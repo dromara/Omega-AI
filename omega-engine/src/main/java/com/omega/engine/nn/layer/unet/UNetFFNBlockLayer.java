@@ -4,6 +4,7 @@ import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.active.GeluLayer;
+import com.omega.engine.nn.layer.active.GeluType;
 import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.network.Network;
@@ -39,7 +40,7 @@ public class UNetFFNBlockLayer extends Layer {
         int iw = width;
         int ow = mult * iw;
         linear1 = new FullyLayer(iw, ow, true, network);
-        act = new GeluLayer(linear1);
+        act = new GeluLayer(linear1, GeluType.TANH);
         linear2 = new FullyLayer(ow, iw, true, network);
     }
 

@@ -188,6 +188,18 @@ public class TensorOP {
         }
     }
     
+    public void mulAxis(Tensor a, Tensor b, Tensor c, int axis) {
+        if (c.isHasGPU()) {
+            op.mul_axis_gpu(a, b, c, axis);
+        }
+    }
+    
+    public void mulAxisBack(Tensor a, Tensor b, Tensor c) {
+        if (c.isHasGPU()) {
+            op.mul_axis_back_gpu(a, b, c);
+        }
+    }
+    
     public void mul(Tensor a, Tensor b, Tensor c, int N, int C, int H, int W, int axis) {
         if (c.isHasGPU()) {
             op.mul_gpu(a, b, c, N, C, H, W, axis);
@@ -348,7 +360,15 @@ public class TensorOP {
             b.data = MatrixOperation.sum(a.data, a.number, a.channel, a.height, a.width, axis);
         }
     }
-
+    
+    public void sum(Tensor a, Tensor b) {
+        if (b.isHasGPU()) {
+            op.sum_gpu(a, b);
+        } else {
+            b.data = MatrixOperation.sum(a.data, a.number, a.channel, a.height, a.width, 0);
+        }
+    }
+    
     public void sum_pow(Tensor a, Tensor b, double p, int axis) {
         if (b.isHasGPU()) {
             op.sum_pow_gpu(a, b, p, axis);
@@ -630,6 +650,30 @@ public class TensorOP {
         }
     }
 
+    public void cat_batch(Tensor a, Tensor b, Tensor c) {
+        if (a.isHasGPU()) {
+            op.cat_bacth_gpu(a, b, c);
+        } else {
+            //			c.data = MatrixOperation.add(a.data, b.data);
+        }
+    }
+    
+    public void cat_bacth_back(Tensor c, Tensor a, Tensor b) {
+        if (a.isHasGPU()) {
+            op.cat_bacth_back_gpu(c, a, b);
+        } else {
+            //			c.data = MatrixOperation.add(a.data, b.data);
+        }
+    }
+    
+    public void cat_bacth_copy(Tensor c, Tensor a, Tensor b) {
+        if (a.isHasGPU()) {
+            op.cat_bacth_copy_gpu(c, a, b);
+        } else {
+            //			c.data = MatrixOperation.add(a.data, b.data);
+        }
+    }
+
     public void cat(Tensor a, Tensor b, Tensor c) {
         if (a.isHasGPU()) {
             op.cat_gpu(a, b, c);
@@ -649,6 +693,14 @@ public class TensorOP {
     public void cat_width(Tensor a, Tensor b, Tensor c) {
         if (a.isHasGPU()) {
             op.cat_width_gpu(a, b, c);
+        } else {
+            //			c.data = MatrixOperation.add(a.data, b.data);
+        }
+    }
+    
+    public void cat_width(Tensor a, Tensor b, Tensor c, int aw, int bw) {
+        if (a.isHasGPU()) {
+            op.cat_width_gpu(a, b, c, aw, bw);
         } else {
             //			c.data = MatrixOperation.add(a.data, b.data);
         }

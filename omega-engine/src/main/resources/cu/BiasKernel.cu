@@ -49,6 +49,18 @@ __global__ void backward_bias_conn_kernel(float *bias_updates, float *delta, int
 }
 
 extern "C"
+__global__ void backward_bias_by_batch_kernel(float *bias_updates, float *delta, int batch, int W)
+{
+    int index = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (index >= batch) return;
+    for(int w = 0; w < W; ++w){
+        int i = index*W + w;
+        bias_updates[w] += delta[i];
+    }
+    
+}
+
+extern "C"
 __global__ void backward_bias_kernel(float *bias_updates, float *delta, int batch, int n, int size)
 {
     __shared__ float part[BLOCK];

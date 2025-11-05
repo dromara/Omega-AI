@@ -11,7 +11,7 @@ import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
-import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
@@ -52,8 +52,8 @@ public class OpenSoraDiTPatchEmbed3D extends Layer {
             }
         }
         
-        ClipModelUtils.loadData(block.patchEmbedding.weight, weightMap, "proj.weight", 5);
-        ClipModelUtils.loadData(block.patchEmbedding.bias, weightMap, "proj.bias");
+        ModeLoaderlUtils.loadData(block.patchEmbedding.weight, weightMap, "proj.weight", 5);
+        ModeLoaderlUtils.loadData(block.patchEmbedding.bias, weightMap, "proj.bias");
 //        block.patchEmbedding.bias.showDM("bias");
     }
     
@@ -76,7 +76,7 @@ public class OpenSoraDiTPatchEmbed3D extends Layer {
         String inputPath = "D:\\models\\sora_x.json";
         Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
         Tensor input = new Tensor(N, C * T, H, W, true);
-        ClipModelUtils.loadData(input, datas, "x", 5);
+        ModeLoaderlUtils.loadData(input, datas, "x", 5);
         
         layer.forward(input);
         layer.getOutput().showShape();
@@ -85,7 +85,7 @@ public class OpenSoraDiTPatchEmbed3D extends Layer {
         String dxPath = "D:\\models\\sora_dx.json";
         Map<String, Object> dxDatas = LagJsonReader.readJsonFileSmallWeight(dxPath);
         Tensor dx = new Tensor(N, layer.getOutput().channel, layer.getOutput().height, layer.getOutput().width, true);
-        ClipModelUtils.loadData(dx, dxDatas, "dx", 3);
+        ModeLoaderlUtils.loadData(dx, dxDatas, "dx", 3);
         
         layer.back(dx);
         layer.diff.showShape();

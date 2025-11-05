@@ -979,6 +979,32 @@ public class ImageUtils {
         }
         return new OMImage(3, height, width, color);
     }
+    
+    public OMImage loadOMImage(BufferedImage bi) throws Exception {
+        int width = bi.getWidth();
+        int height = bi.getHeight();
+        int minx = bi.getMinX();
+        int miny = bi.getMinY();
+        int size = height * width * 3;
+        float[] color = new float[size];
+        float n = 255.0f;
+        int r = 0;
+        int g = 0;
+        int b = 0;
+        int pixel = 0;
+        for (int j = miny; j < height; j++) {
+            for (int i = minx; i < width; i++) {
+                pixel = bi.getRGB(i, j); // 下面三行代码将一个数字转换为RGB数字
+                r = (pixel & 0xff0000) >> 16;
+                g = (pixel & 0xff00) >> 8;
+                b = (pixel & 0xff);
+                color[0 * width * height + j * width + i] = r * 1.0f / n;
+                color[1 * width * height + j * width + i] = g * 1.0f / n;
+                color[2 * width * height + j * width + i] = b * 1.0f / n;
+            }
+        }
+        return new OMImage(3, height, width, color);
+    }
 
     public OMImage loadOMImage(File file, float[] color) throws Exception {
         BufferedImage bi = null;

@@ -9,7 +9,7 @@ import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.layer.InputLayer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.SoftmaxWithCrossEntropyLayer;
-import com.omega.engine.nn.layer.dit.org.DiTMainMoudue;
+import com.omega.engine.nn.layer.dit.txt.DiT_TXTMainMoudue;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.NetworkType;
 import com.omega.engine.nn.network.RunModel;
@@ -30,7 +30,8 @@ public class DiT_TXT extends Network {
     public int width;
     public int height;
     public int patchSize;
-    public int classNum;
+    public int textEmbedDim;
+    public int maxContextLen;
     public int hiddenSize;
     private int depth;
     private int timeSteps;
@@ -41,10 +42,17 @@ public class DiT_TXT extends Network {
     private float y_drop_prob = 0.0f;
     
     private InputLayer inputLayer;
-    public DiTMainMoudue main;
+    public DiT_TXTMainMoudue main;
     
-    public DiT_TXT(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int classNum, int mlpRatio,boolean learnSigma, float y_drop_prob) {
+    private Tensor input_null;
+    private Tensor eps;
+    private Tensor uncond_eps;
+    private Tensor head;
+    private Tensor tail;
+    
+    public DiT_TXT(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int textEmbedDim, int maxContextLen, int mlpRatio,boolean learnSigma, float y_drop_prob) {
         this.lossFunction = LossFactory.create(lossType, this);
+        this.weight_decay = 0.0f;
         this.updater = updater;
         this.inChannel = inChannel;
         this.width = width;
@@ -54,7 +62,8 @@ public class DiT_TXT extends Network {
         this.hiddenSize = hiddenSize;
         this.depth = depth;
         this.timeSteps = timeSteps;
-        this.classNum = classNum;
+        this.textEmbedDim = textEmbedDim;
+        this.maxContextLen = maxContextLen;
         this.mlpRatio = mlpRatio;
         this.learnSigma = learnSigma;
         this.y_drop_prob = y_drop_prob;
@@ -66,7 +75,7 @@ public class DiT_TXT extends Network {
     	
         this.inputLayer = new InputLayer(inChannel, height, width);
         
-        main = new DiTMainMoudue(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, classNum, mlpRatio, learnSigma, y_drop_prob, this);
+        main = new DiT_TXTMainMoudue(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, textEmbedDim, maxContextLen, mlpRatio, learnSigma, y_drop_prob, this);
         
         this.addLayer(inputLayer);
         this.addLayer(main);
@@ -122,7 +131,7 @@ public class DiT_TXT extends Network {
         return this.main.getOutput();
     }
     
-    public Tensor forward(Tensor input, Tensor t, Tensor context,Tensor cos,Tensor sin) {
+    public Tensor forward(Tensor input, Tensor t, Tensor context, Tensor cos, Tensor sin) {
         /**
          * 设置输入数据
          */
@@ -130,8 +139,58 @@ public class DiT_TXT extends Network {
         this.main.forward(input, t, context, cos, sin);
         return this.main.getOutput();
     }
-
+    
+    public Tensor forward_with_cfg(Tensor input, Tensor t, Tensor context, Tensor cos, Tensor sin, Tensor eps, float cfg_scale) {
+        /**
+         * 设置输入数据
+         */
+        if(input_null == null || input_null.number != input.number * 2) {
+    		input_null = Tensor.createGPUTensor(input_null, input.number * 2, input.channel, input.height, input.width, true);
+    		uncond_eps = Tensor.createGPUTensor(uncond_eps, input.number, input.channel, input.height, input.width, true);
+    	}
+    	tensorOP.cat_batch(input, input, input_null);
+        this.main.forward(input_null, t, context, cos, sin);
+        tensorOP.cat_bacth_copy(this.main.getOutput(), eps, uncond_eps);
+        /**
+         * out = uncond_eps + cfg_scale * (eps - uncond_eps)
+         */
+        tensorOP.sub(eps, uncond_eps, eps);
+        tensorOP.mul(eps, cfg_scale, eps);
+        tensorOP.add(uncond_eps, eps, eps);
+        return eps;
+    }
+    
+    public Tensor forward_with_cfg(Tensor input, Tensor t, Tensor context, Tensor cos, Tensor sin, Tensor out, float cfg_scale, int channel) {
+        /**
+         * 设置输入数据
+         */
+        if(input_null == null || input_null.number != input.number * 2) {
+    		input_null = Tensor.createGPUTensor(input_null, input.number * 2, input.channel, input.height, input.width, true);
+    		eps = Tensor.createGPUTensor(eps, input.number, channel, input.height, input.width, true);
+    		uncond_eps = Tensor.createGPUTensor(uncond_eps, input.number, channel, input.height, input.width, true);
+    		head = Tensor.createGPUTensor(head, input_null.number, channel, input.height, input.width, true);
+    		tail = Tensor.createGPUTensor(tail, input_null.number, input.channel - channel, input.height, input.width, true);
+    	}
+    	tensorOP.cat_batch(input, input, input_null);
+        this.main.forward(input_null, t, context, cos, sin);
+        tensorOP.getByChannel(this.main.getOutput(), head, this.main.getOutput().shape(), 0, channel);
+        tensorOP.getByChannel(this.main.getOutput(), tail, this.main.getOutput().shape(), channel, tail.channel);
+        tensorOP.cat_bacth_copy(head, eps, uncond_eps);
+        /**
+         * out = uncond_eps + cfg_scale * (eps - uncond_eps)
+         */
+        tensorOP.sub(eps, uncond_eps, eps);
+        tensorOP.mul(eps, cfg_scale, eps);
+        tensorOP.add(uncond_eps, eps, eps);
+        tensorOP.cat_batch(eps, eps, head);
+        tensorOP.getByChannel_back(this.main.getOutput(), head, this.main.getOutput().shape(), 0);
+        tensorOP.getByChannel_back(this.main.getOutput(), tail, this.main.getOutput().shape(), channel);
+        tensorOP.getByNumber(this.main.getOutput(), out, 0, input.number);
+        return out;
+    }
+    
     public void initBack() {
+    	
     }
 
     @Override
@@ -191,7 +250,12 @@ public class DiT_TXT extends Network {
         //		PrintUtils.printImage(t.data);
         return t;
     }
-
+    
+    public void accGrad(int steps) {
+        float scale = 1.0f / steps;
+        main.accGrad(scale);
+    }
+    
     public void update() {
         this.train_time += 1;
         this.main.update();

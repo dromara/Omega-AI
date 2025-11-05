@@ -710,7 +710,6 @@ public class DiTOrgBlock extends Layer {
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
-    	
     	norm1.loadModel(inputStream, channel, height, width, BNType.fully_bn);
     	modulation_shift_msa.loadModel(inputStream);
     	modulation_scale_msa.loadModel(inputStream);

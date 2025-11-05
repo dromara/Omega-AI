@@ -15,7 +15,7 @@ import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
-import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
@@ -347,16 +347,16 @@ public class OpenSoraDiTFinalLayer extends Layer {
             }
         }
         
-        block.finalNorm.gamma = ClipModelUtils.loadData(block.finalNorm.gamma, weightMap, 1, "norm_final.weight");
+        block.finalNorm.gamma = ModeLoaderlUtils.loadData(block.finalNorm.gamma, weightMap, 1, "norm_final.weight");
         
-        ClipModelUtils.loadData(block.finalLinear.weight, weightMap, "linear.weight");
-        ClipModelUtils.loadData(block.finalLinear.bias, weightMap, "linear.bias");
+        ModeLoaderlUtils.loadData(block.finalLinear.weight, weightMap, "linear.weight");
+        ModeLoaderlUtils.loadData(block.finalLinear.bias, weightMap, "linear.bias");
         
-        ClipModelUtils.loadData(block.m_linear1.weight, weightMap, "adaLN_modulation1.weight");
-        ClipModelUtils.loadData(block.m_linear1.bias, weightMap, "adaLN_modulation1.bias");
+        ModeLoaderlUtils.loadData(block.m_linear1.weight, weightMap, "adaLN_modulation1.weight");
+        ModeLoaderlUtils.loadData(block.m_linear1.bias, weightMap, "adaLN_modulation1.bias");
         
-        ClipModelUtils.loadData(block.m_linear2.weight, weightMap, "adaLN_modulation2.weight");
-        ClipModelUtils.loadData(block.m_linear2.bias, weightMap, "adaLN_modulation2.bias");
+        ModeLoaderlUtils.loadData(block.m_linear2.weight, weightMap, "adaLN_modulation2.weight");
+        ModeLoaderlUtils.loadData(block.m_linear2.bias, weightMap, "adaLN_modulation2.bias");
     }
     
     public static void main(String[] args) {

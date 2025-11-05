@@ -17,7 +17,7 @@ import com.omega.engine.nn.network.CNN;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
-import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
@@ -467,68 +467,68 @@ public class MMDiTMoudue extends Layer {
             }
         }
         
-        ClipModelUtils.loadData(block.patchEmbd.patchEmbedding.weight, weightMap, "x_embedder.proj.weight");
-        ClipModelUtils.loadData(block.patchEmbd.patchEmbedding.bias, weightMap, "x_embedder.proj.bias");
+        ModeLoaderlUtils.loadData(block.patchEmbd.patchEmbedding.weight, weightMap, "x_embedder.proj.weight");
+        ModeLoaderlUtils.loadData(block.patchEmbd.patchEmbedding.bias, weightMap, "x_embedder.proj.bias");
         
-        ClipModelUtils.loadData(block.timeEmbd.linear1.weight, weightMap, "t_embedder.mlp.0.weight");
-        ClipModelUtils.loadData(block.timeEmbd.linear1.bias, weightMap, "t_embedder.mlp.0.bias");
-        ClipModelUtils.loadData(block.timeEmbd.linear2.weight, weightMap, "t_embedder.mlp.2.weight");
-        ClipModelUtils.loadData(block.timeEmbd.linear2.bias, weightMap, "t_embedder.mlp.2.bias");
+        ModeLoaderlUtils.loadData(block.timeEmbd.linear1.weight, weightMap, "t_embedder.mlp.0.weight");
+        ModeLoaderlUtils.loadData(block.timeEmbd.linear1.bias, weightMap, "t_embedder.mlp.0.bias");
+        ModeLoaderlUtils.loadData(block.timeEmbd.linear2.weight, weightMap, "t_embedder.mlp.2.weight");
+        ModeLoaderlUtils.loadData(block.timeEmbd.linear2.bias, weightMap, "t_embedder.mlp.2.bias");
         
-        ClipModelUtils.loadData(block.labelEmbd.weight, weightMap, "context_embedder.weight");
-        ClipModelUtils.loadData(block.labelEmbd.bias, weightMap, "context_embedder.bias");
+        ModeLoaderlUtils.loadData(block.labelEmbd.weight, weightMap, "context_embedder.weight");
+        ModeLoaderlUtils.loadData(block.labelEmbd.bias, weightMap, "context_embedder.bias");
         
         for(int i = 0;i<block.depth;i++) {
         	DiTJoinBlock jb = block.blocks.get(i);
         	
-        	jb.context_block.norm1.gamma = ClipModelUtils.loadData(jb.context_block.norm1.gamma, weightMap, 1, "joint_blocks."+i+".context_block.norm1.weight"); 
-        	jb.context_block.norm1.beta = ClipModelUtils.loadData(jb.context_block.norm1.beta, weightMap, 1, "joint_blocks."+i+".context_block.norm1.bias"); 
+        	jb.context_block.norm1.gamma = ModeLoaderlUtils.loadData(jb.context_block.norm1.gamma, weightMap, 1, "joint_blocks."+i+".context_block.norm1.weight"); 
+        	jb.context_block.norm1.beta = ModeLoaderlUtils.loadData(jb.context_block.norm1.beta, weightMap, 1, "joint_blocks."+i+".context_block.norm1.bias"); 
         	
-        	ClipModelUtils.loadData(jb.context_block.qLinerLayer.weight, weightMap, "joint_blocks."+i+".context_block.attn.ql.weight");
-            ClipModelUtils.loadData(jb.context_block.kLinerLayer.weight, weightMap, "joint_blocks."+i+".context_block.attn.kl.weight");
-            ClipModelUtils.loadData(jb.context_block.vLinerLayer.weight, weightMap, "joint_blocks."+i+".context_block.attn.vl.weight");
+        	ModeLoaderlUtils.loadData(jb.context_block.qLinerLayer.weight, weightMap, "joint_blocks."+i+".context_block.attn.ql.weight");
+            ModeLoaderlUtils.loadData(jb.context_block.kLinerLayer.weight, weightMap, "joint_blocks."+i+".context_block.attn.kl.weight");
+            ModeLoaderlUtils.loadData(jb.context_block.vLinerLayer.weight, weightMap, "joint_blocks."+i+".context_block.attn.vl.weight");
              
             if(jb.context_block.oLinerLayer != null) {
-            	ClipModelUtils.loadData(jb.context_block.oLinerLayer.weight, weightMap, "joint_blocks."+i+".context_block.attn.proj.weight");
-                ClipModelUtils.loadData(jb.context_block.oLinerLayer.bias, weightMap, "joint_blocks."+i+".context_block.attn.proj.bias");
+            	ModeLoaderlUtils.loadData(jb.context_block.oLinerLayer.weight, weightMap, "joint_blocks."+i+".context_block.attn.proj.weight");
+                ModeLoaderlUtils.loadData(jb.context_block.oLinerLayer.bias, weightMap, "joint_blocks."+i+".context_block.attn.proj.bias");
             }
             
             if(jb.context_block.mlp != null) {
-            	jb.context_block.norm2.gamma = ClipModelUtils.loadData(jb.context_block.norm2.gamma, weightMap, 1, "joint_blocks."+i+".context_block.norm2.weight"); 
-            	jb.context_block.norm2.beta = ClipModelUtils.loadData(jb.context_block.norm2.beta, weightMap, 1, "joint_blocks."+i+".context_block.norm2.bias");
-           	 	ClipModelUtils.loadData(jb.context_block.mlp.linear1.weight, weightMap, "joint_blocks."+i+".context_block.mlp.fc1.weight");
-                ClipModelUtils.loadData(jb.context_block.mlp.linear1.bias, weightMap, "joint_blocks."+i+".context_block.mlp.fc1.bias");
-                ClipModelUtils.loadData(jb.context_block.mlp.linear2.weight, weightMap, "joint_blocks."+i+".context_block.mlp.fc2.weight");
-                ClipModelUtils.loadData(jb.context_block.mlp.linear2.bias, weightMap, "joint_blocks."+i+".context_block.mlp.fc2.bias");
+            	jb.context_block.norm2.gamma = ModeLoaderlUtils.loadData(jb.context_block.norm2.gamma, weightMap, 1, "joint_blocks."+i+".context_block.norm2.weight"); 
+            	jb.context_block.norm2.beta = ModeLoaderlUtils.loadData(jb.context_block.norm2.beta, weightMap, 1, "joint_blocks."+i+".context_block.norm2.bias");
+           	 	ModeLoaderlUtils.loadData(jb.context_block.mlp.linear1.weight, weightMap, "joint_blocks."+i+".context_block.mlp.fc1.weight");
+                ModeLoaderlUtils.loadData(jb.context_block.mlp.linear1.bias, weightMap, "joint_blocks."+i+".context_block.mlp.fc1.bias");
+                ModeLoaderlUtils.loadData(jb.context_block.mlp.linear2.weight, weightMap, "joint_blocks."+i+".context_block.mlp.fc2.weight");
+                ModeLoaderlUtils.loadData(jb.context_block.mlp.linear2.bias, weightMap, "joint_blocks."+i+".context_block.mlp.fc2.bias");
             }
-            ClipModelUtils.loadData(jb.context_block.adaLN_modulation.weight, weightMap, "joint_blocks."+i+".context_block.adaLN_modulation.1.weight");
-            ClipModelUtils.loadData(jb.context_block.adaLN_modulation.bias, weightMap, "joint_blocks."+i+".context_block.adaLN_modulation.1.bias");
+            ModeLoaderlUtils.loadData(jb.context_block.adaLN_modulation.weight, weightMap, "joint_blocks."+i+".context_block.adaLN_modulation.1.weight");
+            ModeLoaderlUtils.loadData(jb.context_block.adaLN_modulation.bias, weightMap, "joint_blocks."+i+".context_block.adaLN_modulation.1.bias");
             
-            jb.x_block.norm1.gamma = ClipModelUtils.loadData(jb.x_block.norm1.gamma, weightMap, 1, "joint_blocks."+i+".x_block.norm1.weight"); 
-            jb.x_block.norm1.beta = ClipModelUtils.loadData(jb.x_block.norm1.beta, weightMap, 1, "joint_blocks."+i+".x_block.norm1.bias"); 
-            ClipModelUtils.loadData(jb.x_block.qLinerLayer.weight, weightMap, "joint_blocks."+i+".x_block.attn.ql.weight");
-            ClipModelUtils.loadData(jb.x_block.kLinerLayer.weight, weightMap, "joint_blocks."+i+".x_block.attn.kl.weight");
-            ClipModelUtils.loadData(jb.x_block.vLinerLayer.weight, weightMap, "joint_blocks."+i+".x_block.attn.vl.weight");
-            ClipModelUtils.loadData(jb.x_block.oLinerLayer.weight, weightMap, "joint_blocks."+i+".x_block.attn.proj.weight");
-            ClipModelUtils.loadData(jb.x_block.oLinerLayer.bias, weightMap, "joint_blocks."+i+".x_block.attn.proj.bias");
-            jb.x_block.norm2.gamma = ClipModelUtils.loadData(jb.x_block.norm2.gamma, weightMap, 1, "joint_blocks."+i+".x_block.norm2.weight"); 
-            jb.x_block.norm2.beta = ClipModelUtils.loadData(jb.x_block.norm2.beta, weightMap, 1, "joint_blocks."+i+".x_block.norm2.bias"); 
-            ClipModelUtils.loadData(jb.x_block.mlp.linear1.weight, weightMap, "joint_blocks."+i+".x_block.mlp.fc1.weight");
-            ClipModelUtils.loadData(jb.x_block.mlp.linear1.bias, weightMap, "joint_blocks."+i+".x_block.mlp.fc1.bias");
-            ClipModelUtils.loadData(jb.x_block.mlp.linear2.weight, weightMap, "joint_blocks."+i+".x_block.mlp.fc2.weight");
-            ClipModelUtils.loadData(jb.x_block.mlp.linear2.bias, weightMap, "joint_blocks."+i+".x_block.mlp.fc2.bias");
-            ClipModelUtils.loadData(jb.x_block.adaLN_modulation.weight, weightMap, "joint_blocks."+i+".x_block.adaLN_modulation.1.weight");
-            ClipModelUtils.loadData(jb.x_block.adaLN_modulation.bias, weightMap, "joint_blocks."+i+".x_block.adaLN_modulation.1.bias");
+            jb.x_block.norm1.gamma = ModeLoaderlUtils.loadData(jb.x_block.norm1.gamma, weightMap, 1, "joint_blocks."+i+".x_block.norm1.weight"); 
+            jb.x_block.norm1.beta = ModeLoaderlUtils.loadData(jb.x_block.norm1.beta, weightMap, 1, "joint_blocks."+i+".x_block.norm1.bias"); 
+            ModeLoaderlUtils.loadData(jb.x_block.qLinerLayer.weight, weightMap, "joint_blocks."+i+".x_block.attn.ql.weight");
+            ModeLoaderlUtils.loadData(jb.x_block.kLinerLayer.weight, weightMap, "joint_blocks."+i+".x_block.attn.kl.weight");
+            ModeLoaderlUtils.loadData(jb.x_block.vLinerLayer.weight, weightMap, "joint_blocks."+i+".x_block.attn.vl.weight");
+            ModeLoaderlUtils.loadData(jb.x_block.oLinerLayer.weight, weightMap, "joint_blocks."+i+".x_block.attn.proj.weight");
+            ModeLoaderlUtils.loadData(jb.x_block.oLinerLayer.bias, weightMap, "joint_blocks."+i+".x_block.attn.proj.bias");
+            jb.x_block.norm2.gamma = ModeLoaderlUtils.loadData(jb.x_block.norm2.gamma, weightMap, 1, "joint_blocks."+i+".x_block.norm2.weight"); 
+            jb.x_block.norm2.beta = ModeLoaderlUtils.loadData(jb.x_block.norm2.beta, weightMap, 1, "joint_blocks."+i+".x_block.norm2.bias"); 
+            ModeLoaderlUtils.loadData(jb.x_block.mlp.linear1.weight, weightMap, "joint_blocks."+i+".x_block.mlp.fc1.weight");
+            ModeLoaderlUtils.loadData(jb.x_block.mlp.linear1.bias, weightMap, "joint_blocks."+i+".x_block.mlp.fc1.bias");
+            ModeLoaderlUtils.loadData(jb.x_block.mlp.linear2.weight, weightMap, "joint_blocks."+i+".x_block.mlp.fc2.weight");
+            ModeLoaderlUtils.loadData(jb.x_block.mlp.linear2.bias, weightMap, "joint_blocks."+i+".x_block.mlp.fc2.bias");
+            ModeLoaderlUtils.loadData(jb.x_block.adaLN_modulation.weight, weightMap, "joint_blocks."+i+".x_block.adaLN_modulation.1.weight");
+            ModeLoaderlUtils.loadData(jb.x_block.adaLN_modulation.bias, weightMap, "joint_blocks."+i+".x_block.adaLN_modulation.1.bias");
         }
         
-        block.finalLayer.finalNorm.gamma = ClipModelUtils.loadData(block.finalLayer.finalNorm.gamma, weightMap, 1, "final_layer.norm_final.weight"); 
-        block.finalLayer.finalNorm.beta = ClipModelUtils.loadData(block.finalLayer.finalNorm.beta, weightMap, 1, "final_layer.norm_final.bias"); 
-        ClipModelUtils.loadData(block.finalLayer.finalLinear.weight, weightMap, "final_layer.linear.weight");
-        ClipModelUtils.loadData(block.finalLayer.finalLinear.bias, weightMap, "final_layer.linear.bias");
-        ClipModelUtils.loadData(block.finalLayer.m_linear1.weight, weightMap, "final_layer.adaLN_modulation_l1.weight");
-        ClipModelUtils.loadData(block.finalLayer.m_linear1.bias, weightMap, "final_layer.adaLN_modulation_l1.bias");
-        ClipModelUtils.loadData(block.finalLayer.m_linear2.weight, weightMap, "final_layer.adaLN_modulation_l2.weight");
-        ClipModelUtils.loadData(block.finalLayer.m_linear2.bias, weightMap, "final_layer.adaLN_modulation_l2.bias");
+        block.finalLayer.finalNorm.gamma = ModeLoaderlUtils.loadData(block.finalLayer.finalNorm.gamma, weightMap, 1, "final_layer.norm_final.weight"); 
+        block.finalLayer.finalNorm.beta = ModeLoaderlUtils.loadData(block.finalLayer.finalNorm.beta, weightMap, 1, "final_layer.norm_final.bias"); 
+        ModeLoaderlUtils.loadData(block.finalLayer.finalLinear.weight, weightMap, "final_layer.linear.weight");
+        ModeLoaderlUtils.loadData(block.finalLayer.finalLinear.bias, weightMap, "final_layer.linear.bias");
+        ModeLoaderlUtils.loadData(block.finalLayer.m_linear1.weight, weightMap, "final_layer.adaLN_modulation_l1.weight");
+        ModeLoaderlUtils.loadData(block.finalLayer.m_linear1.bias, weightMap, "final_layer.adaLN_modulation_l1.bias");
+        ModeLoaderlUtils.loadData(block.finalLayer.m_linear2.weight, weightMap, "final_layer.adaLN_modulation_l2.weight");
+        ModeLoaderlUtils.loadData(block.finalLayer.m_linear2.bias, weightMap, "final_layer.adaLN_modulation_l2.bias");
     }
     
     public static void main(String[] args) {
@@ -561,12 +561,12 @@ public class MMDiTMoudue extends Layer {
 	    String inputPath = "D:\\models\\img_x.json";
 	    Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
 	    Tensor input = new Tensor(N, C, H, W, true);
-	    ClipModelUtils.loadData(input, datas, "img_x");
+	    ModeLoaderlUtils.loadData(input, datas, "img_x");
       
 	    String txtPath = "D:\\models\\txt.json";
 	    Map<String, Object> txt_datas = LagJsonReader.readJsonFileSmallWeight(txtPath);
 	    Tensor txt = new Tensor(N, TT, 1, TEM, true);
-	    ClipModelUtils.loadData(txt, txt_datas, "txt", 3);
+	    ModeLoaderlUtils.loadData(txt, txt_datas, "txt", 3);
 	    txt.view(N * TT, 1, 1, TEM);
 	    
 	    Tensor t = new Tensor(N, 1, 1, 1, new float[] {1, 20}, true);
@@ -578,7 +578,7 @@ public class MMDiTMoudue extends Layer {
 	    String deltaPath = "D:\\models\\delta.json";
 	    Map<String, Object> deltaDatas = LagJsonReader.readJsonFileSmallWeight(deltaPath);
 	    Tensor delta = new Tensor(N, C, H, W, true);
-	    ClipModelUtils.loadData(delta, deltaDatas, "delta");
+	    ModeLoaderlUtils.loadData(delta, deltaDatas, "delta");
 	    
 	    jb.back(delta);
 	    

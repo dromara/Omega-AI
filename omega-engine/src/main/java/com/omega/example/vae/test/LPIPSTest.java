@@ -10,7 +10,7 @@ import com.omega.engine.nn.network.vqgan.Opensora_LPIPS;
 import com.omega.engine.optimizer.MBSGDOptimizer;
 import com.omega.engine.optimizer.lr.LearnRateUpdate;
 import com.omega.engine.updater.UpdaterType;
-import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.diffusion.utils.DiffusionImageDataLoader;
 import com.omega.example.transformer.utils.LagJsonReader;
 
@@ -31,47 +31,47 @@ public class LPIPSTest {
          * vgg slice
          */
         VGGBlock block0 = (VGGBlock) network.lpips.vgg.features.get(0);
-        ClipModelUtils.loadData(block0.conv.weight, weightMap, "net.slice1.0.weight");
-        ClipModelUtils.loadData(block0.conv.bias, weightMap, "net.slice1.0.bias");
+        ModeLoaderlUtils.loadData(block0.conv.weight, weightMap, "net.slice1.0.weight");
+        ModeLoaderlUtils.loadData(block0.conv.bias, weightMap, "net.slice1.0.bias");
         VGGBlock block2 = (VGGBlock) network.lpips.vgg.features.get(1);
-        ClipModelUtils.loadData(block2.conv.weight, weightMap, "net.slice1.2.weight");
-        ClipModelUtils.loadData(block2.conv.bias, weightMap, "net.slice1.2.bias");
+        ModeLoaderlUtils.loadData(block2.conv.weight, weightMap, "net.slice1.2.weight");
+        ModeLoaderlUtils.loadData(block2.conv.bias, weightMap, "net.slice1.2.bias");
         VGGBlock block5 = (VGGBlock) network.lpips.vgg.features.get(3);
-        ClipModelUtils.loadData(block5.conv.weight, weightMap, "net.slice2.5.weight");
-        ClipModelUtils.loadData(block5.conv.bias, weightMap, "net.slice2.5.bias");
+        ModeLoaderlUtils.loadData(block5.conv.weight, weightMap, "net.slice2.5.weight");
+        ModeLoaderlUtils.loadData(block5.conv.bias, weightMap, "net.slice2.5.bias");
         VGGBlock block7 = (VGGBlock) network.lpips.vgg.features.get(4);
-        ClipModelUtils.loadData(block7.conv.weight, weightMap, "net.slice2.7.weight");
-        ClipModelUtils.loadData(block7.conv.bias, weightMap, "net.slice2.7.bias");
+        ModeLoaderlUtils.loadData(block7.conv.weight, weightMap, "net.slice2.7.weight");
+        ModeLoaderlUtils.loadData(block7.conv.bias, weightMap, "net.slice2.7.bias");
         VGGBlock block10 = (VGGBlock) network.lpips.vgg.features.get(6);
-        ClipModelUtils.loadData(block10.conv.weight, weightMap, "net.slice3.10.weight");
-        ClipModelUtils.loadData(block10.conv.bias, weightMap, "net.slice3.10.bias");
+        ModeLoaderlUtils.loadData(block10.conv.weight, weightMap, "net.slice3.10.weight");
+        ModeLoaderlUtils.loadData(block10.conv.bias, weightMap, "net.slice3.10.bias");
         VGGBlock block12 = (VGGBlock) network.lpips.vgg.features.get(7);
-        ClipModelUtils.loadData(block12.conv.weight, weightMap, "net.slice3.12.weight");
-        ClipModelUtils.loadData(block12.conv.bias, weightMap, "net.slice3.12.bias");
+        ModeLoaderlUtils.loadData(block12.conv.weight, weightMap, "net.slice3.12.weight");
+        ModeLoaderlUtils.loadData(block12.conv.bias, weightMap, "net.slice3.12.bias");
         VGGBlock block14 = (VGGBlock) network.lpips.vgg.features.get(8);
-        ClipModelUtils.loadData(block14.conv.weight, weightMap, "net.slice3.14.weight");
-        ClipModelUtils.loadData(block14.conv.bias, weightMap, "net.slice3.14.bias");
+        ModeLoaderlUtils.loadData(block14.conv.weight, weightMap, "net.slice3.14.weight");
+        ModeLoaderlUtils.loadData(block14.conv.bias, weightMap, "net.slice3.14.bias");
         VGGBlock block17 = (VGGBlock) network.lpips.vgg.features.get(10);
-        ClipModelUtils.loadData(block17.conv.weight, weightMap, "net.slice4.17.weight");
-        ClipModelUtils.loadData(block17.conv.bias, weightMap, "net.slice4.17.bias");
+        ModeLoaderlUtils.loadData(block17.conv.weight, weightMap, "net.slice4.17.weight");
+        ModeLoaderlUtils.loadData(block17.conv.bias, weightMap, "net.slice4.17.bias");
         VGGBlock block19 = (VGGBlock) network.lpips.vgg.features.get(11);
-        ClipModelUtils.loadData(block19.conv.weight, weightMap, "net.slice4.19.weight");
-        ClipModelUtils.loadData(block19.conv.bias, weightMap, "net.slice4.19.bias");
+        ModeLoaderlUtils.loadData(block19.conv.weight, weightMap, "net.slice4.19.weight");
+        ModeLoaderlUtils.loadData(block19.conv.bias, weightMap, "net.slice4.19.bias");
         VGGBlock block21 = (VGGBlock) network.lpips.vgg.features.get(12);
-        ClipModelUtils.loadData(block21.conv.weight, weightMap, "net.slice4.21.weight");
-        ClipModelUtils.loadData(block21.conv.bias, weightMap, "net.slice4.21.bias");
+        ModeLoaderlUtils.loadData(block21.conv.weight, weightMap, "net.slice4.21.weight");
+        ModeLoaderlUtils.loadData(block21.conv.bias, weightMap, "net.slice4.21.bias");
         VGGBlock block24 = (VGGBlock) network.lpips.vgg.features.get(14);
-        ClipModelUtils.loadData(block24.conv.weight, weightMap, "net.slice5.24.weight");
-        ClipModelUtils.loadData(block24.conv.bias, weightMap, "net.slice5.24.bias");
+        ModeLoaderlUtils.loadData(block24.conv.weight, weightMap, "net.slice5.24.weight");
+        ModeLoaderlUtils.loadData(block24.conv.bias, weightMap, "net.slice5.24.bias");
         VGGBlock block26 = (VGGBlock) network.lpips.vgg.features.get(15);
-        ClipModelUtils.loadData(block26.conv.weight, weightMap, "net.slice5.26.weight");
-        ClipModelUtils.loadData(block26.conv.bias, weightMap, "net.slice5.26.bias");
+        ModeLoaderlUtils.loadData(block26.conv.weight, weightMap, "net.slice5.26.weight");
+        ModeLoaderlUtils.loadData(block26.conv.bias, weightMap, "net.slice5.26.bias");
         VGGBlock block28 = (VGGBlock) network.lpips.vgg.features.get(16);
-        ClipModelUtils.loadData(block28.conv.weight, weightMap, "net.slice5.28.weight");
-        ClipModelUtils.loadData(block28.conv.bias, weightMap, "net.slice5.28.bias");
+        ModeLoaderlUtils.loadData(block28.conv.weight, weightMap, "net.slice5.28.weight");
+        ModeLoaderlUtils.loadData(block28.conv.bias, weightMap, "net.slice5.28.bias");
         for (int i = 0; i < 5; i++) {
             NetLinLayer nl = network.lpips.lins.get(i);
-            nl.conv.weight = ClipModelUtils.loadData(nl.conv.weight, weightMap, 4, "lin" + i + ".model.1.weight");
+            nl.conv.weight = ModeLoaderlUtils.loadData(nl.conv.weight, weightMap, 4, "lin" + i + ".model.1.weight");
         }
     }
     
@@ -89,47 +89,47 @@ public class LPIPSTest {
 
          */
         VGGBlock block0 = (VGGBlock) network.lpips.vgg.features.get(0);
-        ClipModelUtils.loadData(block0.conv.weight, weightMap, "net.slice1.0.weight");
-        ClipModelUtils.loadData(block0.conv.bias, weightMap, "net.slice1.0.bias");
+        ModeLoaderlUtils.loadData(block0.conv.weight, weightMap, "net.slice1.0.weight");
+        ModeLoaderlUtils.loadData(block0.conv.bias, weightMap, "net.slice1.0.bias");
         VGGBlock block2 = (VGGBlock) network.lpips.vgg.features.get(1);
-        ClipModelUtils.loadData(block2.conv.weight, weightMap, "net.slice1.2.weight");
-        ClipModelUtils.loadData(block2.conv.bias, weightMap, "net.slice1.2.bias");
+        ModeLoaderlUtils.loadData(block2.conv.weight, weightMap, "net.slice1.2.weight");
+        ModeLoaderlUtils.loadData(block2.conv.bias, weightMap, "net.slice1.2.bias");
         VGGBlock block5 = (VGGBlock) network.lpips.vgg.features.get(3);
-        ClipModelUtils.loadData(block5.conv.weight, weightMap, "net.slice2.5.weight");
-        ClipModelUtils.loadData(block5.conv.bias, weightMap, "net.slice2.5.bias");
+        ModeLoaderlUtils.loadData(block5.conv.weight, weightMap, "net.slice2.5.weight");
+        ModeLoaderlUtils.loadData(block5.conv.bias, weightMap, "net.slice2.5.bias");
         VGGBlock block7 = (VGGBlock) network.lpips.vgg.features.get(4);
-        ClipModelUtils.loadData(block7.conv.weight, weightMap, "net.slice2.7.weight");
-        ClipModelUtils.loadData(block7.conv.bias, weightMap, "net.slice2.7.bias");
+        ModeLoaderlUtils.loadData(block7.conv.weight, weightMap, "net.slice2.7.weight");
+        ModeLoaderlUtils.loadData(block7.conv.bias, weightMap, "net.slice2.7.bias");
         VGGBlock block10 = (VGGBlock) network.lpips.vgg.features.get(6);
-        ClipModelUtils.loadData(block10.conv.weight, weightMap, "net.slice3.10.weight");
-        ClipModelUtils.loadData(block10.conv.bias, weightMap, "net.slice3.10.bias");
+        ModeLoaderlUtils.loadData(block10.conv.weight, weightMap, "net.slice3.10.weight");
+        ModeLoaderlUtils.loadData(block10.conv.bias, weightMap, "net.slice3.10.bias");
         VGGBlock block12 = (VGGBlock) network.lpips.vgg.features.get(7);
-        ClipModelUtils.loadData(block12.conv.weight, weightMap, "net.slice3.12.weight");
-        ClipModelUtils.loadData(block12.conv.bias, weightMap, "net.slice3.12.bias");
+        ModeLoaderlUtils.loadData(block12.conv.weight, weightMap, "net.slice3.12.weight");
+        ModeLoaderlUtils.loadData(block12.conv.bias, weightMap, "net.slice3.12.bias");
         VGGBlock block14 = (VGGBlock) network.lpips.vgg.features.get(8);
-        ClipModelUtils.loadData(block14.conv.weight, weightMap, "net.slice3.14.weight");
-        ClipModelUtils.loadData(block14.conv.bias, weightMap, "net.slice3.14.bias");
+        ModeLoaderlUtils.loadData(block14.conv.weight, weightMap, "net.slice3.14.weight");
+        ModeLoaderlUtils.loadData(block14.conv.bias, weightMap, "net.slice3.14.bias");
         VGGBlock block17 = (VGGBlock) network.lpips.vgg.features.get(10);
-        ClipModelUtils.loadData(block17.conv.weight, weightMap, "net.slice4.17.weight");
-        ClipModelUtils.loadData(block17.conv.bias, weightMap, "net.slice4.17.bias");
+        ModeLoaderlUtils.loadData(block17.conv.weight, weightMap, "net.slice4.17.weight");
+        ModeLoaderlUtils.loadData(block17.conv.bias, weightMap, "net.slice4.17.bias");
         VGGBlock block19 = (VGGBlock) network.lpips.vgg.features.get(11);
-        ClipModelUtils.loadData(block19.conv.weight, weightMap, "net.slice4.19.weight");
-        ClipModelUtils.loadData(block19.conv.bias, weightMap, "net.slice4.19.bias");
+        ModeLoaderlUtils.loadData(block19.conv.weight, weightMap, "net.slice4.19.weight");
+        ModeLoaderlUtils.loadData(block19.conv.bias, weightMap, "net.slice4.19.bias");
         VGGBlock block21 = (VGGBlock) network.lpips.vgg.features.get(12);
-        ClipModelUtils.loadData(block21.conv.weight, weightMap, "net.slice4.21.weight");
-        ClipModelUtils.loadData(block21.conv.bias, weightMap, "net.slice4.21.bias");
+        ModeLoaderlUtils.loadData(block21.conv.weight, weightMap, "net.slice4.21.weight");
+        ModeLoaderlUtils.loadData(block21.conv.bias, weightMap, "net.slice4.21.bias");
         VGGBlock block24 = (VGGBlock) network.lpips.vgg.features.get(14);
-        ClipModelUtils.loadData(block24.conv.weight, weightMap, "net.slice5.24.weight");
-        ClipModelUtils.loadData(block24.conv.bias, weightMap, "net.slice5.24.bias");
+        ModeLoaderlUtils.loadData(block24.conv.weight, weightMap, "net.slice5.24.weight");
+        ModeLoaderlUtils.loadData(block24.conv.bias, weightMap, "net.slice5.24.bias");
         VGGBlock block26 = (VGGBlock) network.lpips.vgg.features.get(15);
-        ClipModelUtils.loadData(block26.conv.weight, weightMap, "net.slice5.26.weight");
-        ClipModelUtils.loadData(block26.conv.bias, weightMap, "net.slice5.26.bias");
+        ModeLoaderlUtils.loadData(block26.conv.weight, weightMap, "net.slice5.26.weight");
+        ModeLoaderlUtils.loadData(block26.conv.bias, weightMap, "net.slice5.26.bias");
         VGGBlock block28 = (VGGBlock) network.lpips.vgg.features.get(16);
-        ClipModelUtils.loadData(block28.conv.weight, weightMap, "net.slice5.28.weight");
-        ClipModelUtils.loadData(block28.conv.bias, weightMap, "net.slice5.28.bias");
+        ModeLoaderlUtils.loadData(block28.conv.weight, weightMap, "net.slice5.28.weight");
+        ModeLoaderlUtils.loadData(block28.conv.bias, weightMap, "net.slice5.28.bias");
         for (int i = 0; i < 5; i++) {
             NetLinLayer nl = network.lpips.lins.get(i);
-            nl.conv.weight = ClipModelUtils.loadData(nl.conv.weight, weightMap, 4, "lin" + i + ".model.1.weight");
+            nl.conv.weight = ModeLoaderlUtils.loadData(nl.conv.weight, weightMap, 4, "lin" + i + ".model.1.weight");
         }
     }
 

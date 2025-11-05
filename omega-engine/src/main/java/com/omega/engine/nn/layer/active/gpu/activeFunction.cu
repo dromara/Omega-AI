@@ -7,6 +7,10 @@
 #define GELU_SCALING_FACTOR sqrtf(2.0f / M_PI)
 #define SQRT_1_2  0.70710678118654757274f  // sqrt(1/2)
 
+#define M_SQRT2 1.41421356237309504880
+#define M_SQRT1_2 0.70710678118654752440
+#define M_2_SQRTPI 1.12837916709551257390
+
 
 extern "C"
 __global__ void relu_forward(float *x, float *output, int n)
@@ -101,6 +105,27 @@ __global__ void sigmod_backward(float *output, float *delta, float *diff, int n)
     int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
     if(i < n) {
     	diff[i] = delta[i] * output[i] * (1.0f - output[i]);
+    }
+}
+
+extern "C"
+__global__ void swish_forward(float *x, float *output, int n)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if(i < n) {
+    	output[i] = (float) (1.0f / (1.0f + expf(-x[i]))) * x[i];
+    }
+}
+
+extern "C"
+__global__ void swish_backward(float *x, float *delta, float *diff, int n)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if(i < n) {
+		float so = (float) (1.0f / (1.0f + expf(-x[i])));
+		float dx_dy = so * delta[i];
+		float dx_ds = x[i] * delta[i] * so * (1.0f - so);
+    	diff[i] = dx_dy + dx_ds;
     }
 }
 
@@ -205,7 +230,7 @@ __global__ void gelu_forward(float *x, float *out, int N) {
     if(idx < N) {
     	float xi = x[idx];
     	float cube = 0.044715f * xi * xi * xi;
-        out[idx] = 0.5f * xi * (1.0f + tanhf(GELU_SCALING_FACTOR * (xi + cube)));
+        out[idx] = (float) (0.5f * xi * (1.0f + tanhf(GELU_SCALING_FACTOR * (xi + cube))));
     }
 }
 
@@ -230,6 +255,29 @@ __global__ void gelu_backward(float* dinp, const float* inp, const float* dout, 
         float sech_out = 1.0f / (coshf_out * coshf_out);
         float local_grad = 0.5f * (1.0f + tanh_out) + x * 0.5f * sech_out * GELU_SCALING_FACTOR * (1.0f + 3.0f * 0.044715f * x * x);
         dinp[i] = (float)(local_grad * (float)dout[i]);
+    }
+}
+
+extern "C"
+__global__ void gelu_torch_forward(float *x, float *out, int N) {
+    int idx = threadIdx.x + blockIdx.x*blockDim.x;
+    if(idx < N) {
+    	float xi = x[idx];
+    	float kAlpha = M_SQRT1_2;
+        out[idx] = (float) (xi * 0.5f * (1.0f + erf(xi * kAlpha)));
+    }
+}
+
+extern "C"
+__global__ void gelu_torch_backward(float* dinp, const float* inp, const float* dout, int N) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < N) {
+        float x = (float)inp[i];
+        float kBeta = M_2_SQRTPI * M_SQRT1_2 * 0.5f;
+        float kAlpha = M_SQRT1_2;
+        float cdf = 0.5f * (1.0f + erf(x * kAlpha));
+        float pdf = exp(-0.5f * x * x) * kBeta;
+        dinp[i] = dout[i] * (cdf + x * pdf);
     }
 }
 

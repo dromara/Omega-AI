@@ -57,8 +57,10 @@ __global__ void rope_2d_norm(float* x, float* out,float* cos, float* sin, int N,
     int t = index / headNum / headSize % T;
     int hn = index % (headNum * headSize) / headSize;
     int hs = index % (headNum * headSize) % headSize;
-    out[index] = cos[t * headSize + hs] * x[index] - sin[t * headSize + hs] * x[index+1];
-    out[index+1] = cos[t * headSize + hs + 1] * x[index+1] + sin[t * headSize + hs + 1] * x[index];
+    float cv = x[index];
+	float cn = x[index+1];
+    out[index] = cos[t * headSize + hs] * cv - sin[t * headSize + hs] * cn;
+    out[index+1] = cos[t * headSize + hs + 1] * cn + sin[t * headSize + hs + 1] * cv;
 }
 
 extern "C"
@@ -226,4 +228,49 @@ __global__ void rope_all_backward_f32(float* deltaQ,float* deltaK, float* diffQ,
     diffQ[i + 1] = q1*cos_theta - q0*sin_theta;
     diffK[i + 0] = k0*cos_theta + k1*sin_theta;
     diffK[i + 1] = k1*cos_theta - k0*sin_theta;
+}
+
+extern "C"
+__global__ void rope_2d_norm_igone(float* x, float* out,float* cos, float* sin, int N, int T, int headNum, int headSize, int igoneIdx)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (i >= N/2) return;
+    int index = i * 2;
+    int n = index / T / headNum / headSize;
+    int t = index / headNum / headSize % T;
+    int hn = index % (headNum * headSize) / headSize;
+    int hs = index % (headNum * headSize) % headSize;
+    float cv = x[index];
+	float cn = x[index+1];
+    if(t >= igoneIdx){
+		int rt = t - igoneIdx;
+		out[index] = cos[rt * headSize + hs] * cv - sin[rt * headSize + hs] * cn;
+    	out[index+1] = cos[rt * headSize + hs + 1] * cn + sin[rt * headSize + hs + 1] * cv;
+	}else{
+		out[index] = cv;
+    	out[index+1] = cn;
+	}
+}
+
+extern "C"
+__global__ void rope_2d_back_igone(float* delta, float* diff,float* cos, float* sin, int N, int T, int headNum,int headSize, int igoneIdx)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (i >= N/2) return;
+    int index = i * 2;
+    int n = index / T / headNum / headSize;
+    int t = index / headNum / headSize % T;
+    int hn = index % (headNum * headSize) / headSize;
+    int hs = index % (headNum * headSize) % headSize;
+    
+    const float d0 = delta[index + 0];
+    const float d1 = delta[index + 1];
+    if(t >= igoneIdx){
+		int rt = t - igoneIdx;
+	    diff[index] = cos[rt * headSize + hs] * d0 + sin[rt * headSize + hs + 1] * d1;
+	    diff[index+1] = cos[rt * headSize + hs + 1] * d1 - sin[rt * headSize + hs] * d0;
+    }else{
+		diff[index] = d0;
+    	diff[index+1] = d1;
+	}
 }

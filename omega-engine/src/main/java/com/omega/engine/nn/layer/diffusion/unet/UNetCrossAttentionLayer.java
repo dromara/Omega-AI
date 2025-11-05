@@ -15,7 +15,7 @@ import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 import com.omega.engine.updater.UpdaterType;
-import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
 
 import java.io.IOException;
@@ -144,11 +144,11 @@ public class UNetCrossAttentionLayer extends Layer {
                 System.out.println(key);
             }
         }
-        ClipModelUtils.loadData(network.qLinerLayer.weight, weightMap, "q_proj.weight");
-        ClipModelUtils.loadData(network.kLinerLayer.weight, weightMap, "k_proj.weight");
-        ClipModelUtils.loadData(network.vLinerLayer.weight, weightMap, "v_proj.weight");
-        ClipModelUtils.loadData(network.oLinerLayer.weight, weightMap, "out_proj.weight");
-        ClipModelUtils.loadData(network.oLinerLayer.bias, weightMap, "out_proj.bias");
+        ModeLoaderlUtils.loadData(network.qLinerLayer.weight, weightMap, "q_proj.weight");
+        ModeLoaderlUtils.loadData(network.kLinerLayer.weight, weightMap, "k_proj.weight");
+        ModeLoaderlUtils.loadData(network.vLinerLayer.weight, weightMap, "v_proj.weight");
+        ModeLoaderlUtils.loadData(network.oLinerLayer.weight, weightMap, "out_proj.weight");
+        ModeLoaderlUtils.loadData(network.oLinerLayer.bias, weightMap, "out_proj.bias");
     }
 
     public static boolean same(Tensor a, Tensor b) {

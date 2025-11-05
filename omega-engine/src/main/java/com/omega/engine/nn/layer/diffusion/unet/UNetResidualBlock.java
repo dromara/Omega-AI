@@ -13,7 +13,7 @@ import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
-import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
 
 import java.io.IOException;
@@ -58,18 +58,18 @@ public class UNetResidualBlock extends Layer {
                 System.out.println(key);
             }
         }
-        network.gn_feature.gamma = ClipModelUtils.loadData(network.gn_feature.gamma, weightMap, 1, "groupnorm_feature.weight");
-        network.gn_feature.beta = ClipModelUtils.loadData(network.gn_feature.beta, weightMap, 1, "groupnorm_feature.bias");
-        ClipModelUtils.loadData(network.conv_feature.weight, weightMap, "conv_feature.weight");
-        ClipModelUtils.loadData(network.conv_feature.bias, weightMap, "conv_feature.bias");
-        ClipModelUtils.loadData(network.temb.linear.weight, weightMap, "linear_time.weight");
-        ClipModelUtils.loadData(network.temb.linear.bias, weightMap, "linear_time.bias");
-        network.gn_merged.gamma = ClipModelUtils.loadData(network.gn_merged.gamma, weightMap, 1, "groupnorm_merged.weight");
-        network.gn_merged.beta = ClipModelUtils.loadData(network.gn_merged.beta, weightMap, 1, "groupnorm_merged.bias");
-        ClipModelUtils.loadData(network.conv_merged.weight, weightMap, "conv_merged.weight");
-        ClipModelUtils.loadData(network.conv_merged.bias, weightMap, "conv_merged.bias");
-        network.residual_layer.weight = ClipModelUtils.loadData(network.residual_layer.weight, weightMap, 4, "residual_layer.weight");
-        ClipModelUtils.loadData(network.residual_layer.bias, weightMap, "residual_layer.bias");
+        network.gn_feature.gamma = ModeLoaderlUtils.loadData(network.gn_feature.gamma, weightMap, 1, "groupnorm_feature.weight");
+        network.gn_feature.beta = ModeLoaderlUtils.loadData(network.gn_feature.beta, weightMap, 1, "groupnorm_feature.bias");
+        ModeLoaderlUtils.loadData(network.conv_feature.weight, weightMap, "conv_feature.weight");
+        ModeLoaderlUtils.loadData(network.conv_feature.bias, weightMap, "conv_feature.bias");
+        ModeLoaderlUtils.loadData(network.temb.linear.weight, weightMap, "linear_time.weight");
+        ModeLoaderlUtils.loadData(network.temb.linear.bias, weightMap, "linear_time.bias");
+        network.gn_merged.gamma = ModeLoaderlUtils.loadData(network.gn_merged.gamma, weightMap, 1, "groupnorm_merged.weight");
+        network.gn_merged.beta = ModeLoaderlUtils.loadData(network.gn_merged.beta, weightMap, 1, "groupnorm_merged.bias");
+        ModeLoaderlUtils.loadData(network.conv_merged.weight, weightMap, "conv_merged.weight");
+        ModeLoaderlUtils.loadData(network.conv_merged.bias, weightMap, "conv_merged.bias");
+        network.residual_layer.weight = ModeLoaderlUtils.loadData(network.residual_layer.weight, weightMap, 4, "residual_layer.weight");
+        ModeLoaderlUtils.loadData(network.residual_layer.bias, weightMap, "residual_layer.bias");
     }
 
     public static void main(String[] args) {

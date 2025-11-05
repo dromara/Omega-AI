@@ -5,6 +5,7 @@ import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.layer.InputLayer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.SoftmaxWithCrossEntropyLayer;
+import com.omega.engine.nn.layer.active.GeluType;
 import com.omega.engine.nn.layer.clip.CLIPTextTransformer;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
@@ -53,7 +54,22 @@ public class ClipTextModel extends Network {
         this.addLayer(inputLayer);
         this.addLayer(clip);
     }
-
+    
+    public ClipTextModel(LossType lossType, UpdaterType updater, int headNum, int time, int vocabSize, int embedDim, int maxPositionEmbeddingsSize, int intermediateSize, int n_layers, GeluType actType) {
+        this.lossFunction = LossFactory.create(lossType, this);
+        this.vocabSize = vocabSize;
+        this.embedDim = embedDim;
+        this.maxPositionEmbeddingsSize = maxPositionEmbeddingsSize;
+        this.n_layers = n_layers;
+        this.updater = updater;
+        this.headNum = headNum;
+        this.time = time;
+        this.inputLayer = new InputLayer(1, 1, vocabSize);
+        this.clip = new CLIPTextTransformer(vocabSize, maxPositionEmbeddingsSize, intermediateSize, n_layers, headNum, time, embedDim, true, false, actType, this);
+        this.addLayer(inputLayer);
+        this.addLayer(clip);
+    }
+    
     @Override
     public void init() throws Exception {
         // TODO Auto-generated method stub
@@ -101,6 +117,11 @@ public class ClipTextModel extends Network {
         clip.forward(input);
         this.output = clip.getOutput();
         return this.output;
+    }
+    
+    public Tensor get_full_clip_prompt_embeds(Tensor input) {
+    	forward(input);
+    	return clip.getEncoders().get(n_layers - 2).getOutput();
     }
     
     public Tensor get_clip_prompt_embeds(Tensor input, Tensor eos_idx, Tensor embeds) {
@@ -177,9 +198,11 @@ public class ClipTextModel extends Network {
     }
 
     public void saveModel(RandomAccessFile outputStream) throws IOException {
+    	clip.saveModel(outputStream);
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
+    	clip.loadModel(inputStream);
     }
 
     @Override

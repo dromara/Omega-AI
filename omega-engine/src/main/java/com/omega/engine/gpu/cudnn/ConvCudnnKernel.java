@@ -34,6 +34,7 @@ public class ConvCudnnKernel extends ConvBaseKernel {
     private int ow;
     private int padding = 0;
     private int stride = 1;
+    private int groups = 1;
     private int convAlgorithm = -1;
     private int fw_algo;
     private int bkf_algo;
@@ -61,12 +62,36 @@ public class ConvCudnnKernel extends ConvBaseKernel {
         kernelDesc = new cudnnFilterDescriptor();
         yDesc = new cudnnTensorDescriptor();
         convDesc = new cudnnConvolutionDescriptor();
+
         JCudnn.cudnnCreateTensorDescriptor(xDesc);
         JCudnn.cudnnCreateFilterDescriptor(kernelDesc);
         JCudnn.cudnnCreateTensorDescriptor(yDesc);
         JCudnn.cudnnCreateConvolutionDescriptor(convDesc);
     }
+    
+    public ConvCudnnKernel(Network network, int C, int H, int W, int ko, int kh, int kw, int s, int p, int g, CUDAManager cudaManager) {
+        super(cudaManager);
+        this.network = network;
+        this.C = C;
+        this.H = H;
+        this.W = W;
+        this.ko = ko;
+        this.kh = kh;
+        this.kw = kw;
+        this.stride = s;
+        this.padding = p;
+        this.groups = g;
+        xDesc = new cudnnTensorDescriptor();
+        kernelDesc = new cudnnFilterDescriptor();
+        yDesc = new cudnnTensorDescriptor();
+        convDesc = new cudnnConvolutionDescriptor();
 
+        JCudnn.cudnnCreateTensorDescriptor(xDesc);
+        JCudnn.cudnnCreateFilterDescriptor(kernelDesc);
+        JCudnn.cudnnCreateTensorDescriptor(yDesc);
+        JCudnn.cudnnCreateConvolutionDescriptor(convDesc);
+    }
+    
     /**
      * Handle.
      *
@@ -92,7 +117,7 @@ public class ConvCudnnKernel extends ConvBaseKernel {
             this.N = number;
             int convDims = 2;
             int[] padA = {padding, padding};
-            int[] weight = {ko, C, kh, kw};
+            int[] weight = {ko, C/groups, kh, kw};
             int[] upscaleA = {1, 1};
             int[] tensorOuputDimA = {N, C, H, W};
 //            			System.out.println(JsonUtils.toJson(tensorOuputDimA));
@@ -100,6 +125,9 @@ public class ConvCudnnKernel extends ConvBaseKernel {
             JCudnn.cudnnSetFilterNdDescriptor(kernelDesc, CUDNN_DATA_FLOAT, CUDNN_TENSOR_NCHW, 4, weight);
             int[] filterStrideA = {stride, stride};
             JCudnn.cudnnSetConvolutionNdDescriptor(convDesc, convDims, padA, filterStrideA, upscaleA, CUDNN_CROSS_CORRELATION, CUDNN_DATA_FLOAT);
+            if(groups > 1) {
+            	JCudnn.cudnnSetConvolutionGroupCount(convDesc, groups);
+            }
             handle(JCudnn.cudnnGetConvolutionNdForwardOutputDim(convDesc, xDesc, kernelDesc, 4, tensorOuputDimA));
             this.on = tensorOuputDimA[0];
             this.oc = tensorOuputDimA[1];

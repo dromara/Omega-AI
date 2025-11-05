@@ -18,10 +18,10 @@
     <properties>
         <java.version>17</java.version>
         <jcuda.version>11.8.0</jcuda.version>
-        <javacv.version>1.5.4</javacv.version>
-        <ffmpeg.version>4.3.1-1.5.4</ffmpeg.version>
-        <opencv.version>4.4.0-1.5.4</opencv.version>
-        <openblas.version>0.3.10-1.5.4</openblas.version>
+        <javacv.version>1.5.12</javacv.version>
+        <ffmpeg.version>7.1.1-1.5.12</ffmpeg.version>
+        <opencv.version>4.11.0-1.5.12</opencv.version>
+        <openblas.version>0.3.30-1.5.12</openblas.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <resource.delimiter>@</resource.delimiter>
@@ -137,45 +137,78 @@
         <dependency>
             <groupId>org.bytedeco</groupId>
             <artifactId>javacv-platform</artifactId>
-            <version>1.5.4</version>
+            <version>1.5.12</version>
         </dependency>
         -->
-        <!-- JavaCV 核心 -->
+
+        <!--javacv库主要应用在音视频，如不需要可以注释掉以下依赖及相关demo文件 -->
         <dependency>
             <groupId>org.bytedeco</groupId>
             <artifactId>javacv</artifactId>
             <version>${javacv.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.openjfx</groupId>
+                    <artifactId>javafx-graphics</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
-        <!-- Openblas 核心 -->
-        <dependency>
-            <groupId>org.bytedeco</groupId>
-            <artifactId>openblas-platform</artifactId>
-            <version>${openblas.version}</version>
-        </dependency>
-        <!-- FFmpeg 核心 -->
         <dependency>
             <groupId>org.bytedeco</groupId>
             <artifactId>ffmpeg</artifactId>
             <version>${ffmpeg.version}</version>
+            <classifier>windows-x86_64</classifier>
         </dependency>
-        <!-- FFmpeg 本地库 -->
+
+        <!--视频生成暂时需要以下依赖，如果是MAC自行增加classifier为macos-x86_64-->
+        <!--opencv在windows上使用需要用微软的jdk，因为新jdk都自带dll动态库，导致无法正常引用，jdk1.8不影响-->
+
         <dependency>
             <groupId>org.bytedeco</groupId>
-            <artifactId>ffmpeg-platform</artifactId>
+            <artifactId>ffmpeg</artifactId>
             <version>${ffmpeg.version}</version>
+            <classifier>linux-x86_64</classifier>
         </dependency>
-        <!-- OpenCV 核心 -->
-        <dependency>
+
+        <!--<dependency>
+			<groupId>org.bytedeco</groupId>
+			<artifactId>openblas</artifactId>
+			<version>${openblas.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.bytedeco</groupId>
+			<artifactId>openblas</artifactId>
+			<version>${openblas.version}</version>
+			<classifier>windows-x86_64</classifier>
+		</dependency>-->
+
+        <!--<dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>openblas</artifactId>
+            <version>${openblas.version}</version>
+            <classifier>linux-x86_64</classifier>
+        </dependency>-->
+
+        <!--<dependency>
+			<groupId>org.bytedeco</groupId>
+			<artifactId>opencv</artifactId>
+			<version>${opencv.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.bytedeco</groupId>
+			<artifactId>opencv</artifactId>
+			<version>${opencv.version}</version>
+			<classifier>windows-x86_64</classifier>
+		</dependency>-->
+
+        <!--<dependency>
             <groupId>org.bytedeco</groupId>
             <artifactId>opencv</artifactId>
             <version>${opencv.version}</version>
-        </dependency>
-        <!-- OpenCV 本地库  -->
-        <dependency>
-            <groupId>org.bytedeco</groupId>
-            <artifactId>opencv-platform</artifactId>
-            <version>${opencv.version}</version>
-        </dependency>
+            <classifier>linux-x86_64</classifier>
+        </dependency>-->
 
     </dependencies>
 

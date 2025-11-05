@@ -21,7 +21,7 @@ import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
-import com.omega.example.clip.utils.ClipModelUtils;
+import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
@@ -739,50 +739,50 @@ public class PixArtBlock extends Layer {
             }
         }
         
-        block.norm1.gamma = ClipModelUtils.loadData(block.norm1.gamma, weightMap, 1, "norm1.weight");
-        block.norm1.beta = ClipModelUtils.loadData(block.norm1.beta, weightMap, 1, "norm1.bias");
+        block.norm1.gamma = ModeLoaderlUtils.loadData(block.norm1.gamma, weightMap, 1, "norm1.weight");
+        block.norm1.beta = ModeLoaderlUtils.loadData(block.norm1.beta, weightMap, 1, "norm1.bias");
         
-        ClipModelUtils.loadData(block.attn.qLinerLayer.weight, weightMap, "attn1.qL.weight");
-        ClipModelUtils.loadData(block.attn.qLinerLayer.bias, weightMap, "attn1.qL.bias");
-        ClipModelUtils.loadData(block.attn.kLinerLayer.weight, weightMap, "attn1.kL.weight");
-        ClipModelUtils.loadData(block.attn.kLinerLayer.bias, weightMap, "attn1.kL.bias");
-        ClipModelUtils.loadData(block.attn.vLinerLayer.weight, weightMap, "attn1.vL.weight");
-        ClipModelUtils.loadData(block.attn.vLinerLayer.bias, weightMap, "attn1.vL.bias");
-        ClipModelUtils.loadData(block.attn.oLinerLayer.weight, weightMap, "attn1.proj.weight");
-        ClipModelUtils.loadData(block.attn.oLinerLayer.bias, weightMap, "attn1.proj.bias");
+        ModeLoaderlUtils.loadData(block.attn.qLinerLayer.weight, weightMap, "attn1.qL.weight");
+        ModeLoaderlUtils.loadData(block.attn.qLinerLayer.bias, weightMap, "attn1.qL.bias");
+        ModeLoaderlUtils.loadData(block.attn.kLinerLayer.weight, weightMap, "attn1.kL.weight");
+        ModeLoaderlUtils.loadData(block.attn.kLinerLayer.bias, weightMap, "attn1.kL.bias");
+        ModeLoaderlUtils.loadData(block.attn.vLinerLayer.weight, weightMap, "attn1.vL.weight");
+        ModeLoaderlUtils.loadData(block.attn.vLinerLayer.bias, weightMap, "attn1.vL.bias");
+        ModeLoaderlUtils.loadData(block.attn.oLinerLayer.weight, weightMap, "attn1.proj.weight");
+        ModeLoaderlUtils.loadData(block.attn.oLinerLayer.bias, weightMap, "attn1.proj.bias");
         
-        block.norm2.gamma = ClipModelUtils.loadData(block.norm2.gamma, weightMap, 1, "norm2.weight");
-        block.norm2.beta = ClipModelUtils.loadData(block.norm2.beta, weightMap, 1, "norm2.bias");
+        block.norm2.gamma = ModeLoaderlUtils.loadData(block.norm2.gamma, weightMap, 1, "norm2.weight");
+        block.norm2.beta = ModeLoaderlUtils.loadData(block.norm2.beta, weightMap, 1, "norm2.bias");
         
-        ClipModelUtils.loadData(block.cross_attn.qLinerLayer.weight, weightMap, "attn2.query.weight");
-        ClipModelUtils.loadData(block.cross_attn.qLinerLayer.bias, weightMap, "attn2.query.bias");
-        ClipModelUtils.loadData(block.cross_attn.kLinerLayer.weight, weightMap, "attn2.key.weight");
-        ClipModelUtils.loadData(block.cross_attn.kLinerLayer.bias, weightMap, "attn2.key.bias");
-        ClipModelUtils.loadData(block.cross_attn.vLinerLayer.weight, weightMap, "attn2.value.weight");
-        ClipModelUtils.loadData(block.cross_attn.vLinerLayer.bias, weightMap, "attn2.value.bias");
-        ClipModelUtils.loadData(block.cross_attn.oLinerLayer.weight, weightMap, "attn2.out_proj.weight");
-        ClipModelUtils.loadData(block.cross_attn.oLinerLayer.bias, weightMap, "attn2.out_proj.bias");
+        ModeLoaderlUtils.loadData(block.cross_attn.qLinerLayer.weight, weightMap, "attn2.query.weight");
+        ModeLoaderlUtils.loadData(block.cross_attn.qLinerLayer.bias, weightMap, "attn2.query.bias");
+        ModeLoaderlUtils.loadData(block.cross_attn.kLinerLayer.weight, weightMap, "attn2.key.weight");
+        ModeLoaderlUtils.loadData(block.cross_attn.kLinerLayer.bias, weightMap, "attn2.key.bias");
+        ModeLoaderlUtils.loadData(block.cross_attn.vLinerLayer.weight, weightMap, "attn2.value.weight");
+        ModeLoaderlUtils.loadData(block.cross_attn.vLinerLayer.bias, weightMap, "attn2.value.bias");
+        ModeLoaderlUtils.loadData(block.cross_attn.oLinerLayer.weight, weightMap, "attn2.out_proj.weight");
+        ModeLoaderlUtils.loadData(block.cross_attn.oLinerLayer.bias, weightMap, "attn2.out_proj.bias");
         
-        block.norm3.gamma = ClipModelUtils.loadData(block.norm3.gamma, weightMap, 1, "norm3.weight");
-        block.norm3.beta = ClipModelUtils.loadData(block.norm3.beta, weightMap, 1, "norm3.bias");
+        block.norm3.gamma = ModeLoaderlUtils.loadData(block.norm3.gamma, weightMap, 1, "norm3.weight");
+        block.norm3.beta = ModeLoaderlUtils.loadData(block.norm3.beta, weightMap, 1, "norm3.bias");
         
 //        ClipModelUtils.loadData(block.mlp.linear1.weight, weightMap, "mlp.fc1.weight");
 //        ClipModelUtils.loadData(block.mlp.linear1.bias, weightMap, "mlp.fc1.bias");
 //        ClipModelUtils.loadData(block.mlp.linear2.weight, weightMap, "mlp.fc2.weight");
 //        ClipModelUtils.loadData(block.mlp.linear2.bias, weightMap, "mlp.fc2.bias");
         
-        ClipModelUtils.loadData(block.modulation_shift_msa.weight, weightMap, "adaLN_modulation_1.weight");
-        ClipModelUtils.loadData(block.modulation_shift_msa.bias, weightMap, "adaLN_modulation_1.bias");
-        ClipModelUtils.loadData(block.modulation_scale_msa.weight, weightMap, "adaLN_modulation_2.weight");
-        ClipModelUtils.loadData(block.modulation_scale_msa.bias, weightMap, "adaLN_modulation_2.bias");
-        ClipModelUtils.loadData(block.modulation_gate_msa.weight, weightMap, "adaLN_modulation_3.weight");
-        ClipModelUtils.loadData(block.modulation_gate_msa.bias, weightMap, "adaLN_modulation_3.bias");
-        ClipModelUtils.loadData(block.modulation_shift_mlp.weight, weightMap, "adaLN_modulation_4.weight");
-        ClipModelUtils.loadData(block.modulation_shift_mlp.bias, weightMap, "adaLN_modulation_4.bias");
-        ClipModelUtils.loadData(block.modulation_scale_mlp.weight, weightMap, "adaLN_modulation_5.weight");
-        ClipModelUtils.loadData(block.modulation_scale_mlp.bias, weightMap, "adaLN_modulation_5.bias");
-        ClipModelUtils.loadData(block.modulation_gate_mlp.weight, weightMap, "adaLN_modulation_6.weight");
-        ClipModelUtils.loadData(block.modulation_gate_mlp.bias, weightMap, "adaLN_modulation_6.bias");
+        ModeLoaderlUtils.loadData(block.modulation_shift_msa.weight, weightMap, "adaLN_modulation_1.weight");
+        ModeLoaderlUtils.loadData(block.modulation_shift_msa.bias, weightMap, "adaLN_modulation_1.bias");
+        ModeLoaderlUtils.loadData(block.modulation_scale_msa.weight, weightMap, "adaLN_modulation_2.weight");
+        ModeLoaderlUtils.loadData(block.modulation_scale_msa.bias, weightMap, "adaLN_modulation_2.bias");
+        ModeLoaderlUtils.loadData(block.modulation_gate_msa.weight, weightMap, "adaLN_modulation_3.weight");
+        ModeLoaderlUtils.loadData(block.modulation_gate_msa.bias, weightMap, "adaLN_modulation_3.bias");
+        ModeLoaderlUtils.loadData(block.modulation_shift_mlp.weight, weightMap, "adaLN_modulation_4.weight");
+        ModeLoaderlUtils.loadData(block.modulation_shift_mlp.bias, weightMap, "adaLN_modulation_4.bias");
+        ModeLoaderlUtils.loadData(block.modulation_scale_mlp.weight, weightMap, "adaLN_modulation_5.weight");
+        ModeLoaderlUtils.loadData(block.modulation_scale_mlp.bias, weightMap, "adaLN_modulation_5.bias");
+        ModeLoaderlUtils.loadData(block.modulation_gate_mlp.weight, weightMap, "adaLN_modulation_6.weight");
+        ModeLoaderlUtils.loadData(block.modulation_gate_mlp.bias, weightMap, "adaLN_modulation_6.bias");
     }
     
     public static void main(String[] args) {

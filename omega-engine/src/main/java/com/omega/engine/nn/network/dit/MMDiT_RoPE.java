@@ -77,7 +77,29 @@ public class MMDiT_RoPE extends Network {
         this.time = (width / patchSize) * (height / patchSize);
         initLayers();
     }
-
+    
+    public MMDiT_RoPE(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio, boolean learnSigma, boolean normParams, float y_drop_prob, int randId) {
+        super(randId);
+    	this.lossFunction = LossFactory.create(lossType, this);
+        this.updater = updater;
+        this.inChannel = inChannel;
+        this.width = width;
+        this.height = height;
+        this.patchSize = patchSize;
+        this.headNum = headNum;
+        this.hiddenSize = hiddenSize;
+        this.depth = depth;
+        this.timeSteps = timeSteps;
+        this.textEmbedDim = textEmbedDim;
+        this.maxContextLen = maxContextLen;
+        this.mlpRatio = mlpRatio;
+        this.learnSigma = learnSigma;
+        this.normParams = normParams;
+        this.y_drop_prob = y_drop_prob;
+        this.time = (width / patchSize) * (height / patchSize);
+        initLayers();
+    }
+    
     public void initLayers() {
     	
         this.inputLayer = new InputLayer(inChannel, height, width);

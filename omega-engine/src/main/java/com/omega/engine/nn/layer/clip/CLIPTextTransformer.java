@@ -2,6 +2,7 @@ package com.omega.engine.nn.layer.clip;
 
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
+import com.omega.engine.nn.layer.active.GeluType;
 import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.tensor.Tensor;
@@ -24,6 +25,7 @@ public class CLIPTextTransformer extends Layer {
     private int time;
     private int embedDim = 512;
     private boolean bias = false;
+    private GeluType actType = GeluType.FAST;
     private int headNum = 8;
     private int n_layers = 12;
     private CLIPTextEmbeddingLayer embeddings;
@@ -69,6 +71,28 @@ public class CLIPTextTransformer extends Layer {
         this.initLayers();
     }
     
+    public CLIPTextTransformer(int vocabSize, int maxPositionEmbeddings, int intermediateSize, int n_layers, int headNum, int time, int embedDim, boolean bias, boolean dropout, GeluType actType, Network network) {
+        this.vocabSize = vocabSize;
+        this.maxPositionEmbeddings = maxPositionEmbeddings;
+        this.intermediateSize = intermediateSize;
+        this.headNum = headNum;
+        this.n_layers = n_layers;
+        this.network = network;
+        if (this.updater == null) {
+            this.setUpdater(UpdaterFactory.create(network));
+        }
+        this.time = time;
+        this.embedDim = embedDim;
+        this.actType = actType;
+        this.bias = bias;
+        this.height = 1;
+        this.width = embedDim;
+        this.oChannel = 1;
+        this.oHeight = 1;
+        this.oWidth = embedDim;
+        this.initLayers();
+    }
+    
     public CLIPTextTransformer(int vocabSize, int maxPositionEmbeddings, int n_layers, int headNum, int time, int embedDim, boolean bias, boolean dropout, Network network) {
         this.vocabSize = vocabSize;
         this.maxPositionEmbeddings = maxPositionEmbeddings;
@@ -93,7 +117,7 @@ public class CLIPTextTransformer extends Layer {
         embeddings = new CLIPTextEmbeddingLayer(vocabSize, embedDim, maxPositionEmbeddings, network);
         encoders = new ArrayList<CLIPEncoderLayer>();
         for (int i = 0; i < n_layers; i++) {
-            CLIPEncoderLayer encoder = new CLIPEncoderLayer(headNum, time, embedDim, intermediateSize, bias, false, true, network);
+            CLIPEncoderLayer encoder = new CLIPEncoderLayer(headNum, time, embedDim, intermediateSize, bias, false, true, actType, network);
             getEncoders().add(encoder);
         }
         finalLayerNorm = new LNLayer(getEncoders().get(n_layers - 1));
@@ -129,7 +153,7 @@ public class CLIPTextTransformer extends Layer {
         getEmbeddings().getOutput().viewOrg();
         this.output = getFinalLayerNorm().getOutput();
     }
-
+    
     @Override
     public Tensor getOutput() {
         // TODO Auto-generated method stub
@@ -156,17 +180,14 @@ public class CLIPTextTransformer extends Layer {
         // TODO Auto-generated method stub
         /**
          * 设置输入
-
          */
         this.setInput(input);
         /**
          * 参数初始化
-
          */
         this.init();
         /**
          * 计算输出
-
          */
         this.output();
     }
@@ -223,9 +244,19 @@ public class CLIPTextTransformer extends Layer {
     }
 
     public void saveModel(RandomAccessFile outputStream) throws IOException {
+        embeddings.saveModel(outputStream);
+        for (int i = 0; i < n_layers; i++) {
+        	encoders.get(i).saveModel(outputStream);
+        }
+        finalLayerNorm.saveModel(outputStream);
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
+        embeddings.loadModel(inputStream);
+        for (int i = 0; i < n_layers; i++) {
+        	encoders.get(i).loadModel(inputStream);
+        }
+        finalLayerNorm.loadModel(inputStream);
     }
 
     @Override

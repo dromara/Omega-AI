@@ -31,6 +31,7 @@ import com.omega.example.yolo.model.YoloBox;
 import com.omega.example.yolo.utils.LabelFileType;
 
 import jakarta.annotation.PostConstruct;
+import org.springframework.util.StringUtils;
 
 /**
  * Yolo3模型初始化类
@@ -57,6 +58,8 @@ public class Yolov3Service extends ModelAbstract{
     private int batchSize = 1;
     private int class_num = 2;
 
+    private String[] labelset = new String[]{"unmask", "mask"};
+
     @Value("${model.cudnn:false}")
     private boolean cudnn;
     @PostConstruct
@@ -72,6 +75,10 @@ public class Yolov3Service extends ModelAbstract{
             String name = this.modelData.getConfig().getStr("name");
             this.im_w = this.modelData.getConfig().getInt("image_width");
             this.im_h = this.modelData.getConfig().getInt("image_height");
+            String labels = this.modelData.getConfig().getStr("labels");
+            if(StringUtils.hasText( labels)){
+                this.labelset = labels.split(",");
+            }
             Yolo network = new Yolo(LossType.yolov3, UpdaterType.adamw);
             network.CUDNN = cudnn;
             network.RUN_MODEL = RunModel.TEST;
@@ -89,9 +96,8 @@ public class Yolov3Service extends ModelAbstract{
         Yolo network = getNetwork();
         DetectionDataLoader data = new DetectionDataLoader(url, null, LabelFileType.txt, im_w, im_h, class_num, batchSize, DataType.yolov3);
         List<YoloBox> draw_bbox = MBSGDOptimizer.showObjectRecognitionYoloV3(network, data, batchSize);
-        String[] labelset = new String[]{"unmask", "mask"};
-        String outputPath = FileUtils.mkdir(JarUrlUtils.getJarPath() + File.separator + model_type + File.separator + UUID.randomUUID().toString());
-        List<String> list = showImg(outputPath, data, class_num, draw_bbox, batchSize, false, im_w, im_h, labelset);
+        String outputPath = FileUtils.mkdir(JarUrlUtils.getJarPath() + File.separator + "upload" + File.separator + model_type + File.separator + UUID.randomUUID().toString());
+        List<String> list = showImg(outputPath, data, class_num, draw_bbox, batchSize, false, im_w, im_h, this.labelset);
         return list.size() > 0 ? list.get(0) : "";
     }
 

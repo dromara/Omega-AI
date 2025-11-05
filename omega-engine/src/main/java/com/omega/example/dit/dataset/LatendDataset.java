@@ -24,6 +24,7 @@ public class LatendDataset extends BaseTokenizer {
 	public int height;
 	public int width;
 	public int clipEmbd;
+	public int clipMaxTime;
 	
     public int number = 0;
     public int count_it = 0;
@@ -48,7 +49,7 @@ public class LatendDataset extends BaseTokenizer {
     
 	private ICPlanKernel icplan;
 
-    public LatendDataset(String dataPath, String clipDataPath, int batchSize, int channel, int height, int width, int clipEmbd, BinDataType dataType) {
+    public LatendDataset(String dataPath, String clipDataPath, int batchSize, int channel, int height, int width, int clipMaxTime, int clipEmbd, BinDataType dataType) {
         this.dataType = dataType;
         if (dataType == BinDataType.unint16) {
             byteUnit = 2;
@@ -59,6 +60,7 @@ public class LatendDataset extends BaseTokenizer {
         this.height = height;
         this.width = width;
         this.clipEmbd = clipEmbd;
+        this.clipMaxTime = clipMaxTime;
         this.max_len = channel * height * width;
         this.batchSize = batchSize;
         loadBinCount();
@@ -77,7 +79,7 @@ public class LatendDataset extends BaseTokenizer {
             clipFile = new RandomAccessFile(clipDataPath, "r");
             number = (int) (file.length() / max_len / byteUnit);
             cache = new float[max_len];
-            clip_cache = new float[clipEmbd];
+            clip_cache = new float[clipMaxTime * clipEmbd];
         } catch (Exception e) {
             // TODO: handle exception
             e.printStackTrace();
@@ -102,8 +104,10 @@ public class LatendDataset extends BaseTokenizer {
             if ((index + 1) * max_len * byteUnit <= file.length()) {
                 //				System.out.println(index);
                 if (dataType == BinDataType.float32) {
-                    ModelUtils.readFloat(file, cache);
-                    ModelUtils.readFloat(clipFile, clip_cache);
+//                    ModelUtils.readFloat(file, cache);
+//                    ModelUtils.readFloat(clipFile, clip_cache);
+                	 ModelUtils.readFloatArray(file, cache);
+                     ModelUtils.readFloatArray(clipFile, clip_cache);
                 }
                 file.seek(file.getFilePointer());
                 clipFile.seek(clipFile.getFilePointer());
@@ -121,21 +125,21 @@ public class LatendDataset extends BaseTokenizer {
     
     public float[] loadData(long idx) {
         try {
-            if (idx * max_len * byteUnit <= file.length()) {
-            	long fi = idx * max_len * byteUnit;
-            	long cfi = idx * clipEmbd * byteUnit;
+
+        	long fi = idx * max_len * byteUnit;
+        	long cfi = idx * clipMaxTime * clipEmbd * byteUnit;
 //            	System.err.println(fi);
-            	file.seek(fi);
+        	if(fi < file.length()) {
+        		file.seek(fi);
                 clipFile.seek(cfi);
                 if (dataType == BinDataType.float32) {
-                    ModelUtils.readFloat(file, cache);
-                    ModelUtils.readFloat(clipFile, clip_cache);
+                    ModelUtils.readFloatArray(file, cache);
+                    ModelUtils.readFloatArray(clipFile, clip_cache);
                 }
-                
-            } else {
-                initBinReader();
-                return loadData();
-            }
+        	}else {
+        		System.err.println("dataset index["+idx+"] is out.");
+        	}
+
         } catch (Exception e) {
             // TODO: handle exception
             e.printStackTrace();
@@ -166,21 +170,28 @@ public class LatendDataset extends BaseTokenizer {
         }
     }
     
+    public void loadData(int[] index,Tensor input, Tensor label) {
+    	input.hostToDevice();
+        label.hostToDevice();
+        cf = loadAsyncData(index, input, label);
+    }
+    
     public void loadData(int[] index,Tensor input, Tensor label, int it) {
         try {
             //			System.out.println(it);
-//        	long start = System.nanoTime();
-            if (isBin && it == count_it - 2) {
-                initBinReader();
-            }
             if (cf != null) {
-//            	long start22 = System.nanoTime();
                 boolean success = cf.get();
-                input.hostToDevice();
-                label.hostToDevice();
-                cf = loadAsyncData(index, input, label);
+                if(success){
+                	cf = null;
+                	loadData(index, input, label);
+                }
             } else {
                 cf = loadAsyncData(index, input, label);
+                boolean success = cf.get();
+                if(success){
+                	cf = null;
+                	loadData(index, input, label);
+                }
             }
 //            System.out.println("load cost:"+(System.nanoTime() - start)/1e6+"ms.");
         } catch (Exception e) {
@@ -206,8 +217,8 @@ public class LatendDataset extends BaseTokenizer {
                     for (int t = 0; t < max_len; t++) {
                         formatNotHeadToIdx(b, t, max_len, onceToken, input);
                     }
-                    for(int t = 0;t < clipEmbd;t++) {
-                    	formatNotHeadToIdx(b, t, clipEmbd, clipToken, label);
+                    for(int t = 0;t < clipMaxTime * clipEmbd;t++) {
+                    	formatNotHeadToIdx(b, t, clipMaxTime * clipEmbd, clipToken, label);
                     }
                 }
             } catch (Exception e) {
@@ -222,17 +233,15 @@ public class LatendDataset extends BaseTokenizer {
     public CompletableFuture<Boolean> loadAsyncData(int[] index,Tensor input, Tensor label) {
         CompletableFuture<Boolean> cf = CompletableFuture.supplyAsync(() -> {
             try {
+//            	long start = System.nanoTime();
                 for (int b = 0; b < batchSize; b++) {
                 	int idx = index[b];
                     float[] onceToken = readIdxData(idx);
                     float[] clipToken = clip_cache;
-                    for (int t = 0; t < max_len; t++) {
-                        formatNotHeadToIdx(b, t, max_len, onceToken, input);
-                    }
-                    for(int t = 0;t < clipEmbd;t++) {
-                    	formatNotHeadToIdx(b, t, clipEmbd, clipToken, label);
-                    }
+                    System.arraycopy(onceToken, 0, input.data, b * onceToken.length, onceToken.length);
+                    System.arraycopy(clipToken, 0, label.data, b * clipToken.length, clipToken.length);
                 }
+//                System.out.println("load cost:"+(System.nanoTime() - start)/1e6+"ms.");
             } catch (Exception e) {
                 // TODO: handle exception
                 e.printStackTrace();
@@ -247,12 +256,12 @@ public class LatendDataset extends BaseTokenizer {
             try {
                 for (int b = 0; b < batchSize; b++) {
                 	float[] onceToken = readIdxData();
-                	 float[] clipToken = clip_cache;
+                	float[] clipToken = clip_cache;
                 	for (int t = 0; t < max_len; t++) {
                 		formatNotHeadToIdx(b, t, onceToken, input);
                     }
-                	for(int t = 0;t < clipEmbd;t++) {
-                    	formatNotHeadToIdx(b, t, clipEmbd, clipToken, label);
+                	for(int t = 0;t < clipMaxTime * clipEmbd;t++) {
+                    	formatNotHeadToIdx(b, t, clipMaxTime * clipEmbd, clipToken, label);
                     }
                 }
             } catch (Exception e) {

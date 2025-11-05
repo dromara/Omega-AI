@@ -1,13 +1,26 @@
 package com.omega.example.yolo.data;
 
+import java.awt.image.BufferedImage;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import com.omega.common.task.ForkJobEngine;
-import com.omega.common.utils.*;
+import com.omega.common.utils.ImageUtils;
+import com.omega.common.utils.JsonUtils;
+import com.omega.common.utils.MatrixOperation;
+import com.omega.common.utils.MatrixUtils;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.tensor.Tensor;
 import com.omega.example.yolo.utils.OMImage;
 import com.omega.example.yolo.utils.YoloImageUtils;
-
-import java.io.*;
-import java.util.*;
 
 /**
  * 图片加载组器
@@ -52,8 +65,8 @@ public class ImageLoader {
         //		System.out.println(JsonUtils.toJson(y));
         //
         //		showImg(x, y, classes, outputPath);
-        //		formatImage();
-        resizeFormatImage();
+        		formatImage();
+//        resizeFormatImage();
         //		testFormatImage();
     }
 
@@ -111,10 +124,10 @@ public class ImageLoader {
             //			String labelPath = "H:\\voc\\sm\\VOC\\bbox.txt";
             //			String outputDirPath = "H:\\voc\\sm\\resized\\imgs\\";
             //			String labelTXTPath = "H:\\voc\\sm\\resized\\rlabels.txt";
-            String imgDirPath = "H:\\voc\\yz\\seal\\Images";
-            String labelPath = "H:\\voc\\yz\\seal\\bbox.txt";
-            String outputDirPath = "H:\\voc\\yz\\seal\\resized\\imgs\\";
-            String labelTXTPath = "H:\\voc\\yz\\seal\\resized\\rlabels.txt";
+            String imgDirPath = "D:\\dataset\\VOCData\\JPEGImages";
+            String labelPath = "D:\\dataset\\VOCData\\bbox.txt";
+            String outputDirPath = "D:\\dataset\\VOCData\\resized\\imgs\\";
+            String labelTXTPath = "D:\\dataset\\VOCData\\resized\\rlabels.txt";
             int width = 416;
             int height = 416;
             Map<String, float[]> labelMap = loadLabelDataForTXT(labelPath);
@@ -831,12 +844,25 @@ public class ImageLoader {
         }
         return image;
     }
+    
+    public static OMImage loadImage(BufferedImage oriImage) {
+    	OMImage image = null;
+    	try {
+    		image = YoloImageUtils.IU().loadOMImage(oriImage);
+    	} catch (Exception e) {
+    		// TODO: handle exception
+    		e.printStackTrace();
+    	}
+    	return image;
+    }
 
     public static OMImage loadImage(String filePath) {
         OMImage image = null;
         try {
             File file = new File(filePath);
+            System.out.println("=====================>11:" + filePath);
             if (file.exists()) {
+                System.out.println("=====================>22:" + filePath);
                 image = YoloImageUtils.IU().loadOMImage(file);
             }
         } catch (Exception e) {

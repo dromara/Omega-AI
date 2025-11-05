@@ -369,7 +369,8 @@ public class SDImageDataLoaderEN extends BaseDataLoader {
                 label.data[index * maxContextLen + j] = ids[j];
             } else {
                 label.data[index * maxContextLen + j] = 0;
-            }if(label.data[index * maxContextLen + j] == tokenizer.eos() && eos_id == 0) {
+            }
+            if(label.data[index * maxContextLen + j] == tokenizer.eos() && eos_id == 0) {
             	eos_id = j;
             }
         }
