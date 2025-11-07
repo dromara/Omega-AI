@@ -8,6 +8,7 @@ import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.nn.network.CNN;
 import com.omega.engine.nn.network.dit.DiT_ORG;
 import com.omega.engine.nn.network.dit.DiT_TXT;
+import com.omega.engine.nn.network.dit.FluxDiT;
 import com.omega.engine.nn.network.dit.MMDiT_RoPE;
 import com.omega.engine.nn.network.dit.SanaDiT;
 import com.omega.engine.tensor.Tensor;
@@ -126,6 +127,33 @@ public class ICPlan {
 	}
 	
 	public Tensor forward_with_cfg(DiT_TXT dit, Tensor y0, Tensor t, Tensor context, Tensor cos, Tensor sin, Tensor y1, Tensor eps, float cfg_scale) {
+		ininT(0, 1, count);
+		int j = 1;
+		Tensor out = null;
+		Tensor f0 = null;
+		for(int i = 0;i<count - 1;i++) {
+			float t0 = T[i];
+			float t1 = T[i + 1];
+			float dt = t1 - t0;
+			MatrixUtils.val(t.data, t0);
+			t.hostToDevice();
+			f0 = dit.forward_with_cfg(y0, t, context, cos, sin, eps, cfg_scale);
+//			f0.showDM("f0");
+			dit.tensorOP.mul(f0, dt, f0);
+			
+			dit.tensorOP.add(y0, f0, y1);
+			float tj = T[j];
+			if(j < T.length && t1 >= tj) {
+				out = linear_interp(dit.tensorOP, t0, t1, y0, y1, tj);
+				j++;
+			}
+			dit.tensorOP.copyGPU(y1, y0);
+
+		}
+		return out;
+	}
+	
+	public Tensor forward_with_cfg(FluxDiT dit, Tensor y0, Tensor t, Tensor context, Tensor cos, Tensor sin, Tensor y1, Tensor eps, float cfg_scale) {
 		ininT(0, 1, count);
 		int j = 1;
 		Tensor out = null;

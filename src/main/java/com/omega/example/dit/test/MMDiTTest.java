@@ -1666,10 +1666,11 @@ public class MMDiTTest {
 	}
 	
 	public static void mmdit_rope_icplan_vavae_train_by_latend2() throws Exception {
-		String dataPath = "/root/gpufree-data/txt2img_1m/vavae_1m_latend.bin";
-		String clipDataPath = "/root/gpufree-data/txt2img_1m/vavae_1m_clip.bin";
+		String dataPath = "D:\\dataset\\amine\\dalle_vavae_latend.bin";
+//		String clipDataPath = "D:\\dataset\\amine\\vavae_2clip.bin";
+		String clipDataPath = "D:\\dataset\\amine\\dalle_full_clip.bin";
 
-        int batchSize = 8;
+        int batchSize = 80;
         int latendDim = 32;
         int height = 16;
         int width = 16;
@@ -1678,19 +1679,19 @@ public class MMDiTTest {
         
         LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, maxContext, textEmbedDim, BinDataType.float32);
         
-        int ditHeadNum = 16;
+        int ditHeadNum = 12;
         int latendSize = 16;
-        int depth = 24;
+        int depth = 12;
         int timeSteps = 1000;
         int mlpRatio = 4;
         int patchSize = 2;
-        int hiddenSize = 1024;
+        int hiddenSize = 768;
         
-        float y_prob = 0.2f;
+        float y_prob = 0.1f;
         
         MMDiT_RoPE dit = new MMDiT_RoPE(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, maxContext, textEmbedDim, mlpRatio, false, false, y_prob);
         dit.CUDNN = true;
-        dit.learnRate = 2e-4f;
+        dit.learnRate = 4e-4f;
         
         ICPlan icplan = new ICPlan(dit.tensorOP);
         
@@ -1701,9 +1702,9 @@ public class MMDiTTest {
         Tensor mean = new Tensor(latendDim, 1, 1, 1, new float[] {0.5159194f,-0.098745845f,0.4506864f,-0.1956873f,-0.8495464f,-1.21304f,0.3308469f,0.58179253f,0.6424023f,-0.29357672f,-0.8158413f,1.2581154f,0.7475849f,0.33285394f,0.38626647f,0.58233047f,-0.38548145f,0.74376845f,-0.009915455f,0.6213995f,0.2400085f,0.19374341f,-0.61166346f,0.20851155f,1.3490272f,1.2598537f,0.3913809f,-0.62586164f,0.039063938f,-0.42785084f,0.103838995f,0.4288339f}, true);
         Tensor std = new Tensor(latendDim, 1, 1, 1, new float[] {3.8079762f,4.2162f,3.5170727f,3.5035448f,3.596595f,3.4165773f,3.2557693f,3.4465954f,3.477962f,3.5235102f,3.6405952f,3.5955217f,3.6177351f,3.5413158f,3.2273927f,3.102406f,3.7838833f,3.5187857f,3.2140276f,3.141267f,3.188034f,3.0350294f,3.506414f,4.282793f,3.2961013f,3.2081387f,4.4858646f,3.3860974f,3.0192268f,3.481111f,4.412524f,4.0532117f}, true);
 
-        MBSGDOptimizer optimizer = new MBSGDOptimizer(dit, 200, 0.00001f, batchSize, LearnRateUpdate.GD_GECAY, false);
+        MBSGDOptimizer optimizer = new MBSGDOptimizer(dit, 200, 0.00001f, batchSize, LearnRateUpdate.NONE, false);
         
-        optimizer.train_MMDiT_TXT_ICPlan(dataLoader, icplan, "/omega/models/mmdit/", mean, std, 1f, 2);
+        optimizer.train_MMDiT_TXT_ICPlan(dataLoader, icplan, "D://models//dit_txt//", mean, std, 1f, 20);
         
         String save_model_path = "/omega/models/mmdit_vavae.model";
         ModelUtils.saveModel(dit, save_model_path);

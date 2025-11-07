@@ -5,6 +5,7 @@ import java.io.RandomAccessFile;
 import java.util.Map;
 
 import com.omega.common.utils.RandomUtils;
+import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -107,7 +108,10 @@ public class DiTSwiGLUFFN extends Layer {
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
-
+    	if(w3.diff == null || w3.diff.number != number) {
+    		w3.diff = CUDAMemoryManager.getCache("cache_w3.diff", w3.input.shape());
+    		w12.diff = CUDAMemoryManager.getCache("cache_w12.diff", w12.input.shape());
+    	}
     }
 
     @Override

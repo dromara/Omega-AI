@@ -492,9 +492,12 @@ public class DiTCrossAttentionLayer2 extends Layer {
         Tensor queryDelta = qt.view(batchSize * time, 1, 1, headNum * dk);
         Tensor keyDelta = kt.view(batchSize * kvTime, 1, 1, headNum * dk);
         Tensor valueDelta = vt.view(batchSize * kvTime, 1, 1, headNum * dk);
-        this.qLinerLayer.back(queryDelta);
-        this.kLinerLayer.back(keyDelta);
-        this.vLinerLayer.back(valueDelta);
+        this.qLinerLayer.getOutput().viewOrg();
+        this.kLinerLayer.getOutput().viewOrg();
+        this.vLinerLayer.getOutput().viewOrg();
+        this.qLinerLayer.back(queryDelta, qLinerLayer.getOutput());
+        this.kLinerLayer.back(keyDelta, kLinerLayer.getOutput());
+        this.vLinerLayer.back(valueDelta, vLinerLayer.getOutput());
         Tensor_OP().add(this.kLinerLayer.diff, this.vLinerLayer.diff, this.kLinerLayer.diff);
         this.diff = qLinerLayer.diff;
     }

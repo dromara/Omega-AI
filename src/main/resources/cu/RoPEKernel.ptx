@@ -169,7 +169,7 @@ $L__BB1_2:
 )
 {
 	.reg .pred 	%p<2>;
-	.reg .f32 	%f<14>;
+	.reg .f32 	%f<12>;
 	.reg .b32 	%r<23>;
 	.reg .b64 	%rd<15>;
 
@@ -202,32 +202,30 @@ $L__BB1_2:
 	mul.lo.s32 	%r19, %r4, %r3;
 	rem.s32 	%r20, %r15, %r19;
 	rem.s32 	%r21, %r20, %r4;
-	mad.lo.s32 	%r22, %r18, %r4, %r21;
-	cvta.to.global.u64 	%rd5, %rd3;
-	mul.wide.s32 	%rd6, %r22, 4;
+	cvta.to.global.u64 	%rd5, %rd1;
+	mul.wide.s32 	%rd6, %r15, 4;
 	add.s64 	%rd7, %rd5, %rd6;
-	cvta.to.global.u64 	%rd8, %rd1;
-	mul.wide.s32 	%rd9, %r15, 4;
+	mad.lo.s32 	%r22, %r18, %r4, %r21;
+	cvta.to.global.u64 	%rd8, %rd3;
+	mul.wide.s32 	%rd9, %r22, 4;
 	add.s64 	%rd10, %rd8, %rd9;
 	ld.global.f32 	%f1, [%rd10];
 	ld.global.f32 	%f2, [%rd7];
 	mul.f32 	%f3, %f2, %f1;
 	cvta.to.global.u64 	%rd11, %rd4;
-	add.s64 	%rd12, %rd11, %rd6;
-	ld.global.f32 	%f4, [%rd10+4];
-	ld.global.f32 	%f5, [%rd12];
+	add.s64 	%rd12, %rd11, %rd9;
+	ld.global.f32 	%f4, [%rd12];
+	ld.global.f32 	%f5, [%rd7+4];
 	mul.f32 	%f6, %f5, %f4;
 	sub.f32 	%f7, %f3, %f6;
 	cvta.to.global.u64 	%rd13, %rd2;
-	add.s64 	%rd14, %rd13, %rd9;
+	add.s64 	%rd14, %rd13, %rd6;
 	st.global.f32 	[%rd14], %f7;
 	ld.global.f32 	%f8, [%rd10+4];
-	ld.global.f32 	%f9, [%rd7+4];
-	ld.global.f32 	%f10, [%rd10];
-	ld.global.f32 	%f11, [%rd12+4];
-	mul.f32 	%f12, %f11, %f10;
-	fma.rn.f32 	%f13, %f9, %f8, %f12;
-	st.global.f32 	[%rd14+4], %f13;
+	ld.global.f32 	%f9, [%rd12+4];
+	mul.f32 	%f10, %f2, %f9;
+	fma.rn.f32 	%f11, %f5, %f8, %f10;
+	st.global.f32 	[%rd14+4], %f11;
 
 $L__BB2_2:
 	ret;
@@ -2541,6 +2539,182 @@ $L__BB9_39:
 	st.global.f32 	[%rd48+4], %f177;
 
 $L__BB9_40:
+	ret;
+
+}
+	// .globl	rope_2d_norm_igone
+.visible .entry rope_2d_norm_igone(
+	.param .u64 rope_2d_norm_igone_param_0,
+	.param .u64 rope_2d_norm_igone_param_1,
+	.param .u64 rope_2d_norm_igone_param_2,
+	.param .u64 rope_2d_norm_igone_param_3,
+	.param .u32 rope_2d_norm_igone_param_4,
+	.param .u32 rope_2d_norm_igone_param_5,
+	.param .u32 rope_2d_norm_igone_param_6,
+	.param .u32 rope_2d_norm_igone_param_7,
+	.param .u32 rope_2d_norm_igone_param_8
+)
+{
+	.reg .pred 	%p<3>;
+	.reg .f32 	%f<12>;
+	.reg .b32 	%r<25>;
+	.reg .b64 	%rd<15>;
+
+
+	ld.param.u64 	%rd2, [rope_2d_norm_igone_param_0];
+	ld.param.u64 	%rd3, [rope_2d_norm_igone_param_1];
+	ld.param.u64 	%rd4, [rope_2d_norm_igone_param_2];
+	ld.param.u64 	%rd5, [rope_2d_norm_igone_param_3];
+	ld.param.u32 	%r4, [rope_2d_norm_igone_param_5];
+	ld.param.u32 	%r5, [rope_2d_norm_igone_param_6];
+	ld.param.u32 	%r6, [rope_2d_norm_igone_param_7];
+	ld.param.u32 	%r7, [rope_2d_norm_igone_param_8];
+	mov.u32 	%r8, %nctaid.x;
+	mov.u32 	%r9, %ctaid.y;
+	mov.u32 	%r10, %ctaid.x;
+	mad.lo.s32 	%r11, %r9, %r8, %r10;
+	mov.u32 	%r12, %ntid.x;
+	mov.u32 	%r13, %tid.x;
+	mad.lo.s32 	%r1, %r11, %r12, %r13;
+	ld.param.u32 	%r14, [rope_2d_norm_igone_param_4];
+	shr.u32 	%r15, %r14, 31;
+	add.s32 	%r16, %r14, %r15;
+	shr.s32 	%r17, %r16, 1;
+	setp.ge.s32 	%p1, %r1, %r17;
+	@%p1 bra 	$L__BB10_4;
+
+	shl.b32 	%r2, %r1, 1;
+	div.s32 	%r18, %r2, %r5;
+	div.s32 	%r19, %r18, %r6;
+	rem.s32 	%r3, %r19, %r4;
+	cvta.to.global.u64 	%rd6, %rd2;
+	mul.wide.s32 	%rd7, %r2, 4;
+	add.s64 	%rd8, %rd6, %rd7;
+	ld.global.f32 	%f1, [%rd8];
+	ld.global.f32 	%f2, [%rd8+4];
+	setp.lt.s32 	%p2, %r3, %r7;
+	cvta.to.global.u64 	%rd9, %rd3;
+	add.s64 	%rd1, %rd9, %rd7;
+	@%p2 bra 	$L__BB10_3;
+	bra.uni 	$L__BB10_2;
+
+$L__BB10_3:
+	st.global.f32 	[%rd1], %f1;
+	st.global.f32 	[%rd1+4], %f2;
+	bra.uni 	$L__BB10_4;
+
+$L__BB10_2:
+	sub.s32 	%r20, %r3, %r7;
+	mul.lo.s32 	%r21, %r6, %r5;
+	rem.s32 	%r22, %r2, %r21;
+	rem.s32 	%r23, %r22, %r6;
+	mad.lo.s32 	%r24, %r20, %r6, %r23;
+	cvta.to.global.u64 	%rd10, %rd4;
+	mul.wide.s32 	%rd11, %r24, 4;
+	add.s64 	%rd12, %rd10, %rd11;
+	ld.global.f32 	%f3, [%rd12];
+	mul.f32 	%f4, %f1, %f3;
+	cvta.to.global.u64 	%rd13, %rd5;
+	add.s64 	%rd14, %rd13, %rd11;
+	ld.global.f32 	%f5, [%rd14];
+	mul.f32 	%f6, %f2, %f5;
+	sub.f32 	%f7, %f4, %f6;
+	st.global.f32 	[%rd1], %f7;
+	ld.global.f32 	%f8, [%rd12+4];
+	ld.global.f32 	%f9, [%rd14+4];
+	mul.f32 	%f10, %f1, %f9;
+	fma.rn.f32 	%f11, %f2, %f8, %f10;
+	st.global.f32 	[%rd1+4], %f11;
+
+$L__BB10_4:
+	ret;
+
+}
+	// .globl	rope_2d_back_igone
+.visible .entry rope_2d_back_igone(
+	.param .u64 rope_2d_back_igone_param_0,
+	.param .u64 rope_2d_back_igone_param_1,
+	.param .u64 rope_2d_back_igone_param_2,
+	.param .u64 rope_2d_back_igone_param_3,
+	.param .u32 rope_2d_back_igone_param_4,
+	.param .u32 rope_2d_back_igone_param_5,
+	.param .u32 rope_2d_back_igone_param_6,
+	.param .u32 rope_2d_back_igone_param_7,
+	.param .u32 rope_2d_back_igone_param_8
+)
+{
+	.reg .pred 	%p<3>;
+	.reg .f32 	%f<12>;
+	.reg .b32 	%r<25>;
+	.reg .b64 	%rd<15>;
+
+
+	ld.param.u64 	%rd2, [rope_2d_back_igone_param_0];
+	ld.param.u64 	%rd3, [rope_2d_back_igone_param_1];
+	ld.param.u64 	%rd4, [rope_2d_back_igone_param_2];
+	ld.param.u64 	%rd5, [rope_2d_back_igone_param_3];
+	ld.param.u32 	%r4, [rope_2d_back_igone_param_5];
+	ld.param.u32 	%r5, [rope_2d_back_igone_param_6];
+	ld.param.u32 	%r6, [rope_2d_back_igone_param_7];
+	ld.param.u32 	%r7, [rope_2d_back_igone_param_8];
+	mov.u32 	%r8, %nctaid.x;
+	mov.u32 	%r9, %ctaid.y;
+	mov.u32 	%r10, %ctaid.x;
+	mad.lo.s32 	%r11, %r9, %r8, %r10;
+	mov.u32 	%r12, %ntid.x;
+	mov.u32 	%r13, %tid.x;
+	mad.lo.s32 	%r1, %r11, %r12, %r13;
+	ld.param.u32 	%r14, [rope_2d_back_igone_param_4];
+	shr.u32 	%r15, %r14, 31;
+	add.s32 	%r16, %r14, %r15;
+	shr.s32 	%r17, %r16, 1;
+	setp.ge.s32 	%p1, %r1, %r17;
+	@%p1 bra 	$L__BB11_4;
+
+	shl.b32 	%r2, %r1, 1;
+	div.s32 	%r18, %r2, %r5;
+	div.s32 	%r19, %r18, %r6;
+	rem.s32 	%r3, %r19, %r4;
+	cvta.to.global.u64 	%rd6, %rd2;
+	mul.wide.s32 	%rd7, %r2, 4;
+	add.s64 	%rd8, %rd6, %rd7;
+	ld.global.f32 	%f1, [%rd8];
+	ld.global.f32 	%f2, [%rd8+4];
+	setp.lt.s32 	%p2, %r3, %r7;
+	cvta.to.global.u64 	%rd9, %rd3;
+	add.s64 	%rd1, %rd9, %rd7;
+	@%p2 bra 	$L__BB11_3;
+	bra.uni 	$L__BB11_2;
+
+$L__BB11_3:
+	st.global.f32 	[%rd1], %f1;
+	st.global.f32 	[%rd1+4], %f2;
+	bra.uni 	$L__BB11_4;
+
+$L__BB11_2:
+	sub.s32 	%r20, %r3, %r7;
+	mul.lo.s32 	%r21, %r6, %r5;
+	rem.s32 	%r22, %r2, %r21;
+	rem.s32 	%r23, %r22, %r6;
+	mad.lo.s32 	%r24, %r20, %r6, %r23;
+	cvta.to.global.u64 	%rd10, %rd4;
+	mul.wide.s32 	%rd11, %r24, 4;
+	add.s64 	%rd12, %rd10, %rd11;
+	ld.global.f32 	%f3, [%rd12];
+	cvta.to.global.u64 	%rd13, %rd5;
+	add.s64 	%rd14, %rd13, %rd11;
+	ld.global.f32 	%f4, [%rd14+4];
+	mul.f32 	%f5, %f2, %f4;
+	fma.rn.f32 	%f6, %f1, %f3, %f5;
+	st.global.f32 	[%rd1], %f6;
+	ld.global.f32 	%f7, [%rd12+4];
+	mul.f32 	%f8, %f2, %f7;
+	ld.global.f32 	%f9, [%rd14];
+	mul.f32 	%f10, %f1, %f9;
+	sub.f32 	%f11, %f8, %f10;
+	st.global.f32 	[%rd1+4], %f11;
+
+$L__BB11_4:
 	ret;
 
 }

@@ -196,8 +196,8 @@ public class LiteLALayer extends Layer {
     public void initBack() {
         // TODO Auto-generated method stub
     	 if (this.dq_a == null) {
-         	this.dq_a = CUDAMemoryManager.getCache("cache_dqt", batchSize, headNum, dk, time);
-         	this.dk_a = CUDAMemoryManager.getCache("cache_dkt", batchSize, headNum, dk, time);
+         	this.dq_a = CUDAMemoryManager.getCache("cache_linear_dqt", batchSize, headNum, dk, time);
+         	this.dk_a = CUDAMemoryManager.getCache("cache_linear_dkt", batchSize, headNum, dk, time);
          } else {
          	this.dq_a.viewOrg(batchSize, headNum, dk, time);
          	this.dk_a.viewOrg(batchSize, headNum, dk, time);

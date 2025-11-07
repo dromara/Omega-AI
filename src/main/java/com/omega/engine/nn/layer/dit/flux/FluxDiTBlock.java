@@ -1,4 +1,4 @@
-package com.omega.engine.nn.layer.dit.sana;
+package com.omega.engine.nn.layer.dit.flux;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -9,9 +9,9 @@ import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.active.SiLULayer;
 import com.omega.engine.nn.layer.dit.modules.DiTAttentionLayer2;
-import com.omega.engine.nn.layer.dit.modules.DiTCrossAttentionLayer2;
+import com.omega.engine.nn.layer.dit.org.DiTSwiGLUFFN;
 import com.omega.engine.nn.layer.normalization.BNType;
-import com.omega.engine.nn.layer.normalization.LNLayer;
+//import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.layer.normalization.RMSLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.tensor.Tensor;
@@ -21,7 +21,7 @@ import com.omega.engine.updater.UpdaterFactory;
  * DiT_Block
  * @author Administrator
  */
-public class SanaDiTBlock extends Layer {
+public class FluxDiTBlock extends Layer {
 	
 	private int batchSize;
 	
@@ -29,8 +29,9 @@ public class SanaDiTBlock extends Layer {
     private int headNum;
     private int time;
     private int cEmbedDim = 0;
-    private int textStateDim;
-    private int textTime;
+
+    private int maxContext;
+    
     private int mlpHiddenDim = 1;
     private boolean bias = false;
     private boolean qkNorm = false;
@@ -39,17 +40,14 @@ public class SanaDiTBlock extends Layer {
     public FullyLayer adaLN_modulation;
 
     public RMSLayer norm1;
-    public LiteLALayer attn;
-//    public DiTAttentionLayer2 attn;
-    public RMSLayer norm2;
-    public DiTCrossAttentionLayer2 cross_attn;
-    public LNLayer norm3;
+    public DiTAttentionLayer2 attn;
 
-    public GLUMBConv mlp;
+    public RMSLayer norm3;
+
+    public DiTSwiGLUFFN mlp;
     
     private Tensor attnInput;
     private Tensor crossAttnInput;
-    private Tensor crossAttnOut;
     private Tensor mlpInput;
     
     public Tensor shift_msa;
@@ -61,25 +59,7 @@ public class SanaDiTBlock extends Layer {
     
     private int[] shape;
     
-    public SanaDiTBlock(int embedDim, int cEmbedDim, int textStateDim, int time, int textTime, int headNum, boolean bias, boolean qkNorm) {
-        this.embedDim = embedDim;
-        this.cEmbedDim = cEmbedDim;
-        this.headNum = headNum;
-        this.time = time;
-        this.textStateDim = textStateDim;
-        this.textTime = textTime;
-        this.bias = bias;
-        this.qkNorm = qkNorm;
-        this.channel = 1;
-        this.height = 1;
-        this.width = embedDim;
-        this.oChannel = 1;
-        this.oHeight = 1;
-        this.oWidth = embedDim;
-        this.initLayers();
-    }
-
-    public SanaDiTBlock(int embedDim, int cEmbedDim, int textStateDim, int time, int textTime, int headNum, boolean bias, boolean qkNorm, Network network) {
+    public FluxDiTBlock(int embedDim, int cEmbedDim, int time, int mlpHiddenDim, int headNum, int maxContext, boolean bias, boolean qkNorm, Network network) {
         this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
@@ -88,8 +68,7 @@ public class SanaDiTBlock extends Layer {
         this.cEmbedDim = cEmbedDim;
         this.headNum = headNum;
         this.time = time;
-        this.textStateDim = textStateDim;
-        this.textTime = textTime;
+        this.mlpHiddenDim = mlpHiddenDim;
         this.bias = bias;
         this.channel = 1;
         this.height = 1;
@@ -98,6 +77,7 @@ public class SanaDiTBlock extends Layer {
         this.oHeight = 1;
         this.oWidth = embedDim;
         this.qkNorm = qkNorm;
+        this.maxContext = maxContext;
         this.initLayers();
     }
 
@@ -110,15 +90,12 @@ public class SanaDiTBlock extends Layer {
         this.adaLN_modulation = new FullyLayer(cEmbedDim, embedDim * 6, true, network);
         adaLN_modulation.weight.clearGPU();
         adaLN_modulation.bias.clearGPU();
-
-        this.attn = new LiteLALayer(embedDim, 2, time, false, false, network);
-//        this.attn = new DiTAttentionLayer2(embedDim, headNum, time, bias, qkNorm, network);
-        this.norm2 = new RMSLayer(1, 1, embedDim, true, BNType.fully_bn, network);
-        this.cross_attn = new DiTCrossAttentionLayer2(embedDim, textStateDim, headNum, time, textTime, bias, qkNorm, network);
-        this.norm3 = new LNLayer(1, 1, embedDim, true, BNType.fully_bn, network);
+   
+        this.attn = new DiTAttentionLayer2(embedDim, headNum, time, bias, qkNorm, network);
+        this.norm3 = new RMSLayer(1, 1, embedDim, true, BNType.fully_bn, network);
         
-        int swiNum = (int)(2.5f * embedDim);
-        this.mlp = new GLUMBConv(time, embedDim, swiNum, network);
+        int swiNum = (int)(2.0f/3.0f * mlpHiddenDim);
+        this.mlp = new DiTSwiGLUFFN(embedDim, swiNum, embedDim, bias, network);
     }
 
     @Override
@@ -145,7 +122,6 @@ public class SanaDiTBlock extends Layer {
         }
         if(crossAttnInput == null || crossAttnInput.number != number) {
         	crossAttnInput = Tensor.createGPUTensor(crossAttnInput, input.number, input.channel, input.height, input.width, true);
-        	crossAttnOut = Tensor.createGPUTensor(crossAttnOut, input.number, input.channel, input.height, input.width, true);
         }
         if(mlpInput == null || mlpInput.number != number) {
         	mlpInput = Tensor.createGPUTensor(mlpInput, input.number, input.channel, input.height, input.width, true);
@@ -174,7 +150,6 @@ public class SanaDiTBlock extends Layer {
         }
         if(crossAttnInput == null || crossAttnInput.number != number) {
         	crossAttnInput = Tensor.createGPUTensor(crossAttnInput, input.number, input.channel, input.height, input.width, true);
-        	crossAttnOut = Tensor.createGPUTensor(crossAttnOut, input.number, input.channel, input.height, input.width, true);
         }
         if(mlpInput == null || mlpInput.number != number) {
         	mlpInput = Tensor.createGPUTensor(mlpInput, input.number, input.channel, input.height, input.width, true);
@@ -212,7 +187,39 @@ public class SanaDiTBlock extends Layer {
     	Tensor_OP().addAxis(output, shift, output, batchSize, time, 1, output.width, 1);
     }
     
-    public void output(Tensor tc,Tensor text) {
+    public void output(Tensor tc) {
+    	
+    	modulationAct.forward(tc);
+    	
+    	adaLN_modulation.forward(modulationAct.getOutput());
+    	
+    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), shift_msa, shape, 0);
+    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), scale_msa, shape, 1);
+    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), gate_msa, shape, 2);
+    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), shift_mlp, shape, 3);
+    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), scale_mlp, shape, 4);
+    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), gate_mlp, shape, 5);
+
+    	norm1.forward(input);
+    	
+    	modulate(norm1.getOutput(), shift_msa, scale_msa, attnInput);
+
+    	attn.forward(attnInput);
+    	Tensor_OP().mul(attn.getOutput(), gate_msa, crossAttnInput, batchSize, time, 1, crossAttnInput.width, 1);
+    	Tensor_OP().add(input, crossAttnInput, crossAttnInput);
+    	
+    	norm3.forward(crossAttnInput);
+    	
+    	modulate(norm3.getOutput(), shift_mlp, scale_mlp, mlpInput);
+
+    	mlp.forward(mlpInput);
+    	
+    	Tensor_OP().mul(mlp.getOutput(), gate_mlp, output, batchSize, time, 1, output.width, 1);
+    	
+    	Tensor_OP().add(crossAttnInput, output, output);
+    }
+    
+    public void output(Tensor tc,Tensor cos,Tensor sin) {
 
     	/**
     	 * shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = self.adaLN_modulation(c).chunk(6, dim=1)
@@ -233,29 +240,21 @@ public class SanaDiTBlock extends Layer {
     	 */
     	norm1.forward(input);
     	modulate(norm1.getOutput(), shift_msa, scale_msa, attnInput);
-
-    	attn.forward(attnInput);
+    	attn.forward(attnInput, cos , sin, maxContext);
     	
     	Tensor_OP().mul(attn.getOutput(), gate_msa, crossAttnInput, batchSize, time, 1, crossAttnInput.width, 1);
     	Tensor_OP().add(input, crossAttnInput, crossAttnInput);
 
     	/**
-    	 * x2 = x1 + self.crossAttn(self.norm2(x1), text)
+    	 * x3 = x1 + gate_mlp.unsqueeze(1) * self.mlp(modulate(self.norm3(x1), shift_mlp, scale_mlp))
     	 */
-    	norm2.forward(crossAttnInput);
-    	cross_attn.forward(norm2.getOutput(), text);
-    	Tensor_OP().add(crossAttnInput, cross_attn.getOutput(), crossAttnOut);
-
-    	/**
-    	 * x3 = x2 + gate_mlp.unsqueeze(1) * self.mlp(modulate(self.norm3(x2), shift_mlp, scale_mlp))
-    	 */
-    	norm3.forward(crossAttnOut);
+    	norm3.forward(crossAttnInput);
     	modulate(norm3.getOutput(), shift_mlp, scale_mlp, mlpInput);
 
     	mlp.forward(mlpInput);
 
     	Tensor_OP().mul(mlp.getOutput(), gate_mlp, output, batchSize, time, 1, output.width, 1);
-    	Tensor_OP().add(crossAttnOut, output, output);
+    	Tensor_OP().add(crossAttnInput, output, output);
 
     }
     
@@ -277,7 +276,52 @@ public class SanaDiTBlock extends Layer {
     	Tensor_OP().mul_left_back(scale, delta, dx,  batchSize, time, 1, delta.width, 1);
     }
     
-    public void diff(Tensor dtc,Tensor dText) {
+    public void diff(Tensor dtc) {
+    	
+    	Tensor_OP().mul_left_back(gate_mlp, delta, output,  batchSize, time, 1, output.width, 1);
+    	mlp.back(output);
+    	Tensor_OP().mul_right_back(mlp.getOutput(), delta, gate_mlp, batchSize, time, 1, output.width, 1);
+    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), gate_mlp, shape, 5);
+    	
+    	Tensor dShift = shift_mlp;
+    	Tensor dScale = gate_mlp;
+    	Tensor x = norm3.getOutput();
+    	Tensor scale = scale_mlp;
+    	modulate_back(dShift, dScale, output, x, scale, mlp.diff);
+    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dShift, shape, 3);
+    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dScale, shape, 4);
+    	
+    	norm3.back(output);
+
+    	Tensor_OP().add(norm3.diff, delta, norm3.diff);
+    	
+    	Tensor_OP().mul_left_back(gate_msa, norm3.diff, output,  batchSize, time, 1, output.width, 1);
+    	attn.back(output);
+    	Tensor_OP().mul_right_back(attn.getOutput(), norm3.diff, gate_msa, batchSize, time, 1, output.width, 1);
+    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), gate_msa, shape, 2);
+    	
+    	dShift = shift_msa;
+    	dScale = gate_msa;
+    	x = norm1.getOutput();
+    	scale = scale_msa;
+    	modulate_back(dShift, dScale, output, x, scale, attn.diff);
+    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dShift, shape, 0);
+    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dScale, shape, 1);
+
+    	norm1.back(output);
+
+    	Tensor_OP().add(norm1.diff, norm3.diff, norm1.diff);
+    	
+    	adaLN_modulation.back(adaLN_modulation.getOutput());
+
+        modulationAct.back(adaLN_modulation.diff);
+        
+    	Tensor_OP().add(dtc, modulationAct.diff, dtc);
+    	
+    	this.diff = norm1.diff;
+    }
+
+    public void diff(Tensor dtc,Tensor cos,Tensor sin) {
 //    	delta.showDM("x3");
     	/**
     	 * x3 = x2 + gate_mlp.unsqueeze(1) * self.mlp(modulate(self.norm3(x2), shift_mlp, scale_mlp))
@@ -299,14 +343,10 @@ public class SanaDiTBlock extends Layer {
 
     	Tensor_OP().add(norm3.diff, delta, norm3.diff);
     	
-    	cross_attn.back(norm3.diff);
+    	Tensor_OP().mul_left_back(gate_msa, norm3.diff, output,  batchSize, time, 1, output.width, 1);
 
-    	norm2.back(cross_attn.diff, norm2.getOutput());
-    	Tensor_OP().add(norm2.diff, norm3.diff, norm2.diff);
-    	
-    	Tensor_OP().mul_left_back(gate_msa, norm2.diff, output,  batchSize, time, 1, output.width, 1);
-    	attn.back(output);
-    	Tensor_OP().mul_right_back(attn.getOutput(), norm2.diff, gate_msa, batchSize, time, 1, output.width, 1);
+    	attn.back(output, cos, sin, maxContext);
+    	Tensor_OP().mul_right_back(attn.getOutput(), norm3.diff, gate_msa, batchSize, time, 1, output.width, 1);
     	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), gate_msa, shape, 2);
     	
     	dShift = shift_msa;
@@ -319,15 +359,14 @@ public class SanaDiTBlock extends Layer {
 
     	norm1.back(output, norm1.getOutput());
 
-    	Tensor_OP().add(norm1.diff, norm2.diff, norm1.diff);
+    	Tensor_OP().add(norm1.diff, norm3.diff, norm1.diff);
     	
     	adaLN_modulation.back(adaLN_modulation.getOutput());
 
         modulationAct.back(adaLN_modulation.diff);
         
     	Tensor_OP().add(dtc, modulationAct.diff, dtc);
-    	Tensor_OP().add(dText, cross_attn.kLinerLayer.diff, dText);
-    	
+
     	this.diff = norm1.diff;
 
     }
@@ -382,6 +421,7 @@ public class SanaDiTBlock extends Layer {
          */
         this.output();
     }
+    
 
     /**
      * 
@@ -389,7 +429,29 @@ public class SanaDiTBlock extends Layer {
      * @param tc time cond
      * @param text
      */
-    public void forward(Tensor input,Tensor tc,Tensor text) {
+    public void forward(Tensor input,Tensor tc) {
+        // TODO Auto-generated method stub
+        /**
+         * 设置输入
+         */
+        this.setInput(input);
+        /**
+         * 参数初始化
+         */
+        this.init(input);
+        /**
+         * 计算输出
+         */
+        this.output(tc);
+    }
+    
+    /**
+     * 
+     * @param input
+     * @param tc time cond
+     * @param text
+     */
+    public void forward(Tensor input,Tensor tc,Tensor cos,Tensor sin) {
         // TODO Auto-generated method stub
         /**
          * 设置输入
@@ -402,7 +464,7 @@ public class SanaDiTBlock extends Layer {
         /**
          * 计算输出
          */
-        this.output(tc, text);
+        this.output(tc, cos, sin);
     }
 
     @Override
@@ -424,7 +486,7 @@ public class SanaDiTBlock extends Layer {
         }
     }
     
-    public void back(Tensor delta,Tensor dtc,Tensor dtext) {
+    public void back(Tensor delta,Tensor dtc) {
         // TODO Auto-generated method stub
         this.initBack();
         /**
@@ -434,7 +496,23 @@ public class SanaDiTBlock extends Layer {
         /**
          * 计算梯度
          */
-        this.diff(dtc, dtext);
+        this.diff(dtc);
+        if (this.network.GRADIENT_CHECK) {
+            this.gradientCheck();
+        }
+    }
+    
+    public void back(Tensor delta,Tensor dtc,Tensor cos,Tensor sin) {
+        // TODO Auto-generated method stub
+        this.initBack();
+        /**
+         * 设置梯度
+         */
+        this.setDelta(delta);
+        /**
+         * 计算梯度
+         */
+        this.diff(dtc, cos, sin);
         if (this.network.GRADIENT_CHECK) {
             this.gradientCheck();
         }
@@ -447,9 +525,7 @@ public class SanaDiTBlock extends Layer {
     	adaLN_modulation.update();
     	
     	attn.update();
-    	norm2.update();
-    	
-    	cross_attn.update();
+
     	norm3.update();
     	
     	mlp.update();
@@ -487,11 +563,8 @@ public class SanaDiTBlock extends Layer {
     	adaLN_modulation.saveModel(outputStream);
     	
     	attn.saveModel(outputStream);
-    	norm2.saveModel(outputStream);
-    	
-    	cross_attn.saveModel(outputStream);
+
     	norm3.saveModel(outputStream);
-    	
     	mlp.saveModel(outputStream);
     }
 
@@ -500,11 +573,8 @@ public class SanaDiTBlock extends Layer {
     	adaLN_modulation.loadModel(inputStream);
     	
     	attn.loadModel(inputStream);
-    	norm2.loadModel(inputStream, 1, 1, attn.oWidth, BNType.fully_bn);
-    	
-    	cross_attn.loadModel(inputStream);
-    	norm3.loadModel(inputStream, 1, 1, cross_attn.oWidth, BNType.fully_bn);
-    	
+
+    	norm3.loadModel(inputStream, 1, 1, attn.oWidth, BNType.fully_bn);
     	mlp.loadModel(inputStream);
     }
 
@@ -515,15 +585,13 @@ public class SanaDiTBlock extends Layer {
     	adaLN_modulation.accGrad(scale);
     	
     	attn.accGrad(scale);
-    	norm2.accGrad(scale);
-    	
-    	cross_attn.accGrad(scale);
+
     	norm3.accGrad(scale);
     	
     	mlp.accGrad(scale);
     }
     
-    public static void loadWeight(Map<String, Object> weightMap, SanaDiTBlock block, boolean showLayers) {
+    public static void loadWeight(Map<String, Object> weightMap, FluxDiTBlock block, boolean showLayers) {
 //        if (showLayers) {
 //            for (String key : weightMap.keySet()) {
 //                System.out.println(key);

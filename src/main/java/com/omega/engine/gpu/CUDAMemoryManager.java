@@ -29,6 +29,8 @@ public class CUDAMemoryManager {
     private List<Pointer> porints = new ArrayList<Pointer>();
     private Map<String, Tensor> privateCaches = new HashMap<String, Tensor>();
     
+    public static long gpuMeroryCount = 0;
+    
     public synchronized static Tensor getCache(String key, int[] shape) {
         Tensor c = null;
         int N = shape[0];
@@ -115,6 +117,8 @@ public class CUDAMemoryManager {
 //        System.err.println(size * (long) Sizeof.FLOAT);
         checkCUDA(cudaMalloc(p, size * (long) Sizeof.FLOAT), p.toString(), size * (long) Sizeof.FLOAT);
         cu_porints.add(p);
+//        gpuMeroryCount += (size * (long) Sizeof.FLOAT);
+//        System.err.println(gpuMeroryCount/1024/1024+"ms.");
         return p;
     }
 

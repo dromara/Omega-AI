@@ -129,15 +129,15 @@ public class FullyLayer extends Layer {
     public void initBack() {
         // TODO Auto-generated method stub
         if (this.diff == null || this.number != this.diff.number) {
-            this.diff = new Tensor(number, channel, height, width, true, true);
-            if (this.diffW == null) {
-                this.diffW = new Tensor(1, 1, oWidth, width, true, true);
-                if (hasBias) {
-                    this.diffB = new Tensor(1, 1, 1, oWidth, true);
-                    int bs = output.number * output.channel * output.height;
-                    this.oneVec = new Tensor(bs, 1, 1, 1, true);
-                    this.oneVec.fill(1.0f, this.network.tensorOP.op);
-                }
+            this.diff = new Tensor(number, channel, height, width, true, true); 
+        }
+        if (this.diffW == null) {
+            this.diffW = new Tensor(1, 1, oWidth, width, true, true);
+            if (hasBias) {
+                this.diffB = new Tensor(1, 1, 1, oWidth, true);
+                int bs = output.number * output.channel * output.height;
+                this.oneVec = new Tensor(bs, 1, 1, 1, true);
+                this.oneVec.fill(1.0f, this.network.tensorOP.op);
             }
         }
     }

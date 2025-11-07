@@ -13,7 +13,7 @@
 
     <properties>
         <java.version>1.8</java.version>
-        <jcuda.version>12.6.0</jcuda.version>
+        <jcuda.version>11.8.0</jcuda.version>
         <javacv.version>1.5.12</javacv.version>
         <ffmpeg.version>7.1.1-1.5.12</ffmpeg.version>
         <opencv.version>4.11.0-1.5.12</opencv.version>
@@ -206,7 +206,6 @@
 			<classifier>linux-x86_64</classifier>
 		</dependency>-->
 		
-        
     </dependencies>
 
     <build>

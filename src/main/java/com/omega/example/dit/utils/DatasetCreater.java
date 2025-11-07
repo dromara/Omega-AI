@@ -617,7 +617,7 @@ public class DatasetCreater {
             int idx = indexs[i];
             String text = datas.get(idx).get("en").toString();
             labels[i] = text;
-            //			System.out.println(text);
+            //			System.out.println(text); 
             int[] ids = tokenizer.encodeInt(text, maxContextLen);
             float eos_id = 0;
             for (int j = 0; j < maxContextLen; j++) {
@@ -641,21 +641,29 @@ public class DatasetCreater {
         //		System.out.println(JsonUtils.toJson(label.data));
     }
     
+    public static void loadLabels(BPETokenizerEN tokenizer,List<Map<String, Object>> datas, int[] indexs, Tensor label, int maxContextLen, int batchSize) {
+        LabelsLoader.load(tokenizer, datas, indexs, batchSize, label, maxContextLen);
+        /**
+         * copy data to gpu.
+         */
+        label.hostToDevice();
+    }
+    
     public static void createClipData() {
     	
-    	int batchSize = 2000;
+    	int batchSize = 1000;
     	int maxContextLen = 77;
     	
     	
     	String clipDataPath = "D:\\dataset\\amine\\dalle_full_clip.bin";
-		String clipMaskDataPath = "D:\\dataset\\amine\\dalle_clip_mask.bin";
+//		String clipMaskDataPath = "D:\\dataset\\amine\\dalle_clip_mask.bin";
     	
 //		String labelPath = "/root/gpufree-data/txt2img_2m/labels.json";
     	String labelPath = "D:\\dataset\\labels.json";
     	
     	Tensor label = new Tensor(batchSize * 77, 1, 1, 1, true);
-        Tensor eosIds = new Tensor(batchSize, 1, 1, 1, true);
-        String[] labels = new String[batchSize];
+//        Tensor eosIds = new Tensor(batchSize, 1, 1, 1, true);
+//        String[] labels = new String[batchSize];
     	
     	try {
     		
@@ -685,15 +693,16 @@ public class DatasetCreater {
             File clipFile = new File(clipDataPath);
             FileOutputStream clipWriter = new FileOutputStream(clipFile);
             
-            File clipMaskFile = new File(clipMaskDataPath);
-            FileOutputStream clipMaskWriter = new FileOutputStream(clipMaskFile);
+//            File clipMaskFile = new File(clipMaskDataPath);
+//            FileOutputStream clipMaskWriter = new FileOutputStream(clipMaskFile);
             
             for(int it = 0;it<indexs.length;it++) {
-            	 loadLabels(bpe, datas, indexs[it], label, labels, eosIds, maxContextLen);
+//            	 loadLabels(bpe, datas, indexs[it], label, labels, eosIds, maxContextLen);
+           	 	 loadLabels(bpe, datas, indexs[it], label, maxContextLen, batchSize);
             	 Tensor condInput = clip.get_full_clip_prompt_embeds(label);
             	 JCudaDriver.cuCtxSynchronize();
                  writeTensor(condInput, clipWriter);
-                 writeTensor(eosIds, clipMaskWriter);
+//                 writeTensor(eosIds, clipMaskWriter);
                  System.out.println(it + "/" + indexs.length + " finish.");
             }
             
@@ -717,8 +726,6 @@ public class DatasetCreater {
     		String labelPath = "D:\\dataset\\labels.json";
     		
         	Tensor label = new Tensor(batchSize * 77, 1, 1, 1, true);
-            Tensor eosIds = new Tensor(batchSize, 1, 1, 1, true);
-            String[] labels = new String[batchSize];
     		
     		String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
             String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
@@ -764,15 +771,18 @@ public class DatasetCreater {
             
             for(int it = 0;it<indexs.length;it++) {
             	 long start  = System.nanoTime();
-            	 loadLabels(bpe, datas, indexs[it], label, labels, eosIds, maxContextLen);
+            	 loadLabels(bpe, datas, indexs[it], label, maxContextLen, batchSize);
             	 System.out.println((System.nanoTime() - start)/1e6);
+            	 long start1  = System.nanoTime();
             	 Tensor condInput2 = clip2.get_full_clip_prompt_embeds(label);
+            	 System.out.println((System.nanoTime() - start1)/1e6);
+            	 long start2  = System.nanoTime();
             	 Tensor condInput = clip.get_full_clip_prompt_embeds(label);
-            	 
+            	 System.out.println((System.nanoTime() - start2)/1e6);
             	 clip.tensorOP.cat_width(condInput2, condInput, condInputCat, condInput2.width, condInput.width);
             	 
             	 JCudaDriver.cuCtxSynchronize();
-                 writeTensor(condInputCat, clipWriter);
+//                 writeTensor(condInputCat, clipWriter);
                  System.out.println(it + "/" + indexs.length + "["+(System.nanoTime() - start)/1e6+"ms] finish.");
             }
             
@@ -862,11 +872,11 @@ public class DatasetCreater {
         	
 //        	createLatendDataset3();
         	
-//        	createClipData();
+        	createClipData();
         	
 //        	createLatendDatasetFullClip();
         	
-        	createTwoClip();
+//        	createTwoClip();
         	
         } catch (Exception e) {
             // TODO: handle exception
