@@ -45,6 +45,10 @@ yolo检测模型权重：
 
 - https://gitee.com/hay_lee/omega-yolo-v3（口罩检测）
 - https://gitee.com/hay_lee/omega-yolo-v7（安全帽检测）
+- https://gitee.com/hay_lee/omega-yolo-v7-traffic（车辆检测）
+
+车辆追踪效果：
+![输入图片说明](742c5fde6ce9aa721511d1a82c55075.png)
 
 2. 配置
 
