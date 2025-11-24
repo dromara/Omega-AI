@@ -185,7 +185,7 @@ __global__ void silu_backward(float *x, float *output, float *delta, float *diff
     if(i < n) {
     	float x_i = x[i];
     	float x_sigmod = (float) (1.0f / (1.0f + expf(-x_i)));
-    	diff[i] = delta[i] * (x_sigmod * (1 + x_i * (1 - x_sigmod)));
+    	diff[i] = delta[i] * x_sigmod * (1.0f + x_i * (1.0f - x_sigmod));
     }
 }
 
@@ -200,7 +200,7 @@ __global__ void silu_backward_temp(float *x, float *output, float *delta, float 
 
 extern "C"
 __device__ float sech_gpu(float x) {
-  return 2 / (expf(x) + expf(-x)); 
+  return 2 / (expf(x) + expf(-x));
 }
 
 __device__ float sigmoid(float x) {
@@ -288,5 +288,44 @@ __global__ void gelu_old_half_forward(float *x, float *out, int N) {
     	float val = x[idx];
     	float v = __float2half(erff(val * 0.707106781f));
     	out[idx] = val * 0.5 * (1 + v);
+    }
+}
+
+extern "C"
+__global__ void gelu_tanh_torch_forward(float *x, float *out, int N) {
+    int idx = threadIdx.x + blockIdx.x*blockDim.x;
+    if(idx < N) {
+    	float xi = x[idx];
+    	float kBeta = M_SQRT2 * M_2_SQRTPI * 0.5f;
+    	float kKappa = 0.044715;
+    	float x_cube = xi * xi * xi;
+    	float inner = kBeta * (xi + kKappa * x_cube);
+        out[idx] = 0.5f * xi * (1.0f + tanh(inner));
+    }
+}
+
+extern "C"
+__global__ void gelu_tanh_torch_backward(float* dinp, const float* inp, const float* dout, int N) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < N) {
+        float x = (float)inp[i];
+       	float kBeta = M_SQRT2 * M_2_SQRTPI * 0.5f;
+    	float kKappa = 0.044715;
+
+    	float x_sq = x * x;
+        float x_cube = x_sq * x;
+        float inner = kBeta * (x + kKappa * x_cube);
+        float tanh_inner = tanh(inner);
+
+        float left = 0.5f * x;
+        float right = 1.0f + tanh_inner;
+
+        float left_derivative = 0.5f * right;
+
+        float tanh_derivative = 1.0f - tanh_inner * tanh_inner;
+        float inner_derivative = kBeta * (1.0f + 3.0f * kKappa * x_sq);
+        float right_derivative = left * tanh_derivative * inner_derivative;
+
+        dinp[i] = dout[i] * (left_derivative + right_derivative);
     }
 }
