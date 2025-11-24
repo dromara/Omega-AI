@@ -2,9 +2,7 @@ package com.omega.engine.nn.layer.dit.txt;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.util.Map;
 
-import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -12,18 +10,15 @@ import com.omega.engine.nn.layer.active.SiLULayer;
 import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.RMSLayer;
 import com.omega.engine.nn.network.Network;
-import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
-import com.omega.example.common.ModeLoaderlUtils;
-import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
  * DiT FinalLayer
  *
  * @author Administrator
  */
-public class DiT_TXTFinalLayer extends Layer {
+public class DiT_TXTFinalLayer2 extends Layer {
 	
 	private int batchSize;
 	private int time;
@@ -36,15 +31,17 @@ public class DiT_TXTFinalLayer extends Layer {
     public FullyLayer finalLinear;
     
     private SiLULayer m_active;
-    public FullyLayer m_linear1;
-    public FullyLayer m_linear2;
+    public FullyLayer m_linear;
     
     private Tensor linearInput;
     
     private Tensor dShift;
     private Tensor dScale;
+    
+    private Tensor m1;
+    private Tensor m2;
 
-    public DiT_TXTFinalLayer(int patch_size, int hidden_size,int out_channels, int time, boolean bias) {
+    public DiT_TXTFinalLayer2(int patch_size, int hidden_size,int out_channels, int time, boolean bias) {
         this.hidden_size = hidden_size;
         this.bias = bias;
         this.oChannel = 1;
@@ -54,7 +51,7 @@ public class DiT_TXTFinalLayer extends Layer {
         this.initLayers();
     }
 
-    public DiT_TXTFinalLayer(int patch_size, int hidden_size,int out_channels, int time, boolean bias, boolean normParams, Network network) {
+    public DiT_TXTFinalLayer2(int patch_size, int hidden_size,int out_channels, int time, boolean bias, boolean normParams, Network network) {
         this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
@@ -77,16 +74,7 @@ public class DiT_TXTFinalLayer extends Layer {
         	this.finalLinear.bias.clearGPU();
         }
         this.m_active = new SiLULayer(network);
-        this.m_linear1 = new FullyLayer(hidden_size, hidden_size, bias, network);
-        this.m_linear2 = new FullyLayer(hidden_size, hidden_size, bias, network);
-        this.m_linear1.weight.clearGPU();
-        if(this.m_linear1.bias != null) {
-        	this.m_linear1.bias.clearGPU();
-        }
-        this.m_linear2.weight.clearGPU();
-        if(this.m_linear2.bias != null) {
-        	this.m_linear2.bias.clearGPU();
-        }
+        this.m_linear = new FullyLayer(hidden_size, hidden_size * 2, bias, network);
     }
 
     @Override
@@ -100,6 +88,8 @@ public class DiT_TXTFinalLayer extends Layer {
     	this.batchSize = number / time;
     	if(linearInput == null || linearInput.number != number) {
     		linearInput = Tensor.createGPUTensor(linearInput, number, input.channel, input.height, input.width, true);
+    		m1 = Tensor.createGPUTensor(m1, number, 1, 1, hidden_size, true);
+    		m2 = Tensor.createGPUTensor(m2, number, 1, 1, hidden_size, true);
     	}
     }
     
@@ -128,8 +118,10 @@ public class DiT_TXTFinalLayer extends Layer {
     public void output(Tensor tc) {
 
     	m_active.forward(tc);
-    	m_linear1.forward(m_active.getOutput());
-    	m_linear2.forward(m_active.getOutput());
+    	m_linear.forward(m_active.getOutput());
+    	
+    	Tensor_OP().getByChannel(m_linear.getOutput(), m1, new int[] {batchSize, 2, 1, hidden_size}, 0);
+    	Tensor_OP().getByChannel(m_linear.getOutput(), m2, new int[] {batchSize, 2, 1, hidden_size}, 1);
     	
     	finalNorm.forward(input);
     	
@@ -137,9 +129,9 @@ public class DiT_TXTFinalLayer extends Layer {
     	 * modulate
     	 * x = x * (1 + scale) + shift
     	 */
-    	Tensor_OP().add(m_linear2.getOutput(), 1, m_linear2.getOutput());
-    	Tensor_OP().mul(finalNorm.getOutput(), m_linear2.getOutput(), linearInput, batchSize, time, 1, finalNorm.getOutput().width, 1);
-    	Tensor_OP().addAxis(linearInput, m_linear1.getOutput(), linearInput, batchSize, time, 1, finalNorm.getOutput().width, 1);
+    	Tensor_OP().add(m2, 1, m2);
+    	Tensor_OP().mul(finalNorm.getOutput(), m2, linearInput, batchSize, time, 1, finalNorm.getOutput().width, 1);
+    	Tensor_OP().addAxis(linearInput, m1, linearInput, batchSize, time, 1, finalNorm.getOutput().width, 1);
     	
     	finalLinear.forward(linearInput);
     	this.output = finalLinear.getOutput();
@@ -160,25 +152,7 @@ public class DiT_TXTFinalLayer extends Layer {
     
     public void diff(Tensor dtc) {
         // TODO Auto-generated method stub
-    	finalLinear.back(this.delta);
-//    	finalLinear.diff.showDM("l1");
-        Tensor_OP().addAxisBack(dShift, finalLinear.diff, batchSize, time, 1, finalNorm.getOutput().width, 1);
-
-    	Tensor_OP().mul_right_back(finalNorm.getOutput(), finalLinear.diff, dScale, batchSize, time, 1, finalNorm.getOutput().width, 1);
-    	Tensor_OP().mul_left_back(m_linear2.getOutput(), finalLinear.diff, linearInput,  batchSize, time, 1, finalNorm.getOutput().width, 1);
-
-    	finalNorm.back(linearInput);
-
-    	m_linear1.back(dShift);
-    	m_linear2.back(dScale);
     	
-    	Tensor_OP().add(m_linear1.diff, m_linear2.diff, m_linear1.diff);
-    	
-    	m_active.back(m_linear1.diff);
-    	
-    	Tensor_OP().add(dtc, m_active.diff, dtc);
-    	
-        this.diff = finalNorm.diff;
     }
 
     @Override
@@ -286,10 +260,10 @@ public class DiT_TXTFinalLayer extends Layer {
     @Override
     public void update() {
         // TODO Auto-generated method stub
-    	finalNorm.update();
-    	finalLinear.update();
-    	m_linear1.update();
-    	m_linear2.update();
+//    	finalNorm.update();
+//    	finalLinear.update();
+//    	m_linear1.update();
+//    	m_linear2.update();
     }
 
     @Override
@@ -322,15 +296,13 @@ public class DiT_TXTFinalLayer extends Layer {
     public void saveModel(RandomAccessFile outputStream) throws IOException {
     	finalNorm.saveModel(outputStream);
     	finalLinear.saveModel(outputStream);
-    	m_linear1.saveModel(outputStream);
-    	m_linear2.saveModel(outputStream);
+    	m_linear.saveModel(outputStream);
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
     	finalNorm.loadModel(inputStream, 1, 1, hidden_size, BNType.fully_bn);
     	finalLinear.loadModel(inputStream);
-    	m_linear1.loadModel(inputStream);
-    	m_linear2.loadModel(inputStream);
+    	m_linear.loadModel(inputStream);
     }
 
     @Override
@@ -338,73 +310,8 @@ public class DiT_TXTFinalLayer extends Layer {
         // TODO Auto-generated method stub
     	finalNorm.accGrad(scale);
         finalLinear.accGrad(scale);
-        m_linear1.accGrad(scale);
-    	m_linear2.accGrad(scale);
+        m_linear.accGrad(scale);
     }
     
-    public static void loadWeight(Map<String, Object> weightMap, DiT_TXTFinalLayer block, boolean showLayers) {
-        if (showLayers) {
-            for (String key : weightMap.keySet()) {
-                System.out.println(key);
-            }
-        }
-        
-        block.finalNorm.gamma = ModeLoaderlUtils.loadData(block.finalNorm.gamma, weightMap, 1, "norm_final.weight");
-        
-        ModeLoaderlUtils.loadData(block.finalLinear.weight, weightMap, "linear.weight");
-        ModeLoaderlUtils.loadData(block.finalLinear.bias, weightMap, "linear.bias");
-        
-        ModeLoaderlUtils.loadData(block.m_linear1.weight, weightMap, "adaLN_modulation1.weight");
-        ModeLoaderlUtils.loadData(block.m_linear1.bias, weightMap, "adaLN_modulation1.bias");
-        
-        ModeLoaderlUtils.loadData(block.m_linear2.weight, weightMap, "adaLN_modulation2.weight");
-        ModeLoaderlUtils.loadData(block.m_linear2.bias, weightMap, "adaLN_modulation2.bias");
-    }
-    
-    public static void main(String[] args) {
-    	
-    	String inputPath = "H:\\model\\dit_final.json";
-    	Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
-    	
-        int batchSize = 2;
-        int patch_size = 2;
-        int time = 64;
-        int embedDim = 16;
-        int outChannel = 3;
-        
-        Transformer tf = new Transformer();
-        tf.number = batchSize * time;
-        tf.time = time;
-        
-        float[] data = RandomUtils.order(batchSize * time * embedDim, 0.1f, 0.1f);
-        Tensor input = new Tensor(batchSize * time, 1, 1, embedDim, data, true);
-        
-        float[] cData = RandomUtils.order(batchSize * embedDim, 0.1f, 0.1f); 
-        Tensor cond = new Tensor(batchSize , 1, 1, embedDim, cData, true);
-        
-        int ow = patch_size * patch_size * outChannel;
-        
-        float[] delta_data = RandomUtils.order(batchSize * time * ow, 0.01f, 0.01f);
-        Tensor delta = new Tensor(batchSize * time, 1, 1, ow, delta_data, true);
-        
-        Tensor dcond = new Tensor(batchSize, 1, 1, embedDim, true);
-
-        DiT_TXTFinalLayer finalLayer = new DiT_TXTFinalLayer(patch_size, embedDim, outChannel, time, true, true, tf);
-        
-        loadWeight(datas, finalLayer, true);
-        
-        for (int i = 0; i < 10; i++) {
-            //			input.showDM();
-        	dcond.clearGPU();
-        	finalLayer.forward(input, cond);
-        	finalLayer.getOutput().showShape();
-        	finalLayer.getOutput().showDM();
-        	finalLayer.back(delta, dcond);
-////            //			delta.showDM();
-        	finalLayer.diff.showDM("dx");
-        	dcond.showDM("dcond");
-            //			delta.copyData(tmp);
-        }
-    }
 }
 

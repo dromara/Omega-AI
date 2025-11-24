@@ -1096,6 +1096,9 @@ public class ModeLoaderlUtils {
                 int C = dataA.get(0).size();
                 int H = dataA.get(0).get(0).size();
                 int W = dataA.get(0).get(0).get(0).size();
+                if(!x.checkShape(N, C, 1, W)) {
+                 	throw new RuntimeException("the tensor shape" + JsonUtils.toJson(x.shape())+" is not shape:["+ N + "," + C + "," + 1 + "," + W +"]。");
+                }
                 for (int n = 0; n < N; n++) {
                     for (int c = 0; c < C; c++) {
                         for (int h = 0; h < H; h++) {

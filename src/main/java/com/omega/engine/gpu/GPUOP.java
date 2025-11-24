@@ -402,6 +402,21 @@ public class GPUOP {
         }
     }
 
+    public void multiplyFloat(int transa, int transb, int m, int n, int k, float alpha, /** host or device pointer */
+            Pointer A, int lda, Pointer B, int ldb, float beta, /** host or device pointer */
+            Pointer C, int ldc) {
+		try {
+			Pointer alphaP = Pointer.to(new float[]{alpha});
+			Pointer betaP = Pointer.to(new float[]{beta});
+			int status = JCublas2.cublasSgemm(getHandle(), transb, transa, n, m, k, alphaP, B, ldb, A, lda, betaP, C, ldc);
+			checkCUBLASResult(status);
+			//            cudaDeviceSynchronize();
+		} catch (Exception e) {
+		// TODO: handle exception
+			e.printStackTrace();
+		}
+	}
+    
     public void gemv(int trans_A, int M, int N, Tensor A, Tensor X, Tensor Y, float alpha, float beta) {
         try {
             Pointer alphaP = Pointer.to(new float[]{alpha});

@@ -88,6 +88,7 @@ public class LNLayer extends NormalizationLayer {
     
     public LNLayer(int channel, int height, int width, BNType bnType, Network network) {
     	this.network = network;
+        network.paramLayers.add(this);
 		this.setUpdater(UpdaterFactory.create(this.network));
         this.channel = channel;
         this.height = height;
@@ -102,6 +103,7 @@ public class LNLayer extends NormalizationLayer {
     
     public LNLayer(int channel, int height, int width, boolean hasParams, BNType bnType, Network network) {
     	this.network = network;
+        network.paramLayers.add(this);
 		this.setUpdater(UpdaterFactory.create(this.network));
         this.channel = channel;
         this.height = height;

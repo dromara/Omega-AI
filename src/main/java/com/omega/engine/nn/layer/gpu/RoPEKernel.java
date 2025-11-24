@@ -45,11 +45,13 @@ public class RoPEKernel extends BaseKernel {
     private CUfunction forward_all_function;
     private CUfunction forward_32_function;
     private CUfunction forward_2d_function;
+    private CUfunction forward_2d_t_function;
     /**
      * 反向传播方法
      */
     private CUfunction backward_function;
     private CUfunction backward_2d_function;
+    private CUfunction backward_2d_t_function;
     private CUfunction backward_all_function;
     private CUfunction backward_32_function;
     private CUfunction forward_all_32_function;
@@ -275,12 +277,11 @@ public class RoPEKernel extends BaseKernel {
     	for(int i = 0;i<grid_size * grid_size;i++) {
     		int w = i % grid_size;
     		int h = i / grid_size;
-    		grid_h[i] = w;
-       		grid_w[i] = h;
+    		grid_h[i] = h;
+       		grid_w[i] = w;
     	}
 
     	float[][] emb_h = get_1d_cossin_pos_embed_from_grid(embed_dim/2, grid_h);
-//    	System.err.println(JsonUtils.toJson(emb_h));
     	float[][] emb_w = get_1d_cossin_pos_embed_from_grid(embed_dim/2, grid_w);
     	float[][] emb = new float[2][emb_h[0].length];
     	emb[0] = cat(emb_h[0], emb_w[0], embed_dim/2);
@@ -327,6 +328,14 @@ public class RoPEKernel extends BaseKernel {
             if(backward_2d_igone_function == null) {
             	backward_2d_igone_function = getCudaManager().getLocalFunctionByModule("RoPEKernel.cu", "rope_2d_back_igone");
             }
+            
+            if (forward_2d_t_function == null) {
+            	forward_2d_t_function = getCudaManager().getLocalFunctionByModule("RoPEKernel.cu", "rope_2d_norm_t");
+            }
+            if(backward_2d_t_function == null) {
+            	backward_2d_t_function = getCudaManager().getLocalFunctionByModule("RoPEKernel.cu", "rope_2d_back_t");
+            }
+            
         } catch (Exception e) {
             // TODO: handle exception
             e.printStackTrace();
@@ -365,6 +374,44 @@ public class RoPEKernel extends BaseKernel {
                     block_dims[0], block_dims[1], block_dims[2],      // Block dimension
                     0, null,               // Shared memory size and stream
                     forwardParameters, null // Kernel- and extra parameters
+            ));
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void forward2d_t(Tensor cos, Tensor sin, Tensor input, Tensor output,int T,int HN,int HS) {
+        try {
+           
+            /**
+             * float* x, float* out,float* cos,float* sin, int N, int T, int headNum,int headSize
+             */
+            forwardParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(cos.getGpuData()), Pointer.to(sin.getGpuData()), Pointer.to(new int[]{input.dataLength}), Pointer.to(new int[]{T}), Pointer.to(new int[]{HN}), Pointer.to(new int[]{HS}));
+
+            checkCUDA(cuLaunchKernel(forward_2d_t_function, this.CAFFE_GET_BLOCKS(input.dataLength/2), 1, 1,      // Grid dimension
+            		CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    forwardParameters, null // Kernel- and extra parameters
+            ));
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void backward2d_t(Tensor cos, Tensor sin, Tensor delta, Tensor diff,int T,int HN,int HS) {
+        try {
+           
+            /**
+             * float* delta, float* diff,float* cos, float* sin, int N, int T, int headNum,int headSize
+             */
+        	backwardParameters = Pointer.to(Pointer.to(delta.getGpuData()), Pointer.to(diff.getGpuData()), Pointer.to(cos.getGpuData()), Pointer.to(sin.getGpuData()), Pointer.to(new int[]{delta.dataLength}), Pointer.to(new int[]{T}), Pointer.to(new int[]{HN}), Pointer.to(new int[]{HS}));
+
+            checkCUDA(cuLaunchKernel(backward_2d_t_function, this.CAFFE_GET_BLOCKS(delta.dataLength/2), 1, 1,      // Grid dimension
+            		CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    backwardParameters, null // Kernel- and extra parameters
             ));
         } catch (Exception e) {
             // TODO: handle exception

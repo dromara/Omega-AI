@@ -9,7 +9,7 @@ import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.active.SiLULayer;
 import com.omega.engine.nn.layer.normalization.BNType;
-import com.omega.engine.nn.layer.normalization.LNLayer;
+import com.omega.engine.nn.layer.normalization.RMSLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
@@ -30,11 +30,11 @@ public class DiTJoinBlockHead extends Layer {
 //    public RMSLayer norm1;
 //    public RMSLayer norm2;
 
-    public LNLayer qNorm;
-    public LNLayer kNorm;
+    public RMSLayer qNorm;
+    public RMSLayer kNorm;
 	
-    public LNLayer norm1;
-    public LNLayer norm2;
+    public RMSLayer norm1;
+    public RMSLayer norm2;
     
     public FullyLayer qLinerLayer;
     public FullyLayer kLinerLayer;
@@ -108,11 +108,11 @@ public class DiTJoinBlockHead extends Layer {
 //    	this.norm2 = new RMSLayer(network);
     	
     	if(qkNorm) {
-	    	qNorm = new LNLayer(1, 1, embedDim, BNType.fully_bn, network);
-	    	kNorm = new LNLayer(1, 1, embedDim, BNType.fully_bn, network);
+	    	qNorm = new RMSLayer(1, 1, embedDim, normParams, BNType.fully_bn, network);
+	    	kNorm = new RMSLayer(1, 1, embedDim, normParams, BNType.fully_bn, network);
 	    }
     	
-    	this.norm1 = new LNLayer(1, 1, embedDim, normParams, BNType.fully_bn, network);
+    	this.norm1 = new RMSLayer(1, 1, embedDim, normParams, BNType.fully_bn, network);
     	
         this.modulationAct = new SiLULayer(network);
         
@@ -143,7 +143,7 @@ public class DiTJoinBlockHead extends Layer {
         
         if(!pre_only) {
         	
-        	this.norm2 = new LNLayer(1, 1, embedDim, normParams, BNType.fully_bn, network);
+        	this.norm2 = new RMSLayer(1, 1, embedDim, normParams, BNType.fully_bn, network);
         	
 	        this.setoLinerLayer(new FullyLayer(embedDim, embedDim, true, this.network));
 	        RandomUtils.xavier_uniform(this.oLinerLayer.weight, 1, embedDim, embedDim);

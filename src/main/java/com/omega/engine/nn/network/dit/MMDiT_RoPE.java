@@ -57,8 +57,15 @@ public class MMDiT_RoPE extends Network {
     private SmoothL1Kernel smoothL1Kernel;
     private DispLossKernel dispLossKernel;
     
+    private Tensor input_null;
+    private Tensor eps;
+    private Tensor uncond_eps;
+    private Tensor head;
+    private Tensor tail;
+    
     public MMDiT_RoPE(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int maxContextLen, int textEmbedDim, int mlpRatio, boolean learnSigma, boolean normParams, float y_drop_prob) {
         this.lossFunction = LossFactory.create(lossType, this);
+        this.weight_decay = 0.0f;
         this.updater = updater;
         this.inChannel = inChannel;
         this.width = width;
@@ -327,6 +334,55 @@ public class MMDiT_RoPE extends Network {
     public Tensor smoothL1Back(Tensor s,Tensor t,Tensor sxrDiff,float beta) {
     	smoothL1Kernel.backward(s, t, sxrDiff, beta);
     	return sxrDiff;
+    }
+    
+    public Tensor forward_with_cfg(Tensor input, Tensor t, Tensor context, Tensor cos, Tensor sin, Tensor eps, float cfg_scale) {
+        /**
+         * 设置输入数据
+         */
+        if(input_null == null || input_null.number != input.number * 2) {
+    		input_null = Tensor.createGPUTensor(input_null, input.number * 2, input.channel, input.height, input.width, true);
+    		uncond_eps = Tensor.createGPUTensor(uncond_eps, input.number, input.channel, input.height, input.width, true);
+    	}
+    	tensorOP.cat_batch(input, input, input_null);
+        this.main.forward(input_null, t, context, cos, sin);
+        tensorOP.cat_bacth_copy(this.main.getOutput(), eps, uncond_eps);
+        /**
+         * out = uncond_eps + cfg_scale * (eps - uncond_eps)
+         */
+        tensorOP.sub(eps, uncond_eps, eps);
+        tensorOP.mul(eps, cfg_scale, eps);
+        tensorOP.add(uncond_eps, eps, eps);
+        return eps;
+    }
+    
+    public Tensor forward_with_cfg(Tensor input, Tensor t, Tensor context, Tensor cos, Tensor sin, Tensor out, float cfg_scale, int channel) {
+        /**
+         * 设置输入数据
+         */
+        if(input_null == null || input_null.number != input.number * 2) {
+    		input_null = Tensor.createGPUTensor(input_null, input.number * 2, input.channel, input.height, input.width, true);
+    		eps = Tensor.createGPUTensor(eps, input.number, channel, input.height, input.width, true);
+    		uncond_eps = Tensor.createGPUTensor(uncond_eps, input.number, channel, input.height, input.width, true);
+    		head = Tensor.createGPUTensor(head, input_null.number, channel, input.height, input.width, true);
+    		tail = Tensor.createGPUTensor(tail, input_null.number, input.channel - channel, input.height, input.width, true);
+    	}
+    	tensorOP.cat_batch(input, input, input_null);
+        this.main.forward(input_null, t, context, cos, sin);
+        tensorOP.getByChannel(this.main.getOutput(), head, this.main.getOutput().shape(), 0, channel);
+        tensorOP.getByChannel(this.main.getOutput(), tail, this.main.getOutput().shape(), channel, tail.channel);
+        tensorOP.cat_bacth_copy(head, eps, uncond_eps);
+        /**
+         * out = uncond_eps + cfg_scale * (eps - uncond_eps)
+         */
+        tensorOP.sub(eps, uncond_eps, eps);
+        tensorOP.mul(eps, cfg_scale, eps);
+        tensorOP.add(uncond_eps, eps, eps);
+        tensorOP.cat_batch(eps, eps, head);
+        tensorOP.getByChannel_back(this.main.getOutput(), head, this.main.getOutput().shape(), 0);
+        tensorOP.getByChannel_back(this.main.getOutput(), tail, this.main.getOutput().shape(), channel);
+        tensorOP.getByNumber(this.main.getOutput(), out, 0, input.number);
+        return out;
     }
     
 }

@@ -10,6 +10,7 @@ import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.dit.DiTCaptionEmbeddingLayer;
 import com.omega.engine.nn.layer.dit.DiTFinalLayer;
+import com.omega.engine.nn.layer.dit.DiTOrgTimeEmbeddingLayer;
 import com.omega.engine.nn.layer.dit.DiTPatchEmbeddingLayer;
 import com.omega.engine.nn.layer.dit.DiTTimeEmbeddingLayer;
 import com.omega.engine.nn.network.Network;
@@ -37,10 +38,12 @@ public class MMDiTMoudueRoPE extends Layer {
     private boolean normParams = true;
     
     public DiTPatchEmbeddingLayer patchEmbd;
-    public DiTTimeEmbeddingLayer timeEmbd;
+    public DiTOrgTimeEmbeddingLayer timeEmbd;
     public DiTCaptionEmbeddingLayer labelEmbd;
     public List<DiTJoinBlockRoPE> blocks;
     public DiTFinalLayer finalLayer;
+    
+//    private Tensor posEmbd;
     
     private Tensor dtc;
 
@@ -75,7 +78,7 @@ public class MMDiTMoudueRoPE extends Layer {
     	
     	patchEmbd = new DiTPatchEmbeddingLayer(inChannel, width, hiddenSize, patchSize, true, network);
          
-        timeEmbd = new DiTTimeEmbeddingLayer(timeSteps, 256, hiddenSize, true, network);
+        timeEmbd = new DiTOrgTimeEmbeddingLayer(timeSteps, 256, hiddenSize, true, network);
         
         labelEmbd = new DiTCaptionEmbeddingLayer(textEmbedDim, hiddenSize, maxContextLen, y_drop_prob, true, network);
         
@@ -131,7 +134,9 @@ public class MMDiTMoudueRoPE extends Layer {
         if(this.output == null || this.output.number != number) {
         	output = Tensor.createGPUTensor(output, number, oChannel, oHeight, oWidth, true);
         }
-
+//        if(posEmbd == null) {
+//        	posEmbd = new Tensor(1, patchEmbd.oChannel, 1, hiddenSize, FluxDiTMainMoudue.get_2d_cossin_pos_embed(hiddenSize, width/patchSize), true);
+//        }
         if(patchEmbd.getOutput() != null){
         	patchEmbd.getOutput().viewOrg();
         }
@@ -162,6 +167,8 @@ public class MMDiTMoudueRoPE extends Layer {
     	
     	patchEmbd.forward(input);
 
+//    	Tensor_OP().addAxis(patchEmbd.getOutput(), posEmbd, patchEmbd.getOutput(), posEmbd.channel * posEmbd.width);
+    	
     	timeEmbd.forward(tc);
     	
     	labelEmbd.forward(text);

@@ -55,9 +55,9 @@ public class DiTOrgTimeEmbeddingLayer extends Layer {
             CUDAModules.initContext();
             int N = 2;
             int T = 1000;
-            int d_model = 128;
-            int dim = d_model * 4;
-            float[] data = new float[]{0.04f, 0.9f};
+            int d_model = 256;
+            int dim = 384;
+            float[] data = new float[]{0.1f, 0.8f};
             Tensor input = new Tensor(N, 1, 1, 1, data, true);
             float[] data2 = MatrixUtils.order(N * dim, 0.01f, 0.01f);
             Tensor delta = new Tensor(N, 1, 1, dim, data2, true);
@@ -100,7 +100,6 @@ public class DiTOrgTimeEmbeddingLayer extends Layer {
         if(tokenDropKernel == null) {
         	tokenDropKernel = new TokenDropKernel(cuda());
         }
-//        linear2.weight = new Tensor(1, 1, dim, dim, MatrixUtils.order(dim * dim, 0.01f, 0.01f), true);
     }
 
     @Override

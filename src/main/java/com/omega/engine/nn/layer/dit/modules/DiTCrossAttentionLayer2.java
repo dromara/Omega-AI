@@ -251,7 +251,7 @@ public class DiTCrossAttentionLayer2 extends Layer {
         }
         if (this.qt == null || this.qt.number != this.batchSize) {
             // [batch_size，time，head_num，d_k]
-        	this.rq = Tensor.createGPUTensor(this.rq, batchSize, time, headNum, dk, true);
+        	this.rq = Tensor.createGPUTensor(this.rq, batchSize, headNum, time, dk, true);
             this.qt = Tensor.createGPUTensor(this.qt, batchSize, headNum, time, dk, true);
             this.kt = Tensor.createGPUTensor(this.kt, batchSize, headNum, kvTime, dk, true);
             this.vt = Tensor.createGPUTensor(this.vt, batchSize, headNum, kvTime, dk, true);
@@ -273,7 +273,7 @@ public class DiTCrossAttentionLayer2 extends Layer {
         this.number = input.number;
         this.batchSize = this.number / time;
         
-        this.rq = CUDAMemoryManager.getCache("dit_block_cross_rq", batchSize, time, headNum, dk);
+        this.rq = CUDAMemoryManager.getCache("dit_block_cross_rq", batchSize, headNum, time, dk);
     	this.qt = CUDAMemoryManager.getCache("dit_block_cross_qt", batchSize, headNum, time, dk);
     	this.kt = CUDAMemoryManager.getCache("dit_block_cross_kt", batchSize, headNum, kvTime, dk);
     	this.vt = CUDAMemoryManager.getCache("dit_block_cross_vt", batchSize, headNum, kvTime, dk);
@@ -365,17 +365,18 @@ public class DiTCrossAttentionLayer2 extends Layer {
         /**
          * apply RoPE
          */
-        ropeKernel.forward2d(cos, sin, query, rq, time, headNum, dk);
-        Tensor_OP().permute(rq, qt, p_0213);
+        Tensor_OP().permute(query, qt, p_0213);
         Tensor_OP().permute(key, kt, p_0213);
         Tensor_OP().permute(value, vt, p_0213);
  
+        ropeKernel.forward2d(cos, sin, qt, rq, time, headNum, dk);
+        
         if(qkNorm) {
-        	qNorm.forward(qt);
+        	qNorm.forward(rq);
         	kNorm.forward(kt);
         	scaledDotProductAttention(qNorm.getOutput(), kNorm.getOutput(), vt);
         }else {
-        	scaledDotProductAttention(qt, kt, vt);
+        	scaledDotProductAttention(rq, kt, vt);
         }
         Tensor vaccum = temp;
         attentionKernel.unpermute(vaccum, oi, batchSize, time, headNum, dk);
@@ -391,8 +392,8 @@ public class DiTCrossAttentionLayer2 extends Layer {
         //		context.showShape();
         this.qLinerLayer.forward(this.input, temp_out);
         Tensor query = this.qLinerLayer.getOutput().view(batchSize, time, headNum, dk);
-        ropeKernel.forward2d(cos, sin, query, rq, time, headNum, dk);
-        Tensor_OP().permute(rq, qt, p_0213);
+        Tensor_OP().permute(query, qt, p_0213);
+        ropeKernel.forward2d(cos, sin, qt, rq, time, headNum, dk);
 
         this.kLinerLayer.forward(context, temp_key_out);
         Tensor key = temp_key_out.view(batchSize, kvTime, headNum, dk);
@@ -404,10 +405,10 @@ public class DiTCrossAttentionLayer2 extends Layer {
         Tensor_OP().permute(value, vt, p_0213);
  
         if(qkNorm) {
-        	qNorm.forward(qt, qt);
+        	qNorm.forward(rq, rq);
         	kNorm.forward(kt, kt);
         }
-        scaledDotProductAttention(qt, kt, vt);
+        scaledDotProductAttention(rq, kt, vt);
         
         Tensor vaccum = temp;
         attentionKernel.unpermute(vaccum, oi, batchSize, time, headNum, dk);
@@ -428,7 +429,7 @@ public class DiTCrossAttentionLayer2 extends Layer {
         GPUOP.getInstance().bmmEX(CUBLAS_OP_N, CUBLAS_OP_N, dk, time, kvTime, 1.0f, value.getGpuData(), dk, kvTime * dk, tmp.getGpuData(), kvTime, time * kvTime, 0.0f, vaccum.getGpuData(), dk, time * dk, batchSize * headNum);
     }
 
-    public void scaledDotProductAttentionBackward() {
+    public void scaledDotProductAttentionBackward(Tensor q) {
         Tensor tmp = attn;
 
         Tensor dvaccum = temp;
@@ -461,7 +462,7 @@ public class DiTCrossAttentionLayer2 extends Layer {
         /**
          * backward into dkt
          */
-        GPUOP.getInstance().bmmEX(CUBLAS_OP_N, CUBLAS_OP_T, dk, kvTime, time, 1.0f, qt.getGpuData(), dk, time * dk, dpreatt.getGpuData(), kvTime, time * kvTime, 0.0f, dkt.getGpuData(), dk, kvTime * dk, batchSize * headNum);
+        GPUOP.getInstance().bmmEX(CUBLAS_OP_N, CUBLAS_OP_T, dk, kvTime, time, 1.0f, q.getGpuData(), dk, time * dk, dpreatt.getGpuData(), kvTime, time * kvTime, 0.0f, dkt.getGpuData(), dk, kvTime * dk, batchSize * headNum);
     }
 
     @Override
@@ -475,7 +476,7 @@ public class DiTCrossAttentionLayer2 extends Layer {
         // TODO Auto-generated method stub
     	this.getoLinerLayer().back(delta, oi);
         attentionKernel.unpermute_backward(temp, oi, batchSize, time, headNum, dk);
-        scaledDotProductAttentionBackward();
+        scaledDotProductAttentionBackward(qt);
         qt.view(this.qLinerLayer.getOutput().shape());
         kt.view(this.kLinerLayer.getOutput().shape());
         vt.view(this.vLinerLayer.getOutput().shape());
@@ -506,24 +507,25 @@ public class DiTCrossAttentionLayer2 extends Layer {
         // TODO Auto-generated method stub
     	this.getoLinerLayer().back(delta, oi);
         attentionKernel.unpermute_backward(temp, oi, batchSize, time, headNum, dk);
-        scaledDotProductAttentionBackward();
+        scaledDotProductAttentionBackward(rq);
         qt.view(this.qLinerLayer.getOutput().shape());
         kt.view(this.kLinerLayer.getOutput().shape());
         vt.view(this.vLinerLayer.getOutput().shape());
+        /**
+         * RoPE backward
+         */
+        ropeKernel.backward2d(cos, sin, dqt, rq, time, headNum, dk);
         if(qkNorm) {
-         	qNorm.back(dqt);
+         	qNorm.back(rq);
          	kNorm.back(dkt);
          	Tensor_OP().permute(qNorm.diff, qt, p_0213);
             Tensor_OP().permute(kNorm.diff, kt, p_0213);
          }else {
-         	Tensor_OP().permute(dqt, qt, p_0213);
+         	Tensor_OP().permute(rq, qt, p_0213);
             Tensor_OP().permute(dkt, kt, p_0213);
          }
          Tensor_OP().permute(dvt, vt, new int[]{0, 2, 1, 3});
-        /**
-         * RoPE backward
-         */
-        ropeKernel.backward2d(cos, sin, qt, rq, time, headNum, dk);
+
         Tensor queryDelta = rq.view(batchSize * time, 1, 1, headNum * dk);
         Tensor keyDelta = kt.view(batchSize * kvTime, 1, 1, headNum * dk);
         Tensor valueDelta = vt.view(batchSize * kvTime, 1, 1, headNum * dk);

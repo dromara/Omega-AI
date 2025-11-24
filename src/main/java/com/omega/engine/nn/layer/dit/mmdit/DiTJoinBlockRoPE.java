@@ -144,11 +144,20 @@ public class DiTJoinBlockRoPE extends Layer {
         	shape = new int[] {batchSize, time, headNum, dk};
         	t_shape = new int[] {batchSize, headNum, time, dk};
             // [batch_size，time，head_num，d_k]
-        	this.x_rq = Tensor.createGPUTensor(this.x_rq, batchSize, imgTime, headNum, dk, true);
-            this.x_rk = Tensor.createGPUTensor(this.x_rk, batchSize, imgTime, headNum, dk, true);
-            this.q = Tensor.createGPUTensor(this.q, batchSize, time, 1, embedDim, true);
-            this.k = Tensor.createGPUTensor(this.k, batchSize, time, 1, embedDim, true);
-            this.v = Tensor.createGPUTensor(this.v, batchSize, time, 1, embedDim, true);
+//        	this.x_rq = Tensor.createGPUTensor(this.x_rq, batchSize, imgTime, headNum, dk, true);
+//            this.x_rk = Tensor.createGPUTensor(this.x_rk, batchSize, imgTime, headNum, dk, true);
+            
+            this.x_rq = CUDAMemoryManager.getCache("mmdit_block_x_rq", batchSize, imgTime, headNum, dk);
+            this.x_rk = CUDAMemoryManager.getCache("mmdit_block_x_rk", batchSize, imgTime, headNum, dk);
+            
+//            this.q = Tensor.createGPUTensor(this.q, batchSize, time, 1, embedDim, true);
+//            this.k = Tensor.createGPUTensor(this.k, batchSize, time, 1, embedDim, true);
+//            this.v = Tensor.createGPUTensor(this.v, batchSize, time, 1, embedDim, true);
+            
+            this.q = CUDAMemoryManager.getCache("mmdit_block_q", batchSize, time, 1, embedDim);
+            this.k = CUDAMemoryManager.getCache("mmdit_block_k", batchSize, time, 1, embedDim);
+            this.v = CUDAMemoryManager.getCache("mmdit_block_v", batchSize, time, 1, embedDim);
+            
             this.qt = Tensor.createGPUTensor(this.qt, batchSize, headNum, time, dk, true);
             this.kt = Tensor.createGPUTensor(this.kt, batchSize, headNum, time, dk, true);
             this.vt = Tensor.createGPUTensor(this.vt, batchSize, headNum, time, dk, true);
@@ -162,8 +171,12 @@ public class DiTJoinBlockRoPE extends Layer {
             this.attn = Tensor.createGPUTensor(this.attn, batchSize, headNum, time, time, true);
             // [batch_size, len_q, n_heads * dim_v]
             this.oi = Tensor.createGPUTensor(this.oi, batchSize, time, 1, embedDim, true);
-            this.x_attn = Tensor.createGPUTensor(this.x_attn, batchSize * imgTime, 1, 1, embedDim, true);
-            this.context_attn = Tensor.createGPUTensor(this.context_attn, batchSize * textTime, 1, 1, embedDim, true);
+            
+//            this.x_attn = Tensor.createGPUTensor(this.x_attn, batchSize * imgTime, 1, 1, embedDim, true);
+//            this.context_attn = Tensor.createGPUTensor(this.context_attn, batchSize * textTime, 1, 1, embedDim, true);
+            
+            this.x_attn = CUDAMemoryManager.getCache("mmdit_block_x_attn", batchSize * imgTime, 1, 1, embedDim);
+            this.context_attn = CUDAMemoryManager.getCache("mmdit_block_context_attn", batchSize * textTime, 1, 1, embedDim);
         }
     }
     
@@ -209,8 +222,8 @@ public class DiTJoinBlockRoPE extends Layer {
         /**
          * apply RoPE
          */
-        ropeKernel.forward2d(cos, sin, x_block.q(), x_rq, imgTime, headNum, dk);
-        ropeKernel.forward2d(cos, sin, x_block.k(), x_rk, imgTime, headNum, dk);
+        ropeKernel.forward2d_t(cos, sin, x_block.q(), x_rq, imgTime, headNum, dk);
+        ropeKernel.forward2d_t(cos, sin, x_block.k(), x_rk, imgTime, headNum, dk);
         
     	context_block.pre_attention(context, c);
     	
@@ -296,6 +309,14 @@ public class DiTJoinBlockRoPE extends Layer {
     
     public void diff(Tensor dcx,Tensor dc, Tensor cos, Tensor sin) {
         // TODO Auto-generated method stub
+    	//recomplate the active status
+    	attentionKernel.concat_channel_forward(context_block.q(), x_rq, q, batchSize, textTime, imgTime, 1, embedDim);
+    	attentionKernel.concat_channel_forward(context_block.k(), x_rk, k, batchSize, textTime, imgTime, 1, embedDim);
+    	attentionKernel.concat_channel_forward(context_block.v(), x_block.v(), v, batchSize, textTime, imgTime, 1, embedDim);
+        attentionKernel.concat_channel_backward(oi, context_attn, x_attn, batchSize, textTime, imgTime, 1, embedDim);
+        ropeKernel.forward2d_t(cos, sin, x_block.q(), x_rq, imgTime, headNum, dk);
+        ropeKernel.forward2d_t(cos, sin, x_block.k(), x_rk, imgTime, headNum, dk);
+    	
         Tensor x_diff = x_block.post_attention_back(delta, "x_diff");
         Tensor dattn = x_block.oLinerLayer.diff;
 //        dattn.showDMByOffsetRed(0, 10, "dattn");
@@ -329,8 +350,8 @@ public class DiTJoinBlockRoPE extends Layer {
         /**
          * RoPE backward
          */
-        ropeKernel.backward2d(cos, sin, x_block.q(), x_rq, imgTime, headNum, dk);
-        ropeKernel.backward2d(cos, sin, x_block.k(), x_rk, imgTime, headNum, dk);
+        ropeKernel.backward2d_t(cos, sin, x_block.q(), x_rq, imgTime, headNum, dk);
+        ropeKernel.backward2d_t(cos, sin, x_block.k(), x_rk, imgTime, headNum, dk);
         x_block.pre_attention_back(x_diff, dc, x_rq, x_rk);
         
         this.diff = x_block.diff;

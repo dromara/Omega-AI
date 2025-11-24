@@ -21,6 +21,8 @@ public class GeluKernel extends BaseKernel {
     
     private CUfunction torch_function;
     private CUfunction torch_function_back;
+    private CUfunction torch_tanh_function;
+    private CUfunction torch_tanh_function_back;
     
     private int CAFFE_CUDA_NUM_THREADS = 1024;
     private Pointer forwardKernelParameters;
@@ -82,6 +84,13 @@ public class GeluKernel extends BaseKernel {
             if (torch_function_back == null) {
             	torch_function_back = getCudaManager().getLocalFunctionByModule("activeFunction.cu", "gelu_torch_backward");
             }
+            
+            if (torch_tanh_function == null) {
+            	torch_tanh_function = getCudaManager().getLocalFunctionByModule("activeFunction.cu", "gelu_tanh_torch_forward");
+            }
+            if (torch_tanh_function_back == null) {
+            	torch_tanh_function_back = getCudaManager().getLocalFunctionByModule("activeFunction.cu", "gelu_tanh_torch_backward");
+            }
         } catch (Exception e) {
             // TODO: handle exception
             e.printStackTrace();
@@ -98,7 +107,6 @@ public class GeluKernel extends BaseKernel {
             /**
              * 设置入参
              * float *x, float *output, int N
-
              */
             forwardKernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{output.dataLength}));
             this.N = output.number;
@@ -342,5 +350,51 @@ public class GeluKernel extends BaseKernel {
             e.printStackTrace();
         }
     }
+    
+    public void forward_tanh_torch(Tensor input, Tensor output) {
+        try {
+            //			if(forwardKernelParameters == null || this.N != output.number) {
+            /**
+             * 设置入参
+             * float *x, float *output, int N
+
+             */
+            forwardKernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{output.dataLength}));
+            this.N = output.number;
+            //			}
+            cuLaunchKernel(torch_tanh_function, this.CAFFE_GET_BLOCKS(input.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    forwardKernelParameters, null // Kernel- and extra parameters
+            );
+            //			JCudaDriver.cuCtxSynchronize();
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void backward_tanh_torch(Tensor input, Tensor delta, Tensor diff) {
+        try {
+            //			if(backwardKernelParameters == null) {
+            /**
+             * 设置入参
+             * float* dinp, const float* inp, const float* dout, int N
+
+             */
+            backwardKernelParameters = Pointer.to(Pointer.to(diff.getGpuData()), Pointer.to(input.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(new int[]{input.dataLength}));
+            //			}
+            cuLaunchKernel(torch_tanh_function_back, this.CAFFE_GET_BLOCKS(input.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    backwardKernelParameters, null // Kernel- and extra parameters
+            );
+            //	        JCudaDriver.cuCtxSynchronize();
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
 }
 

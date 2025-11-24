@@ -54,13 +54,14 @@ public class LagJsonReader {
     public static Map<String, Object> readJsonFileBigWeightIterator(String path) {
         Map<String, Object> mapList = new LinkedHashMap<>();
         try (FileInputStream fis = new FileInputStream(path);
-             JsonReader reader = new JsonReader(new InputStreamReader(fis, "UTF-8"))) {
+            JsonReader reader = new JsonReader(new InputStreamReader(fis, "UTF-8"))) {
 
             reader.beginObject();
             while (reader.hasNext()) {
                 String name = reader.nextName();
                 Object value = readValue(reader);
                 mapList.put(name, value);
+//                System.out.println(name+"==>finish.");
             }
             reader.endObject();
             return mapList;

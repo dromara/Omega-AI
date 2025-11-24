@@ -30,6 +30,7 @@ public class NormalizeKernel extends BaseKernel implements Serializable {
     
     private CUfunction l2_norm_1dim2_function;
     private CUfunction l2_norm_1dim2_back_function;
+    private CUfunction l2_norm_1dim2_back_plus_function;
 
     //	private CUfunction norm_grad_function;
     public NormalizeKernel(CUDAManager cudaManager) {
@@ -43,6 +44,7 @@ public class NormalizeKernel extends BaseKernel implements Serializable {
         l2_norm_1dim_backward_function3 = cudaManager.getLocalFunctionByModule("NormalizeKernel.cu", "l2norm_1dim_backward_kernel3");
         l2_norm_1dim2_function = cudaManager.getLocalFunctionByModule("NormalizeKernel.cu", "l2norm_1dim_kernel2");
         l2_norm_1dim2_back_function = cudaManager.getLocalFunctionByModule("NormalizeKernel.cu", "l2norm_1dim_kernel2_back");
+        l2_norm_1dim2_back_plus_function = cudaManager.getLocalFunctionByModule("NormalizeKernel.cu", "l2norm_1dim_kernel2_back_plus");
         //		norm_grad_function = CUDAModules.getLocalFunctionByModule("NormalizeKernel.cu", "NormalizeGradientKernel");
     }
 
@@ -212,6 +214,26 @@ public class NormalizeKernel extends BaseKernel implements Serializable {
              */
             Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{x.number * x.height * x.width}), Pointer.to(x.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(dx.getGpuData()), Pointer.to(new int[]{x.number}), Pointer.to(new int[]{x.channel}), Pointer.to(new int[]{x.height * x.width}), Pointer.to(new float[]{1e-10f}));
             checkCUDA(cuLaunchKernel(l2_norm_1dim2_back_function, CAFFE_GET_BLOCKS(x.number * x.height * x.width), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameter, null // Kernel- and extra parameters
+            ));
+//            dx.showDM("dx");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void l2norm1Dim2_back_plus(Tensor x, Tensor delta, Tensor dx) {
+        try {
+//        	x.showDM("x");
+//        	delta.showDM("delta");
+            /**
+             * int N, float *x, float* delta,float *dx, int batch, int filters, int spatial
+             */
+            Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{x.number * x.height * x.width}), Pointer.to(x.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(dx.getGpuData()), Pointer.to(new int[]{x.number}), Pointer.to(new int[]{x.channel}), Pointer.to(new int[]{x.height * x.width}), Pointer.to(new float[]{1e-10f}));
+            checkCUDA(cuLaunchKernel(l2_norm_1dim2_back_plus_function, CAFFE_GET_BLOCKS(x.number * x.height * x.width), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameter, null // Kernel- and extra parameters

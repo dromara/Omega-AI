@@ -398,19 +398,19 @@ public class DatasetCreater {
     	
     	try {
     		
-    		String outputPath = "D:\\dataset\\amine\\dalle_vavae_latend.bin";
-    		String clipDataPath = "D:\\dataset\\amine\\dalle_vavae_clip.bin";
+    		String outputPath = "/root/gpufree-data/txt2img_2m_2/vavae_latend.bin";
+    		String clipDataPath = "/root/gpufree-data/txt2img_2m_2/vavae_clip.bin";
     		
-        	String labelPath = "D:\\dataset\\labels.json";
-            String imgDirPath = "D:\\dataset\\images_256_256\\";
+        	String labelPath = "/root/gpufree-data/txt2img_2m_2/labels.json";
+            String imgDirPath = "/root/gpufree-data/diffusiondb_processed/";
             boolean horizontalFilp = false;
             int imgSize = 256;
             int maxContextLen = 77;
             int batchSize = 40;
             float[] mean = new float[]{0.5f, 0.5f, 0.5f};
             float[] std = new float[]{0.5f, 0.5f, 0.5f};
-            String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
-            String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
+            String vocabPath = "/omega/models/CLIP-GmP-ViT-L-14/vocab.json";
+            String mergesPath = "/omega/models/CLIP-GmP-ViT-L-14/merges.txt";
             BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
             SDImageDataLoaderEN dataLoader = new SDImageDataLoaderEN(bpe, labelPath, imgDirPath, ".jpg", imgSize, imgSize, maxContextLen, batchSize, horizontalFilp, mean, std);
 
@@ -424,7 +424,7 @@ public class DatasetCreater {
             clip.CUDNN = true;
             clip.time = maxContextLen;
             clip.RUN_MODEL = RunModel.EVAL;
-            String clipWeight = "D:\\models\\CLIP-GmP-ViT-L-14\\CLIP-GmP-ViT-L-14.json";
+            String clipWeight = "/omega/models/CLIP-GmP-ViT-L-14.json";
             ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, "", false);
             
             
@@ -437,7 +437,7 @@ public class DatasetCreater {
             vae.CUDNN = true;
             vae.learnRate = 0.001f;
             vae.RUN_MODEL = RunModel.EVAL;
-            String vaeWeight = "D:\\models\\vavae.json";
+            String vaeWeight = "/omega/models/vavae.json";
             ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
             
             
@@ -454,7 +454,7 @@ public class DatasetCreater {
             File clipFile = new File(clipDataPath);
             FileOutputStream clipWriter = new FileOutputStream(clipFile);
             
-            Tensor condInput = new Tensor(batchSize, 1, 1, textEmbedDim, true);
+            Tensor condInput = null;
             
             for(int it = 0;it<indexs.length;it++) {
             	 long start = System.nanoTime();
@@ -462,7 +462,7 @@ public class DatasetCreater {
             	 Tensor latend = vae.encode(input);
                  JCudaDriver.cuCtxSynchronize();
                  writeTensor(latend, writer);
-                 clip.get_clip_prompt_embeds(label, eosIds, condInput);
+                 condInput = clip.get_full_clip_prompt_embeds(label);
                  writeTensor(condInput, clipWriter);
                  System.out.println(it + "/" + indexs.length + " cost["+(System.nanoTime() - start)/1e6+"ms] finish.");
             }
@@ -649,17 +649,132 @@ public class DatasetCreater {
         label.hostToDevice();
     }
     
+    public static void createLatend_vavae() {
+    	
+    	try {
+    		
+    		String outputPath = "/root/gpufree-data/txt2img_2m_2/vavae_latend.bin";
+    		
+        	String labelPath = "/root/gpufree-data/txt2img_2m_2/labels.json";
+            String imgDirPath = "/root/gpufree-data/diffusiondb_processed/";
+            boolean horizontalFilp = false;
+            int imgSize = 256;
+            int maxContextLen = 77;
+            int batchSize = 40;
+            float[] mean = new float[]{0.5f, 0.5f, 0.5f};
+            float[] std = new float[]{0.5f, 0.5f, 0.5f};
+            String vocabPath = "/omega/models/vocab.json";
+            String mergesPath = "/omega/models/merges.txt";
+            BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+            SDImageDataLoaderEN dataLoader = new SDImageDataLoaderEN(bpe, labelPath, imgDirPath, ".jpg", imgSize, imgSize, maxContextLen, batchSize, horizontalFilp, mean, std);
+
+            int latendDim = 32;
+            int num_res_blocks = 2;
+            int[] ch_mult = new int[]{1, 1, 2, 2, 4};
+            int ch = 128;
+            
+            VA_VAE vae = new VA_VAE(LossType.MSE, UpdaterType.adamw, latendDim, imgSize, ch_mult, ch, num_res_blocks, true);
+            vae.CUDNN = true;
+            vae.learnRate = 0.001f;
+            vae.RUN_MODEL = RunModel.EVAL;
+            String vaeWeight = "/omega/models/vavae.json";
+            ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
+            
+            
+            int[][] indexs = dataLoader.order();
+            
+            Tensor input = new Tensor(batchSize, 3, dataLoader.img_h, dataLoader.img_w, true);
+
+            File file = new File(outputPath);
+            FileOutputStream writer = new FileOutputStream(file);
+
+            for(int it = 0;it<indexs.length;it++) {
+            	 long start = System.nanoTime();
+            	 dataLoader.loadData(indexs[it], input);
+            	 Tensor latend = vae.encode(input);
+                 JCudaDriver.cuCtxSynchronize();
+                 writeTensor(latend, writer);
+                 System.out.println(it + "/" + indexs.length + " cost["+(System.nanoTime() - start)/1e6+"ms] finish.");
+            }
+            
+            System.out.println("create ["+dataLoader.count+"] finish.");
+           
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+
+    }
+    
+    public static void createLatend_vavae_unsample() {
+    	
+    	try {
+    		
+    		String outputPath = "D:\\dataset\\amine\\vavae_latend_m_s.bin";
+    		
+        	String labelPath = "D:\\dataset\\labels.json";
+            String imgDirPath = "D:\\dataset\\images_256_256\\";
+            boolean horizontalFilp = false;
+            int imgSize = 256;
+            int maxContextLen = 77;
+            int batchSize = 40;
+            float[] mean = new float[]{0.5f, 0.5f, 0.5f};
+            float[] std = new float[]{0.5f, 0.5f, 0.5f};
+            String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
+            String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
+            BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+            SDImageDataLoaderEN dataLoader = new SDImageDataLoaderEN(bpe, labelPath, imgDirPath, ".jpg", imgSize, imgSize, maxContextLen, batchSize, horizontalFilp, mean, std);
+
+            int latendDim = 32;
+            int num_res_blocks = 2;
+            int[] ch_mult = new int[]{1, 1, 2, 2, 4};
+            int ch = 128;
+            
+            VA_VAE vae = new VA_VAE(LossType.MSE, UpdaterType.adamw, latendDim, imgSize, ch_mult, ch, num_res_blocks, true);
+            vae.CUDNN = true;
+            vae.learnRate = 0.001f;
+            vae.RUN_MODEL = RunModel.EVAL;
+            String vaeWeight = "D:\\models\\vavae.json";
+            ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
+            
+            int[][] indexs = dataLoader.order();
+            
+            Tensor input = new Tensor(batchSize, 3, dataLoader.img_h, dataLoader.img_w, true);
+
+            File file = new File(outputPath);
+            FileOutputStream writer = new FileOutputStream(file);
+
+            for(int it = 0;it<indexs.length;it++) {
+            	 long start = System.nanoTime();
+            	 dataLoader.loadData(indexs[it], input);
+            	 Tensor meanStd = vae.encode_unsample(input);
+                 JCudaDriver.cuCtxSynchronize();
+                 writeTensor(meanStd, writer);
+                 System.out.println(it + "/" + indexs.length + " cost["+(System.nanoTime() - start)/1e6+"ms] finish.");
+            }
+            
+            System.out.println("create ["+dataLoader.count+"] finish.");
+           
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+
+    }
+    
     public static void createClipData() {
     	
-    	int batchSize = 1000;
+    	int batchSize = 2000;
     	int maxContextLen = 77;
     	
-    	
-    	String clipDataPath = "D:\\dataset\\amine\\dalle_full_clip.bin";
+//    	String clipDataPath = "D:\\dataset\\amine\\dalle_full_clip.bin";
 //		String clipMaskDataPath = "D:\\dataset\\amine\\dalle_clip_mask.bin";
     	
 //		String labelPath = "/root/gpufree-data/txt2img_2m/labels.json";
-    	String labelPath = "D:\\dataset\\labels.json";
+//    	String labelPath = "D:\\dataset\\labels.json";
+		String clipDataPath = "/root/gpufree-data/txt2img_2m_2/vavae_clip.bin";
+		
+    	String labelPath = "/root/gpufree-data/txt2img_2m_2/labels.json";
     	
     	Tensor label = new Tensor(batchSize * 77, 1, 1, 1, true);
 //        Tensor eosIds = new Tensor(batchSize, 1, 1, 1, true);
@@ -667,8 +782,10 @@ public class DatasetCreater {
     	
     	try {
     		
-    		String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
-            String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
+//    		String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
+//            String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
+            String vocabPath = "/omega/models/CLIP-GmP-ViT-L-14/vocab.json";
+            String mergesPath = "/omega/models/CLIP-GmP-ViT-L-14/merges.txt";
             BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
     		
             int maxPositionEmbeddingsSize = 77;
@@ -681,7 +798,8 @@ public class DatasetCreater {
             clip.CUDNN = true;
             clip.time = maxContextLen;
             clip.RUN_MODEL = RunModel.EVAL;
-            String clipWeight = "D:\\models\\CLIP-GmP-ViT-L-14\\CLIP-GmP-ViT-L-14.json";
+//            String clipWeight = "D:\\models\\CLIP-GmP-ViT-L-14\\CLIP-GmP-ViT-L-14.json";
+            String clipWeight = "/omega/models/CLIP-GmP-ViT-L-14/CLIP-GmP-ViT-L-14.json";
             ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, "", false);
             
     		List<Map<String, Object>> datas = LagJsonReader.readJsonDataSamll(labelPath);
@@ -872,7 +990,9 @@ public class DatasetCreater {
         	
 //        	createLatendDataset3();
         	
-        	createClipData();
+        	createLatend_vavae_unsample();
+        	
+//        	createClipData();
         	
 //        	createLatendDatasetFullClip();
         	

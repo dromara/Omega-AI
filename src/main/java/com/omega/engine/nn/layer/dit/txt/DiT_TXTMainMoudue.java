@@ -10,6 +10,7 @@ import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.dit.DiTCaptionEmbeddingLayer;
+import com.omega.engine.nn.layer.dit.DiTOrgTimeEmbeddingLayer;
 import com.omega.engine.nn.layer.dit.DiTPatchEmbeddingLayer;
 import com.omega.engine.nn.layer.dit.DiTTimeEmbeddingLayer;
 import com.omega.engine.nn.layer.gpu.RoPEKernel;
@@ -40,7 +41,7 @@ public class DiT_TXTMainMoudue extends Layer {
     private boolean learnSigma = true;
     
     public DiTPatchEmbeddingLayer patchEmbd;
-    public DiTTimeEmbeddingLayer timeEmbd;
+    public DiTOrgTimeEmbeddingLayer timeEmbd;
     public DiTCaptionEmbeddingLayer labelEmbd;
     public List<DiT_TXTBlock> blocks;
     public DiT_TXTFinalLayer finalLayer;
@@ -84,7 +85,7 @@ public class DiT_TXTMainMoudue extends Layer {
     	
     	patchEmbd = new DiTPatchEmbeddingLayer(inChannel, width, hiddenSize, patchSize, true, network);
          
-        timeEmbd = new DiTTimeEmbeddingLayer(timeSteps, 256, hiddenSize, true, network);
+        timeEmbd = new DiTOrgTimeEmbeddingLayer(timeSteps, 256, hiddenSize, true, network);
         
         labelEmbd = new DiTCaptionEmbeddingLayer(textEmbedDim, hiddenSize, maxContextLen, y_drop_prob, true, network);
         

@@ -83,6 +83,7 @@ public class RMSLayer extends NormalizationLayer {
     
     public RMSLayer(int channel, int height, int width, boolean hasParams, BNType bnType, Network network) {
     	this.network = network;
+        network.paramLayers.add(this);
 		this.setUpdater(UpdaterFactory.create(this.network));
         this.channel = channel;
         this.height = height;

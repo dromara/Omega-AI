@@ -1,5 +1,9 @@
 package com.omega.example.sd.utils;
 
+import java.io.File;
+import java.util.List;
+import java.util.Map;
+
 import com.omega.common.utils.MathUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
@@ -12,10 +16,6 @@ import com.omega.example.unet.utils.SegImageLoader;
 import com.omega.example.yolo.data.BaseDataLoader;
 import com.omega.example.yolo.data.ImageLoader;
 import com.omega.example.yolo.utils.YoloImageUtils;
-
-import java.io.File;
-import java.util.List;
-import java.util.Map;
 
 /**
  * SDImageDataLoaderEN
@@ -445,6 +445,7 @@ public class SDImageDataLoaderEN extends BaseDataLoader {
             labels[i] = text;
             //			System.out.println(text);
             int[] ids = tokenizer.encodeInt(text, maxContextLen);
+
             float eos_id = 0;
             for (int j = 0; j < maxContextLen; j++) {
                 if (j < ids.length) {
@@ -457,6 +458,7 @@ public class SDImageDataLoaderEN extends BaseDataLoader {
                 	eos_id = j;
                 }
             }
+            
             eos_idx.data[i] = eos_id;
         }
         //		System.out.println(JsonUtils.toJson(label.data));

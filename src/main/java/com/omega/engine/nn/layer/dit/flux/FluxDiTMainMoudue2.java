@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.Layer;
@@ -15,6 +14,7 @@ import com.omega.engine.nn.layer.dit.DiTCaptionEmbeddingLayer;
 import com.omega.engine.nn.layer.dit.DiTOrgTimeEmbeddingLayer;
 import com.omega.engine.nn.layer.dit.DiTPatchEmbeddingLayer;
 import com.omega.engine.nn.layer.dit.txt.DiT_TXTFinalLayer;
+import com.omega.engine.nn.layer.dit.txt.DiT_TXTFinalLayer2;
 import com.omega.engine.nn.layer.gpu.RoPEKernel;
 import com.omega.engine.nn.network.CNN;
 import com.omega.engine.nn.network.Network;
@@ -27,7 +27,7 @@ import com.omega.example.transformer.utils.LagJsonReader;
  * DiT_Block
  * @author Administrator
  */
-public class FluxDiTMainMoudue extends Layer {
+public class FluxDiTMainMoudue2 extends Layer {
 	
 	public int inChannel;
     public int width;
@@ -45,8 +45,8 @@ public class FluxDiTMainMoudue extends Layer {
     public DiTPatchEmbeddingLayer patchEmbd;
     public DiTOrgTimeEmbeddingLayer timeEmbd;
     public DiTCaptionEmbeddingLayer labelEmbd;
-    public List<FluxDiTBlock> blocks;
-    public DiT_TXTFinalLayer finalLayer;
+    public List<FluxDiTBlock2> blocks;
+    public DiT_TXTFinalLayer2 finalLayer;
     
     private int hw;
     
@@ -65,7 +65,7 @@ public class FluxDiTMainMoudue extends Layer {
     
     private BaseKernel baseKernel;
     
-    public FluxDiTMainMoudue(int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int textEmbedDim, int maxContextLen, int mlpRatio, boolean learnSigma, float y_drop_prob, Network network) {
+    public FluxDiTMainMoudue2(int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int textEmbedDim, int maxContextLen, int mlpRatio, boolean learnSigma, float y_drop_prob, Network network) {
 		this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
@@ -100,10 +100,10 @@ public class FluxDiTMainMoudue extends Layer {
         
         labelEmbd = new DiTCaptionEmbeddingLayer(textEmbedDim, hiddenSize, maxContextLen, y_drop_prob, true, network);
         
-        blocks = new ArrayList<FluxDiTBlock>();
+        blocks = new ArrayList<FluxDiTBlock2>();
          
         for(int i = 0;i<depth;i++) {
-        	FluxDiTBlock block = new FluxDiTBlock(hiddenSize, hiddenSize, patchEmbd.oChannel + maxContextLen, mlpRatio * hiddenSize, headNum, maxContextLen, true, false, network);
+        	FluxDiTBlock2 block = new FluxDiTBlock2(hiddenSize, hiddenSize, patchEmbd.oChannel + maxContextLen, mlpRatio * hiddenSize, headNum, maxContextLen, true, false, network);
 	        blocks.add(block);
         }
         int os = inChannel;
@@ -111,7 +111,7 @@ public class FluxDiTMainMoudue extends Layer {
         	os = inChannel * 2;
         }
         this.oChannel = os;
-        finalLayer = new DiT_TXTFinalLayer(patchSize, hiddenSize, os, patchEmbd.oChannel, true, true, network);
+        finalLayer = new DiT_TXTFinalLayer2(patchSize, hiddenSize, os, patchEmbd.oChannel, true, true, network);
         
         if(baseKernel == null) {
         	baseKernel = new BaseKernel(cuda());
@@ -237,7 +237,7 @@ public class FluxDiTMainMoudue extends Layer {
     	Tensor bx = cat_x;
 
     	for(int i = 0;i<depth;i++) {
-    		FluxDiTBlock block = blocks.get(i);
+    		FluxDiTBlock2 block = blocks.get(i);
     		block.forward(bx, t);
     		bx = block.getOutput();
     	}
@@ -285,14 +285,12 @@ public class FluxDiTMainMoudue extends Layer {
     	Tensor bx = cat_x;
 //    	bx.showDM("bx1");
     	for(int i = 0;i<depth;i++) {
-    		FluxDiTBlock block = blocks.get(i);
+    		FluxDiTBlock2 block = blocks.get(i);
     		block.forward(bx, t, cos, sin);
     		bx = block.getOutput();
 //        	bx.showDM("bx:"+i);
     	}
-    	
 
-    	
     	//img_o = x[:, txt.shape[1]:, ...]
     	Tensor_OP().getByChannel(bx, img_x, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
     	
@@ -338,7 +336,7 @@ public class FluxDiTMainMoudue extends Layer {
     	Tensor_OP().getByChannel_back(dy, finalLayer.diff, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
     	
      	for(int i = depth - 1;i>=0;i--) {
-     		FluxDiTBlock block = blocks.get(i);
+     		FluxDiTBlock2 block = blocks.get(i);
     		block.back(dy, dtc);
     		dy = block.diff;
     	}
@@ -377,7 +375,7 @@ public class FluxDiTMainMoudue extends Layer {
     	Tensor_OP().getByChannel_back(dy, finalLayer.diff, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
 
      	for(int i = depth - 1;i>=0;i--) {
-     		FluxDiTBlock block = blocks.get(i);
+     		FluxDiTBlock2 block = blocks.get(i);
     		block.back(dy, dtc, cos, sin);
     		dy = block.diff;
 //        	dy.showDM("dy");
@@ -614,7 +612,7 @@ public class FluxDiTMainMoudue extends Layer {
     	finalLayer.accGrad(scale);
     }
     
-    public static void loadWeight(Map<String, Object> weightMap, FluxDiTMainMoudue block, boolean showLayers) {
+    public static void loadWeight(Map<String, Object> weightMap, FluxDiTMainMoudue2 block, boolean showLayers) {
         if (showLayers) {
             for (String key : weightMap.keySet()) {
                 System.out.println(key);
@@ -697,7 +695,7 @@ public class FluxDiTMainMoudue extends Layer {
         nn.CUDNN = true;
         nn.number = N;
     	
-        FluxDiTMainMoudue jb = new FluxDiTMainMoudue(C, W, H, patchSize, hiddenSize, headNum, depth, 1000, TEM, TT, 4, false, 0.0f, nn);
+        FluxDiTMainMoudue2 jb = new FluxDiTMainMoudue2(C, W, H, patchSize, hiddenSize, headNum, depth, 1000, TEM, TT, 4, false, 0.0f, nn);
     	
         String weight = "D:\\models\\dit_s2.json";
         loadWeight(LagJsonReader.readJsonFileBigWeightIterator(weight), jb, true);

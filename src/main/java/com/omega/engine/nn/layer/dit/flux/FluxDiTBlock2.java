@@ -2,31 +2,25 @@ package com.omega.engine.nn.layer.dit.flux;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.util.Map;
 
-import com.omega.common.utils.RandomUtils;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.active.SiLULayer;
-import com.omega.engine.nn.layer.dit.modules.DiTAttentionLayer2;
+import com.omega.engine.nn.layer.dit.modules.DiTAttentionLayer3;
 import com.omega.engine.nn.layer.dit.org.DiTSwiGLUFFN;
-import com.omega.engine.nn.layer.gpu.RoPEKernel;
 import com.omega.engine.nn.layer.normalization.BNType;
 //import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.layer.normalization.RMSLayer;
 import com.omega.engine.nn.network.Network;
-import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
-import com.omega.example.common.ModeLoaderlUtils;
-import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
  * DiT_Block
  * @author Administrator
  */
-public class FluxDiTBlock extends Layer {
+public class FluxDiTBlock2 extends Layer {
 	
 	private int batchSize;
 	
@@ -45,7 +39,7 @@ public class FluxDiTBlock extends Layer {
     public FullyLayer adaLN_modulation;
 
     public RMSLayer norm1;
-    public DiTAttentionLayer2 attn;
+    public DiTAttentionLayer3 attn;
 
     public RMSLayer norm3;
 
@@ -64,7 +58,7 @@ public class FluxDiTBlock extends Layer {
     
     private int[] shape;
     
-    public FluxDiTBlock(int embedDim, int cEmbedDim, int time, int mlpHiddenDim, int headNum, int maxContext, boolean bias, boolean qkNorm, Network network) {
+    public FluxDiTBlock2(int embedDim, int cEmbedDim, int time, int mlpHiddenDim, int headNum, int maxContext, boolean bias, boolean qkNorm, Network network) {
         this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
@@ -98,7 +92,7 @@ public class FluxDiTBlock extends Layer {
         	adaLN_modulation.bias.clearGPU();
         }
 
-        this.attn = new DiTAttentionLayer2(embedDim, headNum, time, bias, qkNorm, network);
+        this.attn = new DiTAttentionLayer3(embedDim, headNum, time, bias, qkNorm, network);
         this.norm3 = new RMSLayer(1, 1, embedDim, true, BNType.fully_bn, network);
         
         int swiNum = (int)(2.0f/3.0f * mlpHiddenDim);
@@ -611,102 +605,6 @@ public class FluxDiTBlock extends Layer {
     	norm3.accGrad(scale);
     	
     	mlp.accGrad(scale);
-    }
-    
-    public static void loadWeight(Map<String, Object> weightMap, FluxDiTBlock block, boolean showLayers) {
-        if (showLayers) {
-            for (String key : weightMap.keySet()) {
-                System.out.println(key);
-            }
-        }
-        
-        block.norm1.gamma = ModeLoaderlUtils.loadData(block.norm1.gamma, weightMap, 1, "norm1.weight");
-        block.norm3.gamma = ModeLoaderlUtils.loadData(block.norm3.gamma, weightMap, 1, "norm2.weight");
-        
-        ModeLoaderlUtils.loadData(block.attn.qLinerLayer.weight, weightMap, "attn.q.weight");
-        ModeLoaderlUtils.loadData(block.attn.qLinerLayer.bias, weightMap, "attn.q.bias");
-        ModeLoaderlUtils.loadData(block.attn.kLinerLayer.weight, weightMap, "attn.k.weight");
-        ModeLoaderlUtils.loadData(block.attn.kLinerLayer.bias, weightMap, "attn.k.bias");
-        ModeLoaderlUtils.loadData(block.attn.vLinerLayer.weight, weightMap, "attn.v.weight");
-        ModeLoaderlUtils.loadData(block.attn.vLinerLayer.bias, weightMap, "attn.v.bias");
-        ModeLoaderlUtils.loadData(block.attn.oLinerLayer.weight, weightMap, "attn.proj.weight");
-        ModeLoaderlUtils.loadData(block.attn.oLinerLayer.bias, weightMap, "attn.proj.bias");
-
-        ModeLoaderlUtils.loadData(block.mlp.w12.weight, weightMap, "mlp.w12.weight");
-        ModeLoaderlUtils.loadData(block.mlp.w12.bias, weightMap, "mlp.w12.bias");
-        ModeLoaderlUtils.loadData(block.mlp.w3.weight, weightMap, "mlp.w3.weight");
-        ModeLoaderlUtils.loadData(block.mlp.w3.bias, weightMap, "mlp.w3.bias");
-        
-        ModeLoaderlUtils.loadData(block.adaLN_modulation.weight, weightMap, "adaLN_modulation.1.weight");
-        ModeLoaderlUtils.loadData(block.adaLN_modulation.bias, weightMap, "adaLN_modulation.1.bias");
-
-    }
-    
-    public static void main(String[] args) {
-    	
-    	int batchSize = 2;
-        int time = 333;
-        int embedDim = 384;
-        int headNum = 6;
-         
-    	Transformer tf = new Transformer();
-        tf.number = batchSize * time;
-        tf.time = time;
-        
-        FluxDiTBlock block = new FluxDiTBlock(embedDim, embedDim, time, embedDim * 4, headNum, 77, true, false, tf);
-        
-        Tensor[] cs = RoPEKernel.getCosAndSin2D(256, embedDim, headNum);
-        Tensor cos = cs[0];
-        Tensor sin = cs[1];
-
-        String weight = "D:\\models\\test\\dit_block.json";
-        loadWeight(LagJsonReader.readJsonFileSmallWeight(weight), block, true);
-         
-     	String inputPath = "D:\\models\\test\\dit_x.json";
-        Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
-        Tensor input = new Tensor(batchSize, time, 1, embedDim, true);
-        ModeLoaderlUtils.loadData(input, datas, "x", 3);
-        
-     	String cyPath = "D:\\models\\test\\dit_t.json";
-        Map<String, Object> cydatas = LagJsonReader.readJsonFileSmallWeight(cyPath);
-        Tensor t = new Tensor(batchSize, 1, 1, embedDim, true);
-        ModeLoaderlUtils.loadData(t, cydatas, "t", 2);
-
-        input.view(batchSize * time, 1, 1, embedDim);
-        block.forward(input, t, cos, sin);
-        
-        block.getOutput().showDM();
-        
-        Tensor dt = new Tensor(batchSize, 1, 1, embedDim, true);
-        
-        Tensor dx = new Tensor(batchSize * time, 1, 1, embedDim, RandomUtils.val(input.dataLength, 1.0f), true);
-        
-        block.back(dx, dt, cos, sin);
-        
-        block.diff.showDM();
-    	
-//    	int N = 2;
-//    	int HN = 6;
-//    	int T = 5;
-//    	int HS = 4;
-//    	int time = 4;
-//    	
-//        Tensor[] cs = RoPEKernel.getCosAndSin2D(time, 24, 6);
-//        Tensor cos = cs[0];
-//        Tensor sin = cs[1];
-//        
-//        Tensor x = new Tensor(N, HN, T, HS, RandomUtils.order(N * HN * T * HS, 1, 0), true);
-//        
-//        Tensor rx = new Tensor(N, HN, T, HS, true);
-//        
-//        Transformer tf = new Transformer();
-//        
-//        RoPEKernel ropeKernel = new RoPEKernel(tf.cudaManager);
-////        x.showDM();
-////        cos.showDM("cos");
-//        ropeKernel.forward2d(cos, sin, x, rx, T, HN, HS, 1);
-//        
-//        rx.showDM();
     }
     
 }

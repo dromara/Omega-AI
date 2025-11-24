@@ -3,6 +3,7 @@ package com.omega.engine.nn.layer;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
+import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.PrintUtils;
@@ -373,7 +374,8 @@ public class EmbeddingIDLayer extends Layer {
     }
     
     public Tensor createTimeEMBCosSin(int T, int d_model) {
-        float[] emb = MatrixUtils.order(d_model / 2, 0, (float) (-2.0f / d_model * Math.log(10000)));
+//        float[] emb = MatrixUtils.order(d_model / 2, 0, (float) (-Math.log(10000) * (d_model / 2)));
+    	float[] emb = MatrixUtils.order(d_model / 2, 0, (float) (-2.0f / d_model * Math.log(10000)));
         emb = MatrixOperation.exp(emb);
         float[] pos = MatrixUtils.order(T, 0, 1);
         float[] o = outer(pos, emb);

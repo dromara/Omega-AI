@@ -6,9 +6,12 @@ import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.nn.network.CNN;
+import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.nn.network.dit.DiT_ORG;
 import com.omega.engine.nn.network.dit.DiT_TXT;
 import com.omega.engine.nn.network.dit.FluxDiT;
+import com.omega.engine.nn.network.dit.FluxDiT2;
+import com.omega.engine.nn.network.dit.FluxDiT3;
 import com.omega.engine.nn.network.dit.MMDiT_RoPE;
 import com.omega.engine.nn.network.dit.SanaDiT;
 import com.omega.engine.tensor.Tensor;
@@ -126,6 +129,33 @@ public class ICPlan {
 		return out;
 	}
 	
+	public Tensor forward_with_cfg(MMDiT_RoPE dit, Tensor y0, Tensor t, Tensor context, Tensor cos, Tensor sin, Tensor y1, Tensor eps, float cfg_scale) {
+		ininT(0, 1, count);
+		int j = 1;
+		Tensor out = null;
+		Tensor f0 = null;
+		for(int i = 0;i<count - 1;i++) {
+			float t0 = T[i];
+			float t1 = T[i + 1];
+			float dt = t1 - t0;
+			MatrixUtils.val(t.data, t0);
+			t.hostToDevice();
+			f0 = dit.forward_with_cfg(y0, t, context, cos, sin, eps, cfg_scale, 3);
+//			f0.showDM("f0");
+			dit.tensorOP.mul(f0, dt, f0);
+			
+			dit.tensorOP.add(y0, f0, y1);
+			float tj = T[j];
+			if(j < T.length && t1 >= tj) {
+				out = linear_interp(dit.tensorOP, t0, t1, y0, y1, tj);
+				j++;
+			}
+			dit.tensorOP.copyGPU(y1, y0);
+
+		}
+		return out;
+	}
+	
 	public Tensor forward_with_cfg(DiT_TXT dit, Tensor y0, Tensor t, Tensor context, Tensor cos, Tensor sin, Tensor y1, Tensor eps, float cfg_scale) {
 		ininT(0, 1, count);
 		int j = 1;
@@ -137,7 +167,7 @@ public class ICPlan {
 			float dt = t1 - t0;
 			MatrixUtils.val(t.data, t0);
 			t.hostToDevice();
-			f0 = dit.forward_with_cfg(y0, t, context, cos, sin, eps, cfg_scale);
+			f0 = dit.forward_with_cfg(y0, t, context, cos, sin, eps, cfg_scale, 3);
 //			f0.showDM("f0");
 			dit.tensorOP.mul(f0, dt, f0);
 			
@@ -164,7 +194,61 @@ public class ICPlan {
 			float dt = t1 - t0;
 			MatrixUtils.val(t.data, t0);
 			t.hostToDevice();
-			f0 = dit.forward_with_cfg(y0, t, context, cos, sin, eps, cfg_scale);
+			f0 = dit.forward_with_cfg(y0, t, context, cos, sin, eps, cfg_scale, 3);
+//			f0.showDM("f0");
+			dit.tensorOP.mul(f0, dt, f0);
+			
+			dit.tensorOP.add(y0, f0, y1);
+			float tj = T[j];
+			if(j < T.length && t1 >= tj) {
+				out = linear_interp(dit.tensorOP, t0, t1, y0, y1, tj);
+				j++;
+			}
+			dit.tensorOP.copyGPU(y1, y0);
+
+		}
+		return out;
+	}
+	
+	public Tensor forward_with_cfg(FluxDiT2 dit, Tensor y0, Tensor t, Tensor context, Tensor cos, Tensor sin, Tensor y1, Tensor eps, float cfg_scale) {
+		ininT(0, 1, count);
+		int j = 1;
+		Tensor out = null;
+		Tensor f0 = null;
+		for(int i = 0;i<count - 1;i++) {
+			float t0 = T[i];
+			float t1 = T[i + 1];
+			float dt = t1 - t0;
+			MatrixUtils.val(t.data, t0);
+			t.hostToDevice();
+			f0 = dit.forward_with_cfg(y0, t, context, cos, sin, eps, cfg_scale, 3);
+//			f0.showDM("f0");
+			dit.tensorOP.mul(f0, dt, f0);
+			
+			dit.tensorOP.add(y0, f0, y1);
+			float tj = T[j];
+			if(j < T.length && t1 >= tj) {
+				out = linear_interp(dit.tensorOP, t0, t1, y0, y1, tj);
+				j++;
+			}
+			dit.tensorOP.copyGPU(y1, y0);
+
+		}
+		return out;
+	}
+	
+	public Tensor forward_with_cfg(FluxDiT3 dit, Tensor y0, Tensor t, Tensor context, Tensor cos, Tensor sin, Tensor y1, Tensor eps, float cfg_scale) {
+		ininT(0, 1, count);
+		int j = 1;
+		Tensor out = null;
+		Tensor f0 = null;
+		for(int i = 0;i<count - 1;i++) {
+			float t0 = T[i];
+			float t1 = T[i + 1];
+			float dt = t1 - t0;
+			MatrixUtils.val(t.data, t0);
+			t.hostToDevice();
+			f0 = dit.forward_with_cfg(y0, t, context, cos, sin, eps, cfg_scale, 3);
 //			f0.showDM("f0");
 			dit.tensorOP.mul(f0, dt, f0);
 			
@@ -340,7 +424,52 @@ public class ICPlan {
 		
 //		cos_f();
 		
-		plan();
+//		plan();
+		
+		int N = 2;
+		int C = 5;
+		int H = 3;
+		int W = 3;
+		
+		Transformer tf = new Transformer();
+		
+		ICPlan icplan = new ICPlan(tf.tensorOP);
+		
+		String xPath = "D:\\models\\cos_x.json";
+	    Map<String, Object> xDatas = LagJsonReader.readJsonFileSmallWeight(xPath);
+	    Tensor x = new Tensor(N, C, H, W, true);
+	    ModeLoaderlUtils.loadData(x, xDatas, "x");
+		
+		String utPath = "D:\\models\\cos_ut.json";
+	    Map<String, Object> utDatas = LagJsonReader.readJsonFileSmallWeight(utPath);
+	    Tensor ut = new Tensor(N, C, H, W, true);
+	    ModeLoaderlUtils.loadData(ut, utDatas, "ut");
+	    
+	    Tensor loss = new Tensor(N, 1, H, W, true);
+		
+	    Tensor dx = new Tensor(N, C, H, W, true);
+	    for(int i = 0;i<10;i++) {
+	    	icplan.cosine_similarity_loss_dim1(x, ut, loss);
+			loss.showDM("loss");
+			icplan.cosine_similarity_loss_back(x, ut, dx);
+			dx.showDM("dx");
+	    }
+		
+	    Tensor w12 = new Tensor(2, 1, 1, 8, true);
+	    Tensor w1 = new Tensor(2, 1, 1, 4, true);
+	    Tensor w2 = new Tensor(2, 1, 1, 4, true);
+	    
+	    RandomUtils.xavier_uniform(w12, 1, 4, 2 * 2);
+	    
+	    int[] shape = new int[] {2, 2, 1, 4};
+	    
+	    tf.tensorOP.getByChannel(w12, w1, shape, 0);
+	    tf.tensorOP.getByChannel(w12, w2, shape, 1);
+//	    tf.tensorOP.cat_width_back(w12, w1, w2);
+	    
+	    w12.showDM("w12");
+	    w1.showDM("w1");
+	    w2.showDM("w2");
 	}
 	
 	public void cosine_similarity_loss(Tensor x1,Tensor x2,Tensor loss) {
@@ -356,15 +485,29 @@ public class ICPlan {
 //		loss.showDM();
 	}
 	
+	public void cosine_similarity_loss_dim1(Tensor x1,Tensor x2,Tensor loss) {
+		if(norm1 == null || norm1.number != x1.number) {
+			norm1 = Tensor.createGPUTensor(norm1, x1.number, 1, x1.height, x1.width, true);
+			norm2 = Tensor.createGPUTensor(norm2, x1.number, 1, x1.height, x1.width, true);
+		}
+		op.normalizeKernel.l2norm1Dim2(x1, norm1);
+//		norm1.showDM();
+		op.normalizeKernel.l2norm1Dim2(x2, norm2);
+//		norm2.showDM();
+		kernel.cosine_similarity_loss_dim1(x1, norm1, x2, norm2, loss);
+//		loss.showDM();
+	}
+	
 	public void cosine_similarity_loss_back(Tensor x1,Tensor x2,Tensor dx1) {
+//		x1.showDM("x1");
 		float delta = 1.0f / x1.number / x1.height / x1.width;
 		kernel.cosine_similarity_loss_back1(delta, x1, norm1, x2, norm2, dx1);
 //		dx1.showDM("dx1");
 		kernel.cosine_similarity_loss_back2(delta, x1, norm1, x2, norm2, norm2);
 //		norm2.showDM("dnorm1");
-		op.normalizeKernel.l2norm1Dim2_back(x1, norm2, x2);
+		op.normalizeKernel.l2norm1Dim2_back_plus(x1, norm2, dx1);
 //		x2.showDM("dnorm1");
-		op.add(x2, dx1, dx1);
+//		op.add(x2, dx1, dx1);
 	}
 	
 	public void t(Tensor t) {

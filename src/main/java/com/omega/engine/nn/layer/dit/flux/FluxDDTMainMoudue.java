@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.Layer;
@@ -14,27 +13,25 @@ import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.dit.DiTCaptionEmbeddingLayer;
 import com.omega.engine.nn.layer.dit.DiTOrgTimeEmbeddingLayer;
 import com.omega.engine.nn.layer.dit.DiTPatchEmbeddingLayer;
+import com.omega.engine.nn.layer.dit.mmdit.DiTJoinBlockRoPE;
 import com.omega.engine.nn.layer.dit.txt.DiT_TXTFinalLayer;
-import com.omega.engine.nn.layer.gpu.RoPEKernel;
-import com.omega.engine.nn.network.CNN;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
-import com.omega.example.common.ModeLoaderlUtils;
-import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
  * DiT_Block
  * @author Administrator
  */
-public class FluxDiTMainMoudue extends Layer {
+public class FluxDDTMainMoudue extends Layer {
 	
 	public int inChannel;
     public int width;
     public int height;
     public int patchSize;
     private int hiddenSize;
-    private int depth;
+    private int en_depth;
+    private int de_depth;
     private int timeSteps;
     private int headNum;
     private int textEmbedDim;
@@ -45,12 +42,13 @@ public class FluxDiTMainMoudue extends Layer {
     public DiTPatchEmbeddingLayer patchEmbd;
     public DiTOrgTimeEmbeddingLayer timeEmbd;
     public DiTCaptionEmbeddingLayer labelEmbd;
-    public List<FluxDiTBlock> blocks;
+    public List<DiTJoinBlockRoPE> blocks;
+    public List<FluxDiTBlock> blocks2;
     public DiT_TXTFinalLayer finalLayer;
     
     private int hw;
     
-    private Tensor posEmbd;
+//    private Tensor posEmbd;
     
     private Tensor cat_x;
     private Tensor img_x;
@@ -65,7 +63,7 @@ public class FluxDiTMainMoudue extends Layer {
     
     private BaseKernel baseKernel;
     
-    public FluxDiTMainMoudue(int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int textEmbedDim, int maxContextLen, int mlpRatio, boolean learnSigma, float y_drop_prob, Network network) {
+    public FluxDDTMainMoudue(int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int en_depth, int de_depth, int timeSteps, int textEmbedDim, int maxContextLen, int mlpRatio, boolean learnSigma, float y_drop_prob, Network network) {
 		this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
@@ -77,7 +75,8 @@ public class FluxDiTMainMoudue extends Layer {
 		this.patchSize = patchSize;
 		this.headNum = headNum;
 		this.hiddenSize = hiddenSize;
-		this.depth = depth;
+		this.en_depth = en_depth;
+		this.de_depth = de_depth;
 		this.timeSteps = timeSteps;
 		this.textEmbedDim = textEmbedDim;
 		this.maxContextLen = maxContextLen;
@@ -100,11 +99,18 @@ public class FluxDiTMainMoudue extends Layer {
         
         labelEmbd = new DiTCaptionEmbeddingLayer(textEmbedDim, hiddenSize, maxContextLen, y_drop_prob, true, network);
         
-        blocks = new ArrayList<FluxDiTBlock>();
+        blocks = new ArrayList<DiTJoinBlockRoPE>();
+        
+        blocks2 = new ArrayList<FluxDiTBlock>();
          
-        for(int i = 0;i<depth;i++) {
-        	FluxDiTBlock block = new FluxDiTBlock(hiddenSize, hiddenSize, patchEmbd.oChannel + maxContextLen, mlpRatio * hiddenSize, headNum, maxContextLen, true, false, network);
+        for(int i = 0;i<en_depth;i++) {
+        	DiTJoinBlockRoPE block = new DiTJoinBlockRoPE(hiddenSize, hiddenSize, mlpRatio, headNum, patchEmbd.oChannel, maxContextLen, true, false, false, false, network);
 	        blocks.add(block);
+        }
+        
+        for(int i = 0;i<de_depth;i++) {
+        	FluxDiTBlock block = new FluxDiTBlock(hiddenSize, hiddenSize, patchEmbd.oChannel + maxContextLen, mlpRatio * hiddenSize, headNum, maxContextLen, true, false, network);
+        	blocks2.add(block);
         }
         int os = inChannel;
         if(learnSigma) {
@@ -167,8 +173,7 @@ public class FluxDiTMainMoudue extends Layer {
     		grid_h[i] = w;
        		grid_w[i] = h;
     	}
-//    	System.err.println("grid_h:"+JsonUtils.toJson(grid_h));
-//    	System.err.println("grid_w:"+JsonUtils.toJson(grid_w));
+
     	float[] emb_h = get_1d_sincos_pos_embed_from_grid(embed_dim/2, grid_h);
     	float[] emb_w = get_1d_sincos_pos_embed_from_grid(embed_dim/2, grid_w);
     	
@@ -185,9 +190,9 @@ public class FluxDiTMainMoudue extends Layer {
         	img_x = Tensor.createGPUTensor(img_x, number * patchEmbd.oChannel, 1, 1, patchEmbd.oWidth, true);
         	output = Tensor.createGPUTensor(output, number, oChannel, oHeight, oWidth, true);
         }
-        if(posEmbd == null) {
-        	posEmbd = new Tensor(1, patchEmbd.oChannel, 1, hiddenSize, get_2d_cossin_pos_embed(hiddenSize, width/patchSize), true);
-        }
+//        if(posEmbd == null) {
+//        	posEmbd = new Tensor(1, patchEmbd.oChannel, 1, hiddenSize, get_2d_cossin_pos_embed(hiddenSize, width/patchSize), true);
+//        }
         if(patchEmbd.getOutput() != null){
         	patchEmbd.getOutput().viewOrg();
         }
@@ -201,7 +206,6 @@ public class FluxDiTMainMoudue extends Layer {
     		d_o = Tensor.createGPUTensor(d_o, input.number * (maxContextLen + hw), 1, 1, patchEmbd.getOutput().width, true);
     	}else {
     		dtc.clearGPU();
-    		d_o.clearGPU();
     	}
     }
 
@@ -216,58 +220,10 @@ public class FluxDiTMainMoudue extends Layer {
 
     }
     
-    public void output(Tensor tc,Tensor label) {
-    	
-    	patchEmbd.forward(input);
-
-    	Tensor_OP().addAxis(patchEmbd.getOutput(), posEmbd, patchEmbd.getOutput(), posEmbd.channel * posEmbd.width);
-
-    	timeEmbd.forward(tc);
-    	
-    	labelEmbd.forward(label);
-
-    	Tensor x = patchEmbd.getOutput().view(patchEmbd.getOutput().number * patchEmbd.getOutput().channel, 1, 1, patchEmbd.getOutput().width);
-    	
-    	Tensor t = timeEmbd.getOutput();
-    	
-    	Tensor cond = labelEmbd.getOutput();
-    	
-    	baseKernel.concat_channel_forward(cond, x, cat_x, input.number, maxContextLen, hw, 1, patchEmbd.getOutput().width);
-    	
-    	Tensor bx = cat_x;
-
-    	for(int i = 0;i<depth;i++) {
-    		FluxDiTBlock block = blocks.get(i);
-    		block.forward(bx, t);
-    		bx = block.getOutput();
-    	}
-    	
-    	Tensor_OP().getByChannel(bx, img_x, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
-
-    	finalLayer.forward(img_x, t);
-    	
-    	/**
-    	 * unpatchify
-    	 * x: (N, T, patch_size**2 * C)
-         * imgs: (N, C, H, W)
-    	 */
-    	if(xShape == null) {
-    		int h = height/patchSize;
-        	int w = width/patchSize;
-        	xShape = new int[] {number, h, w, patchSize, patchSize, oChannel};
-        	yShape = new int[] {number, oChannel, h, patchSize, w, patchSize};
-    	}
-    	
-    	Tensor_OP().permute(finalLayer.getOutput(), this.output, xShape, yShape, new int[] {0, 5, 1, 3, 2, 4});
-    	
-    }
-    
     public void output(Tensor tc,Tensor label,Tensor cos,Tensor sin) {
 
     	patchEmbd.forward(input);
 
-    	Tensor_OP().addAxis(patchEmbd.getOutput(), posEmbd, patchEmbd.getOutput(), posEmbd.channel * posEmbd.width);
-    	
     	timeEmbd.forward(tc);
     	
     	labelEmbd.forward(label);
@@ -277,25 +233,29 @@ public class FluxDiTMainMoudue extends Layer {
     	Tensor t = timeEmbd.getOutput();
     	
     	Tensor cond = labelEmbd.getOutput();
-//    	x.showDM("x");
-//    	cond.showDM("cond");
-    	//x = torch.cat([txt, img], dim=1)
-    	baseKernel.concat_channel_forward(cond, x, cat_x, input.number, maxContextLen, hw, 1, patchEmbd.getOutput().width);
     	
-    	Tensor bx = cat_x;
-//    	bx.showDM("bx1");
-    	for(int i = 0;i<depth;i++) {
-    		FluxDiTBlock block = blocks.get(i);
-    		block.forward(bx, t, cos, sin);
-    		bx = block.getOutput();
-//        	bx.showDM("bx:"+i);
+    	Tensor ix = x;
+    	
+    	for(int i = 0;i<en_depth;i++) {
+    		DiTJoinBlockRoPE block = blocks.get(i);
+    		block.forward(ix, cond, t, cos, sin);
+    		ix = block.getOutput();
+    		cond = block.context_block.getOutput();
     	}
     	
-
+    	//x = torch.cat([txt, img], dim=1)
+    	baseKernel.concat_channel_forward(cond, ix, cat_x, input.number, maxContextLen, hw, 1, patchEmbd.getOutput().width);
     	
+    	Tensor bx = cat_x;
+    	
+    	for(int i = 0;i<de_depth;i++) {
+    		FluxDiTBlock block = blocks2.get(i);
+    		block.forward(bx, t, cos, sin);
+    		bx = block.getOutput();
+    	}
     	//img_o = x[:, txt.shape[1]:, ...]
     	Tensor_OP().getByChannel(bx, img_x, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
-    	
+
     	finalLayer.forward(img_x, t);
     	
     	/**
@@ -322,36 +282,6 @@ public class FluxDiTMainMoudue extends Layer {
     @Override
     public void diff() {
 
-    	/**
-    	 * unpatchify back
-    	 */
-//    	int h = height/patchSize;
-//    	int w = width/patchSize;
-//    	int[] yShape = new int[] {number, oChannel, h, patchSize, w, patchSize};
-//    	int[] xShape = new int[] {number, h, w, patchSize, patchSize, oChannel};
-    	Tensor_OP().permute(delta, finalLayer.getOutput(), yShape, xShape, new int[] {0, 2, 4, 3, 5, 1});
-    	
-    	finalLayer.back(finalLayer.getOutput(), dtc);
-    	
-    	Tensor dy = d_o;
-    	
-    	Tensor_OP().getByChannel_back(dy, finalLayer.diff, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
-    	
-     	for(int i = depth - 1;i>=0;i--) {
-     		FluxDiTBlock block = blocks.get(i);
-    		block.back(dy, dtc);
-    		dy = block.diff;
-    	}
-     	
-     	baseKernel.concat_channel_backward(dy, labelEmbd.getOutput(), img_x, input.number, maxContextLen, hw, 1, patchEmbd.getOutput().width);
-
-//     	dtxt.showDM("dtxt");
-     	labelEmbd.back(labelEmbd.getOutput());
-     	
-//     	dtc.showDM("dtc");
-     	timeEmbd.back(dtc);
-
-     	patchEmbd.back(img_x);
     }
     
     public void diff(Tensor cos,Tensor sin) {
@@ -372,27 +302,32 @@ public class FluxDiTMainMoudue extends Layer {
 
     	Tensor dy = d_o;
     	dy.clearGPU();
-//    	System.err.println(input.number);
 
     	Tensor_OP().getByChannel_back(dy, finalLayer.diff, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
-
-     	for(int i = depth - 1;i>=0;i--) {
-     		FluxDiTBlock block = blocks.get(i);
+    	
+     	for(int i = de_depth - 1;i>=0;i--) {
+     		FluxDiTBlock block = blocks2.get(i);
     		block.back(dy, dtc, cos, sin);
     		dy = block.diff;
-//        	dy.showDM("dy");
     	}
-//     	dy.showDM("dy");
-//     	dtc.showDM("dtc");
-//     	dy.showDMByOffsetRed(0, 100, "dy");
-     	baseKernel.concat_channel_backward(dy, labelEmbd.getOutput(), img_x, input.number, maxContextLen, hw, 1, patchEmbd.getOutput().width);
-//     	System.err.println(labelEmbd.getOutput().isZero());
-//     	img_x.showDM("img_x");
-     	labelEmbd.back(labelEmbd.getOutput());
+
+		Tensor dix = blocks.get(en_depth-1).getOutput();
+		Tensor dcond = blocks.get(en_depth-1).context_block.getOutput();
+		
+     	baseKernel.concat_channel_backward(dy, dcond, dix, input.number, maxContextLen, hw, 1, patchEmbd.getOutput().width);
+
+     	for(int i = en_depth - 1;i>=0;i--) {
+     		DiTJoinBlockRoPE block = blocks.get(i);
+    		block.back(dix, dcond, dtc, cos, sin);
+    		dix = block.diff;
+    		dcond = block.context_block.diff;
+    	}
+
+     	labelEmbd.back(dcond);
      	
      	timeEmbd.back(dtc);
-//     	dy.showDM("block-diff");
-     	patchEmbd.back(img_x);
+
+     	patchEmbd.back(dix);
      	
     }
 
@@ -446,28 +381,7 @@ public class FluxDiTMainMoudue extends Layer {
          */
         this.output();
     }
-    
-    /**
-     * 
-     * @param input
-     * @param tc time cond
-     * @param text
-     */
-    public void forward(Tensor input,Tensor tc,Tensor text) {
-        // TODO Auto-generated method stub
-        /**
-         * 设置输入
-         */
-        this.setInput(input);
-        /**
-         * 参数初始化
-         */
-        this.init(input);
-        /**
-         * 计算输出
-         */
-        this.output(tc, text);
-    }
+
     
     /**
      * 
@@ -536,8 +450,12 @@ public class FluxDiTMainMoudue extends Layer {
     	
     	labelEmbd.update();
     	
-    	for(int i = 0;i<depth;i++) {
+    	for(int i = 0;i<en_depth;i++) {
     		blocks.get(i).update();
+    	}
+    	
+    	for(int i = 0;i<de_depth;i++) {
+    		blocks2.get(i).update();
     	}
     	
     	finalLayer.update();
@@ -577,8 +495,12 @@ public class FluxDiTMainMoudue extends Layer {
 
     	labelEmbd.saveModel(outputStream);
     	
-    	for(int i = 0;i<depth;i++) {
+    	for(int i = 0;i<en_depth;i++) {
     		blocks.get(i).saveModel(outputStream);
+    	}
+    	
+    	for(int i = 0;i<de_depth;i++) {
+    		blocks2.get(i).saveModel(outputStream);
     	}
     	
     	finalLayer.saveModel(outputStream);
@@ -591,8 +513,12 @@ public class FluxDiTMainMoudue extends Layer {
     	
     	labelEmbd.loadModel(inputStream);
     	
-    	for(int i = 0;i<depth;i++) {
+    	for(int i = 0;i<en_depth;i++) {
     		blocks.get(i).loadModel(inputStream);
+    	}
+    	
+    	for(int i = 0;i<de_depth;i++) {
+    		blocks2.get(i).loadModel(inputStream);
     	}
     	
     	finalLayer.loadModel(inputStream);
@@ -607,14 +533,18 @@ public class FluxDiTMainMoudue extends Layer {
 
     	labelEmbd.accGrad(scale);
     	
-    	for(int i = 0;i<depth;i++) {
+    	for(int i = 0;i<en_depth;i++) {
     		blocks.get(i).accGrad(scale);
+    	}
+    	
+    	for(int i = 0;i<de_depth;i++) {
+    		blocks2.get(i).accGrad(scale);
     	}
     	
     	finalLayer.accGrad(scale);
     }
     
-    public static void loadWeight(Map<String, Object> weightMap, FluxDiTMainMoudue block, boolean showLayers) {
+    public static void loadWeight(Map<String, Object> weightMap, FluxDDTMainMoudue block, boolean showLayers) {
         if (showLayers) {
             for (String key : weightMap.keySet()) {
                 System.out.println(key);
@@ -680,49 +610,49 @@ public class FluxDiTMainMoudue extends Layer {
     }
     
     public static void main(String[] args) {
-    	int N = 2;
-    	int C = 32;
-    	int H = 16;
-    	int W = 16;
-    	
-    	int TT = 1;
-    	int TEM = 768;
-    	
-    	int patchSize = 2;
-    	int hiddenSize = 384;
-    	int headNum = 6;
-    	int depth = 6;
-    	
-    	CNN nn = new CNN(null);
-        nn.CUDNN = true;
-        nn.number = N;
-    	
-        FluxDiTMainMoudue jb = new FluxDiTMainMoudue(C, W, H, patchSize, hiddenSize, headNum, depth, 1000, TEM, TT, 4, false, 0.0f, nn);
-    	
-        String weight = "D:\\models\\dit_s2.json";
-        loadWeight(LagJsonReader.readJsonFileBigWeightIterator(weight), jb, true);
-        
-	    String inputPath = "D:\\models\\c__temp_dit_x.json";
-	    Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
-	    Tensor input = new Tensor(N, C, H, W, true);
-	    ModeLoaderlUtils.loadData(input, datas, "x");
-    	
-	    String cyPath = "D:\\models\\c__temp_dit_cy.json";
-	    Map<String, Object> cydatas = LagJsonReader.readJsonFileSmallWeight(cyPath);
-	    Tensor cy = new Tensor(N, 1, 1, TEM, true);
-	    ModeLoaderlUtils.loadData(cy, cydatas, "cy", 2);
-	    
-	    Tensor t = new Tensor(N, 1, 1, 1, new float[] {0.1f, 0.8f}, true);
-	    int time = (W / patchSize) * (H / patchSize);
-	    Tensor[] cs = RoPEKernel.getCosAndSin2D(time, hiddenSize, headNum);
-        Tensor cos = cs[0];
-        Tensor sin = cs[1];
-	    
-	    jb.forward(input, t, cy, cos, sin);
-	    
-	    jb.getOutput().showDM();
-	    
-	    jb.back(input, cos, sin);
+//    	int N = 2;
+//    	int C = 32;
+//    	int H = 16;
+//    	int W = 16;
+//    	
+//    	int TT = 1;
+//    	int TEM = 768;
+//    	
+//    	int patchSize = 2;
+//    	int hiddenSize = 384;
+//    	int headNum = 6;
+//    	int depth = 6;
+//    	
+//    	CNN nn = new CNN(null);
+//        nn.CUDNN = true;
+//        nn.number = N;
+//    	
+//        FluxDDTMainMoudue jb = new FluxDDTMainMoudue(C, W, H, patchSize, hiddenSize, headNum, depth, 1000, TEM, TT, 4, false, 0.0f, nn);
+//    	
+//        String weight = "D:\\models\\dit_s2.json";
+//        loadWeight(LagJsonReader.readJsonFileBigWeightIterator(weight), jb, true);
+//        
+//	    String inputPath = "D:\\models\\c__temp_dit_x.json";
+//	    Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
+//	    Tensor input = new Tensor(N, C, H, W, true);
+//	    ModeLoaderlUtils.loadData(input, datas, "x");
+//    	
+//	    String cyPath = "D:\\models\\c__temp_dit_cy.json";
+//	    Map<String, Object> cydatas = LagJsonReader.readJsonFileSmallWeight(cyPath);
+//	    Tensor cy = new Tensor(N, 1, 1, TEM, true);
+//	    ModeLoaderlUtils.loadData(cy, cydatas, "cy", 2);
+//	    
+//	    Tensor t = new Tensor(N, 1, 1, 1, new float[] {0.1f, 0.8f}, true);
+//	    int time = (W / patchSize) * (H / patchSize);
+//	    Tensor[] cs = RoPEKernel.getCosAndSin2D(time, hiddenSize, headNum);
+//        Tensor cos = cs[0];
+//        Tensor sin = cs[1];
+//	    
+//	    jb.forward(input, t, cy, cos, sin);
+//	    
+//	    jb.getOutput().showDM();
+//	    
+//	    jb.back(input, cos, sin);
 	    
     }
 }
