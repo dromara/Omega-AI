@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.Layer;
@@ -267,17 +268,17 @@ public class FluxDiTMainMoudue2 extends Layer {
     	patchEmbd.forward(input);
 
     	Tensor_OP().addAxis(patchEmbd.getOutput(), posEmbd, patchEmbd.getOutput(), posEmbd.channel * posEmbd.width);
-    	
+
     	timeEmbd.forward(tc);
     	
     	labelEmbd.forward(label);
-    	
+
     	Tensor x = patchEmbd.getOutput().view(patchEmbd.getOutput().number * patchEmbd.getOutput().channel, 1, 1, patchEmbd.getOutput().width);
     	
     	Tensor t = timeEmbd.getOutput();
     	
     	Tensor cond = labelEmbd.getOutput();
-//    	x.showDM("x");
+
 //    	cond.showDM("cond");
     	//x = torch.cat([txt, img], dim=1)
     	baseKernel.concat_channel_forward(cond, x, cat_x, input.number, maxContextLen, hw, 1, patchEmbd.getOutput().width);
@@ -293,7 +294,7 @@ public class FluxDiTMainMoudue2 extends Layer {
 
     	//img_o = x[:, txt.shape[1]:, ...]
     	Tensor_OP().getByChannel(bx, img_x, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
-    	
+
     	finalLayer.forward(img_x, t);
     	
     	/**
@@ -307,6 +308,7 @@ public class FluxDiTMainMoudue2 extends Layer {
         	xShape = new int[] {number, h, w, patchSize, patchSize, oChannel};
         	yShape = new int[] {number, oChannel, h, patchSize, w, patchSize};
     	}
+
     	Tensor_OP().permute(finalLayer.getOutput(), this.output, xShape, yShape, new int[] {0, 5, 1, 3, 2, 4});
 
     }

@@ -120,8 +120,8 @@ public class DiT_TXTFinalLayer2 extends Layer {
     	m_active.forward(tc);
     	m_linear.forward(m_active.getOutput());
     	
-    	Tensor_OP().getByChannel(m_linear.getOutput(), m1, new int[] {batchSize, 2, 1, hidden_size}, 0);
-    	Tensor_OP().getByChannel(m_linear.getOutput(), m2, new int[] {batchSize, 2, 1, hidden_size}, 1);
+    	Tensor_OP().getByChannel(m_linear.getOutput(), m1, new int[] {number, 2, 1, hidden_size}, 0);
+    	Tensor_OP().getByChannel(m_linear.getOutput(), m2, new int[] {number, 2, 1, hidden_size}, 1);
     	
     	finalNorm.forward(input);
     	

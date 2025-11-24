@@ -293,8 +293,7 @@ public class DiTAttentionLayer3 extends Layer {
 
          ropeKernel.forward2d(cos, sin, qt, rq, time, headNum, dk, igone);
          ropeKernel.forward2d(cos, sin, kt, rk, time, headNum, dk, igone);
-         
-         
+
          if(qkNorm) {
          	qNorm.forward(rq, qt);
          	kNorm.forward(rk, kt);
@@ -419,7 +418,6 @@ public class DiTAttentionLayer3 extends Layer {
             this.setInput(input);
             /**
              * 计算输出
-
              */
             this.output_eval(cos, sin, igone);
     	}else {

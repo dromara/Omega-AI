@@ -101,6 +101,38 @@ public class ICPlan {
 	 * sample
 	 * @param y0 is noise
 	 */
+	public Tensor sample(FluxDiT3 dit,Tensor y0, Tensor t, Tensor context, Tensor cos, Tensor sin, Tensor y1) {
+		ininT(0, 1, count);
+		int j = 1;
+		Tensor out = null;
+		Tensor f0 = null;
+		for(int i = 0;i<count - 1;i++) {
+			float t0 = T[i];
+			float t1 = T[i + 1];
+			float dt = t1 - t0;
+			MatrixUtils.val(t.data, t0);
+			t.hostToDevice();
+			f0 = dit.forward(y0, t, context, cos, sin);
+//			f0 = dit.tensorOP.copyTensorGPU(y0, f0);
+			
+			dit.tensorOP.mul(f0, dt, f0);
+			
+			dit.tensorOP.add(y0, f0, y1);
+			float tj = T[j];
+			if(j < T.length && t1 >= tj) {
+				out = linear_interp(dit.tensorOP, t0, t1, y0, y1, tj);
+				j++;
+			}
+			dit.tensorOP.copyGPU(y1, y0);
+//			y0.showDM();
+		}
+		return out;
+	}
+	
+	/**
+	 * sample
+	 * @param y0 is noise
+	 */
 	public Tensor sample(DiT_TXT dit,Tensor y0, Tensor t, Tensor context, Tensor cos, Tensor sin, Tensor y1) {
 		ininT(0, 1, count);
 		int j = 1;

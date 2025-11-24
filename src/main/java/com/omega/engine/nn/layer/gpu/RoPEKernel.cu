@@ -237,7 +237,7 @@ __global__ void rope_2d_norm_igone(float* x, float* out,float* cos, float* sin, 
     if (i >= N/2) return;
     int index = i * 2;
     int n = index / T / headSize;
-    int once = index - (n * T * headSize);
+    int once = index % (T * headSize);
     int t = once / headSize;
     int hs = once % headSize;
     float cv = x[index];
@@ -259,7 +259,7 @@ __global__ void rope_2d_back_igone(float* delta, float* diff,float* cos, float* 
     if (i >= N/2) return;
     int index = i * 2;
     int n = index / T / headSize;
-    int once = index - (n * T * headSize);
+    int once = index % (T * headSize);
     int t = once / headSize;
     int hs = once % headSize;
     const float d0 = delta[index + 0];
