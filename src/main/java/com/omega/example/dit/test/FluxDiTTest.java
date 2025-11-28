@@ -704,164 +704,211 @@ public class FluxDiTTest {
 	}
 	
 	public static void test_ema() throws Exception {
-        // ========== 路径配置 ==========
-        String vocabPath = "c:\\temp\\vocab.json";
-        String mergesPath = "c:\\temp\\merges.txt";
-        String clipWeight = "c:\\temp\\CLIP-GmP-ViT-L-14.json";
-        String vaeWeight = "c:\\temp\\vavae.json";
-        String model_path = "c:\\temp\\flux_ddt_b1_96.model";
-        String ema_model_path = "c:\\temp\\flux_ddt_b1_ema96.model";
-        String outputPath = "c:\\temp\\ema\\";
-        float cfgScale = 1.0f;
+	       // ========== 路径配置 ==========
+	       String vocabPath = "c:\\temp\\vocab.json";
+	       String mergesPath = "c:\\temp\\merges.txt";
+	       String clipWeight = "c:\\temp\\CLIP-GmP-ViT-L-14.json";
+	       String vaeWeight = "c:\\temp\\vavae.json";
+	       String model_path = "c:\\temp\\flux_ddt_b1_96.model";
+	       String ema_model_path = "c:\\temp\\flux_ddt_b1_ema96.model";
+	       String outputPath = "c:\\temp\\ema\\";
+	       float cfgScale = 1.0f;
 
-        // ========== 模型参数配置 ==========
-        int imgSize = 256;
-        int maxContextLen = 77;
-        int batchSize = 10;
-        float[] mean = new float[]{0.5f, 0.5f, 0.5f};
-        float[] std = new float[]{0.5f, 0.5f, 0.5f};
+	       // ========== 模型参数配置 ==========
+	       int imgSize = 256;
+	       int maxContextLen = 77;
+	       int batchSize = 10;
+	       float[] mean = new float[]{0.5f, 0.5f, 0.5f};
+	       float[] std = new float[]{0.5f, 0.5f, 0.5f};
 
-        // ========== 初始化组件 ==========
-        BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
-        // 注意：dataLoader 在此方法中实际未使用，仅用于文本tokenization
-        int maxPositionEmbeddingsSize = 77;
-        int vocabSize = 49408;
-        int headNum = 12;
-        int n_layers = 12;
-        int textEmbedDim = 768;
-        int intermediateSize = 3072;
-        ClipTextModel clip = new ClipTextModel(LossType.MSE, UpdaterType.adamw, headNum, maxContextLen, vocabSize, textEmbedDim, maxPositionEmbeddingsSize, intermediateSize, n_layers);
-        clip.CUDNN = true;
-        clip.time = maxContextLen;
-        clip.RUN_MODEL = RunModel.EVAL;
-        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, "", false);
+	       // ========== 初始化组件 ==========
+	       BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+	       int maxPositionEmbeddingsSize = 77;
+	       int vocabSize = 49408;
+	       int headNum = 12;
+	       int n_layers = 12;
+	       int textEmbedDim = 768;
+	       int intermediateSize = 3072;
+	       ClipTextModel clip = new ClipTextModel(LossType.MSE, UpdaterType.adamw, headNum, maxContextLen, vocabSize, textEmbedDim, maxPositionEmbeddingsSize, intermediateSize, n_layers);
+	       clip.CUDNN = true;
+	       clip.time = maxContextLen;
+	       clip.RUN_MODEL = RunModel.EVAL;
+	       ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, "", false);
 
-        int latendDim = 32;
-        int num_res_blocks = 2;
-        int[] ch_mult = new int[]{1, 1, 2, 2, 4};
-        int ch = 128;
-        VA_VAE vae = new VA_VAE(LossType.MSE, UpdaterType.adamw, latendDim, imgSize, ch_mult, ch, num_res_blocks, true);
-        vae.CUDNN = true;
-        vae.learnRate = 0.001f;
-        vae.RUN_MODEL = RunModel.EVAL;
-        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
+	       int latendDim = 32;
+	       int num_res_blocks = 2;
+	       int[] ch_mult = new int[]{1, 1, 2, 2, 4};
+	       int ch = 128;
+	       VA_VAE vae = new VA_VAE(LossType.MSE, UpdaterType.adamw, latendDim, imgSize, ch_mult, ch, num_res_blocks, true);
+	       vae.CUDNN = true;
+	       vae.learnRate = 0.001f;
+	       vae.RUN_MODEL = RunModel.EVAL;
+	       ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
 
-        int ditHeadNum = 12;
-        int latendSize = 16;
-        int en_depth = 2;
-        int de_depth = 10;
-        int timeSteps = 1000;
-        int mlpRatio = 4;
-        int patchSize = 1;
-        int hiddenSize = 768;
+	       int ditHeadNum = 12;
+	       int latendSize = 16;
+	       int en_depth = 2;
+	       int de_depth = 10;
+	       int timeSteps = 1000;
+	       int mlpRatio = 4;
+	       int patchSize = 1;
+	       int hiddenSize = 768;
 
-        float y_prob = 0.1f;
+	       float y_prob = 0.1f;
 
-        // 创建普通模型
-        FluxDiT2 network = new FluxDiT2(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, en_depth, de_depth, timeSteps, textEmbedDim, maxPositionEmbeddingsSize, mlpRatio, false, y_prob);
-        network.CUDNN = true;
-        network.learnRate = 0.0002f;
+	       // 保存噪声数据用于EMA模型
+	       Tensor[] savedNoises = new Tensor[10];
+	       
+	       // ========== 第一阶段：普通模型测试 ==========
+	       System.out.println("=== 第一阶段：普通模型测试 ===");
+	       
+	       // 创建普通模型
+	       FluxDiT2 network = new FluxDiT2(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, en_depth, de_depth, timeSteps, textEmbedDim, maxPositionEmbeddingsSize, mlpRatio, false, y_prob);
+	       network.CUDNN = true;
+	       network.learnRate = 0.0002f;
+	       network.RUN_MODEL = RunModel.EVAL;
 
-        // 创建EMA模型
-        FluxDiT2 network_ema = new FluxDiT2(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, en_depth, de_depth, timeSteps, textEmbedDim, maxPositionEmbeddingsSize, mlpRatio, false, y_prob);
-        network_ema.CUDNN = true;
-        network_ema.learnRate = 0.0002f;
+	       ICPlan icplan = new ICPlan(network.tensorOP);
 
-        ICPlan icplan = new ICPlan(network.tensorOP);
+	       // 加载普通模型权重
+	       ModelUtils.loadModel(network, model_path);
 
-        // 加载普通模型权重
-        ModelUtils.loadModel(network, model_path);
+	       Tensor label = new Tensor(batchSize * maxContextLen, 1, 1, 1, true);
 
-        // 加载EMA模型权重
-        ModelUtils.loadModel(network_ema, ema_model_path);
+	       Tensor condInput = null;
+	       Tensor condInput_ynull = null;
+	       Tensor t = new Tensor(batchSize * 2, 1, 1, 1, true);
 
-        Tensor label = new Tensor(batchSize * maxContextLen, 1, 1, 1, true);
+	       Tensor noise = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+	       Tensor latend = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+	       Tensor eps = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
 
-        Tensor condInput = null;
-        Tensor condInput_ynull = null;
-        Tensor t = new Tensor(batchSize * 2, 1, 1, 1, true);
+	       Tensor[] cs = RoPEKernel.getCosAndSin2D(network.time, network.hiddenSize, network.headNum);
+	       Tensor cos = cs[0];
+	       Tensor sin = cs[1];
 
-        Tensor noise = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
-        Tensor latend = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
-        Tensor eps = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+	       Tensor latendMean = new Tensor(latendDim, 1, 1, 1, new float[] {0.23869862f,0.4016211f,-0.15087046f,-0.52679396f,-0.15986611f,-1.6260003f,-0.5108059f,0.036283042f,0.3879915f,0.5334558f,-0.96909237f,1.4872372f,0.071545064f,0.7708449f,0.16623285f,0.7733368f,-0.9222466f,1.2859207f,-0.30753133f,-0.70088845f,0.5247328f,0.09425582f,-1.1671793f,0.53027356f,2.7668183f,1.4706479f,0.09313846f,-0.25821307f,-0.81280077f,-0.56423014f,0.49580055f,-0.35338005f}, true);
+	       Tensor latendStd = new Tensor(latendDim, 1, 1, 1, new float[] {4.1767454f,4.245004f,3.4222624f,3.6970704f,3.6395364f,3.3921142f,3.0486407f,3.6789029f,3.922576f,3.760961f,3.7205217f,3.70206f,3.7118554f,3.6425886f,3.223105f,3.3205664f,4.135744f,3.6481087f,3.6758296f,3.0634696f,3.3749795f,2.9729145f,3.8634508f,4.518134f,2.7782023f,3.4923503f,4.7507596f,3.2647762f,3.3624852f,3.7219477f,4.659944f,4.2925563f}, true);
 
-        Tensor noise2 = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+	       String[] labels = new String[10];
+	       labels[0] = "A cat";
+	       labels[1] = "a vibrant anime mountain lands";
+	       labels[2] = "a highly detailed anime landscape,big tree on the water, epic sky,golden grass,detailed";
+	       labels[3] = "a woman";
+	       labels[4] = "fruit cream cake";
+	       labels[5] = "bright red phlox flowers bloom in a garden";
+	       labels[6] = "the cambridge shoulder bag";
+	       labels[7] = "A yellow mushroom grows in the forest";
+	       labels[8] = "a dog";
+	       labels[9] = "A lovely corgi is taking a walk under the sea";
+	       
+	       // 运行普通模型的所有测试
+	       for(int i = 0;i<10;i++) {
+	           System.out.println("Normal model - generating image " + i);
+	           
+	           // 直接使用BPE tokenizer处理文本
+	           for(int j = 0; j < batchSize; j++) {
+	               int[] tokens = bpe.encodeInt(labels[j], maxContextLen);
+	               for(int k = 0; k < maxContextLen; k++) {
+	                   if(k < tokens.length) {
+	                       label.data[j * maxContextLen + k] = tokens[k];
+	                   } else {
+	                       label.data[j * maxContextLen + k] = 0;
+	                   }
+	               }
+	           }
+	           label.hostToDevice();
+	           
+	           condInput = clip.get_full_clip_prompt_embeds(label);
 
-        Tensor[] cs = RoPEKernel.getCosAndSin2D(network.time, network.hiddenSize, network.headNum);
-        Tensor cos = cs[0];
-        Tensor sin = cs[1];
+	           if(condInput_ynull == null) {
+	               condInput_ynull = Tensor.createGPUTensor(condInput_ynull, condInput.number * 2, condInput.channel, condInput.height, condInput.width, true);
+	           }
 
-        Tensor latendMean = new Tensor(latendDim, 1, 1, 1, new float[] {0.23869862f,0.4016211f,-0.15087046f,-0.52679396f,-0.15986611f,-1.6260003f,-0.5108059f,0.036283042f,0.3879915f,0.5334558f,-0.96909237f,1.4872372f,0.071545064f,0.7708449f,0.16623285f,0.7733368f,-0.9222466f,1.2859207f,-0.30753133f,-0.70088845f,0.5247328f,0.09425582f,-1.1671793f,0.53027356f,2.7668183f,1.4706479f,0.09313846f,-0.25821307f,-0.81280077f,-0.56423014f,0.49580055f,-0.35338005f}, true);
-        Tensor latendStd = new Tensor(latendDim, 1, 1, 1, new float[] {4.1767454f,4.245004f,3.4222624f,3.6970704f,3.6395364f,3.3921142f,3.0486407f,3.6789029f,3.922576f,3.760961f,3.7205217f,3.70206f,3.7118554f,3.6425886f,3.223105f,3.3205664f,4.135744f,3.6481087f,3.6758296f,3.0634696f,3.3749795f,2.9729145f,3.8634508f,4.518134f,2.7782023f,3.4923503f,4.7507596f,3.2647762f,3.3624852f,3.7219477f,4.659944f,4.2925563f}, true);
+	           network.tensorOP.cat_batch(condInput, condInput, condInput_ynull);
 
-        network.RUN_MODEL = RunModel.EVAL;
-        network_ema.RUN_MODEL = RunModel.EVAL;
+	           Tensor y_null = network.main.labelEmbd.getY_embedding();
+	           int part_input_size = y_null.dataLength;
+	           for(int b = 0;b<batchSize;b++) {
+	               network.tensorOP.op.copy_gpu(y_null, condInput_ynull, part_input_size, 0, 1, (batchSize + b) * part_input_size, 1);
+	           }
 
-        String[] labels = new String[10];
-        for(int i = 0;i<10;i++) {
-            System.out.println("start create test images for comparison " + i);
-        	labels[0] = "A cat";
-            labels[1] = "a vibrant anime mountain lands";
-            labels[2] = "a highly detailed anime landscape,big tree on the water, epic sky,golden grass,detailed";
-            labels[3] = "a woman";
-            labels[4] = "fruit cream cake";
-            labels[5] = "bright red phlox flowers bloom in a garden";
-            labels[6] = "the cambridge shoulder bag";
-            labels[7] = "A yellow mushroom grows in the forest";
-            labels[8] = "a dog";
-            labels[9] = "A lovely corgi is taking a walk under the sea";
-            
-            // 直接使用BPE tokenizer处理文本
-            for(int j = 0; j < batchSize; j++) {
-                int[] tokens = bpe.encodeInt(labels[j], maxContextLen);
-                for(int k = 0; k < maxContextLen; k++) {
-                    if(k < tokens.length) {
-                        label.data[j * maxContextLen + k] = tokens[k];
-                    } else {
-                        label.data[j * maxContextLen + k] = 0;
-                    }
-                }
-            }
-            label.hostToDevice();
-            
-            condInput = clip.get_full_clip_prompt_embeds(label);
+	           // 生成噪声并保存
+	           GPUOP.getInstance().cudaRandn(noise);
+	           savedNoises[i] = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+	           noise.copyGPU(savedNoises[i]);
 
-            if(condInput_ynull == null) {
-                condInput_ynull = Tensor.createGPUTensor(condInput_ynull, condInput.number * 2, condInput.channel, condInput.height, condInput.width, true);
-            }
+	           // 使用普通模型生成图像
+	           Tensor sample_normal = icplan.forward_with_cfg(network, noise, t, condInput_ynull, cos, sin, latend, eps, cfgScale);
+	           icplan.latend_un_norm(sample_normal, latendMean, latendStd);
+	           Tensor result_normal = vae.decode(sample_normal);
+	           JCuda.cudaDeviceSynchronize();
+	           result_normal.data = MatrixOperation.clampSelf(result_normal.syncHost(), -1, 1);
+	           showImgs(outputPath + i + "_normal", result_normal, mean, std);
 
-            network.tensorOP.cat_batch(condInput, condInput, condInput_ynull);
+	           System.out.println("Normal model - finished image " + i);
+	       }
+	       
+	       // 释放普通模型内存
+	       System.out.println("=== 释放普通模型内存 ===");
+	       network = null;
+	       System.gc();
+	       
+	       // ========== 第二阶段：EMA模型测试 ==========
+	       System.out.println("=== 第二阶段：EMA模型测试 ===");
+	       
+	       // 创建EMA模型
+	       FluxDiT2 network_ema = new FluxDiT2(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, en_depth, de_depth, timeSteps, textEmbedDim, maxPositionEmbeddingsSize, mlpRatio, false, y_prob);
+	       network_ema.CUDNN = true;
+	       network_ema.learnRate = 0.0002f;
+	       network_ema.RUN_MODEL = RunModel.EVAL;
+	       
+	       // 加载EMA模型权重
+	       ModelUtils.loadModel(network_ema, ema_model_path);
+	       
+	       // 运行EMA模型的所有测试（使用保存的噪声）
+	       for(int i = 0;i<10;i++) {
+	           System.out.println("EMA model - generating image " + i);
+	           
+	           // 直接使用BPE tokenizer处理文本
+	           for(int j = 0; j < batchSize; j++) {
+	               int[] tokens = bpe.encodeInt(labels[j], maxContextLen);
+	               for(int k = 0; k < maxContextLen; k++) {
+	                   if(k < tokens.length) {
+	                       label.data[j * maxContextLen + k] = tokens[k];
+	                   } else {
+	                       label.data[j * maxContextLen + k] = 0;
+	                   }
+	               }
+	           }
+	           label.hostToDevice();
+	           
+	           condInput = clip.get_full_clip_prompt_embeds(label);
 
-            Tensor y_null = network.main.labelEmbd.getY_embedding();
-            int part_input_size = y_null.dataLength;
-            for(int b = 0;b<batchSize;b++) {
-                network.tensorOP.op.copy_gpu(y_null, condInput_ynull, part_input_size, 0, 1, (batchSize + b) * part_input_size, 1);
-            }
+	           if(condInput_ynull == null) {
+	               condInput_ynull = Tensor.createGPUTensor(condInput_ynull, condInput.number * 2, condInput.channel, condInput.height, condInput.width, true);
+	           }
 
-            // 生成相同的噪声
-            GPUOP.getInstance().cudaRandn(noise);
-            noise.copyGPU(noise2);
+	           network_ema.tensorOP.cat_batch(condInput, condInput, condInput_ynull);
 
-            // 使用普通模型生成图像
-            Tensor sample_normal = icplan.forward_with_cfg(network, noise, t, condInput_ynull, cos, sin, latend, eps, cfgScale);
-            icplan.latend_un_norm(sample_normal, latendMean, latendStd);
-            Tensor result_normal = vae.decode(sample_normal);
-            JCuda.cudaDeviceSynchronize();
-            result_normal.data = MatrixOperation.clampSelf(result_normal.syncHost(), -1, 1);
-            showImgs(outputPath + i + "_normal", result_normal, mean, std);
+	           Tensor y_null = network_ema.main.labelEmbd.getY_embedding();
+	           int part_input_size = y_null.dataLength;
+	           for(int b = 0;b<batchSize;b++) {
+	               network_ema.tensorOP.op.copy_gpu(y_null, condInput_ynull, part_input_size, 0, 1, (batchSize + b) * part_input_size, 1);
+	           }
 
-            System.out.println("finish normal model generation.");
+	           // 使用EMA模型生成图像（使用保存的相同噪声）
+	           Tensor sample_ema = icplan.forward_with_cfg(network_ema, savedNoises[i], t, condInput_ynull, cos, sin, latend, eps, cfgScale);
+	           icplan.latend_un_norm(sample_ema, latendMean, latendStd);
+	           Tensor result_ema = vae.decode(sample_ema);
+	           JCuda.cudaDeviceSynchronize();
+	           result_ema.data = MatrixOperation.clampSelf(result_ema.syncHost(), -1, 1);
+	           showImgs(outputPath + i + "_ema", result_ema, mean, std);
 
-            // 使用EMA模型生成图像（使用相同的噪声）
-            Tensor sample_ema = icplan.forward_with_cfg(network_ema, noise2, t, condInput_ynull, cos, sin, latend, eps, cfgScale);
-            icplan.latend_un_norm(sample_ema, latendMean, latendStd);
-            Tensor result_ema = vae.decode(sample_ema);
-            JCuda.cudaDeviceSynchronize();
-            result_ema.data = MatrixOperation.clampSelf(result_ema.syncHost(), -1, 1);
-            showImgs(outputPath + i + "_ema", result_ema, mean, std);
-
-            System.out.println("finish EMA model generation.");
-        }
+	           System.out.println("EMA model - finished image " + i);
+	       }
+	       
+	       System.out.println("=== 测试完成 ===");
 	}
 	
 	public static void test_flux3_cfg() throws Exception {
