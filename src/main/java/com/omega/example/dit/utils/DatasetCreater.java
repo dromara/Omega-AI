@@ -14,6 +14,7 @@ import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.layer.active.GeluType;
 import com.omega.engine.nn.network.ClipTextModel;
 import com.omega.engine.nn.network.RunModel;
+import com.omega.engine.nn.network.dit.Dinov2;
 import com.omega.engine.nn.network.utils.ModelUtils;
 import com.omega.engine.nn.network.vae.SD_VAE;
 import com.omega.engine.nn.network.vae.VA_VAE;
@@ -24,6 +25,7 @@ import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.sd.utils.SDImageDataLoaderEN;
 import com.omega.example.transformer.utils.LagJsonReader;
 import com.omega.example.transformer.utils.bpe.BPETokenizerEN;
+import com.omega.example.yolo.utils.YoloImageUtils;
 
 import jcuda.driver.JCudaDriver;
 
@@ -912,6 +914,55 @@ public class DatasetCreater {
     }
     
     
+	public static void create_dinov2() throws Exception {
+		
+		String outputPath = "D:\\dataset\\dinov2_z.bin";
+		
+        String labelPath = "D:\\dataset\\labels.json";
+		String imgDirPath = "D:\\dataset\\images_224_224\\";
+        boolean horizontalFilp = false;
+        int imgSize = 224;
+        int maxContextLen = 77;
+        int batchSize = 60;
+        float[] mean = new float[]{0.485f, 0.456f, 0.406f};
+        float[] std = new float[]{0.229f, 0.224f, 0.225f};
+        String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
+        String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
+        BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+        SDImageDataLoaderEN dataLoader = new SDImageDataLoaderEN(bpe, labelPath, imgDirPath, ".jpg", imgSize, imgSize, maxContextLen, batchSize, horizontalFilp, mean, std);
+		
+        int patchSize = 14;
+        int hiddenSize = 768;
+        int headNum = 12;
+        int depth = 12;
+        int mlpRatio = 4;
+        Dinov2 dinov = new Dinov2(LossType.MSE, UpdaterType.adamw, 3, imgSize, imgSize, patchSize, hiddenSize, headNum, depth, mlpRatio);
+        dinov.CUDNN = true;
+        dinov.RUN_MODEL = RunModel.EVAL;
+
+        String model_path = "D:\\models\\dionv2-14-b.model";
+        com.omega.example.transformer.utils.ModelUtils.loadModel(dinov, model_path);
+        
+        int[][] indexs = dataLoader.order();
+        
+        Tensor input = new Tensor(batchSize, 3, dataLoader.img_h, dataLoader.img_w, true);
+
+        File file = new File(outputPath);
+        FileOutputStream writer = new FileOutputStream(file);
+
+        for(int it = 0;it<indexs.length;it++) {
+        	 long start = System.nanoTime();
+        	 dataLoader.loadData(indexs[it], input);
+        	 Tensor latend = dinov.forward_features(input);
+             JCudaDriver.cuCtxSynchronize();
+             writeTensor(latend, writer);
+             System.out.println(it + "/" + indexs.length + " cost["+(System.nanoTime() - start)/1e6+"ms] finish.");
+        }
+        
+        System.out.println("create ["+dataLoader.count+"] finish.");
+        
+    }
+    
 //    public static void createClipData() {
 //    	
 //    	int batchSize = 1000;
@@ -990,13 +1041,15 @@ public class DatasetCreater {
         	
 //        	createLatendDataset3();
         	
-        	createLatend_vavae_unsample();
+//        	createLatend_vavae_unsample();
         	
 //        	createClipData();
         	
 //        	createLatendDatasetFullClip();
         	
 //        	createTwoClip();
+        	
+        	create_dinov2();
         	
         } catch (Exception e) {
             // TODO: handle exception

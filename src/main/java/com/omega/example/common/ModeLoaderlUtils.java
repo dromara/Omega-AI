@@ -1141,8 +1141,14 @@ public class ModeLoaderlUtils {
                 //				float[][] data = (float[][]) meta;
                 //				x.data = MatrixUtils.transform(data);
             } else if (dim == 3) {
-                float[][][] data = (float[][][]) meta;
-                x.data = MatrixUtils.transform(data);
+                List<List<List<Double>>> dataA = (List<List<List<Double>>>) meta;
+                for (int n = 0; n < dataA.size(); n++) {
+                    for (int h = 0; h < dataA.get(n).size(); h++) {
+                        for (int w = 0; w < dataA.get(n).get(h).size(); w++) {
+                            x.data[n * x.getOnceSize() + h * x.width + w] = dataA.get(n).get(h).get(w).floatValue();
+                        }
+                    }
+                }
             } else {
                 List<List<List<List<Double>>>> dataA = (List<List<List<List<Double>>>>) meta;
                 int N = dataA.size();

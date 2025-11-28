@@ -1954,50 +1954,7 @@ public class DiTTest {
         ModelUtils.saveModel(dit, save_model_path);
     }
 	
-	public static void flux_dit_b2_iddpm_train() throws Exception {
-		String dataPath = "D:\\dataset\\amine\\dalle_vavae_latend.bin";
-        String clipDataPath = "D:\\dataset\\amine\\dalle_full_clip.bin";
-//		String clipDataPath = "D:\\dataset\\amine\\vavae_2clip.bin";
-		
-        int batchSize = 32;
-        int latendDim = 32;
-        int height = 16;
-        int width = 16;
-        int textEmbedDim = 768;
-        int maxContext = 77;
-        
-        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, maxContext, textEmbedDim, BinDataType.float32);
-        
-        int ditHeadNum = 12;
-        int latendSize = 16;
-        int depth = 12;
-        int timeSteps = 1000;
-        int mlpRatio = 4;
-        int patchSize = 1;
-        int hiddenSize = 768;
-        
-        float y_prob = 0.1f;
-        
-        FluxDiT dit = new FluxDiT(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, textEmbedDim, maxContext, mlpRatio, false, y_prob);
-        dit.CUDNN = true;
-        dit.learnRate = 0.0002f;
-        
-        ICPlan icplan = new ICPlan(dit.tensorOP);
 
-//        String model_path = "D:\\models\\dit_txt\\flux_dit_xl1_24.model";
-//        ModelUtils.loadModel(dit, model_path);
-        
-        MBSGDOptimizer optimizer = new MBSGDOptimizer(dit, 40, 0.00001f, batchSize, LearnRateUpdate.CONSTANT, false);
-        
-        Tensor mean = new Tensor(latendDim, 1, 1, 1, new float[] {0.23869862f,0.4016211f,-0.15087046f,-0.52679396f,-0.15986611f,-1.6260003f,-0.5108059f,0.036283042f,0.3879915f,0.5334558f,-0.96909237f,1.4872372f,0.071545064f,0.7708449f,0.16623285f,0.7733368f,-0.9222466f,1.2859207f,-0.30753133f,-0.70088845f,0.5247328f,0.09425582f,-1.1671793f,0.53027356f,2.7668183f,1.4706479f,0.09313846f,-0.25821307f,-0.81280077f,-0.56423014f,0.49580055f,-0.35338005f}, true);
-        Tensor std = new Tensor(latendDim, 1, 1, 1, new float[] {4.1767454f,4.245004f,3.4222624f,3.6970704f,3.6395364f,3.3921142f,3.0486407f,3.6789029f,3.922576f,3.760961f,3.7205217f,3.70206f,3.7118554f,3.6425886f,3.223105f,3.3205664f,4.135744f,3.6481087f,3.6758296f,3.0634696f,3.3749795f,2.9729145f,3.8634508f,4.518134f,2.7782023f,3.4923503f,4.7507596f,3.2647762f,3.3624852f,3.7219477f,4.659944f,4.2925563f}, true);
-//        Tensor mean = new Tensor(latendDim, 1, 1, 1, new float[] {0.5908793f,0.08059605f,-0.4490295f,-0.36698666f,-0.09954782f,-1.5645596f,-0.4480346f,-0.27834356f,0.16410087f,0.6236304f,-0.722689f,1.9468695f,0.03337372f,0.67487925f,0.43168893f,1.7030053f,-1.1693488f,1.803961f,-0.26420984f,-0.64909077f,0.5674515f,-0.020895006f,-1.6284368f,0.62391245f,2.782418f,2.1002185f,-0.47597224f,0.056646377f,-1.3163285f,-0.37474704f,0.61040056f,-0.2833984f}, true);
-//        Tensor std = new Tensor(latendDim, 1, 1, 1, new float[] {4.094117f,4.0699778f,3.4177587f,3.6069686f,3.599577f,3.2107027f,3.0169837f,3.484884f,3.7302747f,3.6297033f,3.6147742f,3.5576963f,3.7799015f,3.6828954f,3.2159526f,3.5250695f,3.8837016f,3.5258102f,3.6749682f,3.2791677f,3.394157f,3.001622f,3.5698154f,4.284372f,2.5654256f,3.3422892f,4.98195f,3.1721509f,3.2045052f,3.8944986f,4.281285f,4.121331f}, true);
-
-        optimizer.train_Flux_ICPlan2(dataLoader, icplan, "D://models//dit_txt//", mean, std, 1f, 3000);
-        String save_model_path = "/omega/models/dit_xl2.model";
-        ModelUtils.saveModel(dit, save_model_path);
-    }
 	
 	public static void dit_txt_xl_iddpm_train() throws Exception {
 		String dataPath = "/root/gpufree-data/txt2img_1m/vavae_1m_latend.bin";
@@ -3620,8 +3577,6 @@ public class DiTTest {
 //	        	test_rope4_cfg();
 	        	
 //	        	dit_txt_xl_iddpm_train();
-	        	
-//	        	flux_dit_b2_iddpm_train();
 	        	
 //	        	test_sana_cfg();
 	        	

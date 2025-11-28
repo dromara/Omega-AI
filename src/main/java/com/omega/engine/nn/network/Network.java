@@ -450,15 +450,17 @@ public abstract class Network {
     		if (l1 instanceof NormalizationLayer) {
                 NormalizationLayer ema_nl = (NormalizationLayer) l1;
                 NormalizationLayer model_nl = (NormalizationLayer) l2;
-                if(ema_nl.gamma == null) {
-                	ema_nl.gamma = model_nl.gamma.createLike();
-                }
-                tensorOP.copyTensorGPU(model_nl.gamma, ema_nl.gamma);
-                if(model_nl.beta != null) {
-                	if(ema_nl.beta == null) {
-                    	ema_nl.beta = model_nl.beta.createLike();
-                    }
-                	tensorOP.copyTensorGPU(model_nl.beta, ema_nl.beta);
+                if(model_nl.hasParams) {
+	                if(ema_nl.gamma == null) {
+	                	ema_nl.gamma = model_nl.gamma.createLike();
+	                }
+	                tensorOP.copyTensorGPU(model_nl.gamma, ema_nl.gamma);
+	                if(model_nl.beta != null) {
+	                	if(ema_nl.beta == null) {
+	                    	ema_nl.beta = model_nl.beta.createLike();
+	                    }
+	                	tensorOP.copyTensorGPU(model_nl.beta, ema_nl.beta);
+	                }
                 }
     		}else {
     			if(l1.weight == null) {
@@ -482,9 +484,11 @@ public abstract class Network {
     		if (l1 instanceof NormalizationLayer) {
                 NormalizationLayer ema_nl = (NormalizationLayer) l1;
                 NormalizationLayer model_nl = (NormalizationLayer) l2;
-                tensorOP.update_ema(ema_nl.gamma, model_nl.gamma, decay);
-                if(ema_nl.beta != null) {
-                	tensorOP.update_ema(ema_nl.beta, model_nl.beta, decay);
+                if(model_nl.hasParams) {
+                	 tensorOP.update_ema(ema_nl.gamma, model_nl.gamma, decay);
+                     if(ema_nl.beta != null) {
+                     	tensorOP.update_ema(ema_nl.beta, model_nl.beta, decay);
+                     }
                 }
     		}else {
     			tensorOP.update_ema(l1.weight, l2.weight, decay);

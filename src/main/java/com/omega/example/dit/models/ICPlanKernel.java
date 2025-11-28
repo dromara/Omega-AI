@@ -14,6 +14,9 @@ public class ICPlanKernel extends CUDAKernel {
 	
     private CUfunction compute_xt_function;
     private CUfunction compute_ut_function;
+    private CUfunction compute_v_function;
+    private CUfunction compute_dv_function;
+    private CUfunction compute_z_next_function;
     
     private CUfunction cosine_similarity_loss_function;
     private CUfunction cosine_similarity_loss_dim1_function;
@@ -44,6 +47,15 @@ public class ICPlanKernel extends CUDAKernel {
             }
             if (compute_ut_function == null) {
             	compute_ut_function = getCudaManager().getLocalFunctionByModule("icplan.cu", "compute_ut");
+            }
+            if (compute_v_function == null) {
+            	compute_v_function = getCudaManager().getLocalFunctionByModule("icplan.cu", "compute_v");
+            }
+            if (compute_dv_function == null) {
+            	compute_dv_function = getCudaManager().getLocalFunctionByModule("icplan.cu", "compute_dv");
+            }
+            if (compute_z_next_function == null) {
+            	compute_z_next_function = getCudaManager().getLocalFunctionByModule("icplan.cu", "compute_z_next");
             }
             if (cosine_similarity_loss_function == null) {
             	cosine_similarity_loss_function = getCudaManager().getLocalFunctionByModule("icplan.cu", "cosine_similarity_loss");
@@ -163,6 +175,77 @@ public class ICPlanKernel extends CUDAKernel {
             kernelParameters = Pointer.to(Pointer.to(latend.getGpuData()), Pointer.to(noise.getGpuData()), Pointer.to(t.getGpuData()), Pointer.to(ut.getGpuData()),
             		Pointer.to(new int[]{latend.dataLength}), Pointer.to(new int[]{latend.getOnceSize()}));
             cuLaunchKernel(compute_ut_function, this.CAFFE_GET_BLOCKS(latend.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameters, null // Kernel- and extra parameters
+            );
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void compute_v(Tensor x,Tensor z,Tensor t,Tensor v, float t_eps) {
+        try {
+            /**
+             * 设置入参
+             *  float* x,
+			    float* z,
+			    float* t,
+			    float* output,
+			    float t_eps,
+			    int N, int W
+             */
+            kernelParameters = Pointer.to(Pointer.to(x.getGpuData()), Pointer.to(z.getGpuData()), Pointer.to(t.getGpuData()), Pointer.to(v.getGpuData()),Pointer.to(new float[]{t_eps}),
+            		Pointer.to(new int[]{x.dataLength}), Pointer.to(new int[]{x.getOnceSize()}));
+            cuLaunchKernel(compute_v_function, this.CAFFE_GET_BLOCKS(x.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameters, null // Kernel- and extra parameters
+            );
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void compute_dv(Tensor delta,Tensor t,Tensor dx, float t_eps) {
+        try {
+            /**
+             * 设置入参
+             *  float* delta,
+			    float* t,
+			    float* dx,
+			    float t_eps,
+			    int N, int W
+             */
+            kernelParameters = Pointer.to(Pointer.to(delta.getGpuData()), Pointer.to(t.getGpuData()), Pointer.to(dx.getGpuData()),Pointer.to(new float[]{t_eps}),
+            		Pointer.to(new int[]{delta.dataLength}), Pointer.to(new int[]{delta.getOnceSize()}));
+            cuLaunchKernel(compute_dv_function, this.CAFFE_GET_BLOCKS(delta.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameters, null // Kernel- and extra parameters
+            );
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void compute_z_next(Tensor v_pred,Tensor z,float t, float t_next, Tensor z_next) {
+        try {
+            /**
+             * 设置入参
+             *  float* v_pred,
+			    float* z,
+			    float t,
+			    float t_next,
+			    float* output,
+			    int N
+             */
+            kernelParameters = Pointer.to(Pointer.to(v_pred.getGpuData()), Pointer.to(z.getGpuData()),Pointer.to(new float[]{t}), Pointer.to(new float[]{t_next}), Pointer.to(z_next.getGpuData()),
+            		Pointer.to(new int[]{v_pred.dataLength}));
+            cuLaunchKernel(compute_z_next_function, this.CAFFE_GET_BLOCKS(v_pred.dataLength), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameters, null // Kernel- and extra parameters

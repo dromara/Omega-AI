@@ -897,7 +897,7 @@ public class YoloImageUtils {
         try {
             File file = new File(filePath);
             if (file.exists()) {
-                float[] data = IU().getImageData(file, norm, norm);
+                float[] data = IU().getImageData(file, norm, false);
                 return data;
             }
         } catch (Exception e) {

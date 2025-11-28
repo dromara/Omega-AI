@@ -376,6 +376,18 @@ public class RandomUtils {
         }
     }
     
+    public static void gaussianRandomLogitNormal(Tensor output, float mean, float std) {
+    	if( output.data == null) {
+    		output.data = new float[output.dataLength];
+    	}
+        for (int i = 0; i < output.dataLength; i++) {
+            output.data[i] = (float) (1.0 / (1.0 + Math.exp(-getInstance().nextGaussian() * std + mean)));
+        }
+        if (output.isHasGPU()) {
+            output.hostToDevice();
+        }
+    }
+    
     public static void gaussianRandom(Tensor output, float mean, float std) {
         if (output.data == null) {
             output.data = new float[output.dataLength];

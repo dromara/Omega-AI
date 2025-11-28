@@ -12,6 +12,8 @@ import com.omega.engine.nn.network.dit.DiT_TXT;
 import com.omega.engine.nn.network.dit.FluxDiT;
 import com.omega.engine.nn.network.dit.FluxDiT2;
 import com.omega.engine.nn.network.dit.FluxDiT3;
+import com.omega.engine.nn.network.dit.FluxDiT_REPA;
+import com.omega.engine.nn.network.dit.JiT;
 import com.omega.engine.nn.network.dit.MMDiT_RoPE;
 import com.omega.engine.nn.network.dit.SanaDiT;
 import com.omega.engine.tensor.Tensor;
@@ -40,8 +42,20 @@ public class ICPlan {
 	
 	private Tensor tmp;
 	
+	private Tensor t_input;
+	private Tensor t_next_input;
+	private Tensor z_next_euler;
+	private Tensor z_next;
+	
 	public ICPlan(TensorOP op) {
 		this.op = op;
+		init();
+	}
+	
+	public ICPlan(TensorOP op, int sample_count, float timestep_shift) {
+		this.op = op;
+		this.count = sample_count;
+		this.timestep_shift = timestep_shift;
 		init();
 	}
 	
@@ -242,6 +256,33 @@ public class ICPlan {
 		return out;
 	}
 	
+	public Tensor forward_with_cfg(FluxDiT_REPA dit, Tensor y0, Tensor t, Tensor context, Tensor cos, Tensor sin, Tensor y1, Tensor eps, float cfg_scale) {
+		ininT(0, 1, count);
+		int j = 1;
+		Tensor out = null;
+		Tensor f0 = null;
+		for(int i = 0;i<count - 1;i++) {
+			float t0 = T[i];
+			float t1 = T[i + 1];
+			float dt = t1 - t0;
+			MatrixUtils.val(t.data, t0);
+			t.hostToDevice();
+			f0 = dit.forward_with_cfg(y0, t, context, cos, sin, eps, cfg_scale, 3);
+//			f0.showDM("f0");
+			dit.tensorOP.mul(f0, dt, f0);
+			
+			dit.tensorOP.add(y0, f0, y1);
+			float tj = T[j];
+			if(j < T.length && t1 >= tj) {
+				out = linear_interp(dit.tensorOP, t0, t1, y0, y1, tj);
+				j++;
+			}
+			dit.tensorOP.copyGPU(y1, y0);
+
+		}
+		return out;
+	}
+	
 	public Tensor forward_with_cfg(FluxDiT2 dit, Tensor y0, Tensor t, Tensor context, Tensor cos, Tensor sin, Tensor y1, Tensor eps, float cfg_scale) {
 		ininT(0, 1, count);
 		int j = 1;
@@ -321,6 +362,37 @@ public class ICPlan {
 
 		}
 		return out;
+	}
+	
+	public Tensor forward_with_cfg(JiT jit, Tensor noise, Tensor context, Tensor cos, Tensor sin, float cfg_scale) {
+		
+		if(t_input == null || t_input.number != noise.number) {
+			t_input = new Tensor(noise.number * 2, 1, 1, 1, true);
+			t_next_input = new Tensor(noise.number * 2, 1, 1, 1, true);
+			z_next_euler = Tensor.createGPUTensor(z_next_euler, noise.number, noise.channel, noise.height, noise.width, true);
+			z_next = Tensor.createGPUTensor(z_next, noise.number, noise.channel, noise.height, noise.width, true);
+		}
+		
+		ininT(0, 1, count + 1);
+		Tensor x_next = null;
+		for(int i = 0;i<count - 1;i++) {
+			float t_ = T[i];
+			float t_next_ = T[i + 1];
+			MatrixUtils.val(t_input.data, t_);
+			MatrixUtils.val(t_next_input.data, t_next_);
+			t_input.hostToDevice();
+			t_next_input.hostToDevice();
+			x_next = heun_step(jit, noise, t_input, t_next_input, t_, t_next_, context, cos, sin, z_next_euler, z_next, cfg_scale);
+			jit.tensorOP.copyGPU(x_next, noise);
+		}
+		
+		float t_ = T[count - 2];
+		float t_next_ = T[count - 1];
+		MatrixUtils.val(t_input.data, t_);
+		t_input.hostToDevice();
+		x_next = euler_step(jit, noise, t_input, t_, t_next_, context, cos, sin, z_next, cfg_scale);
+		
+		return x_next;
 	}
 	
 	/**
@@ -571,6 +643,48 @@ public class ICPlan {
 	 */
 	public void compute_ut(Tensor t,Tensor x0, Tensor x1,Tensor ut) {
 		kernel.compute_ut(x1, x0, t, ut);
+	}
+	
+	public void sample_t(Tensor t, float mean, float std) {
+		RandomUtils.gaussianRandomLogitNormal(t, mean, std);
+	}
+	
+	public void compute_z(Tensor x, Tensor t, Tensor noise,Tensor z) {
+		kernel.compute_xt(x, noise, t, z);
+	}
+	
+	public void compute_v(Tensor x, Tensor t,Tensor z, Tensor v, float t_eps) {
+		kernel.compute_v(x, z, t, v, t_eps);
+	}
+	
+	public void compute_dv(Tensor delta,Tensor t,Tensor dx, float t_eps) {
+		kernel.compute_dv(delta, t, dx, t_eps);
+	}
+	
+	public Tensor euler_step(JiT network, Tensor z, Tensor t, float t_, float t_next, Tensor context, Tensor cos, Tensor sin, Tensor z_next, float cfg_scale) {
+		Tensor v_pred = network.forward_with_cfg(this, z, t, context, cos, sin, z_next, cfg_scale);
+		kernel.compute_z_next(v_pred, z, t_, t_next, z_next);
+		return z_next;
+	}
+	
+	public Tensor heun_step(JiT network, Tensor z, Tensor t, Tensor t_next, float t_, float t_next_, Tensor context, Tensor cos, Tensor sin, Tensor z_next_euler, Tensor z_next, float cfg_scale) {
+		
+		if(tmp == null || tmp.number != z.number) {
+			tmp = Tensor.createGPUTensor(tmp, z.shape(), true);
+		}
+		
+		Tensor v_pred_t = network.forward_with_cfg(this, z, t, context, cos, sin, tmp, cfg_scale);
+		//z_next_euler = z + (t_next - t) * v_pred_t
+		kernel.compute_z_next(v_pred_t, z, t_, t_next_, z_next_euler);
+
+		Tensor v_pred_next = network.forward_with_cfg(this, z_next_euler, t_next, context, cos, sin, z_next, cfg_scale);
+		
+		network.tensorOP.add(v_pred_t, v_pred_next, v_pred_t);
+		network.tensorOP.mul(v_pred_t, 0.5f, v_pred_t);
+		//z_next = z + (t_next - t) * v_pred
+		kernel.compute_z_next(v_pred_t, z, t_, t_next_, z_next);
+		
+		return z_next;
 	}
 	
 }

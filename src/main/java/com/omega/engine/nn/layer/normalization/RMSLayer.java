@@ -468,8 +468,10 @@ public class RMSLayer extends NormalizationLayer {
 
     
     public void putParamters() {
-        init();
-        this.network.addPamamter(gamma);
+    	if(hasParams) {
+	        init();
+	        this.network.addPamamter(gamma);
+    	}
     }
 
     public void putParamterGrads() {
