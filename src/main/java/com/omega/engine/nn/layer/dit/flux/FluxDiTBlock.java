@@ -254,7 +254,7 @@ public class FluxDiTBlock extends Layer {
     	norm1.forward(input);
     	modulate(norm1.getOutput(), shift_msa, scale_msa, attnInput);
     	attn.forward(attnInput, cos , sin, maxContext);
-    	
+//    	attn.getOutput().showDM("attn");
     	Tensor_OP().mul(attn.getOutput(), gate_msa, crossAttnInput, batchSize, time, 1, crossAttnInput.width, 1);
     	Tensor_OP().add(input, crossAttnInput, crossAttnInput);
 

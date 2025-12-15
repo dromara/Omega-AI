@@ -10,6 +10,8 @@ import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.RMSLayer;
 import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
+import com.omega.example.common.ModeLoaderlUtils;
+import com.omega.example.transformer.utils.LagJsonReader;
 
 import jcuda.Pointer;
 import jcuda.Sizeof;
@@ -19,6 +21,8 @@ import jcuda.driver.JCudaDriver;
 import jcuda.runtime.cudaError;
 
 import static jcuda.driver.JCudaDriver.cuLaunchKernel;
+
+import java.util.Map;
 
 /**
  * Root Mean Sqrt Normalization
@@ -73,27 +77,32 @@ public class RMSKernel extends BaseKernel {
 
     public static void main(String[] args) {
         try {
-            int N = 4;
-            int T = 512;
-            int W = 512;
-            float[] data = RandomUtils.order(N * T * W, 0.1f, 0.1f);
-            Tensor input = new Tensor(N * T, 1, 1, W, data, true);
-            Tensor delta = new Tensor(N * T, 1, 1, W, MatrixUtils.order(N * T * W, 0.1f, 0.1f), true);
+            int N = 2;
+            int HM = 12;
+            int T = 256;
+            int DM = 64;
+
+            Tensor input = new Tensor(N, HM, T, DM, true);
+            String zPath = "D:\\models\\rms_z.json";
+     	    Map<String, Object> zdatas = LagJsonReader.readJsonFileSmallWeight(zPath);
+     	    ModeLoaderlUtils.loadData(input, zdatas, "z");
             //    	    	Tensor delta = new Tensor(N * T, 1, 1, W, MatrixUtils.order(N * T * W, 0.1f, 0.1f), true);
-            float[] gammaData = RandomUtils.order(W, 0.1f, 0.1f);
-            Tensor gamma = new Tensor(1, 1, 1, W, gammaData, true);
-            Tensor dgamma = new Tensor(1, 1, 1, W, true);
+//            float[] gammaData = RandomUtils.order(W, 0.1f, 0.1f);
+//            Tensor gamma = new Tensor(1, 1, 1, W, gammaData, true);
+//            Tensor dgamma = new Tensor(1, 1, 1, W, true);
             Transformer tf = new Transformer();
             //    			tf.number = N * T;
             RMSLayer rms = new RMSLayer(tf);
-            rms.gamma = gamma;
-            rms.diffGamma = dgamma;
+//            rms.gamma = gamma;
+//            rms.diffGamma = dgamma;
             //	    	input.showDM();
-            for (int i = 0; i < 10; i++) {
+            for (int i = 0; i < 2; i++) {
                 rms.forward(input);
+                rms.getOutput().showDM();
 //                rms.getOutput().showDMByNumber(0);
-                rms.back(delta);
-                rms.diff.showDMByNumber(0);
+                rms.back(input);
+                rms.diff.showDM();
+//                rms.diff.showDMByNumber(0);
 //                rms.diffGamma.showDMByNumber(0);
             }
         } catch (Exception e) {

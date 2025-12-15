@@ -100,7 +100,7 @@ public class JiTMainMoudue extends Layer {
         blocks = new ArrayList<FluxDiTBlock>();
          
         for(int i = 0;i<depth;i++) {
-        	FluxDiTBlock block = new FluxDiTBlock(hiddenSize, hiddenSize, patchEmbd.oChannel + maxContextLen, mlpRatio * hiddenSize, headNum, maxContextLen, true, false, network);
+        	FluxDiTBlock block = new FluxDiTBlock(hiddenSize, hiddenSize, patchEmbd.oChannel + maxContextLen, mlpRatio * hiddenSize, headNum, maxContextLen, true, true, network);
 	        blocks.add(block);
         }
         int os = inChannel;
@@ -262,7 +262,8 @@ public class JiTMainMoudue extends Layer {
     public void output(Tensor tc,Tensor label,Tensor cos,Tensor sin) {
 
     	patchEmbd.forward(input);
-
+    	input.showDM("input");
+    	
     	Tensor_OP().addAxis(patchEmbd.getOutput(), posEmbd, patchEmbd.getOutput(), posEmbd.channel * posEmbd.width);
     	
     	timeEmbd.forward(tc);
@@ -277,7 +278,7 @@ public class JiTMainMoudue extends Layer {
 
     	//x = torch.cat([txt, img], dim=1)
     	baseKernel.concat_channel_forward(cond, x, cat_x, input.number, maxContextLen, hw, 1, patchEmbd.getOutput().width);
-    	
+    	System.err.println(hw);
     	Tensor bx = cat_x;
 
     	for(int i = 0;i<depth;i++) {

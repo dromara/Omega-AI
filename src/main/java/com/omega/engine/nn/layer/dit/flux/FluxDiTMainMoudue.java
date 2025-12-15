@@ -290,9 +290,7 @@ public class FluxDiTMainMoudue extends Layer {
     		bx = block.getOutput();
 //        	bx.showDM("bx:"+i);
     	}
-    	
 
-    	
     	//img_o = x[:, txt.shape[1]:, ...]
     	Tensor_OP().getByChannel(bx, img_x, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
     	

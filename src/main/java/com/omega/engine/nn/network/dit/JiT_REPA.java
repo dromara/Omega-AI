@@ -9,12 +9,13 @@ import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.layer.InputLayer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.SoftmaxWithCrossEntropyLayer;
-import com.omega.engine.nn.layer.dit.flux.FluxDiTMainMoudue_REPA;
+import com.omega.engine.nn.layer.jit.JiTMainMoudue_REPA;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.NetworkType;
 import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
+import com.omega.example.dit.models.ICPlan;
 
 import jcuda.Sizeof;
 import jcuda.runtime.JCuda;
@@ -24,12 +25,13 @@ import jcuda.runtime.JCuda;
  *
  * @author Administrator
  */
-public class FluxDiT_REPA extends Network {
+public class JiT_REPA extends Network {
 	
     public int inChannel;
     public int width;
     public int height;
     public int patchSize;
+    public int bottleneck_dim;
     public int textEmbedDim;
     public int maxContextLen;
     public int hiddenSize;
@@ -44,7 +46,7 @@ public class FluxDiT_REPA extends Network {
     private float y_drop_prob = 0.0f;
     
     private InputLayer inputLayer;
-    public FluxDiTMainMoudue_REPA main;
+    public JiTMainMoudue_REPA main;
     
     private Tensor input_null;
     private Tensor eps;
@@ -52,7 +54,7 @@ public class FluxDiT_REPA extends Network {
     private Tensor head;
     private Tensor tail;
     
-    public FluxDiT_REPA(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int textEmbedDim, int maxContextLen, int mlpRatio, int z_idx, int z_dim, boolean learnSigma, float y_drop_prob) {
+    public JiT_REPA(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int bottleneck_dim, int hiddenSize, int headNum, int depth, int timeSteps, int textEmbedDim, int maxContextLen, int mlpRatio, int z_idx, int z_dim, boolean learnSigma, float y_drop_prob) {
         this.lossFunction = LossFactory.create(lossType, this);
 //        this.weight_decay = 0.1f;
         this.updater = updater;
@@ -60,6 +62,7 @@ public class FluxDiT_REPA extends Network {
         this.width = width;
         this.height = height;
         this.patchSize = patchSize;
+        this.bottleneck_dim = bottleneck_dim;
         this.headNum = headNum;
         this.hiddenSize = hiddenSize;
         this.depth = depth;
@@ -68,9 +71,9 @@ public class FluxDiT_REPA extends Network {
         this.maxContextLen = maxContextLen;
         this.mlpRatio = mlpRatio;
         this.learnSigma = learnSigma;
-        this.y_drop_prob = y_drop_prob;
 		this.z_idx = z_idx;
 		this.z_dim = z_dim;
+        this.y_drop_prob = y_drop_prob;
         this.time = (width / patchSize) * (height / patchSize);
         initLayers();
     }
@@ -79,7 +82,7 @@ public class FluxDiT_REPA extends Network {
     	
         this.inputLayer = new InputLayer(inChannel, height, width);
         
-        main = new FluxDiTMainMoudue_REPA(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, textEmbedDim, maxContextLen, mlpRatio, z_idx, z_dim, learnSigma, y_drop_prob, this);
+        main = new JiTMainMoudue_REPA(inChannel, width, height, patchSize, bottleneck_dim, hiddenSize, headNum, depth, timeSteps, textEmbedDim, maxContextLen, mlpRatio, z_idx, z_dim, learnSigma, y_drop_prob, this);
         
         this.addLayer(inputLayer);
         this.addLayer(main);
@@ -144,7 +147,7 @@ public class FluxDiT_REPA extends Network {
         return this.main.getOutput();
     }
     
-    public Tensor forward_with_cfg(Tensor input, Tensor t, Tensor context, Tensor cos, Tensor sin, Tensor eps, float cfg_scale) {
+    public Tensor forward_with_cfg(ICPlan icplan, Tensor input, Tensor t, Tensor context, Tensor cos, Tensor sin, Tensor eps, float cfg_scale) {
         /**
          * 设置输入数据
          */
@@ -153,7 +156,11 @@ public class FluxDiT_REPA extends Network {
     		uncond_eps = Tensor.createGPUTensor(uncond_eps, input.number, input.channel, input.height, input.width, true);
     	}
     	tensorOP.cat_batch(input, input, input_null);
+
         this.main.forward(input_null, t, context, cos, sin);
+        
+        icplan.compute_v(this.main.getOutput(), t, input_null, this.main.getOutput(), 5e-2f);
+        
         tensorOP.cat_bacth_copy(this.main.getOutput(), eps, uncond_eps);
         /**
          * out = uncond_eps + cfg_scale * (eps - uncond_eps)
@@ -164,7 +171,7 @@ public class FluxDiT_REPA extends Network {
         return eps;
     }
     
-    public Tensor forward_with_cfg(Tensor input, Tensor t, Tensor context, Tensor cos, Tensor sin, Tensor out, float cfg_scale, int channel) {
+    public Tensor forward_with_cfg(ICPlan icplan, Tensor input, Tensor t, Tensor context, Tensor cos, Tensor sin, Tensor out, float cfg_scale, int channel) {
         /**
          * 设置输入数据
          */
@@ -177,6 +184,7 @@ public class FluxDiT_REPA extends Network {
     	}
     	tensorOP.cat_batch(input, input, input_null);
         this.main.forward(input_null, t, context, cos, sin);
+        icplan.compute_v(this.main.getOutput(), t, input, this.main.getOutput(), 5e-2f);
         tensorOP.getByChannel(this.main.getOutput(), head, this.main.getOutput().shape(), 0, channel);
         tensorOP.getByChannel(this.main.getOutput(), tail, this.main.getOutput().shape(), channel, tail.channel);
         tensorOP.cat_bacth_copy(head, eps, uncond_eps);

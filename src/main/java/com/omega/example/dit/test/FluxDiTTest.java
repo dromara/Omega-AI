@@ -131,7 +131,7 @@ public class FluxDiTTest {
         int patchSize = 1;
         int hiddenSize = 768;
         
-        int z_idx = 10;
+        int z_idx = 4;
         
         float y_prob = 0.1f;
         
@@ -301,7 +301,7 @@ public class FluxDiTTest {
         
         ICPlan icplan = new ICPlan(network.tensorOP);
         
-        String model_path = "D:\\test\\dit_vavae\\flux\\flux_dit_l1_ema0_80000.model";
+        String model_path = "D:\\test\\dit_vavae\\flux\\flux_dit_l1_ema0_60000.model";
         ModelUtils.loadModel(network, model_path);
         
         Tensor label = new Tensor(batchSize * dataLoader.maxContextLen, 1, 1, 1, true);
@@ -332,11 +332,11 @@ public class FluxDiTTest {
         labels[0] = "A cat holding a sign that says hello world";
         labels[1] = "a vibrant anime mountain lands";
         labels[2] = "a highly detailed anime landscape,big tree on the water, epic sky,golden grass,detailed";
-        labels[3] = "the cambridge shoulder bag";
-        labels[4] = "fruit cream cake";
-        labels[5] = "a woman";
-        labels[6] = "A panda sleep on the water";
-        labels[7] = "a dog";
+        labels[3] = "Shattered blue-and-white porcelain girl's face. fine texture. surreal";
+        labels[4] = "Half human, half robot, repaired human";
+        labels[5] = "Pirate ship trapped in a cosmic maelstrom nebula";
+        labels[6] = "A beautiful girl with golden hair, cool and sunny";
+        labels[7] = "A dog that has been meditating all the time";
 //        labels[8] = "a dog";
 //        labels[9] = "A lovely corgi is taking a walk under the sea";
         dataLoader.loadLabel_offset(label, 0, labels[0]);
@@ -362,11 +362,16 @@ public class FluxDiTTest {
         for(int b = 0;b<batchSize;b++) {
         	network.tensorOP.op.copy_gpu(y_null, condInput_ynull, part_input_size, 0, 1, (batchSize + b) * part_input_size, 1);
         }
+        
+//        Tensor noise1 = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+//        GPUOP.getInstance().cudaRandn(noise1);
+        
         for(int i = 0;i<10;i++) {
         	System.out.println("start create test images.");
 
             GPUOP.getInstance().cudaRandn(noise);
             noise.copyGPU(noise2);
+//            icplan.setTimestep_shift(i);
             
             Tensor sample = icplan.forward_with_cfg(network, noise, t, condInput_ynull, cos, sin, latend, eps, 1.0f);
             
@@ -454,7 +459,7 @@ public class FluxDiTTest {
         
         ICPlan icplan = new ICPlan(network.tensorOP);
         
-        String model_path = "D:\\models\\dit_txt\\flux_ddt_b1_20.model";
+        String model_path = "D:\\models\\dit_txt\\flux_ddt_b1_60.model";
         ModelUtils.loadModel(network, model_path);
         
         Tensor label = new Tensor(batchSize * dataLoader.maxContextLen, 1, 1, 1, true);

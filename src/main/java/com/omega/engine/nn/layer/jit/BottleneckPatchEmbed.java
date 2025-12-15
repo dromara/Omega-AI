@@ -66,11 +66,11 @@ public class BottleneckPatchEmbed extends Layer {
     }
 
     public void initLayers(int inChannel, int height, int width, int patchSize, boolean bias) {
-        this.proj1 = new ConvolutionLayer(inChannel, pca_dim, height, width, patchSize, patchSize, 0, patchSize, false, network);
-        proj1.PROPAGATE_DOWN = false;
+        this.proj1 = new ConvolutionLayer(inChannel, pca_dim, width, height, patchSize, patchSize, 0, patchSize, false, network);
+//        proj1.PROPAGATE_DOWN = false;
         RandomUtils.xavier_uniform(proj1.weight, 1, inChannel * patchSize * patchSize, pca_dim * patchSize * patchSize);
 
-        this.proj2 = new ConvolutionLayer(pca_dim, embedDim, proj1.oHeight, proj1.oWidth, 1, 1, 0, 1, bias, network);
+        this.proj2 = new ConvolutionLayer(pca_dim, embedDim, proj1.oWidth, proj1.oHeight, 1, 1, 0, 1, bias, network);
         RandomUtils.xavier_uniform(proj2.weight, 1, pca_dim, embedDim);
         if(this.proj2.bias != null) {
         	this.proj2.bias.clearGPU();
@@ -112,6 +112,7 @@ public class BottleneckPatchEmbed extends Layer {
     	proj2.back(proj2.getOutput());
     	proj1.back(proj2.diff);
     	this.diff =  proj1.diff;
+//    	diff.showDM("diff");
     }
 
     @Override

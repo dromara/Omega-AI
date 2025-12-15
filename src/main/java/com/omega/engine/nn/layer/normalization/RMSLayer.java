@@ -160,7 +160,7 @@ public class RMSLayer extends NormalizationLayer {
             this.diffGamma = new Tensor(1, 1, 1, meanNum, true);
         }
         if (this.output == null || this.number != this.output.number) {
-            this.output = Tensor.createGPUTensor(this.output, number, oChannel, oHeight, oWidth, true);
+            this.output = Tensor.createGPUTensor(this.output, input.shape(), true);
         }
     }
     
