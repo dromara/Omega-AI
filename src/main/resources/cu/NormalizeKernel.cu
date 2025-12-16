@@ -188,6 +188,33 @@ __global__ void l2norm_1dim_backward_kernel3(int N, float *x,float *delta, float
     }
 }
 
+extern "C"
+__global__ void l2norm_1dim_backward_kernel4(int N, float *x,float *delta, float *dx, int batch, int filters, int spatial, float eps)
+{
+    int index = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (index >= N) return;
+    int b = index / spatial;
+    int i = index % spatial;
+    int f;
+    float coef0_axis0 = 0, coef1_axis0 = 0;
+    float sum_x2 = 0;
+    int offset = b*filters*spatial + i;
+    for(f = 0; f < filters; ++f){
+        int index = offset + f*spatial;
+        sum_x2 += powf(x[index], 2);
+        coef0_axis0 -= x[index] * delta[index];
+    }
+
+    sum_x2 = sum_x2 < 1.0e-12 ? 1.0e-12 : sum_x2;
+
+    coef1_axis0 = powf(sum_x2, -1.5);
+
+    for(f = 0; f < filters; ++f){
+		int index = offset + f*spatial;
+		dx[index] = x[index] * coef0_axis0 * coef1_axis0 + delta[index] * sum_x2 * coef1_axis0;
+	}
+
+}
 
 extern "C"
 __global__ void l2norm_1dim_kernel2(int N, float *x,float *out, int batch, int filters, int spatial, float eps)
@@ -220,9 +247,9 @@ __global__ void l2norm_1dim_kernel2_back(int N, float *x, float* delta, float *d
         float v = x[x_index];
         sum += v * v;
     }
-    
+
     float tmp = delta[index] * (0.5 * powf(sum + eps, -0.5));
-    
+
     for(f = 0; f < filters; ++f){
         int x_index = b*filters*spatial + f*spatial + i;
         float v = x[x_index];
@@ -254,4 +281,30 @@ __global__ void l2norm_1dim_kernel2_back_plus(int N, float *x, float* delta, flo
         dx[x_index] += tmp * 2 * v;
     }
 
+}
+
+extern "C"
+__global__ void projection_loss(int N, float *x1, float* x2, float* loss, int spatial)
+{
+    int index = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (index >= N) return;
+    float sum = 0;
+    for(int f = 0; f < spatial; ++f){
+        int x_index = index*spatial + f;
+        float v = -1.0f * x1[x_index] * x2[x_index];
+        sum += v;
+    }
+    loss[index] = sum;
+}
+
+extern "C"
+__global__ void projection_loss_back(int N, float* x2, float* dx1, int spatial)
+{
+    int index = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (index >= N) return;
+    float dx = 1.0f / N;
+    for(int f = 0; f < spatial; ++f){
+        int x_index = index*spatial + f;
+        dx1[x_index] = dx * -1.0f * x2[x_index];
+    }
 }
