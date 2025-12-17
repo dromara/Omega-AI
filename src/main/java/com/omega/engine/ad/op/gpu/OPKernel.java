@@ -29,6 +29,7 @@ public class OPKernel extends BaseKernel implements Serializable {
     private CUfunction copy_gpu_function;
     private CUfunction copy_number_gpu_function;
     private CUfunction copy_channel_gpu_function;
+    private CUfunction copy_width_gpu_function;
     private CUfunction copy_add_channel_gpu_function;
     private CUfunction get_by_channel_gpu_function;
     private CUfunction add_gpu_function;
@@ -119,6 +120,7 @@ public class OPKernel extends BaseKernel implements Serializable {
         copy_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "copy_kernel");
         copy_number_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "copy_number_kernel");
         copy_channel_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "copy_channel_kernel");
+        copy_width_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "copy_width_kernel");
         copy_add_channel_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "copy_add_channel_kernel");
         get_by_channel_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "get_by_channel_kenel");
         add_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "add_kernel");
@@ -300,6 +302,24 @@ public class OPKernel extends BaseKernel implements Serializable {
 //        	System.err.println(JsonUtils.toJson(shape));
             Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{b.getDataLength()}), Pointer.to(a.getGpuData()), Pointer.to(b.getGpuData()), Pointer.to(new int[]{shape[0]}), Pointer.to(new int[]{shape[1]}), Pointer.to(new int[]{shape[2]}), Pointer.to(new int[]{shape[3]}), Pointer.to(new int[]{start}), Pointer.to(new int[]{cpy}));
             checkCUDA(cuLaunchKernel(copy_channel_gpu_function, CAFFE_GET_BLOCKS(b.getDataLength()), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameter, null // Kernel- and extra parameters
+            ));
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void copy_width_gpu(Tensor a, Tensor b, int[] shape, int start, int cpy) {
+        try {
+            /**
+             * int N,  float *X, float *Y, int n,int c,int h,int w,int start
+             */
+//        	System.err.println(JsonUtils.toJson(shape));
+            Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{b.getDataLength()}), Pointer.to(a.getGpuData()), Pointer.to(b.getGpuData()), Pointer.to(new int[]{shape[0]}), Pointer.to(new int[]{shape[1]}), Pointer.to(new int[]{shape[2]}), Pointer.to(new int[]{shape[3]}), Pointer.to(new int[]{start}), Pointer.to(new int[]{cpy}));
+            checkCUDA(cuLaunchKernel(copy_width_gpu_function, CAFFE_GET_BLOCKS(b.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameter, null // Kernel- and extra parameters

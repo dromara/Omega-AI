@@ -24,6 +24,8 @@ public class BaseKernel {
     private CUfunction constrain_function;
     private CUfunction concat_channel_function;
     private CUfunction concat_channel_backward_function;
+    private CUfunction concat_height_function;
+    private CUfunction concat_height_backward_function;
     private CUfunction replace_channel_forward_function;
     private CUfunction replace_channel_backward_function;
     private CUfunction addMul_function;
@@ -39,6 +41,8 @@ public class BaseKernel {
         constrain_function = cudaManager.getLocalFunctionByModule("BaseKernel.cu", "constrain_kernel");
         concat_channel_function = cudaManager.getLocalFunctionByModule("BaseKernel.cu", "concat_channel_forward_kernel");
         concat_channel_backward_function = cudaManager.getLocalFunctionByModule("BaseKernel.cu", "concat_channel_backward_kernel");
+        concat_height_function = cudaManager.getLocalFunctionByModule("BaseKernel.cu", "concat_height_forward_kernel");
+        concat_height_backward_function = cudaManager.getLocalFunctionByModule("BaseKernel.cu", "concat_height_backward_kernel");
         replace_channel_forward_function = cudaManager.getLocalFunctionByModule("BaseKernel.cu", "replace_channel_forward_kernel");
         replace_channel_backward_function = cudaManager.getLocalFunctionByModule("BaseKernel.cu", "replace_channel_backward_kernel");
         addMul_function = cudaManager.getLocalFunctionByModule("BaseKernel.cu", "add_mul_kernel");
@@ -88,6 +92,48 @@ public class BaseKernel {
         }
     }
 
+    public void concat_height_forward(Tensor x1, Tensor x2, Tensor output, int B, int C, int H1, int H2, int W) {
+        try {
+            if (concat_height_function == null) {
+            	concat_height_function = getCudaManager().getLocalFunctionByModule("BaseKernel.cu", "concat_height_forward_kernel");
+            }
+            /**
+             *  const float* x1, const float* x2,float* out,int B, int C1, int C2, int H, int W
+             */
+            Pointer kernelParameter = Pointer.to(Pointer.to(x1.getGpuData()), Pointer.to(x2.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{B}), Pointer.to(new int[]{C}), Pointer.to(new int[]{H1}), Pointer.to(new int[]{H2}), Pointer.to(new int[]{W}));
+            int N = B * C * (int) Math.max(H1, H2) * W;
+            checkCUDA(cuLaunchKernel(concat_height_function, CAFFE_GET_BLOCKS(N), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameter, null // Kernel- and extra parameters
+            ));
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+
+    public void concat_height_backward(Tensor diff, Tensor dx1, Tensor dx2, int B, int C, int H1, int H2, int W) {
+        try {
+            if (concat_height_backward_function == null) {
+                concat_height_backward_function = getCudaManager().getLocalFunctionByModule("BaseKernel.cu", "concat_height_backward_kernel");
+            }
+            /**
+             *   const float* dout, float* dx1, float* dx2,int B, int C1, int C2, int H, int W
+             */
+            Pointer kernelParameter = Pointer.to(Pointer.to(diff.getGpuData()), Pointer.to(dx1.getGpuData()), Pointer.to(dx2.getGpuData()), Pointer.to(new int[]{B}), Pointer.to(new int[]{C}), Pointer.to(new int[]{H1}), Pointer.to(new int[]{H2}), Pointer.to(new int[]{W}));
+            int N = B * C * (int) Math.max(H1, H2) * W;
+            checkCUDA(cuLaunchKernel(concat_height_backward_function, CAFFE_GET_BLOCKS(N), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameter, null // Kernel- and extra parameters
+            ));
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
     public void replace_channel_forward(Tensor x1, Tensor x2, Tensor output, Tensor indices, int size) {
         try {
             if (replace_channel_forward_function == null) {

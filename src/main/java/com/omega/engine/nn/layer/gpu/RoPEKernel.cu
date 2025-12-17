@@ -291,7 +291,7 @@ __global__ void rope_2d_norm_t(float* x, float* out,float* cos, float* sin, int 
 }
 
 extern "C"
-__global__ void rope_2d_back_t(float* delta, float* diff,float* cos, float* sin, int N, int T, int headNum,int headSize)
+__global__ void rope_2d_back_t(float* delta, float* diff,float* cos, float* sin, int N, int T, int headNum, int headSize)
 {
     int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
     if (i >= N/2) return;
@@ -304,4 +304,36 @@ __global__ void rope_2d_back_t(float* delta, float* diff,float* cos, float* sin,
     const float d1 = delta[index + 1];
     diff[index] = cos[t * headSize + hs] * d0 + sin[t * headSize + hs + 1] * d1;
 	diff[index+1] = cos[t * headSize + hs + 1] * d1 - sin[t * headSize + hs] * d0;
+}
+
+extern "C"
+__global__ void apply_rotary_emb(const float *x, float *out, float *pos, int N, int headNum, int T, int headSize) {
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (i >= N/2) return;
+	int hSize = headSize / 2;
+    int n = i / T / hSize;
+    int once = i - (n * T * hSize);
+    int t = once / hSize;
+    int hs = once % hSize * 2;
+    int index = i * 2;
+    float cv = x[index];
+	float cn = x[index+1];
+    out[index] = pos[t * headSize + hs] * cv - pos[t * headSize + hs + 1] * cn;
+    out[index+1] = pos[t * headSize + hs + 1] * cv + pos[t * headSize + hs] * cn;
+}
+
+extern "C"
+__global__ void apply_rotary_emb_back(const float *delta, float *dx, float *pos, int N, int headNum, int T, int headSize) {
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (i >= N/2) return;
+	int hSize = headSize / 2;
+    int n = i / T / hSize;
+    int once = i - (n * T * hSize);
+    int t = once / hSize;
+    int hs = once % hSize * 2;
+    int index = i * 2;
+    const float d0 = delta[index + 0];
+    const float d1 = delta[index + 1];
+    dx[index] = pos[t * headSize + hs] * d0 + pos[t * headSize + hs + 1] * d1;
+    dx[index+1] = pos[t * headSize + hs] * d1 - pos[t * headSize + hs + 1] * d0;
 }

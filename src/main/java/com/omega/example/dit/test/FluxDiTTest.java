@@ -301,7 +301,7 @@ public class FluxDiTTest {
         
         ICPlan icplan = new ICPlan(network.tensorOP);
         
-        String model_path = "D:\\test\\dit_vavae\\flux\\flux_dit_l1_ema0_60000.model";
+        String model_path = "D:\\test\\dit_vavae\\flux\\flux_dit_l1_ema2_80000.model";
         ModelUtils.loadModel(network, model_path);
         
         Tensor label = new Tensor(batchSize * dataLoader.maxContextLen, 1, 1, 1, true);

@@ -46,6 +46,7 @@ public class RoPEKernel extends BaseKernel {
     private CUfunction forward_32_function;
     private CUfunction forward_2d_function;
     private CUfunction forward_2d_t_function;
+    private CUfunction apply_rotary_emb_function;
     /**
      * 反向传播方法
      */
@@ -56,6 +57,7 @@ public class RoPEKernel extends BaseKernel {
     private CUfunction backward_32_function;
     private CUfunction forward_all_32_function;
     private CUfunction backward_all_32_function;
+    private CUfunction apply_rotary_emb_back_function;
     
     private CUfunction forward_2d_igone_function;
     private CUfunction backward_2d_igone_function;
@@ -73,6 +75,9 @@ public class RoPEKernel extends BaseKernel {
     }
 
     public static void main(String[] args) {
+    	
+    	float[] freqs_cis = precompute_freqs_cis_2d(64, 16, 16, 10000, 16);
+    	System.err.println(JsonUtils.toJson(freqs_cis));
 //        try {
 //            int N = 3;
 //            int T = 5;
@@ -144,36 +149,36 @@ public class RoPEKernel extends BaseKernel {
 //            // TODO: handle finally clause
 //            CUDAMemoryManager.free();
 //        }
-    	int hiddenSize = 8;
-    	int headNum = 2;
-    	int grid_size = 2;
-    	Tensor[] cos_sin = getCosAndSin2D(grid_size * grid_size, hiddenSize, headNum);
-    	Tensor cos = cos_sin[0];
-    	Tensor sin = cos_sin[1];
-//    	get_2d_cossin_pos_embed(embed_dim, grid_size);
-    	
-    	Transformer tf = new Transformer();
-    	
-    	RoPEKernel kernel = new RoPEKernel(tf.cudaManager);
-    	
-    	int N = 2;
-    	int T = 4;
-    	int hn = 2;
-    	int hs = 4;
-    	
-    	float[] data = RandomUtils.order(N * T * hn * hs, 0.01f, 0.01f);
-        Tensor input = new Tensor(N, T, hn, hs, data, true);
-        
-        Tensor output = new Tensor(N, T, hn, hs, true);
-    	
-        kernel.forward2d(cos, sin, input, output, T, hn, hs);
-        cos.showDM();
-        sin.showDM();
-    	output.showDM();
-    	
-    	kernel.backward2d(cos, sin, input, output, T, hn, hs);
-
-    	output.showDM();
+//    	int hiddenSize = 8;
+//    	int headNum = 2;
+//    	int grid_size = 2;
+//    	Tensor[] cos_sin = getCosAndSin2D(grid_size * grid_size, hiddenSize, headNum);
+//    	Tensor cos = cos_sin[0];
+//    	Tensor sin = cos_sin[1];
+////    	get_2d_cossin_pos_embed(embed_dim, grid_size);
+//    	
+//    	Transformer tf = new Transformer();
+//    	
+//    	RoPEKernel kernel = new RoPEKernel(tf.cudaManager);
+//    	
+//    	int N = 2;
+//    	int T = 4;
+//    	int hn = 2;
+//    	int hs = 4;
+//    	
+//    	float[] data = RandomUtils.order(N * T * hn * hs, 0.01f, 0.01f);
+//        Tensor input = new Tensor(N, T, hn, hs, data, true);
+//        
+//        Tensor output = new Tensor(N, T, hn, hs, true);
+//    	
+//        kernel.forward2d(cos, sin, input, output, T, hn, hs);
+//        cos.showDM();
+//        sin.showDM();
+//    	output.showDM();
+//    	
+//    	kernel.backward2d(cos, sin, input, output, T, hn, hs);
+//
+//    	output.showDM();
     }
 
     public static float[] outer(float[] a, float[] b) {
@@ -289,7 +294,105 @@ public class RoPEKernel extends BaseKernel {
 //    	System.err.println("emb:"+JsonUtils.toJson(emb));
     	return emb;
     }
+    
+    public static Tensor precompute_freqs_cis_2d_tensor(int dim, int height, int width, float theta, float scale) {
+    	
+        float[] x_pos = MatrixUtils.linspace(0, scale, width);
+        float[] y_pos = MatrixUtils.linspace(0, scale, height);
+        
+        //y_pos, x_pos = torch.meshgrid(y_pos, x_pos, indexing="ij")
+        int grid_size = (int) width;
+    	float[] grid_h = new float[grid_size * grid_size];
+    	float[] grid_w = new float[grid_size * grid_size];
+    	for(int i = 0;i<grid_size * grid_size;i++) {
+    		int w = i % grid_size;
+    		int h = i / grid_size;
+    		grid_h[i] = y_pos[h];
+       		grid_w[i] = x_pos[w];
+    	}
+    	//freqs = 1.0 / (theta ** (torch.arange(0, dim, 4)[: (dim // 4)].float() / dim)) # Hc/4
+    	float[] freqs = new float[dim/4];
+    	for(int i = 0;i<dim/4;i++) {
+    		float v = i * 1.0f / (dim / 4.0f);
+    		freqs[i] = (float) (1.0f / Math.pow(10000, v));
+    	}
+    	
+    	float[] x_freqs = outer(grid_w, freqs);
+    	float[] y_freqs = outer(grid_h, freqs);
 
+    	float[] xcos = MatrixOperation.cos(x_freqs);
+        float[] xsin = MatrixOperation.sin(x_freqs);
+
+    	float[] ycos = MatrixOperation.cos(y_freqs);
+        float[] ysin = MatrixOperation.sin(y_freqs);
+    	
+        float[] freqs_cis = new float[xcos.length * 4];
+        
+        for(int i = 0;i<grid_size*grid_size;i++) {
+        	int b_idx = i * freqs.length * 4;
+        	for(int j = 0;j<freqs.length;j++) {
+        		int freqs_cis_idx = b_idx + j * 4;
+        		int once_idx = i * freqs.length + j;
+        		freqs_cis[freqs_cis_idx] = xcos[once_idx];
+        		freqs_cis[freqs_cis_idx + 1] = xsin[once_idx];
+        		freqs_cis[freqs_cis_idx + 2] = ycos[once_idx];
+        		freqs_cis[freqs_cis_idx + 3] = ysin[once_idx];
+        	}
+        }
+        
+        Tensor t = new Tensor(1, 1, grid_w.length, freqs.length * 4, freqs_cis, true);
+        
+    	return t;
+    }
+    
+    public static float[] precompute_freqs_cis_2d(int dim, int height, int width, float theta, float scale) {
+    	
+        float[] x_pos = MatrixUtils.linspace(0, scale, width);
+        float[] y_pos = MatrixUtils.linspace(0, scale, height);
+        
+        //y_pos, x_pos = torch.meshgrid(y_pos, x_pos, indexing="ij")
+        int grid_size = (int) width;
+    	float[] grid_h = new float[grid_size * grid_size];
+    	float[] grid_w = new float[grid_size * grid_size];
+    	for(int i = 0;i<grid_size * grid_size;i++) {
+    		int w = i % grid_size;
+    		int h = i / grid_size;
+    		grid_h[i] = y_pos[h];
+       		grid_w[i] = x_pos[w];
+    	}
+    	//freqs = 1.0 / (theta ** (torch.arange(0, dim, 4)[: (dim // 4)].float() / dim)) # Hc/4
+    	float[] freqs = new float[dim/4];
+    	for(int i = 0;i<dim/4;i++) {
+    		float v = i * 1.0f / (dim / 4.0f);
+    		freqs[i] = (float) (1.0f / Math.pow(10000, v));
+    	}
+    	
+    	float[] x_freqs = outer(grid_w, freqs);
+    	float[] y_freqs = outer(grid_h, freqs);
+
+    	float[] xcos = MatrixOperation.cos(x_freqs);
+        float[] xsin = MatrixOperation.sin(x_freqs);
+
+    	float[] ycos = MatrixOperation.cos(y_freqs);
+        float[] ysin = MatrixOperation.sin(y_freqs);
+    	
+        float[] freqs_cis = new float[xcos.length * 4];
+        
+        for(int i = 0;i<grid_size*grid_size;i++) {
+        	int b_idx = i * freqs.length * 4;
+        	for(int j = 0;j<freqs.length;j++) {
+        		int freqs_cis_idx = b_idx + j * 4;
+        		int once_idx = i * freqs.length + j;
+        		freqs_cis[freqs_cis_idx] = xcos[once_idx];
+        		freqs_cis[freqs_cis_idx + 1] = xsin[once_idx];
+        		freqs_cis[freqs_cis_idx + 2] = ycos[once_idx];
+        		freqs_cis[freqs_cis_idx + 3] = ysin[once_idx];
+        	}
+        }
+        
+    	return freqs_cis;
+    }
+    
     public void initFunction() {
         try {
             if (forward_function == null) {
@@ -335,7 +438,12 @@ public class RoPEKernel extends BaseKernel {
             if(backward_2d_t_function == null) {
             	backward_2d_t_function = getCudaManager().getLocalFunctionByModule("RoPEKernel.cu", "rope_2d_back_t");
             }
-            
+            if (apply_rotary_emb_function == null) {
+            	apply_rotary_emb_function = getCudaManager().getLocalFunctionByModule("RoPEKernel.cu", "apply_rotary_emb");
+            }
+            if (apply_rotary_emb_back_function == null) {
+            	apply_rotary_emb_back_function = getCudaManager().getLocalFunctionByModule("RoPEKernel.cu", "apply_rotary_emb_back");
+            }
         } catch (Exception e) {
             // TODO: handle exception
             e.printStackTrace();
@@ -658,7 +766,43 @@ public class RoPEKernel extends BaseKernel {
             e.printStackTrace();
         }
     }
-
+    
+    public void apply_rotary_emb(Tensor input, Tensor pos, Tensor output) {
+        try {
+        	/**
+        	 * const float *x, float *out, float *pos, int N, int headNum, int T, int headSize
+        	 */
+//        	pos.showDM("pos");
+//        	System.err.println(input.channel+":"+input.height+":"+input.width);
+            forwardParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(pos.getGpuData()), Pointer.to(new int[]{input.dataLength}), Pointer.to(new int[]{input.channel}), Pointer.to(new int[]{input.height}), Pointer.to(new int[]{input.width}));
+            checkCUDA(cuLaunchKernel(apply_rotary_emb_function, this.CAFFE_GET_BLOCKS(input.dataLength/2), 1, 1,      // Grid dimension
+        		CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                0, null,               // Shared memory size and stream
+                forwardParameters, null // Kernel- and extra parameters
+            ));
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void apply_rotary_emb_back(Tensor delta, Tensor pos, Tensor diff) {
+        try {
+        	/**
+        	 * const float *delta, float *dx, float *pos, int N, int headNum, int T, int headSize
+        	 */
+        	backwardParameters = Pointer.to(Pointer.to(delta.getGpuData()), Pointer.to(diff.getGpuData()), Pointer.to(pos.getGpuData()), Pointer.to(new int[]{delta.dataLength}), Pointer.to(new int[]{delta.channel}), Pointer.to(new int[]{delta.height}), Pointer.to(new int[]{delta.width}));
+            checkCUDA(cuLaunchKernel(apply_rotary_emb_back_function, this.CAFFE_GET_BLOCKS(delta.dataLength/2), 1, 1,      // Grid dimension
+        		CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                0, null,               // Shared memory size and stream
+                backwardParameters, null // Kernel- and extra parameters
+            ));
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
     public void checkCUDA(int code) {
         if (code != cudaError.cudaSuccess) {
             System.err.println("Error code " + code + ":" + cudaError.stringFor(code));
