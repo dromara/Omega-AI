@@ -12,16 +12,17 @@ import com.omega.engine.nn.layer.active.SiLULayer;
 import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
+import com.omega.example.common.ModeLoaderlUtils;
+import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
  * ResBlock
  * @author Administrator
  */
 public class ResBlock extends Layer {
-	
-	private int batchSize;
 	
     private int channels = 0;
 
@@ -100,9 +101,9 @@ public class ResBlock extends Layer {
         	shape= new int[] {number, 3, 1, channels};
         }
         if(shift_mlp == null || shift_mlp.number != number) {
-    		shift_mlp = Tensor.createGPUTensor(this.shift_mlp, batchSize, 1, 1, channels, true);
-        	scale_mlp = Tensor.createGPUTensor(this.scale_mlp, batchSize, 1, 1, channels, true);
-        	gate_mlp = Tensor.createGPUTensor(this.gate_mlp, batchSize, 1, 1, channels, true);
+    		shift_mlp = Tensor.createGPUTensor(this.shift_mlp, number, 1, 1, channels, true);
+        	scale_mlp = Tensor.createGPUTensor(this.scale_mlp, number, 1, 1, channels, true);
+        	gate_mlp = Tensor.createGPUTensor(this.gate_mlp, number, 1, 1, channels, true);
         }
         if(mlpInput == null || mlpInput.number != number) {
         	mlpInput = Tensor.createGPUTensor(mlpInput, input.number, input.channel, input.height, input.width, true);
@@ -136,8 +137,8 @@ public class ResBlock extends Layer {
     	 * x = x * (1 + scale) + shift
     	 */
     	Tensor_OP().add(scale, 1.0f, scale);
-    	Tensor_OP().mul(x, scale, output, number, 1, 1, output.width, 0);
-    	Tensor_OP().addAxis(output, shift, output, number, 1, 1, output.width, 0);
+    	Tensor_OP().mul(x, scale, output);
+    	Tensor_OP().add(output, shift, output);
     }
     
     public void output(Tensor tc) {
@@ -156,14 +157,14 @@ public class ResBlock extends Layer {
     	 *  h = modulate(self.in_ln(x), shift_mlp, scale_mlp)
     	 *  x + gate_mlp * self.mlp(h)
     	 */
-    	in_ln.forward(input);
+    	in_ln.forward_llmc(input);
     	modulate(in_ln.getOutput(), shift_mlp, scale_mlp, mlpInput);
 
     	mlp_liner1.forward(mlpInput);
     	mlp_act.forward(mlp_liner1.getOutput());
     	mlp_liner2.forward(mlp_act.getOutput());
     	
-    	Tensor_OP().mul(mlp_liner2.getOutput(), gate_mlp, output, number, 1, 1, output.width, 0);
+    	Tensor_OP().mul(mlp_liner2.getOutput(), gate_mlp, output);
     	Tensor_OP().add(input, output, output);
     }
 
@@ -180,17 +181,17 @@ public class ResBlock extends Layer {
     }
 
     public void modulate_back(Tensor dShift,Tensor dScale,Tensor dx,Tensor x,Tensor scale,Tensor delta) {
-    	Tensor_OP().addAxisBack(dShift, delta, number, 1, 1, delta.width, 0);
-    	Tensor_OP().mul_right_back(x, delta, dScale, number, 1, 1, delta.width, 0);
-    	Tensor_OP().mul_left_back(scale, delta, dx,  number, 1, 1, delta.width, 0);
+    	delta.copyGPU(dShift);
+    	Tensor_OP().mul(x, delta, dScale);
+    	Tensor_OP().mul(scale, delta, dx);
     }
     
     public void diff(Tensor dtc) {
-    	Tensor_OP().mul_left_back(gate_mlp, delta, output, number, 1, 1, output.width, 0);
+    	Tensor_OP().mul(gate_mlp, delta, output);
     	mlp_liner2.back(output);
     	mlp_act.back(mlp_liner2.diff);
     	mlp_liner1.back(mlp_act.diff);
-    	Tensor_OP().mul_right_back(mlp_liner2.getOutput(), delta, gate_mlp, number, 1, 1, output.width, 0);
+    	Tensor_OP().mul(mlp_liner2.getOutput(), delta, gate_mlp);
     	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), gate_mlp, shape, 2);
     	
     	Tensor dShift = shift_mlp;
@@ -391,71 +392,63 @@ public class ResBlock extends Layer {
                 System.out.println(key);
             }
         }
-//        
-//        block.norm1.gamma = ModeLoaderlUtils.loadData(block.norm1.gamma, weightMap, 1, "norm1.weight");
-//        block.norm3.gamma = ModeLoaderlUtils.loadData(block.norm3.gamma, weightMap, 1, "norm2.weight");
-//        
-//        ModeLoaderlUtils.loadData(block.attn.qLinerLayer.weight, weightMap, "attn.q.weight");
-//        ModeLoaderlUtils.loadData(block.attn.qLinerLayer.bias, weightMap, "attn.q.bias");
-//        ModeLoaderlUtils.loadData(block.attn.kLinerLayer.weight, weightMap, "attn.k.weight");
-//        ModeLoaderlUtils.loadData(block.attn.kLinerLayer.bias, weightMap, "attn.k.bias");
-//        ModeLoaderlUtils.loadData(block.attn.vLinerLayer.weight, weightMap, "attn.v.weight");
-//        ModeLoaderlUtils.loadData(block.attn.vLinerLayer.bias, weightMap, "attn.v.bias");
-//        ModeLoaderlUtils.loadData(block.attn.oLinerLayer.weight, weightMap, "attn.proj.weight");
-//        ModeLoaderlUtils.loadData(block.attn.oLinerLayer.bias, weightMap, "attn.proj.bias");
-//
-//        ModeLoaderlUtils.loadData(block.mlp.w12.weight, weightMap, "mlp.w12.weight");
-//        ModeLoaderlUtils.loadData(block.mlp.w12.bias, weightMap, "mlp.w12.bias");
-//        ModeLoaderlUtils.loadData(block.mlp.w3.weight, weightMap, "mlp.w3.weight");
-//        ModeLoaderlUtils.loadData(block.mlp.w3.bias, weightMap, "mlp.w3.bias");
-//        
-//        ModeLoaderlUtils.loadData(block.adaLN_modulation.weight, weightMap, "adaLN_modulation.1.weight");
-//        ModeLoaderlUtils.loadData(block.adaLN_modulation.bias, weightMap, "adaLN_modulation.1.bias");
+        
+        block.in_ln.gamma = ModeLoaderlUtils.loadData(block.in_ln.gamma, weightMap, 1, "in_ln.weight");
+        block.in_ln.beta = ModeLoaderlUtils.loadData(block.in_ln.beta, weightMap, 1, "in_ln.bias");
+        
+        ModeLoaderlUtils.loadData(block.mlp_liner1.weight, weightMap, "mlp.0.weight");
+        ModeLoaderlUtils.loadData(block.mlp_liner1.bias, weightMap, "mlp.0.bias");
+        ModeLoaderlUtils.loadData(block.mlp_liner2.weight, weightMap, "mlp.2.weight");
+        ModeLoaderlUtils.loadData(block.mlp_liner2.bias, weightMap, "mlp.2.bias");
+
+        ModeLoaderlUtils.loadData(block.adaLN_modulation.weight, weightMap, "adaLN_modulation.1.weight");
+        ModeLoaderlUtils.loadData(block.adaLN_modulation.bias, weightMap, "adaLN_modulation.1.bias");
 
     }
     
     public static void main(String[] args) {
     	
-//    	int batchSize = 2;
-//        int time = 333;
-//        int embedDim = 384;
-//        int headNum = 6;
-//         
-//    	Transformer tf = new Transformer();
-//        tf.number = batchSize * time;
-//        tf.time = time;
-//        
-//        ResBlock block = new ResBlock(embedDim, embedDim, time, embedDim * 4, headNum, 77, true, false, tf);
-//        
-//        Tensor[] cs = RoPEKernel.getCosAndSin2D(256, embedDim, headNum);
-//        Tensor cos = cs[0];
-//        Tensor sin = cs[1];
-//
-//        String weight = "D:\\models\\test\\dit_block.json";
-//        loadWeight(LagJsonReader.readJsonFileSmallWeight(weight), block, true);
-//         
-//     	String inputPath = "D:\\models\\test\\dit_x.json";
-//        Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
-//        Tensor input = new Tensor(batchSize, time, 1, embedDim, true);
-//        ModeLoaderlUtils.loadData(input, datas, "x", 3);
-//        
-//     	String cyPath = "D:\\models\\test\\dit_t.json";
-//        Map<String, Object> cydatas = LagJsonReader.readJsonFileSmallWeight(cyPath);
-//        Tensor t = new Tensor(batchSize, 1, 1, embedDim, true);
-//        ModeLoaderlUtils.loadData(t, cydatas, "t", 2);
-//
-//        input.view(batchSize * time, 1, 1, embedDim);
-//        block.forward(input, t, cos, sin);
-//        
-//        block.getOutput().showDM();
-//        
-//        Tensor dt = new Tensor(batchSize, 1, 1, embedDim, true);
-//        
-//        Tensor dx = new Tensor(batchSize * time, 1, 1, embedDim, RandomUtils.val(input.dataLength, 1.0f), true);
-//        
-//        block.back(dx, dt, cos, sin);
-//        
-//        block.diff.showDM();
+    	int batchSize = 2;
+        int time = 256;
+        int embedDim = 32;
+         
+    	Transformer tf = new Transformer();
+        tf.number = batchSize * time;
+        tf.time = time;
+        
+        ResBlock block = new ResBlock(embedDim, true, tf);
+
+        String weight = "D:\\models\\resblock_weight.json";
+        loadWeight(LagJsonReader.readJsonFileSmallWeight(weight), block, true);
+         
+     	String inputPath = "D:\\models\\resblock_x.json";
+        Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
+        Tensor input = new Tensor(batchSize, time, 1, embedDim, true);
+        ModeLoaderlUtils.loadData(input, datas, "x", 3);
+
+        Map<String, Object> cydatas = LagJsonReader.readJsonFileSmallWeight(inputPath);
+        Tensor c = new Tensor(batchSize, time, 1, embedDim, true);
+        ModeLoaderlUtils.loadData(c, cydatas, "c", 3);
+
+        input.view(batchSize * time, 1, 1, embedDim);
+        c.view(batchSize * time, 1, 1, embedDim);
+        
+        block.forward(input, c);
+        
+        block.getOutput().showDM();
+        
+     	String deltaPath = "D:\\models\\resblock_delta.json";
+        Map<String, Object> ddatas = LagJsonReader.readJsonFileSmallWeight(deltaPath);
+        Tensor delta = new Tensor(batchSize, time, 1, embedDim, true);
+        ModeLoaderlUtils.loadData(delta, ddatas, "delta", 3);
+        
+        
+        Tensor dt = new Tensor(batchSize * time, 1, 1, embedDim, true);
+        
+        block.back(delta, dt);
+        
+        block.diff.showDM("dx");
+        dt.showDM("di");
     	
     }
     

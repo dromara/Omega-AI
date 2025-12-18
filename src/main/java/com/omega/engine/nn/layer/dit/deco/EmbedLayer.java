@@ -1,4 +1,4 @@
-package com.omega.engine.nn.layer.jit;
+package com.omega.engine.nn.layer.dit.deco;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
