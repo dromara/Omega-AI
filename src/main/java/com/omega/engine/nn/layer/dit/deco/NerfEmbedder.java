@@ -95,14 +95,7 @@ public class NerfEmbedder extends Layer {
         linear1.forward(tmp);
         this.output = linear1.getOutput();
     }
-    
-    public void output_eval() {
-        // TODO Auto-generated method stub
-    	Tensor_OP().cat_width(input, dct, tmp, input.width, dct.width);
-        linear1.forward(tmp);
-        this.output = linear1.getOutput();
-    }
-    
+
     @Override
     public Tensor getOutput() {
         // TODO Auto-generated method stub
@@ -164,11 +157,6 @@ public class NerfEmbedder extends Layer {
         /**
          * 计算输出
          */
-//        if(network.RUN_MODEL == RunModel.EVAL) {
-//        	this.output_eval();
-//        }else {
-//        	this.output();
-//        }
         this.output();
     }
 

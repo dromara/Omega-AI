@@ -6,6 +6,7 @@ import java.io.RandomAccessFile;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
+import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.layer.normalization.RMSLayer;
 import com.omega.engine.nn.network.Network;
@@ -55,19 +56,7 @@ public class EmbedLayer extends Layer {
      * Layer 归一化层 (norm) - 可选
      */
     public LNLayer lnNorm;
-    
-    /**
-     * 构造函数 - 无归一化
-     *
-     * @param inChannels 输入通道数 (对应最后一个维度 width)
-     * @param embedDim 嵌入维度
-     * @param bias 是否使用偏置
-     * @param network 网络实例
-     */
-    public EmbedLayer(int inChannels, int embedDim, boolean bias, Network network) {
-        this(inChannels, embedDim, bias, null, network);
-    }
-    
+
     /**
      * 构造函数 - 带归一化
      *
@@ -90,8 +79,11 @@ public class EmbedLayer extends Layer {
         this.normType = normType;
         this.useNorm = normType != null && !normType.isEmpty();
         this.hasBias = bias;
-        
         initLayers();
+        // 设置输出维度 - 只有最后一个维度 (width) 改变
+        this.oChannel = 1;
+        this.oHeight = 1;
+        this.oWidth = embedDim;
     }
     
     /**
@@ -115,11 +107,6 @@ public class EmbedLayer extends Layer {
                 this.lnNorm = new LNLayer(network);
             }
         }
-        // 如果 normType 为 null 或空，则不创建归一化层 (相当于 Identity)
-        
-        // 设置输出维度 - 只有最后一个维度 (width) 改变
-        // oChannel, oHeight 会在 init(input) 中根据输入动态设置
-        this.oWidth = embedDim;
     }
 
     @Override
@@ -134,11 +121,6 @@ public class EmbedLayer extends Layer {
      */
     public void init(Tensor input) {
         this.number = input.number;
-        
-        // 保持 channel 和 height 不变，只改变 width (in_chans -> embed_dim)
-        this.oChannel = input.channel;
-        this.oHeight = input.height;
-        this.oWidth = embedDim;
     }
 
     @Override
@@ -153,15 +135,8 @@ public class EmbedLayer extends Layer {
 
     @Override
     public void output() {
-
-        // 1. 使用 view 重塑输入: [batch, channel, height, in_chans] -> [batch*channel*height, 1, 1, in_chans]
-        input.view(input.number * input.channel * input.height, 1, 1, inChannels);
-        
-        // 2. 线性投影: [flattenedBatch, 1, 1, in_chans] -> [flattenedBatch, 1, 1, embed_dim]
+        // 线性投影: [flattenedBatch, 1, 1, in_chans] -> [flattenedBatch, 1, 1, embed_dim]
         proj.forward(input);
-        
-        // 3. 恢复输入形状
-        input.viewOrg();
 
         // 归一化 (可选)
         Tensor normOutput;
@@ -180,9 +155,7 @@ public class EmbedLayer extends Layer {
             // 不使用归一化 (Identity)
             normOutput = proj.getOutput();
         }
-        
-        // 使用 view 重塑输出: [batch*channel*height, 1, 1, embed_dim] -> [batch, channel, height, embed_dim]
-        normOutput.view(input.number, input.channel, input.height, embedDim);
+
         output = normOutput;
     }
 
@@ -194,9 +167,6 @@ public class EmbedLayer extends Layer {
     @Override
     public void diff() {
 
-        // 1. 使用 view 重塑 delta: [batch, channel, height, embed_dim] -> [batch*channel*height, 1, 1, embed_dim]
-        delta.view(input.number * input.channel * input.height, 1, 1, embedDim);
-        
         Tensor backDelta;
         if (useNorm) {
             if (rmsNorm != null) {
@@ -218,13 +188,7 @@ public class EmbedLayer extends Layer {
         
         // 2. 通过 proj 反向传播
         proj.back(backDelta);
-        
-        // 3. 恢复 delta 形状
-        delta.viewOrg();
-        
-        // 4. 使用 view 重塑 proj.diff 并复制到 this.diff
-        // proj.diff: [batch*channel*height, 1, 1, in_chans] -> diff: [batch, channel, height, in_chans]
-        proj.diff.view(input.number, input.channel, input.height, inChannels);
+
         this.diff = proj.diff;
     }
 
@@ -338,9 +302,9 @@ public class EmbedLayer extends Layer {
         proj.loadModel(inputStream);
         if (useNorm) {
             if (rmsNorm != null) {
-                rmsNorm.loadModel(inputStream);
+                rmsNorm.loadModel(inputStream, 1, 1, embedDim, BNType.fully_bn);
             } else if (lnNorm != null) {
-                lnNorm.loadModel(inputStream);
+                lnNorm.loadModel(inputStream, 1, 1, embedDim, BNType.fully_bn);
             }
         }
     }
