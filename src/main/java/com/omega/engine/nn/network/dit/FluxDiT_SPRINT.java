@@ -3,15 +3,13 @@ package com.omega.engine.nn.network.dit;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
-import com.omega.engine.ad.op.gpu.NormalizeKernel;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.loss.LossFactory;
 import com.omega.engine.loss.LossType;
-import com.omega.engine.loss.gpu.MSELossKernel;
 import com.omega.engine.nn.layer.InputLayer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.SoftmaxWithCrossEntropyLayer;
-import com.omega.engine.nn.layer.dinovision.DinoVisionTransformer;
+import com.omega.engine.nn.layer.dit.sprint.DiTMainMoudue_REPA;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.NetworkType;
 import com.omega.engine.nn.network.RunModel;
@@ -26,37 +24,37 @@ import jcuda.runtime.JCuda;
  *
  * @author Administrator
  */
-public class Dinov2 extends Network {
+public class FluxDiT_SPRINT extends Network {
 	
     public int inChannel;
     public int width;
     public int height;
     public int patchSize;
+    public int textEmbedDim;
+    public int maxContextLen;
     public int hiddenSize;
     private int depth;
+    private int timeSteps;
     public int headNum;
     private int mlpRatio = 4;
-
+    private int z_dim = 768;
+    
+    private float y_drop_prob = 0.0f;
+    
+    private float token_drop_ratio = 0.75f;
+    
     private InputLayer inputLayer;
-    public DinoVisionTransformer main;
+    public DiTMainMoudue_REPA main;
     
-    private Tensor clstokens;
-    private Tensor patchtokens;
+    private Tensor input_null;
+    private Tensor eps;
+    private Tensor uncond_eps;
+    private Tensor head;
+    private Tensor tail;
     
-    private NormalizeKernel norm_kernel;
-    
-    private Tensor n_z;
-    private Tensor r_z;
-    
-    private Tensor loss;
-    
-    private MSELossKernel mse_kernel;
-    
-    private Tensor cls_loss;
-    private Tensor cls_delta;
-    
-    public Dinov2(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int mlpRatio) {
+    public FluxDiT_SPRINT(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int textEmbedDim, int maxContextLen, int mlpRatio, int z_dim, float token_drop_ratio, float y_drop_prob) {
         this.lossFunction = LossFactory.create(lossType, this);
+//        this.weight_decay = 0.1f;
         this.updater = updater;
         this.inChannel = inChannel;
         this.width = width;
@@ -65,7 +63,13 @@ public class Dinov2 extends Network {
         this.headNum = headNum;
         this.hiddenSize = hiddenSize;
         this.depth = depth;
+        this.timeSteps = timeSteps;
+        this.textEmbedDim = textEmbedDim;
+        this.maxContextLen = maxContextLen;
         this.mlpRatio = mlpRatio;
+        this.token_drop_ratio = token_drop_ratio;
+        this.y_drop_prob = y_drop_prob;
+		this.z_dim = z_dim;
         this.time = (width / patchSize) * (height / patchSize);
         initLayers();
     }
@@ -74,11 +78,10 @@ public class Dinov2 extends Network {
     	
         this.inputLayer = new InputLayer(inChannel, height, width);
         
-        main = new DinoVisionTransformer(inChannel, width, height, patchSize, hiddenSize, headNum, depth, mlpRatio, this);
+        main = new DiTMainMoudue_REPA(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, textEmbedDim, maxContextLen, mlpRatio, z_dim, y_drop_prob, token_drop_ratio, this);
         
         this.addLayer(inputLayer);
         this.addLayer(main);
-        
     }
 
     @Override
@@ -119,41 +122,66 @@ public class Dinov2 extends Network {
 
     @Override
     public Tensor forward(Tensor input) {
+        return null;
+    }
+    
+    public Tensor forward(Tensor input, Tensor t, Tensor context, Tensor cos, Tensor sin) {
         /**
          * 设置输入数据
          */
         this.setInputData(input);
-        this.main.forward(input);
+        this.main.forward(input, t, context, cos, sin);
         return this.main.getOutput();
     }
     
-    public Tensor forward_features(Tensor input) {
-    	 /**
+    public Tensor forward_with_cfg(Tensor input, Tensor t, Tensor context, Tensor cos, Tensor sin, Tensor eps, float cfg_scale) {
+        /**
          * 设置输入数据
          */
-        this.setInputData(input);
-        this.main.forward(input);
-        if(patchtokens == null) {
-        	patchtokens = Tensor.createGPUTensor(patchtokens, input.number, this.main.hw, 1, hiddenSize, true);
-        	clstokens = Tensor.createGPUTensor(getClstokens(), input.number, 1, 1, hiddenSize, true);
-        }
-        tensorOP.getByChannel(this.main.getOutput(), getClstokens(), new int[] {input.number, this.main.hw + this.main.num_tokens, 1, hiddenSize}, 0, this.main.num_tokens);
-        tensorOP.getByChannel(this.main.getOutput(), patchtokens, new int[] {input.number, this.main.hw + this.main.num_tokens, 1, hiddenSize}, this.main.num_tokens, this.main.hw);
-        return patchtokens;
+        if(input_null == null || input_null.number != input.number * 2) {
+    		input_null = Tensor.createGPUTensor(input_null, input.number * 2, input.channel, input.height, input.width, true);
+    		uncond_eps = Tensor.createGPUTensor(uncond_eps, input.number, input.channel, input.height, input.width, true);
+    	}
+    	tensorOP.cat_batch(input, input, input_null);
+        this.main.forward(input_null, t, context, cos, sin);
+        tensorOP.cat_bacth_copy(this.main.getOutput(), eps, uncond_eps);
+        /**
+         * out = uncond_eps + cfg_scale * (eps - uncond_eps)
+         */
+        tensorOP.sub(eps, uncond_eps, eps);
+        tensorOP.mul(eps, cfg_scale, eps);
+        tensorOP.add(uncond_eps, eps, eps);
+        return eps;
     }
     
-    public Tensor forward_features_all(Tensor input) {
-   	 /**
-        * 设置输入数据
-        */
-       this.setInputData(input);
-       this.main.forward(input);
-       if(clstokens == null) {
-    	   clstokens = Tensor.createGPUTensor(getClstokens(), input.number, 1, 1, hiddenSize, true);
-       }
-       tensorOP.getByChannel(this.main.getOutput(), getClstokens(), new int[] {input.number, this.main.hw + this.main.num_tokens, 1, hiddenSize}, 0, this.main.num_tokens);
-       return this.main.getOutput();
-   }
+    public Tensor forward_with_cfg(Tensor input, Tensor t, Tensor context, Tensor cos, Tensor sin, Tensor out, float cfg_scale, int channel) {
+        /**
+         * 设置输入数据
+         */
+        if(input_null == null || input_null.number != input.number * 2) {
+    		input_null = Tensor.createGPUTensor(input_null, input.number * 2, input.channel, input.height, input.width, true);
+    		eps = Tensor.createGPUTensor(eps, input.number, channel, input.height, input.width, true);
+    		uncond_eps = Tensor.createGPUTensor(uncond_eps, input.number, channel, input.height, input.width, true);
+    		head = Tensor.createGPUTensor(head, input_null.number, channel, input.height, input.width, true);
+    		tail = Tensor.createGPUTensor(tail, input_null.number, input.channel - channel, input.height, input.width, true);
+    	}
+    	tensorOP.cat_batch(input, input, input_null);
+        this.main.forward(input_null, t, context, cos, sin);
+        tensorOP.getByChannel(this.main.getOutput(), head, this.main.getOutput().shape(), 0, channel);
+        tensorOP.getByChannel(this.main.getOutput(), tail, this.main.getOutput().shape(), channel, tail.channel);
+        tensorOP.cat_bacth_copy(head, eps, uncond_eps);
+        /**
+         * out = uncond_eps + cfg_scale * (eps - uncond_eps)
+         */
+        tensorOP.sub(eps, uncond_eps, eps);
+        tensorOP.mul(eps, cfg_scale, eps);
+        tensorOP.add(uncond_eps, eps, eps);
+        tensorOP.cat_batch(eps, eps, head);
+        tensorOP.getByChannel_back(this.main.getOutput(), head, this.main.getOutput().shape(), 0);
+        tensorOP.getByChannel_back(this.main.getOutput(), tail, this.main.getOutput().shape(), channel);
+        tensorOP.getByNumber(this.main.getOutput(), out, 0, input.number);
+        return out;
+    }
     
     public void initBack() {
     	
@@ -254,54 +282,7 @@ public class Dinov2 extends Network {
         // TODO Auto-generated method stub
         return this.lossFunction.loss(output, label, igonre);
     }
-    
-    public Tensor projection_loss(Tensor dit_z, Tensor img) {
-    	if(norm_kernel == null) {
-    		norm_kernel = new NormalizeKernel(cudaManager);
-    	}
-    	
-    	if(n_z == null || n_z.number != dit_z.number) {
-    		n_z = Tensor.createGPUTensor(n_z, dit_z.shape(), true);
-    		r_z = Tensor.createGPUTensor(r_z, dit_z.shape(), true);
-    		loss = Tensor.createGPUTensor(loss, dit_z.number, dit_z.channel, dit_z.height, 1, true);
-    	}
-    	
-    	Tensor rz = this.forward_features(img);
-    	
-    	norm_kernel.l2norm3Dim(dit_z, n_z);
-    	norm_kernel.l2norm3Dim(rz, r_z);
-    	
-    	norm_kernel.projection_loss(n_z, r_z, loss);
-    	return loss;
-    }
-    
-    public Tensor projection_z_loss(Tensor dit_z, Tensor z) {
-    	if(norm_kernel == null) {
-    		norm_kernel = new NormalizeKernel(cudaManager);
-    	}
-    	
-    	if(n_z == null || n_z.number != dit_z.number) {
-    		n_z = Tensor.createGPUTensor(n_z, dit_z.shape(), true);
-    		r_z = Tensor.createGPUTensor(r_z, dit_z.shape(), true);
-    		loss = Tensor.createGPUTensor(loss, dit_z.number, dit_z.channel, dit_z.height, 1, true);
-    	}
-    	
-    	norm_kernel.l2norm3Dim(dit_z, n_z);
-    	norm_kernel.l2norm3Dim(z, r_z);
-    	
-    	norm_kernel.projection_loss(n_z, r_z, loss);
-    	return loss;
-    }
-    
-    public Tensor projection_loss_back(Tensor dit_z) {
-    	
-    	norm_kernel.projection_loss_back(r_z, n_z);
-    	
-    	norm_kernel.l2norm3Dim_back4(dit_z, n_z, r_z);
-    	
-    	return r_z;
-    }
-    
+
     public Tensor lossDiff(Tensor output, Tensor label, int igonre) {
         // TODO Auto-generated method stub
         return this.lossFunction.diff(output, label, igonre);
@@ -326,32 +307,6 @@ public class Dinov2 extends Network {
     public void putParamterGrads() {
         // TODO Auto-generated method stub
     }
-
-	public Tensor getClstokens() {
-		return clstokens;
-	}
     
-	public Tensor cls_loss(Tensor p, Tensor t) {
-		if(mse_kernel == null) {
-			mse_kernel = new MSELossKernel(cudaManager);
-		}
-		if(cls_loss == null || cls_loss.number != p.number) {
-			cls_loss = Tensor.createGPUTensor(cls_loss, p.shape(), true);
-		}
-		mse_kernel.forward(p, t, cls_loss);
-		return cls_loss;
-	}
-	
-	public Tensor cls_loss_back(Tensor p, Tensor t) {
-		if(mse_kernel == null) {
-			mse_kernel = new MSELossKernel(cudaManager);
-		}
-		if(cls_delta == null || cls_delta.number != p.number) {
-			cls_delta = Tensor.createGPUTensor(cls_delta, p.shape(), true);
-		}
-		mse_kernel.backward(p, t, cls_delta);
-		return cls_delta;
-	}
-	
 }
 

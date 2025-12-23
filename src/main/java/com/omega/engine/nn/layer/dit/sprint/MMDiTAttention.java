@@ -1,4 +1,4 @@
-package com.omega.engine.nn.layer.dit.deco;
+package com.omega.engine.nn.layer.dit.sprint;
 
 import static jcuda.jcublas.cublasOperation.CUBLAS_OP_N;
 import static jcuda.jcublas.cublasOperation.CUBLAS_OP_T;
@@ -19,18 +19,16 @@ import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.RMSLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
-import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 import com.omega.example.common.ModeLoaderlUtils;
-import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
  * MMDiTAttentionLayer
  *
  * @author Administrator
  */
-public class MMDiTAttentionLayer extends Layer {
+public class MMDiTAttention extends Layer {
 	
     public RMSLayer qNorm;
     public RMSLayer kNorm;
@@ -89,7 +87,7 @@ public class MMDiTAttentionLayer extends Layer {
     private Tensor diff_ky;
     private Tensor diff_vy;
 
-    public MMDiTAttentionLayer(int embedDim, int headNum, int time, int txtTime, boolean bias, boolean qkNorm) {
+    public MMDiTAttention(int embedDim, int headNum, int time, int txtTime, boolean bias, boolean qkNorm) {
         this.bias = bias;
         this.time = time;
         this.txtTime = txtTime;
@@ -110,7 +108,7 @@ public class MMDiTAttentionLayer extends Layer {
         this.initLayers();
     }
 
-    public MMDiTAttentionLayer(int embedDim, int headNum, int time, int txtTime, boolean bias, boolean qkNorm, Network network) {
+    public MMDiTAttention(int embedDim, int headNum, int time, int txtTime, boolean bias, boolean qkNorm, Network network) {
         this.bias = bias;
         this.network = network;
         if (this.updater == null) {
@@ -310,7 +308,7 @@ public class MMDiTAttentionLayer extends Layer {
 
     }
     
-    public void output(Tensor context, Tensor pos) {
+    public void output(Tensor context, Tensor cos, Tensor sin) {
         // TODO Auto-generated method stub
 
         this.getqLinerLayer().forward(input);
@@ -345,8 +343,69 @@ public class MMDiTAttentionLayer extends Layer {
          * qt = [B, HN, T, HS]
          */
 //        q.showDM("q");
-        ropeKernel.apply_rotary_emb(q, pos, rq);
-        ropeKernel.apply_rotary_emb(k, pos, rk);
+        ropeKernel.forward2d(cos, sin, q, rq, time, headNum, dk);
+        ropeKernel.forward2d(cos, sin, k, rk, time, headNum, dk);
+        
+        Tensor_OP().permute(ky, y_tmp, p_0213);
+        Tensor kyt = y_tmp;
+        if(qkNorm) {
+        	kyNorm.forward(kyt);
+        	kyt = kyNorm.getOutput();
+        }
+        attentionKernel.concat_height_forward(rk, kyt, k_tmp, batchSize, headNum, time, txtTime, dk);
+        
+        Tensor_OP().permute(vy, y_tmp, p_0213);
+        Tensor vyt = y_tmp;
+        attentionKernel.concat_height_forward(vt, vyt, v_tmp, batchSize, headNum, time, txtTime, dk);
+        
+//        rq.showDM("rq");
+        scaledDotProductAttention(rq, k_tmp, v_tmp);
+        
+        Tensor vaccum = temp;
+        attentionKernel.unpermute(vaccum, oi, batchSize, time, headNum, dk);
+
+        this.getoLinerLayer().forward(oi);
+        this.output = this.getoLinerLayer().getOutput();
+
+    }
+    
+    public void output(Tensor context, Tensor cos, Tensor sin, Tensor idskeep) {
+        // TODO Auto-generated method stub
+
+        this.getqLinerLayer().forward(input);
+        this.getkLinerLayer().forward(input);
+        this.getvLinerLayer().forward(input);
+        
+        this.kyLinerLayer.forward(context);
+        this.vyLinerLayer.forward(context);
+        
+        Tensor qx = this.getqLinerLayer().getOutput().view(batchSize, time, headNum, dk);
+        Tensor kx = this.getkLinerLayer().getOutput().view(batchSize, time, headNum, dk);
+        Tensor vx = this.getvLinerLayer().getOutput().view(batchSize, time, headNum, dk);
+
+        Tensor ky = kyLinerLayer.getOutput().view(batchSize, txtTime, headNum, dk);
+        Tensor vy = vyLinerLayer.getOutput().view(batchSize, txtTime, headNum, dk);
+        
+        Tensor_OP().permute(qx, qt, p_0213);
+        Tensor_OP().permute(kx, kt, p_0213);
+        Tensor_OP().permute(vx, vt, p_0213);
+
+        Tensor q = qt;
+        Tensor k = kt;
+        if(qkNorm) {
+        	qNorm.forward(q);
+        	kNorm.forward(k);
+        	q = qNorm.getOutput();
+        	k = kNorm.getOutput();
+        }
+
+        /**
+         * apply RoPE
+         * qt = [B, HN, T, HS]
+         */
+//        q.showDM("q");
+        ropeKernel.forward2d(cos, sin, idskeep, q, rq, time, headNum, dk);
+        ropeKernel.forward2d(cos, sin, idskeep, k, rk, time, headNum, dk);
         
         Tensor_OP().permute(ky, y_tmp, p_0213);
         Tensor kyt = y_tmp;
@@ -497,7 +556,7 @@ public class MMDiTAttentionLayer extends Layer {
 
     }
     
-    public void diff(Tensor dcontext, Tensor pos) {
+    public void diff(Tensor dcontext, Tensor cos, Tensor sin) {
     	 this.getoLinerLayer().back(delta, oi);
          attentionKernel.unpermute_backward(temp, oi, batchSize, time, headNum, dk);
          scaledDotProductAttentionBackward(rq, k_tmp, v_tmp);
@@ -522,8 +581,8 @@ public class MMDiTAttentionLayer extends Layer {
          /**
           * RoPE backward
           */
-         ropeKernel.apply_rotary_emb_back(dqt, pos, rq);
-         ropeKernel.apply_rotary_emb_back(kt, pos, rk);
+         ropeKernel.backward2d(cos, sin, dqt, rq, time, headNum, dk);
+         ropeKernel.backward2d(cos, sin, kt, rk, time, headNum, dk);
 
          Tensor dqt_d = rq;
          Tensor dkt_d = rk;
@@ -574,6 +633,82 @@ public class MMDiTAttentionLayer extends Layer {
          Tensor_OP().add(vyLinerLayer.diff, dcontext, dcontext);
     }
     
+    public void diff(Tensor dcontext, Tensor cos, Tensor sin, Tensor idskeep) {
+    	this.getoLinerLayer().back(delta, oi);
+        attentionKernel.unpermute_backward(temp, oi, batchSize, time, headNum, dk);
+        scaledDotProductAttentionBackward(rq, k_tmp, v_tmp);
+
+        attentionKernel.concat_height_backward(dvt, vt, y_tmp, batchSize, headNum, time, txtTime, dk);
+        
+        Tensor dvy = vyLinerLayer.getOutput().view(batchSize, txtTime, headNum, dk);
+        Tensor_OP().permute(y_tmp, dvy, p_0213);
+        
+        attentionKernel.concat_height_backward(dkt, kt, y_tmp, batchSize, headNum, time, txtTime, dk);
+
+        Tensor dkyt = y_tmp;
+        
+        if(qkNorm) {
+       	 kyNorm.back(dkyt);
+       	 dkyt = kyNorm.diff;
+        }
+        
+        Tensor dky = kyLinerLayer.getOutput().view(batchSize, txtTime, headNum, dk);
+        Tensor_OP().permute(dkyt, dky, p_0213);
+
+        /**
+         * RoPE backward
+         */
+        ropeKernel.backward2d(cos, sin, idskeep, dqt, rq, time, headNum, dk);
+        ropeKernel.backward2d(cos, sin, idskeep, kt, rk, time, headNum, dk);
+
+        Tensor dqt_d = rq;
+        Tensor dkt_d = rk;
+        
+        Tensor_OP().permute(this.getkLinerLayer().getOutput(), kt, p_0213);
+        
+        if(qkNorm) {
+         	qNorm.back(dqt_d);
+         	kNorm.back(dkt_d);
+         	dqt_d = qNorm.diff;
+         	dkt_d = kNorm.diff;
+        }
+
+        qt.view(batchSize, time, headNum, dk);
+        kt.view(batchSize, time, headNum, dk);
+
+     	 Tensor_OP().permute(dqt_d, qt, p_0213);
+        Tensor_OP().permute(dkt_d, kt, p_0213);
+
+        Tensor queryDelta = qt.view(this.getqLinerLayer().getOutput().getOrgShape());
+        this.getqLinerLayer().getOutput().viewOrg();
+        this.getqLinerLayer().back(queryDelta, this.getqLinerLayer().getOutput());
+        
+        qt.view(batchSize, time, headNum, dk);
+        Tensor_OP().permute(vt, qt, p_0213);
+        
+        Tensor keyDelta = kt.view(this.getkLinerLayer().getOutput().getOrgShape());
+        Tensor valueDelta = qt.view(this.getvLinerLayer().getOutput().getOrgShape());
+        
+        this.getkLinerLayer().getOutput().viewOrg();
+        this.getvLinerLayer().getOutput().viewOrg();
+        this.getkLinerLayer().back(keyDelta, this.getkLinerLayer().getOutput());
+        this.getvLinerLayer().back(valueDelta, this.getvLinerLayer().getOutput());
+        
+        Tensor_OP().add(this.getqLinerLayer().diff, this.getkLinerLayer().diff, this.getqLinerLayer().diff);
+        Tensor_OP().add(this.getqLinerLayer().diff, this.getvLinerLayer().diff, this.getqLinerLayer().diff);
+        // dxt
+        this.diff = this.getqLinerLayer().diff;
+        
+        dky = dky.view(this.kyLinerLayer.getOutput().getOrgShape());
+        dvy = dvy.view(this.vyLinerLayer.getOutput().getOrgShape());
+        
+        kyLinerLayer.back(dky, diff_ky);
+        vyLinerLayer.back(dvy, diff_vy);
+        
+        Tensor_OP().add(kyLinerLayer.diff, dcontext, dcontext);
+        Tensor_OP().add(vyLinerLayer.diff, dcontext, dcontext);
+   }
+    
     @Override
     public void forward() {
         // TODO Auto-generated method stub
@@ -604,7 +739,7 @@ public class MMDiTAttentionLayer extends Layer {
         this.output();
     }
     
-    public void forward(Tensor input, Tensor context, Tensor pos) {
+    public void forward(Tensor input, Tensor context, Tensor cos, Tensor sin) {
         // TODO Auto-generated method stub
     	if(network.RUN_MODEL == RunModel.EVAL) {
     		/**
@@ -631,7 +766,38 @@ public class MMDiTAttentionLayer extends Layer {
             /**
              * 计算输出
              */
-            this.output(context, pos);
+            this.output(context, cos, sin);
+    	}  
+    }
+    
+    public void forward(Tensor input, Tensor context, Tensor cos, Tensor sin, Tensor idskeep) {
+        // TODO Auto-generated method stub
+    	if(network.RUN_MODEL == RunModel.EVAL) {
+    		/**
+             * 参数初始化
+             */
+            this.init_eval(input);
+            /**
+             * 设置输入
+             */
+            this.setInput(input);
+            /**
+             * 计算输出
+             */
+//            this.output_eval(pos);
+    	}else {
+    		/**
+             * 参数初始化
+             */
+            this.init(input);
+            /**
+             * 设置输入
+             */
+            this.setInput(input);
+            /**
+             * 计算输出
+             */
+            this.output(context, cos, sin, idskeep);
     	}  
     }
     
@@ -654,7 +820,7 @@ public class MMDiTAttentionLayer extends Layer {
         }
     }
     
-    public void back(Tensor delta, Tensor dcontext,Tensor pos) {
+    public void back(Tensor delta, Tensor dcontext, Tensor cos, Tensor sin) {
         // TODO Auto-generated method stub
         this.initBack();
         /**
@@ -664,12 +830,28 @@ public class MMDiTAttentionLayer extends Layer {
         /**
          * 计算梯度
          */
-        this.diff(dcontext, pos);
+        this.diff(dcontext, cos, sin);
         if (this.network.GRADIENT_CHECK) {
             this.gradientCheck();
         }
     }
-
+    
+    public void back(Tensor delta, Tensor dcontext, Tensor cos, Tensor sin, Tensor idskeep) {
+        // TODO Auto-generated method stub
+        this.initBack();
+        /**
+         * 设置梯度
+         */
+        this.setDelta(delta);
+        /**
+         * 计算梯度
+         */
+        this.diff(dcontext, cos, sin, idskeep);
+        if (this.network.GRADIENT_CHECK) {
+            this.gradientCheck();
+        }
+    }
+    
     @Override
     public void update() {
         // TODO Auto-generated method stub
@@ -796,7 +978,7 @@ public class MMDiTAttentionLayer extends Layer {
         vyLinerLayer.accGrad(scale);
     }
     
-    public static void loadWeight(Map<String, Object> weightMap, MMDiTAttentionLayer block, boolean showLayers) {
+    public static void loadWeight(Map<String, Object> weightMap, MMDiTAttention block, boolean showLayers) {
         if (showLayers) {
             for (String key : weightMap.keySet()) {
                 System.out.println(key);
@@ -825,60 +1007,60 @@ public class MMDiTAttentionLayer extends Layer {
     
     public static void main(String[] args) {
     	
-    	int N = 2;
-    	int T = 256;
-    	int M = 768;
-    	int HN = 12;
-    	
-    	int TT = 77;
-
-    	Transformer tf = new Transformer();
-        tf.number = N * T;
-        tf.time = T;
-    	
-    	MMDiTAttentionLayer attn = new MMDiTAttentionLayer(M, HN, T, TT, true, true, tf);
-    	
-    	String weightPath = "D:\\models\\mmdit_weight.json";
-    	Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(weightPath);
-    	loadWeight(datas, attn, true);
-    	
-    	String inputPath = "D:\\models\\mmdit_x.json";
-	    Map<String, Object> xdatas = LagJsonReader.readJsonFileSmallWeight(inputPath);
-	    Tensor input = new Tensor(N, T, 1, M, true);
-	    ModeLoaderlUtils.loadData(input, xdatas, "x", 3);
-	    
-    	String contextPath = "D:\\models\\mmdit_context.json";
-	    Map<String, Object> cdatas = LagJsonReader.readJsonFileSmallWeight(contextPath);
-	    Tensor context = new Tensor(N, TT, 1, M, true);
-	    ModeLoaderlUtils.loadData(context, cdatas, "context", 3);
-	    
-	    Tensor pos = RoPEKernel.precompute_freqs_cis_2d_tensor(M / HN, 16, 16, 10000, 16);
-
-        input.view(N * T, 1, 1, M);
-        context.view(N * TT, 1, 1, M);
-        
-	    attn.forward(input, context, pos);
-	    
-	    attn.getOutput().showDM("output");
-	    
-    	String deltaPath = "D:\\models\\mmdit_delta.json";
-	    Map<String, Object> ddatas = LagJsonReader.readJsonFileSmallWeight(deltaPath);
-	    Tensor delta = new Tensor(N, T, 1, M, true);
-	    ModeLoaderlUtils.loadData(delta, ddatas, "delta", 3);
-	    delta.view(N * T, 1, 1, M);
-	    
-	    Tensor dcontext = new Tensor(N * TT, 1, 1, M, true); 
-	    
-	    attn.back(delta, dcontext, pos);
-	    
-	    attn.diff.showDM("diff");
-	    
-	    for(int i = 0;i<10;i++) {
-		    attn.forward(input, context, pos);
-		    attn.getOutput().showDM("output");
-		    attn.back(delta, dcontext, pos);
-		    attn.diff.showDM("diff");
-	    }
+//    	int N = 2;
+//    	int T = 256;
+//    	int M = 768;
+//    	int HN = 12;
+//    	
+//    	int TT = 77;
+//
+//    	Transformer tf = new Transformer();
+//        tf.number = N * T;
+//        tf.time = T;
+//    	
+//    	MMDiTAttention attn = new MMDiTAttention(M, HN, T, TT, true, true, tf);
+//    	
+//    	String weightPath = "D:\\models\\mmdit_weight.json";
+//    	Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(weightPath);
+//    	loadWeight(datas, attn, true);
+//    	
+//    	String inputPath = "D:\\models\\mmdit_x.json";
+//	    Map<String, Object> xdatas = LagJsonReader.readJsonFileSmallWeight(inputPath);
+//	    Tensor input = new Tensor(N, T, 1, M, true);
+//	    ModeLoaderlUtils.loadData(input, xdatas, "x", 3);
+//	    
+//    	String contextPath = "D:\\models\\mmdit_context.json";
+//	    Map<String, Object> cdatas = LagJsonReader.readJsonFileSmallWeight(contextPath);
+//	    Tensor context = new Tensor(N, TT, 1, M, true);
+//	    ModeLoaderlUtils.loadData(context, cdatas, "context", 3);
+//	    
+//	    Tensor pos = RoPEKernel.precompute_freqs_cis_2d_tensor(M / HN, 16, 16, 10000, 16);
+//
+//        input.view(N * T, 1, 1, M);
+//        context.view(N * TT, 1, 1, M);
+//        
+//	    attn.forward(input, context, pos);
+//	    
+//	    attn.getOutput().showDM("output");
+//	    
+//    	String deltaPath = "D:\\models\\mmdit_delta.json";
+//	    Map<String, Object> ddatas = LagJsonReader.readJsonFileSmallWeight(deltaPath);
+//	    Tensor delta = new Tensor(N, T, 1, M, true);
+//	    ModeLoaderlUtils.loadData(delta, ddatas, "delta", 3);
+//	    delta.view(N * T, 1, 1, M);
+//	    
+//	    Tensor dcontext = new Tensor(N * TT, 1, 1, M, true); 
+//	    
+//	    attn.back(delta, dcontext, pos);
+//	    
+//	    attn.diff.showDM("diff");
+//	    
+//	    for(int i = 0;i<10;i++) {
+//		    attn.forward(input, context, pos);
+//		    attn.getOutput().showDM("output");
+//		    attn.back(delta, dcontext, pos);
+//		    attn.diff.showDM("diff");
+//	    }
 	    
     }
     

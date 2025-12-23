@@ -169,12 +169,10 @@ public class REPAMLPLayer extends Layer {
         this.initBack();
         /**
          * 设置梯度
-
          */
         this.setDelta(delta);
         /**
          * 计算梯度
-
          */
         this.diff();
         if (this.network.GRADIENT_CHECK) {

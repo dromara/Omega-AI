@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Map;
 
-import com.omega.common.utils.RandomUtils;
+import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
@@ -12,28 +12,29 @@ import com.omega.engine.nn.layer.active.SiLULayer;
 import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.RMSLayer;
 import com.omega.engine.nn.network.Network;
-import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 import com.omega.example.common.ModeLoaderlUtils;
-import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
  * DiT FinalLayer
  *
  * @author Administrator
  */
-public class DiT_TXTFinalLayer extends Layer {
+public class DiT_TXTFinal_REGLayer extends Layer {
 	
 	private int batchSize;
 	private int time;
     private int hidden_size = 1;
+    private int cls_token_dim;
     private boolean bias = false;
     
     private boolean normParams = true;
 
     public RMSLayer finalNorm;
     public FullyLayer finalLinear;
+    
+    public FullyLayer linear_cls;
     
     private SiLULayer m_active;
     public FullyLayer m_linear1;
@@ -43,18 +44,25 @@ public class DiT_TXTFinalLayer extends Layer {
     
     private Tensor dShift;
     private Tensor dScale;
+    private Tensor dcls;
+    
+    private Tensor cls_token;
+    private Tensor img;
+    
+    private BaseKernel baseKernel;
 
-    public DiT_TXTFinalLayer(int patch_size, int hidden_size,int out_channels, int time, boolean bias) {
+    public DiT_TXTFinal_REGLayer(int patch_size, int hidden_size,int out_channels, int time, int cls_token_dim, boolean bias) {
         this.hidden_size = hidden_size;
         this.bias = bias;
         this.oChannel = 1;
         this.oHeight = 1;
         this.oWidth = patch_size * patch_size * out_channels;
         this.time = time;
+        this.cls_token_dim = cls_token_dim;
         this.initLayers();
     }
 
-    public DiT_TXTFinalLayer(int patch_size, int hidden_size,int out_channels, int time, boolean bias, boolean normParams, Network network) {
+    public DiT_TXTFinal_REGLayer(int patch_size, int hidden_size,int out_channels, int time, int cls_token_dim, boolean bias, boolean normParams, Network network) {
         this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
@@ -66,27 +74,37 @@ public class DiT_TXTFinalLayer extends Layer {
         this.oWidth = patch_size * patch_size * out_channels;
         this.time = time;
         this.normParams = normParams;
+        this.cls_token_dim = cls_token_dim;
         this.initLayers();
     }
 
     public void initLayers() {
     	this.finalNorm = new RMSLayer(1, 1, hidden_size, normParams, BNType.fully_bn, network);
         this.finalLinear = new FullyLayer(hidden_size, oWidth, bias, network);
-//        this.finalLinear.weight.clearGPU();
-//        if(this.finalLinear.bias != null) {
-//        	this.finalLinear.bias.clearGPU();
-//        }
+        this.finalLinear.weight.clearGPU();
+        if(this.finalLinear.bias != null) {
+        	this.finalLinear.bias.clearGPU();
+        }
         this.m_active = new SiLULayer(network);
         this.m_linear1 = new FullyLayer(hidden_size, hidden_size, bias, network);
         this.m_linear2 = new FullyLayer(hidden_size, hidden_size, bias, network);
-//        this.m_linear1.weight.clearGPU();
-//        if(this.m_linear1.bias != null) {
-//        	this.m_linear1.bias.clearGPU();
-//        }
-//        this.m_linear2.weight.clearGPU();
-//        if(this.m_linear2.bias != null) {
-//        	this.m_linear2.bias.clearGPU();
-//        }
+        this.m_linear1.weight.clearGPU();
+        if(this.m_linear1.bias != null) {
+        	this.m_linear1.bias.clearGPU();
+        }
+        this.m_linear2.weight.clearGPU();
+        if(this.m_linear2.bias != null) {
+        	this.m_linear2.bias.clearGPU();
+        }
+        this.linear_cls = new FullyLayer(hidden_size, cls_token_dim, bias, network);
+        this.linear_cls.weight.clearGPU();
+        if(this.linear_cls.bias != null) {
+        	this.linear_cls.bias.clearGPU();
+        }
+        
+        if(baseKernel == null) {
+        	baseKernel = new BaseKernel(cuda());
+        }
     }
 
     @Override
@@ -97,9 +115,11 @@ public class DiT_TXTFinalLayer extends Layer {
     
     public void init(Tensor input) {
     	this.number = input.number;
-    	this.batchSize = number / time;
+    	this.batchSize = number / (time + 1);
     	if(linearInput == null || linearInput.number != number) {
     		linearInput = Tensor.createGPUTensor(linearInput, number, input.channel, input.height, input.width, true);
+    		cls_token = Tensor.createGPUTensor(cls_token, batchSize, 1, 1, cls_token_dim, true);
+    		img = Tensor.createGPUTensor(img, batchSize * time, 1, 1, hidden_size, true);
     	}
     }
     
@@ -132,19 +152,31 @@ public class DiT_TXTFinalLayer extends Layer {
     	m_linear2.forward(m_active.getOutput());
     	
     	finalNorm.forward(input);
-
+    	
     	/**
     	 * modulate
     	 * x = x * (1 + scale) + shift
     	 */
     	Tensor_OP().add(m_linear2.getOutput(), 1, m_linear2.getOutput());
-    	Tensor_OP().mul(finalNorm.getOutput(), m_linear2.getOutput(), linearInput, batchSize, time, 1, finalNorm.getOutput().width, 1);
-    	Tensor_OP().addAxis(linearInput, m_linear1.getOutput(), linearInput, batchSize, time, 1, finalNorm.getOutput().width, 1);
-
-    	finalLinear.forward(linearInput);
-
+    	Tensor_OP().mul(finalNorm.getOutput(), m_linear2.getOutput(), linearInput, batchSize, time + 1, 1, finalNorm.getOutput().width, 1);
+    	Tensor_OP().addAxis(linearInput, m_linear1.getOutput(), linearInput, batchSize, time + 1, 1, finalNorm.getOutput().width, 1);
+    	
+    	Tensor_OP().getByChannel(linearInput, cls_token, new int[] {batchSize, time + 1, 1, hidden_size}, 0, 1);
+    	Tensor_OP().getByChannel(linearInput, img, new int[] {batchSize, time + 1, 1, hidden_size}, 1, time);
+    	
+    	linear_cls.forward(cls_token);
+    	
+    	finalLinear.forward(img);
     	this.output = finalLinear.getOutput();
 
+    }
+    
+    public Tensor getCLS() {
+    	return linear_cls.getOutput();
+    }
+    
+    public void setDCLS(Tensor dcls) {
+    	this.dcls = dcls;
     }
     
     @Override
@@ -162,11 +194,15 @@ public class DiT_TXTFinalLayer extends Layer {
     public void diff(Tensor dtc) {
         // TODO Auto-generated method stub
     	finalLinear.back(this.delta);
-//    	finalLinear.diff.showDM("l1");
-        Tensor_OP().addAxisBack(dShift, finalLinear.diff, batchSize, time, 1, finalNorm.getOutput().width, 1);
+    	
+    	linear_cls.back(dcls);
+    	
+    	baseKernel.concat_channel_forward(linear_cls.diff, finalLinear.diff, linearInput, batchSize,  1, time, 1, hidden_size);
 
-    	Tensor_OP().mul_right_back(finalNorm.getOutput(), finalLinear.diff, dScale, batchSize, time, 1, finalNorm.getOutput().width, 1);
-    	Tensor_OP().mul_left_back(m_linear2.getOutput(), finalLinear.diff, linearInput,  batchSize, time, 1, finalNorm.getOutput().width, 1);
+        Tensor_OP().addAxisBack(dShift, linearInput, batchSize, time + 1, 1, finalNorm.getOutput().width, 1);
+
+    	Tensor_OP().mul_right_back(finalNorm.getOutput(), linearInput, dScale, batchSize, time + 1, 1, finalNorm.getOutput().width, 1);
+    	Tensor_OP().mul_left_back(m_linear2.getOutput(), linearInput, linearInput,  batchSize, time + 1, 1, finalNorm.getOutput().width, 1);
 
     	finalNorm.back(linearInput);
 
@@ -291,6 +327,7 @@ public class DiT_TXTFinalLayer extends Layer {
     	finalLinear.update();
     	m_linear1.update();
     	m_linear2.update();
+    	linear_cls.update();
     }
 
     @Override
@@ -325,6 +362,7 @@ public class DiT_TXTFinalLayer extends Layer {
     	finalLinear.saveModel(outputStream);
     	m_linear1.saveModel(outputStream);
     	m_linear2.saveModel(outputStream);
+    	linear_cls.saveModel(outputStream);
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
@@ -332,6 +370,7 @@ public class DiT_TXTFinalLayer extends Layer {
     	finalLinear.loadModel(inputStream);
     	m_linear1.loadModel(inputStream);
     	m_linear2.loadModel(inputStream);
+    	linear_cls.loadModel(inputStream);
     }
 
     @Override
@@ -341,9 +380,10 @@ public class DiT_TXTFinalLayer extends Layer {
         finalLinear.accGrad(scale);
         m_linear1.accGrad(scale);
     	m_linear2.accGrad(scale);
+    	linear_cls.accGrad(scale);
     }
     
-    public static void loadWeight(Map<String, Object> weightMap, DiT_TXTFinalLayer block, boolean showLayers) {
+    public static void loadWeight(Map<String, Object> weightMap, DiT_TXTFinal_REGLayer block, boolean showLayers) {
         if (showLayers) {
             for (String key : weightMap.keySet()) {
                 System.out.println(key);
@@ -364,48 +404,48 @@ public class DiT_TXTFinalLayer extends Layer {
     
     public static void main(String[] args) {
     	
-    	String inputPath = "H:\\model\\dit_final.json";
-    	Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
-    	
-        int batchSize = 2;
-        int patch_size = 2;
-        int time = 64;
-        int embedDim = 16;
-        int outChannel = 3;
-        
-        Transformer tf = new Transformer();
-        tf.number = batchSize * time;
-        tf.time = time;
-        
-        float[] data = RandomUtils.order(batchSize * time * embedDim, 0.1f, 0.1f);
-        Tensor input = new Tensor(batchSize * time, 1, 1, embedDim, data, true);
-        
-        float[] cData = RandomUtils.order(batchSize * embedDim, 0.1f, 0.1f); 
-        Tensor cond = new Tensor(batchSize , 1, 1, embedDim, cData, true);
-        
-        int ow = patch_size * patch_size * outChannel;
-        
-        float[] delta_data = RandomUtils.order(batchSize * time * ow, 0.01f, 0.01f);
-        Tensor delta = new Tensor(batchSize * time, 1, 1, ow, delta_data, true);
-        
-        Tensor dcond = new Tensor(batchSize, 1, 1, embedDim, true);
-
-        DiT_TXTFinalLayer finalLayer = new DiT_TXTFinalLayer(patch_size, embedDim, outChannel, time, true, true, tf);
-        
-        loadWeight(datas, finalLayer, true);
-        
-        for (int i = 0; i < 10; i++) {
-            //			input.showDM();
-        	dcond.clearGPU();
-        	finalLayer.forward(input, cond);
-        	finalLayer.getOutput().showShape();
-        	finalLayer.getOutput().showDM();
-        	finalLayer.back(delta, dcond);
-////            //			delta.showDM();
-        	finalLayer.diff.showDM("dx");
-        	dcond.showDM("dcond");
-            //			delta.copyData(tmp);
-        }
+//    	String inputPath = "H:\\model\\dit_final.json";
+//    	Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
+//    	
+//        int batchSize = 2;
+//        int patch_size = 2;
+//        int time = 64;
+//        int embedDim = 16;
+//        int outChannel = 3;
+//        
+//        Transformer tf = new Transformer();
+//        tf.number = batchSize * time;
+//        tf.time = time;
+//        
+//        float[] data = RandomUtils.order(batchSize * time * embedDim, 0.1f, 0.1f);
+//        Tensor input = new Tensor(batchSize * time, 1, 1, embedDim, data, true);
+//        
+//        float[] cData = RandomUtils.order(batchSize * embedDim, 0.1f, 0.1f); 
+//        Tensor cond = new Tensor(batchSize , 1, 1, embedDim, cData, true);
+//        
+//        int ow = patch_size * patch_size * outChannel;
+//        
+//        float[] delta_data = RandomUtils.order(batchSize * time * ow, 0.01f, 0.01f);
+//        Tensor delta = new Tensor(batchSize * time, 1, 1, ow, delta_data, true);
+//        
+//        Tensor dcond = new Tensor(batchSize, 1, 1, embedDim, true);
+//
+//        DiT_TXTFinal_REGLayer finalLayer = new DiT_TXTFinal_REGLayer(patch_size, embedDim, outChannel, time, true, true, tf);
+//        
+//        loadWeight(datas, finalLayer, true);
+//        
+//        for (int i = 0; i < 10; i++) {
+//            //			input.showDM();
+//        	dcond.clearGPU();
+//        	finalLayer.forward(input, cond);
+//        	finalLayer.getOutput().showShape();
+//        	finalLayer.getOutput().showDM();
+//        	finalLayer.back(delta, dcond);
+//////            //			delta.showDM();
+//        	finalLayer.diff.showDM("dx");
+//        	dcond.showDM("dcond");
+//            //			delta.copyData(tmp);
+//        }
     }
 }
 

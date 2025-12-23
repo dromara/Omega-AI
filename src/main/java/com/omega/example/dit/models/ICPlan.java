@@ -242,7 +242,8 @@ public class ICPlan {
 			float dt = t1 - t0;
 			MatrixUtils.val(t.data, t0);
 			t.hostToDevice();
-			f0 = dit.forward_with_cfg(y0, t, context, cos, sin, eps, cfg_scale, 3);
+			f0 = dit.forward_with_cfg(y0, t, context, cos, sin, eps, cfg_scale);
+//			f0 = dit.forward_with_cfg(y0, t, context, cos, sin, eps, cfg_scale, 3);
 //			f0.showDM("f0");
 			dit.tensorOP.mul(f0, dt, f0);
 			
@@ -269,7 +270,7 @@ public class ICPlan {
 			float dt = t1 - t0;
 			MatrixUtils.val(t.data, t0);
 			t.hostToDevice();
-			f0 = dit.forward_with_cfg(y0, t, context, cos, sin, eps, cfg_scale, 3);
+			f0 = dit.forward_with_cfg(y0, t, context, cos, sin, eps, cfg_scale);
 //			f0.showDM("f0");
 			dit.tensorOP.mul(f0, dt, f0);
 			

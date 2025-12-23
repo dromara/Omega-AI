@@ -5,10 +5,8 @@ import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.MatrixUtils;
-import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
-import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.tensor.Tensor;
 
 import jcuda.Pointer;
@@ -45,19 +43,23 @@ public class RoPEKernel extends BaseKernel {
     private CUfunction forward_all_function;
     private CUfunction forward_32_function;
     private CUfunction forward_2d_function;
+    private CUfunction forward_2d_idskeep_function;
     private CUfunction forward_2d_t_function;
     private CUfunction apply_rotary_emb_function;
+    private CUfunction apply_rotary_emb_idskeep_function;
     /**
      * 反向传播方法
      */
     private CUfunction backward_function;
     private CUfunction backward_2d_function;
+    private CUfunction backward_2d_idskeep_function;
     private CUfunction backward_2d_t_function;
     private CUfunction backward_all_function;
     private CUfunction backward_32_function;
     private CUfunction forward_all_32_function;
     private CUfunction backward_all_32_function;
     private CUfunction apply_rotary_emb_back_function;
+    private CUfunction apply_rotary_emb_back_idskeep_function;
     
     private CUfunction forward_2d_igone_function;
     private CUfunction backward_2d_igone_function;
@@ -425,6 +427,12 @@ public class RoPEKernel extends BaseKernel {
             if(backward_2d_function == null) {
             	backward_2d_function = getCudaManager().getLocalFunctionByModule("RoPEKernel.cu", "rope_2d_back");
             }
+            if (forward_2d_idskeep_function == null) {
+            	forward_2d_idskeep_function = getCudaManager().getLocalFunctionByModule("RoPEKernel.cu", "rope_2d_norm_idskeep");
+            }
+            if(backward_2d_idskeep_function == null) {
+            	backward_2d_idskeep_function = getCudaManager().getLocalFunctionByModule("RoPEKernel.cu", "rope_2d_back_idskeep");
+            }
             if (forward_2d_igone_function == null) {
             	forward_2d_igone_function = getCudaManager().getLocalFunctionByModule("RoPEKernel.cu", "rope_2d_norm_igone");
             }
@@ -443,6 +451,12 @@ public class RoPEKernel extends BaseKernel {
             }
             if (apply_rotary_emb_back_function == null) {
             	apply_rotary_emb_back_function = getCudaManager().getLocalFunctionByModule("RoPEKernel.cu", "apply_rotary_emb_back");
+            }
+            if (apply_rotary_emb_idskeep_function == null) {
+            	apply_rotary_emb_idskeep_function = getCudaManager().getLocalFunctionByModule("RoPEKernel.cu", "apply_rotary_emb_idskeep");
+            }
+            if (apply_rotary_emb_back_idskeep_function == null) {
+            	apply_rotary_emb_back_idskeep_function = getCudaManager().getLocalFunctionByModule("RoPEKernel.cu", "apply_rotary_emb_back_idskeep");
             }
         } catch (Exception e) {
             // TODO: handle exception
@@ -593,6 +607,44 @@ public class RoPEKernel extends BaseKernel {
         	backwardParameters = Pointer.to(Pointer.to(delta.getGpuData()), Pointer.to(diff.getGpuData()), Pointer.to(cos.getGpuData()), Pointer.to(sin.getGpuData()), Pointer.to(new int[]{delta.dataLength}), Pointer.to(new int[]{T}), Pointer.to(new int[]{HN}), Pointer.to(new int[]{HS}), Pointer.to(new int[]{igone}));
 
             checkCUDA(cuLaunchKernel(backward_2d_igone_function, this.CAFFE_GET_BLOCKS(delta.dataLength/2), 1, 1,      // Grid dimension
+            		CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    backwardParameters, null // Kernel- and extra parameters
+            ));
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void forward2d(Tensor cos, Tensor sin, Tensor idskeep, Tensor input, Tensor output,int T,int HN,int HS) {
+        try {
+           
+            /**
+             * float* x, float* out,float* cos,float* sin, int N, int T, int headNum,int headSize
+             */
+            forwardParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(cos.getGpuData()), Pointer.to(sin.getGpuData()), Pointer.to(idskeep.getGpuData()), Pointer.to(new int[]{input.dataLength}), Pointer.to(new int[]{T}), Pointer.to(new int[]{HN}), Pointer.to(new int[]{HS}));
+
+            checkCUDA(cuLaunchKernel(forward_2d_idskeep_function, this.CAFFE_GET_BLOCKS(input.dataLength/2), 1, 1,      // Grid dimension
+            		CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    forwardParameters, null // Kernel- and extra parameters
+            ));
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void backward2d(Tensor cos, Tensor sin, Tensor idskeep, Tensor delta, Tensor diff,int T,int HN,int HS) {
+        try {
+           
+            /**
+             * float* delta, float* diff,float* cos, float* sin, int N, int T, int headNum,int headSize
+             */
+        	backwardParameters = Pointer.to(Pointer.to(delta.getGpuData()), Pointer.to(diff.getGpuData()), Pointer.to(cos.getGpuData()), Pointer.to(sin.getGpuData()), Pointer.to(idskeep.getGpuData()), Pointer.to(new int[]{delta.dataLength}), Pointer.to(new int[]{T}), Pointer.to(new int[]{HN}), Pointer.to(new int[]{HS}));
+
+            checkCUDA(cuLaunchKernel(backward_2d_idskeep_function, this.CAFFE_GET_BLOCKS(delta.dataLength/2), 1, 1,      // Grid dimension
             		CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     backwardParameters, null // Kernel- and extra parameters
@@ -793,6 +845,40 @@ public class RoPEKernel extends BaseKernel {
         	 */
         	backwardParameters = Pointer.to(Pointer.to(delta.getGpuData()), Pointer.to(diff.getGpuData()), Pointer.to(pos.getGpuData()), Pointer.to(new int[]{delta.dataLength}), Pointer.to(new int[]{delta.channel}), Pointer.to(new int[]{delta.height}), Pointer.to(new int[]{delta.width}));
             checkCUDA(cuLaunchKernel(apply_rotary_emb_back_function, this.CAFFE_GET_BLOCKS(delta.dataLength/2), 1, 1,      // Grid dimension
+        		CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                0, null,               // Shared memory size and stream
+                backwardParameters, null // Kernel- and extra parameters
+            ));
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void apply_rotary_emb(Tensor input, Tensor pos, Tensor idsKeep, Tensor output) {
+        try {
+        	/**
+        	 * const float *x, float *out, float *pos, int N, int headNum, int T, int headSize
+        	 */
+            forwardParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(pos.getGpuData()), Pointer.to(idsKeep.getGpuData()), Pointer.to(new int[]{input.dataLength}), Pointer.to(new int[]{input.channel}), Pointer.to(new int[]{input.height}), Pointer.to(new int[]{input.width}));
+            checkCUDA(cuLaunchKernel(apply_rotary_emb_idskeep_function, this.CAFFE_GET_BLOCKS(input.dataLength/2), 1, 1,      // Grid dimension
+        		CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                0, null,               // Shared memory size and stream
+                forwardParameters, null // Kernel- and extra parameters
+            ));
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void apply_rotary_emb_back(Tensor delta, Tensor pos, Tensor idsKeep, Tensor diff) {
+        try {
+        	/**
+        	 * const float *delta, float *dx, float *pos, int N, int headNum, int T, int headSize
+        	 */
+        	backwardParameters = Pointer.to(Pointer.to(delta.getGpuData()), Pointer.to(diff.getGpuData()), Pointer.to(pos.getGpuData()), Pointer.to(idsKeep.getGpuData()), Pointer.to(new int[]{delta.dataLength}), Pointer.to(new int[]{delta.channel}), Pointer.to(new int[]{delta.height}), Pointer.to(new int[]{delta.width}));
+            checkCUDA(cuLaunchKernel(apply_rotary_emb_back_idskeep_function, this.CAFFE_GET_BLOCKS(delta.dataLength/2), 1, 1,      // Grid dimension
         		CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                 0, null,               // Shared memory size and stream
                 backwardParameters, null // Kernel- and extra parameters

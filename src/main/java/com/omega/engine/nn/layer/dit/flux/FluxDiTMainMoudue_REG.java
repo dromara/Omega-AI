@@ -1,4 +1,4 @@
-package com.omega.engine.nn.layer.jit;
+package com.omega.engine.nn.layer.dit.flux;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -8,29 +8,30 @@ import java.util.Map;
 
 import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.gpu.BaseKernel;
+import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.dit.DiTCaptionEmbeddingLayer;
 import com.omega.engine.nn.layer.dit.DiTOrgTimeEmbeddingLayer;
-import com.omega.engine.nn.layer.dit.flux.FluxDiTBlock;
-import com.omega.engine.nn.layer.dit.flux.REPAMLPLayer;
-import com.omega.engine.nn.layer.dit.txt.DiT_TXTFinalLayer;
+import com.omega.engine.nn.layer.dit.DiTPatchEmbeddingLayer;
+import com.omega.engine.nn.layer.dit.txt.DiT_TXTFinal_REGLayer;
+import com.omega.engine.nn.layer.normalization.BNType;
+import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 /**
- * JiT_Block
+ * DiT_Block
  * @author Administrator
  */
-public class JiTMainMoudue_REPA extends Layer {
+public class FluxDiTMainMoudue_REG extends Layer {
 	
 	public int inChannel;
     public int width;
     public int height;
     public int patchSize;
-    private int bottleneck_dim;
     private int hiddenSize;
     private int depth;
     private int timeSteps;
@@ -38,28 +39,34 @@ public class JiTMainMoudue_REPA extends Layer {
     private int textEmbedDim;
     private int maxContextLen;
     private int mlpRatio = 4;
-    private boolean learnSigma = true;
-    
-    public BottleneckPatchEmbed patchEmbd;
-    public DiTOrgTimeEmbeddingLayer timeEmbd;
-    public DiTCaptionEmbeddingLayer labelEmbd;
-    public List<FluxDiTBlock> blocks;
-    public DiT_TXTFinalLayer finalLayer;
-    
-    public REPAMLPLayer z_mlp;
-    
-    private int hw;
     
     private int z_idx = 8;
     private int z_dim = 768;
+    private int cls_dim = 768;
     private int projector_dim = 2048;
+    
+    private boolean learnSigma = true;
+    
+    public DiTPatchEmbeddingLayer patchEmbd;
+    public DiTOrgTimeEmbeddingLayer timeEmbd;
+    public DiTCaptionEmbeddingLayer labelEmbd;
+    public List<FluxDiTBlock> blocks;
+    public DiT_TXTFinal_REGLayer finalLayer;
+    
+    public REPAMLPLayer z_mlp;
+    
+    public FullyLayer cls_projectors2;
+    public LNLayer wg_norm;
+    
+    private int hw;
     
     private Tensor posEmbd;
     
-    private Tensor z_img_x;
-    
+    private Tensor cat_x_cls;
     private Tensor cat_x;
     private Tensor img_x;
+    
+    private Tensor z_img_x;
     
     private Tensor dtc;
     private Tensor d_o;
@@ -71,7 +78,7 @@ public class JiTMainMoudue_REPA extends Layer {
     
     private BaseKernel baseKernel;
     
-    public JiTMainMoudue_REPA(int inChannel, int width, int height, int patchSize, int bottleneck_dim, int hiddenSize, int headNum, int depth, int timeSteps, int textEmbedDim, int maxContextLen, int mlpRatio, int z_idx, int z_dim, boolean learnSigma, float y_drop_prob, Network network) {
+    public FluxDiTMainMoudue_REG(int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int textEmbedDim, int maxContextLen, int mlpRatio, int z_idx, int z_dim, int cls_dim, boolean learnSigma, float y_drop_prob, Network network) {
 		this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
@@ -81,7 +88,6 @@ public class JiTMainMoudue_REPA extends Layer {
 		this.width = width;
 		this.height = height;
 		this.patchSize = patchSize;
-		this.bottleneck_dim = bottleneck_dim;
 		this.headNum = headNum;
 		this.hiddenSize = hiddenSize;
 		this.depth = depth;
@@ -93,6 +99,7 @@ public class JiTMainMoudue_REPA extends Layer {
 		this.headNum = headNum;
 		this.z_idx = z_idx;
 		this.z_dim = z_dim;
+		this.cls_dim = cls_dim;
 //		this.bias = bias;
 		this.initLayers();
 		this.oHeight = height;
@@ -101,7 +108,7 @@ public class JiTMainMoudue_REPA extends Layer {
 
     public void initLayers() {
     	
-    	patchEmbd = new BottleneckPatchEmbed(inChannel, width, bottleneck_dim, hiddenSize, patchSize, true, network);
+    	patchEmbd = new DiTPatchEmbeddingLayer(inChannel, width, hiddenSize, patchSize, true, network);
         
     	hw = patchEmbd.oChannel;
     	
@@ -112,7 +119,7 @@ public class JiTMainMoudue_REPA extends Layer {
         blocks = new ArrayList<FluxDiTBlock>();
          
         for(int i = 0;i<depth;i++) {
-        	FluxDiTBlock block = new FluxDiTBlock(hiddenSize, hiddenSize, patchEmbd.oChannel + maxContextLen, mlpRatio * hiddenSize, headNum, maxContextLen, true, true, network);
+        	FluxDiTBlock block = new FluxDiTBlock(hiddenSize, hiddenSize, patchEmbd.oChannel + 1 + maxContextLen, mlpRatio * hiddenSize, headNum, maxContextLen + 1, true, false, network);
 	        blocks.add(block);
         }
         int os = inChannel;
@@ -120,9 +127,12 @@ public class JiTMainMoudue_REPA extends Layer {
         	os = inChannel * 2;
         }
         this.oChannel = os;
-        finalLayer = new DiT_TXTFinalLayer(patchSize, hiddenSize, os, patchEmbd.oChannel, true, true, network);
+        finalLayer = new DiT_TXTFinal_REGLayer(patchSize, hiddenSize, os, patchEmbd.oChannel, cls_dim, true, true, network);
         
         z_mlp = new REPAMLPLayer(hiddenSize, projector_dim, z_dim, true, network);
+        
+        cls_projectors2 = new FullyLayer(cls_dim, hiddenSize, true, network);
+        wg_norm = new LNLayer(1, 1, hiddenSize, true, BNType.fully_bn, network);
         
         if(baseKernel == null) {
         	baseKernel = new BaseKernel(cuda());
@@ -192,9 +202,10 @@ public class JiTMainMoudue_REPA extends Layer {
         // TODO Auto-generated method stub
         this.number = input.number;
         if(this.output == null || this.output.number != number) {
-        	cat_x = Tensor.createGPUTensor(cat_x, number * (patchEmbd.oChannel + maxContextLen), 1, 1, patchEmbd.oWidth, true);
-        	img_x = Tensor.createGPUTensor(img_x, number * patchEmbd.oChannel, 1, 1, patchEmbd.oWidth, true);
-        	z_img_x = Tensor.createGPUTensor(z_img_x, number * patchEmbd.oChannel, 1, 1, patchEmbd.oWidth, true);
+        	cat_x_cls = Tensor.createGPUTensor(cat_x_cls, number * (patchEmbd.oChannel + 1), 1, 1, patchEmbd.oWidth, true);
+        	cat_x = Tensor.createGPUTensor(cat_x, number * (patchEmbd.oChannel + maxContextLen + 1), 1, 1, patchEmbd.oWidth, true);
+        	img_x = Tensor.createGPUTensor(img_x, number * (patchEmbd.oChannel + 1), 1, 1, patchEmbd.oWidth, true);
+        	z_img_x = Tensor.createGPUTensor(z_img_x, number * (patchEmbd.oChannel + 1), 1, 1, patchEmbd.oWidth, true);
         	output = Tensor.createGPUTensor(output, number, oChannel, oHeight, oWidth, true);
         }
         if(posEmbd == null) {
@@ -210,7 +221,7 @@ public class JiTMainMoudue_REPA extends Layer {
         // TODO Auto-generated method stub
     	if(dtc == null || dtc.number != timeEmbd.getOutput().number) {
     		dtc = Tensor.createGPUTensor(dtc, timeEmbd.getOutput().shape(), true);
-    		d_o = Tensor.createGPUTensor(d_o, input.number * (maxContextLen + hw), 1, 1, patchEmbd.getOutput().width, true);
+    		d_o = Tensor.createGPUTensor(d_o, input.number * (maxContextLen + hw + 1), 1, 1, patchEmbd.getOutput().width, true);
     	}else {
     		dtc.clearGPU();
     		d_o.clearGPU();
@@ -229,52 +240,10 @@ public class JiTMainMoudue_REPA extends Layer {
     }
     
     public void output(Tensor tc,Tensor label) {
-    	
-    	patchEmbd.forward(input);
 
-    	Tensor_OP().addAxis(patchEmbd.getOutput(), posEmbd, patchEmbd.getOutput(), posEmbd.channel * posEmbd.width);
-
-    	timeEmbd.forward(tc);
-    	
-    	labelEmbd.forward(label);
-
-    	Tensor x = patchEmbd.getOutput().view(patchEmbd.getOutput().number * patchEmbd.getOutput().channel, 1, 1, patchEmbd.getOutput().width);
-    	
-    	Tensor t = timeEmbd.getOutput();
-    	
-    	Tensor cond = labelEmbd.getOutput();
-    	
-    	baseKernel.concat_channel_forward(cond, x, cat_x, input.number, maxContextLen, hw, 1, patchEmbd.getOutput().width);
-    	
-    	Tensor bx = cat_x;
-
-    	for(int i = 0;i<depth;i++) {
-    		FluxDiTBlock block = blocks.get(i);
-    		block.forward(bx, t);
-    		bx = block.getOutput();
-    	}
-    	
-    	Tensor_OP().getByChannel(bx, img_x, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
-
-    	finalLayer.forward(img_x, t);
-    	
-    	/**
-    	 * unpatchify
-    	 * x: (N, T, patch_size**2 * C)
-         * imgs: (N, C, H, W)
-    	 */
-    	if(xShape == null) {
-    		int h = height/patchSize;
-        	int w = width/patchSize;
-        	xShape = new int[] {number, h, w, patchSize, patchSize, oChannel};
-        	yShape = new int[] {number, oChannel, h, patchSize, w, patchSize};
-    	}
-    	
-    	Tensor_OP().permute(finalLayer.getOutput(), this.output, xShape, yShape, new int[] {0, 5, 1, 3, 2, 4});
-    	
     }
     
-    public void output(Tensor tc,Tensor label,Tensor cos,Tensor sin) {
+    public void output(Tensor tc,Tensor label, Tensor cls_token,Tensor cos,Tensor sin) {
 
     	patchEmbd.forward(input);
 
@@ -285,13 +254,20 @@ public class JiTMainMoudue_REPA extends Layer {
     	labelEmbd.forward(label);
     	
     	Tensor x = patchEmbd.getOutput().view(patchEmbd.getOutput().number * patchEmbd.getOutput().channel, 1, 1, patchEmbd.getOutput().width);
-    	
+
     	Tensor t = timeEmbd.getOutput();
     	
     	Tensor cond = labelEmbd.getOutput();
 
-    	//x = torch.cat([txt, img], dim=1)
-    	baseKernel.concat_channel_forward(cond, x, cat_x, input.number, maxContextLen, hw, 1, patchEmbd.getOutput().width);
+    	/**
+    	 * cls_token
+    	 */
+    	cls_projectors2.forward(cls_token);
+    	wg_norm.forward(cls_projectors2.getOutput());
+    	
+    	baseKernel.concat_channel_forward(wg_norm.getOutput(), x, cat_x_cls, input.number, 1, hw, 1, patchEmbd.getOutput().width);
+    	
+    	baseKernel.concat_channel_forward(cond, cat_x_cls, cat_x, input.number, maxContextLen, hw + 1, 1, patchEmbd.getOutput().width);
     	
     	Tensor bx = cat_x;
 
@@ -299,14 +275,14 @@ public class JiTMainMoudue_REPA extends Layer {
     		FluxDiTBlock block = blocks.get(i);
     		block.forward(bx, t, cos, sin);
     		bx = block.getOutput();
-    		if(network.RUN_MODEL == RunModel.TRAIN && i == z_idx + 1) {
-    			Tensor_OP().getByChannel(bx, z_img_x, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
+    		if(network.RUN_MODEL == RunModel.TRAIN && i == z_idx - 1) {
+    			Tensor_OP().getByChannel(bx, z_img_x, new int[] {input.number, maxContextLen + hw + 1, 1, patchEmbd.getOutput().width}, maxContextLen, hw + 1);
     			z_mlp.forward(z_img_x);
     		}
     	}
 
     	//img_o = x[:, txt.shape[1]:, ...]
-    	Tensor_OP().getByChannel(bx, img_x, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
+    	Tensor_OP().getByChannel(bx, img_x, new int[] {input.number, maxContextLen + hw + 1, 1, patchEmbd.getOutput().width}, maxContextLen, hw + 1);
     	
     	finalLayer.forward(img_x, t);
     	
@@ -324,7 +300,11 @@ public class JiTMainMoudue_REPA extends Layer {
     	Tensor_OP().permute(finalLayer.getOutput(), this.output, xShape, yShape, new int[] {0, 5, 1, 3, 2, 4});
 
     }
-
+    
+    public Tensor getCLS() {
+    	return finalLayer.getCLS();
+    }
+    
     @Override
     public Tensor getOutput() {
         // TODO Auto-generated method stub
@@ -347,9 +327,12 @@ public class JiTMainMoudue_REPA extends Layer {
     	
     	Tensor dy = d_o;
     	
-    	Tensor_OP().getByChannel_back(dy, finalLayer.diff, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
+    	Tensor_OP().getByChannel_back(dy, finalLayer.diff, new int[] {input.number, maxContextLen + hw + 1, 1, patchEmbd.getOutput().width}, maxContextLen, hw + 1);
     	
      	for(int i = depth - 1;i>=0;i--) {
+     		if(i == z_idx - 1) {
+     	    	Tensor_OP().getByChannel_add_back(dy, z_mlp.diff, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
+     		}
      		FluxDiTBlock block = blocks.get(i);
     		block.back(dy, dtc);
     		dy = block.diff;
@@ -357,8 +340,10 @@ public class JiTMainMoudue_REPA extends Layer {
      	
      	baseKernel.concat_channel_backward(dy, labelEmbd.getOutput(), img_x, input.number, maxContextLen, hw, 1, patchEmbd.getOutput().width);
 
+//     	dtxt.showDM("dtxt");
      	labelEmbd.back(labelEmbd.getOutput());
-
+     	
+//     	dtc.showDM("dtc");
      	timeEmbd.back(dtc);
 
      	patchEmbd.back(img_x);
@@ -366,6 +351,7 @@ public class JiTMainMoudue_REPA extends Layer {
     
     public void diff(Tensor cos,Tensor sin) {
         // TODO Auto-generated method stub
+
     	/**
     	 * unpatchify back
     	 */
@@ -380,24 +366,31 @@ public class JiTMainMoudue_REPA extends Layer {
     	Tensor dy = d_o;
     	dy.clearGPU();
 
-    	Tensor_OP().getByChannel_back(dy, finalLayer.diff, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
+    	Tensor_OP().getByChannel_back(dy, finalLayer.diff, new int[] {input.number, maxContextLen + hw + 1, 1, patchEmbd.getOutput().width}, maxContextLen, hw + 1);
 
      	for(int i = depth - 1;i>=0;i--) {
-     		if(i == z_idx+1) {
-     			Tensor_OP().getByChannel_add_back(dy, z_mlp.diff, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
+     		if(i == z_idx - 1) {
+     			Tensor_OP().getByChannel_add_back(dy, z_mlp.diff, new int[] {input.number, maxContextLen + hw + 1, 1, patchEmbd.getOutput().width}, maxContextLen, hw + 1);
      		}
      		FluxDiTBlock block = blocks.get(i);
     		block.back(dy, dtc, cos, sin);
     		dy = block.diff;
     	}
 
-     	baseKernel.concat_channel_backward(dy, labelEmbd.getOutput(), img_x, input.number, maxContextLen, hw, 1, patchEmbd.getOutput().width);
+     	baseKernel.concat_channel_backward(dy, labelEmbd.getOutput(), img_x, input.number, maxContextLen, hw + 1, 1, patchEmbd.getOutput().width);
+
+     	Tensor x = patchEmbd.getOutput().view(patchEmbd.getOutput().number * patchEmbd.getOutput().channel, 1, 1, patchEmbd.getOutput().width);
+    	baseKernel.concat_channel_backward(img_x, wg_norm.getOutput(), x, input.number, 1, hw, 1, patchEmbd.getOutput().width);
+     	
+    	wg_norm.back(wg_norm.getOutput());
+    	cls_projectors2.back(wg_norm.diff);
 
      	labelEmbd.back(labelEmbd.getOutput());
      	
      	timeEmbd.back(dtc);
-
-     	patchEmbd.back(img_x);
+     	
+     	x.viewOrg();
+     	patchEmbd.back(x);
      	
     }
 
@@ -480,7 +473,7 @@ public class JiTMainMoudue_REPA extends Layer {
      * @param tc time cond
      * @param text
      */
-    public void forward(Tensor input,Tensor tc,Tensor text, Tensor cos, Tensor sin) {
+    public void forward(Tensor input,Tensor tc,Tensor text, Tensor cls_token, Tensor cos, Tensor sin) {
         // TODO Auto-generated method stub
         /**
          * 设置输入
@@ -493,7 +486,7 @@ public class JiTMainMoudue_REPA extends Layer {
         /**
          * 计算输出
          */
-        this.output(tc, text, cos, sin);
+        this.output(tc, text, cls_token, cos, sin);
     }
 
     @Override
@@ -520,16 +513,12 @@ public class JiTMainMoudue_REPA extends Layer {
         this.initBack();
         /**
          * 设置梯度
-
          */
         this.setDelta(delta);
         /**
          * 计算梯度
          */
         this.diff(cos, sin);
-//        if (this.network.GRADIENT_CHECK) {
-//            this.gradientCheck();
-//        }
     }
     
     @Override
@@ -546,6 +535,8 @@ public class JiTMainMoudue_REPA extends Layer {
     	}
     	
     	z_mlp.update();
+    	cls_projectors2.update();
+    	wg_norm.update();
     	
     	finalLayer.update();
     }
@@ -587,8 +578,10 @@ public class JiTMainMoudue_REPA extends Layer {
     	for(int i = 0;i<depth;i++) {
     		blocks.get(i).saveModel(outputStream);
     	}
-    	
+
     	z_mlp.saveModel(outputStream);
+    	cls_projectors2.saveModel(outputStream);
+    	wg_norm.saveModel(outputStream);
     	
     	finalLayer.saveModel(outputStream);
     }
@@ -605,6 +598,8 @@ public class JiTMainMoudue_REPA extends Layer {
     	}
     	
     	z_mlp.loadModel(inputStream);
+    	cls_projectors2.loadModel(inputStream);
+    	wg_norm.loadModel(inputStream);
     	
     	finalLayer.loadModel(inputStream);
     }
@@ -623,8 +618,23 @@ public class JiTMainMoudue_REPA extends Layer {
     	}
     	
     	z_mlp.accGrad(scale);
+    	cls_projectors2.accGrad(scale);
+    	wg_norm.accGrad(scale);
     	
     	finalLayer.accGrad(scale);
+    }
+    
+    public static void loadWeight(Map<String, Object> weightMap, FluxDiTMainMoudue_REG block, boolean showLayers) {
+        if (showLayers) {
+            for (String key : weightMap.keySet()) {
+                System.out.println(key);
+            }
+        }
+
+    }
+    
+    public static void main(String[] args) {
+    	
     }
     
     public Tensor getZ() {
@@ -634,117 +644,6 @@ public class JiTMainMoudue_REPA extends Layer {
     public void setZGrad(Tensor delta) {
     	z_mlp.back(delta);
     }
-
-    public static void loadWeight(Map<String, Object> weightMap, JiTMainMoudue_REPA block, boolean showLayers) {
-        if (showLayers) {
-            for (String key : weightMap.keySet()) {
-                System.out.println(key);
-            }
-        }
-     
-//        ModeLoaderlUtils.loadData(block.patchEmbd.patchEmbedding.weight, weightMap, "x_embedder.proj.weight");
-//        ModeLoaderlUtils.loadData(block.patchEmbd.patchEmbedding.bias, weightMap, "x_embedder.proj.bias");
-//        
-//        ModeLoaderlUtils.loadData(block.timeEmbd.linear1.weight, weightMap, "t_embedder.mlp.0.weight");
-//        ModeLoaderlUtils.loadData(block.timeEmbd.linear1.bias, weightMap, "t_embedder.mlp.0.bias");
-//        ModeLoaderlUtils.loadData(block.timeEmbd.linear2.weight, weightMap, "t_embedder.mlp.2.weight");
-//        ModeLoaderlUtils.loadData(block.timeEmbd.linear2.bias, weightMap, "t_embedder.mlp.2.bias");
-//        
-//        ModeLoaderlUtils.loadData(block.labelEmbd.linear1.weight, weightMap, "y_embedder.y_proj.fc1.weight");
-//        ModeLoaderlUtils.loadData(block.labelEmbd.linear1.bias, weightMap, "y_embedder.y_proj.fc1.bias");
-//        ModeLoaderlUtils.loadData(block.labelEmbd.linear2.weight, weightMap, "y_embedder.y_proj.fc2.weight");
-//        ModeLoaderlUtils.loadData(block.labelEmbd.linear2.bias, weightMap, "y_embedder.y_proj.fc2.bias");
-//        
-//        for(int i = 0;i<block.depth;i++) {
-//        	
-//        	DiT_TXTBlock jb = block.blocks.get(i);
-//        	
-////        	jb.norm1.gamma = ModeLoaderlUtils.loadData(jb.norm1.gamma, weightMap, 1, "blocks."+i+".norm1.weight"); 
-////        	jb.norm2.gamma = ModeLoaderlUtils.loadData(jb.norm2.gamma, weightMap, 1, "blocks."+i+".norm2.weight"); 
-////        	jb.norm3.gamma = ModeLoaderlUtils.loadData(jb.norm3.gamma, weightMap, 1, "blocks."+i+".norm3.weight"); 
-//        	
-//        	ModeLoaderlUtils.loadData(jb.attn.qLinerLayer.weight, weightMap, "blocks."+i+".attn.q.weight");
-//            ModeLoaderlUtils.loadData(jb.attn.qLinerLayer.bias, weightMap, "blocks."+i+".attn.q.bias");
-//        	ModeLoaderlUtils.loadData(jb.attn.kLinerLayer.weight, weightMap, "blocks."+i+".attn.k.weight");
-//            ModeLoaderlUtils.loadData(jb.attn.kLinerLayer.bias, weightMap, "blocks."+i+".attn.k.bias");
-//        	ModeLoaderlUtils.loadData(jb.attn.vLinerLayer.weight, weightMap, "blocks."+i+".attn.v.weight");
-//            ModeLoaderlUtils.loadData(jb.attn.vLinerLayer.bias, weightMap, "blocks."+i+".attn.v.bias");
-//        	ModeLoaderlUtils.loadData(jb.attn.oLinerLayer.weight, weightMap, "blocks."+i+".attn.proj.weight");
-//            ModeLoaderlUtils.loadData(jb.attn.oLinerLayer.bias, weightMap, "blocks."+i+".attn.proj.bias");
-//        
-//        	ModeLoaderlUtils.loadData(jb.cross_attn.qLinerLayer.weight, weightMap, "blocks."+i+".cross_attn.q.weight");
-//            ModeLoaderlUtils.loadData(jb.cross_attn.qLinerLayer.bias, weightMap, "blocks."+i+".cross_attn.q.bias");
-//        	ModeLoaderlUtils.loadData(jb.cross_attn.kLinerLayer.weight, weightMap, "blocks."+i+".cross_attn.k.weight");
-//            ModeLoaderlUtils.loadData(jb.cross_attn.kLinerLayer.bias, weightMap, "blocks."+i+".cross_attn.k.bias");
-//        	ModeLoaderlUtils.loadData(jb.cross_attn.vLinerLayer.weight, weightMap, "blocks."+i+".cross_attn.v.weight");
-//            ModeLoaderlUtils.loadData(jb.cross_attn.vLinerLayer.bias, weightMap, "blocks."+i+".cross_attn.v.bias");
-//        	ModeLoaderlUtils.loadData(jb.cross_attn.oLinerLayer.weight, weightMap, "blocks."+i+".cross_attn.proj.weight");
-//            ModeLoaderlUtils.loadData(jb.cross_attn.oLinerLayer.bias, weightMap, "blocks."+i+".cross_attn.proj.bias");
-//            
-//            ModeLoaderlUtils.loadData(jb.mlp.w12.weight, weightMap, "blocks."+i+".mlp.w12.weight");
-//            ModeLoaderlUtils.loadData(jb.mlp.w12.bias, weightMap, "blocks."+i+".mlp.w12.bias");
-//            ModeLoaderlUtils.loadData(jb.mlp.w3.weight, weightMap, "blocks."+i+".mlp.w3.weight");
-//            ModeLoaderlUtils.loadData(jb.mlp.w3.bias, weightMap, "blocks."+i+".mlp.w3.bias");
-//            
-//            ModeLoaderlUtils.loadData(jb.adaLN_modulation.weight, weightMap, "blocks."+i+".adaLN_modulation.1.weight");
-//            ModeLoaderlUtils.loadData(jb.adaLN_modulation.bias, weightMap, "blocks."+i+".adaLN_modulation.1.bias");
-//        }
-//        
-////        block.finalLayer.finalNorm.gamma = ModeLoaderlUtils.loadData(block.finalLayer.finalNorm.gamma, weightMap, 1, "final_layer.norm_final.weight"); 
-//        ModeLoaderlUtils.loadData(block.finalLayer.finalLinear.weight, weightMap, "final_layer.linear.weight");
-//        ModeLoaderlUtils.loadData(block.finalLayer.finalLinear.bias, weightMap, "final_layer.linear.bias");
-//        ModeLoaderlUtils.loadData(block.finalLayer.m_linear1.weight, weightMap, "final_layer.adaLN_modulation_l1.weight");
-//        ModeLoaderlUtils.loadData(block.finalLayer.m_linear1.bias, weightMap, "final_layer.adaLN_modulation_l1.bias");
-//        ModeLoaderlUtils.loadData(block.finalLayer.m_linear2.weight, weightMap, "final_layer.adaLN_modulation_l2.weight");
-//        ModeLoaderlUtils.loadData(block.finalLayer.m_linear2.bias, weightMap, "final_layer.adaLN_modulation_l2.bias");
-        
-    }
     
-    public static void main(String[] args) {
-//    	int N = 2;
-//    	int C = 32;
-//    	int H = 16;
-//    	int W = 16;
-//    	
-//    	int TT = 1;
-//    	int TEM = 768;
-//    	
-//    	int patchSize = 2;
-//    	int hiddenSize = 384;
-//    	int headNum = 6;
-//    	int depth = 6;
-//    	
-//    	CNN nn = new CNN(null);
-//        nn.CUDNN = true;
-//        nn.number = N;
-//    	
-//        JiTMainMoudue jb = new JiTMainMoudue(C, W, H, patchSize, hiddenSize, headNum, depth, 1000, TEM, TT, 4, false, 0.0f, nn);
-//    	
-//        String weight = "D:\\models\\dit_s2.json";
-//        loadWeight(LagJsonReader.readJsonFileBigWeightIterator(weight), jb, true);
-//        
-//	    String inputPath = "D:\\models\\c__temp_dit_x.json";
-//	    Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
-//	    Tensor input = new Tensor(N, C, H, W, true);
-//	    ModeLoaderlUtils.loadData(input, datas, "x");
-//    	
-//	    String cyPath = "D:\\models\\c__temp_dit_cy.json";
-//	    Map<String, Object> cydatas = LagJsonReader.readJsonFileSmallWeight(cyPath);
-//	    Tensor cy = new Tensor(N, 1, 1, TEM, true);
-//	    ModeLoaderlUtils.loadData(cy, cydatas, "cy", 2);
-//	    
-//	    Tensor t = new Tensor(N, 1, 1, 1, new float[] {0.1f, 0.8f}, true);
-//	    int time = (W / patchSize) * (H / patchSize);
-//	    Tensor[] cs = RoPEKernel.getCosAndSin2D(time, hiddenSize, headNum);
-//        Tensor cos = cs[0];
-//        Tensor sin = cs[1];
-//	    
-//	    jb.forward(input, t, cy, cos, sin);
-//	    
-//	    jb.getOutput().showDM();
-//	    
-//	    jb.back(input, cos, sin);
-	    
-    }
 }
 
