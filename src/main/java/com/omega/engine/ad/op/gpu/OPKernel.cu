@@ -1814,9 +1814,43 @@ __global__ void cat_width_kernel2(int N, float *a, float *b, float *y, int AW, i
 }
 
 extern "C"
+__global__ void cat_width_back_kernel2(int N, float *da, float *db, float *dy, int AW, int BW) {
+
+    int tid = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+
+    if (tid < N) {
+		int W = AW + BW;
+        for (int i = 0; i < W; i++) {
+			if(i < AW){
+				da[tid * AW + i] = dy[tid * W + i];
+			}else{
+				db[tid * BW + i - AW] = dy[tid * W + i];
+			}
+        }
+    }
+
+}
+
+extern "C"
 __global__ void update_ema(int N,float *ema, float *model,float decay)
 {
     int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
     if (i >= N) return;
 	ema[i] = ema[i] * decay + model[i] * (1 - decay);
+}
+
+
+extern "C"
+__global__ void roll_dim0_kernel(int N, float *x, float *out, int shifts, int B, int len)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if(i < N){
+		int b = i / len;
+		int w = i % len;
+		int ob = b - shifts;
+		if(ob < 0){
+			ob = B + ob;
+		}
+		out[i] = x[ob * len + w];
+	}
 }

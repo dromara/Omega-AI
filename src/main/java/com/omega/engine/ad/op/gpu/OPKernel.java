@@ -111,7 +111,9 @@ public class OPKernel extends BaseKernel implements Serializable {
     private CUfunction cat_width_function;
     private CUfunction cat_width_back_function;
     private CUfunction cat_width_function2;
+    private CUfunction cat_width_back_function2;
     private CUfunction update_ema_function;
+    private CUfunction roll_dim0_function;
     
     public OPKernel(CUDAManager cudaManager) {
         super(cudaManager);
@@ -202,7 +204,9 @@ public class OPKernel extends BaseKernel implements Serializable {
         cat_width_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "cat_width_kernel");
         cat_width_back_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "cat_width_back_kernel");
         cat_width_function2 = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "cat_width_kernel2");
+        cat_width_back_function2 = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "cat_width_back_kernel2");
         update_ema_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "update_ema");
+        roll_dim0_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "roll_dim0_kernel");
     }
 
     public void fill_gpu(Tensor x, float val) {
@@ -2145,12 +2149,32 @@ public class OPKernel extends BaseKernel implements Serializable {
         }
     }
     
+    public void cat_width_back_gpu(Tensor a, Tensor b, Tensor c, int aw, int bw) {
+        // TODO Auto-generated method stub
+        try {
+        	/**
+             * int N, float *a, float *b, float *y, int W
+             */
+            Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{a.number * a.channel * a.height}), Pointer.to(a.getGpuData()), Pointer.to(b.getGpuData()), Pointer.to(c.getGpuData()), Pointer.to(new int[]{a.width}), Pointer.to(new int[]{b.width}));
+            checkCUDA(cuLaunchKernel(cat_width_back_function2, CAFFE_GET_BLOCKS(a.number * a.channel * a.height), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameter, null // Kernel- and extra parameters
+            ));
+        	
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
     public void cat_width_back_gpu(Tensor dc, Tensor da, Tensor db) {
         // TODO Auto-generated method stub
         try {
         	/**
              * int N, float *da, float *db, float *dy, int W
              */
+        	System.err.println(da.number * da.channel * da.height);
             Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{da.number * da.channel * da.height}), Pointer.to(da.getGpuData()), Pointer.to(db.getGpuData()), Pointer.to(dc.getGpuData()), Pointer.to(new int[]{da.width}));
             checkCUDA(cuLaunchKernel(cat_width_back_function, CAFFE_GET_BLOCKS(da.number * da.channel * da.height), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
@@ -2226,6 +2250,23 @@ public class OPKernel extends BaseKernel implements Serializable {
              */
             Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{x.getDataLength()}), Pointer.to(x.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(new float[]{decay}));
             checkCUDA(cuLaunchKernel(update_ema_function, CAFFE_GET_BLOCKS(x.getDataLength()), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameter, null // Kernel- and extra parameters
+            ));
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void roll_dims0(Tensor x, Tensor out, int shifts) {
+        try {
+            /**
+             * int N, float *x, float *out, int shifts, int B, int len
+             */
+            Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{x.getDataLength()}), Pointer.to(x.getGpuData()), Pointer.to(out.getGpuData()), Pointer.to(new int[]{shifts}), Pointer.to(new int[]{x.number}), Pointer.to(new int[]{x.getOnceSize()}));
+            checkCUDA(cuLaunchKernel(roll_dim0_function, CAFFE_GET_BLOCKS(x.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameter, null // Kernel- and extra parameters

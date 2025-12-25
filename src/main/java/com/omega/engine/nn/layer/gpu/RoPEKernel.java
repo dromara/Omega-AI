@@ -617,13 +617,13 @@ public class RoPEKernel extends BaseKernel {
         }
     }
     
-    public void forward2d(Tensor cos, Tensor sin, Tensor idskeep, Tensor input, Tensor output,int T,int HN,int HS) {
+    public void forward2d(Tensor cos, Tensor sin, Tensor idskeep, Tensor input, Tensor output, int T, int HN, int HS) {
         try {
-           
+//        	idskeep.showDM("idskeep");
             /**
-             * float* x, float* out,float* cos,float* sin, int N, int T, int headNum,int headSize
+             * float* x, float* out, float *idskeep, float* cos, float* sin, int N, int T, int headNum,int headSize
              */
-            forwardParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(cos.getGpuData()), Pointer.to(sin.getGpuData()), Pointer.to(idskeep.getGpuData()), Pointer.to(new int[]{input.dataLength}), Pointer.to(new int[]{T}), Pointer.to(new int[]{HN}), Pointer.to(new int[]{HS}));
+            forwardParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(idskeep.getGpuData()), Pointer.to(cos.getGpuData()), Pointer.to(sin.getGpuData()), Pointer.to(new int[]{input.dataLength}), Pointer.to(new int[]{T}), Pointer.to(new int[]{HN}), Pointer.to(new int[]{HS}));
 
             checkCUDA(cuLaunchKernel(forward_2d_idskeep_function, this.CAFFE_GET_BLOCKS(input.dataLength/2), 1, 1,      // Grid dimension
             		CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
@@ -640,9 +640,9 @@ public class RoPEKernel extends BaseKernel {
         try {
            
             /**
-             * float* delta, float* diff,float* cos, float* sin, int N, int T, int headNum,int headSize
+             * float* delta, float* diff, float *idskeep,float* cos, float* sin, int N, int T, int headNum,int headSize
              */
-        	backwardParameters = Pointer.to(Pointer.to(delta.getGpuData()), Pointer.to(diff.getGpuData()), Pointer.to(cos.getGpuData()), Pointer.to(sin.getGpuData()), Pointer.to(idskeep.getGpuData()), Pointer.to(new int[]{delta.dataLength}), Pointer.to(new int[]{T}), Pointer.to(new int[]{HN}), Pointer.to(new int[]{HS}));
+        	backwardParameters = Pointer.to(Pointer.to(delta.getGpuData()), Pointer.to(diff.getGpuData()), Pointer.to(idskeep.getGpuData()), Pointer.to(cos.getGpuData()), Pointer.to(sin.getGpuData()), Pointer.to(new int[]{delta.dataLength}), Pointer.to(new int[]{T}), Pointer.to(new int[]{HN}), Pointer.to(new int[]{HS}));
 
             checkCUDA(cuLaunchKernel(backward_2d_idskeep_function, this.CAFFE_GET_BLOCKS(delta.dataLength/2), 1, 1,      // Grid dimension
             		CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension

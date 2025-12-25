@@ -93,7 +93,8 @@ __global__ void rope_2d_norm_idskeep(float* x, float* out, float *idskeep, float
     int hs = once % headSize;
     float cv = x[index];
 	float cn = x[index+1];
-	int t_idx = idskeep[n * T + t];
+	int b = n / headNum;
+	int t_idx = (int) idskeep[b * T + t];
     out[index] = cos[t_idx * headSize + hs] * cv - sin[t_idx * headSize + hs] * cn;
     out[index+1] = cos[t_idx * headSize + hs + 1] * cn + sin[t_idx * headSize + hs + 1] * cv;
 }
@@ -110,7 +111,8 @@ __global__ void rope_2d_back_idskeep(float* delta, float* diff, float *idskeep,f
     int hs = once % headSize;
     const float d0 = delta[index + 0];
     const float d1 = delta[index + 1];
-    int t_idx = idskeep[n * T + t];
+	int b = n / headNum;
+	int t_idx = (int) idskeep[b * T + t];
     diff[index] = cos[t_idx * headSize + hs] * d0 + sin[t_idx * headSize + hs + 1] * d1;
     diff[index+1] = cos[t_idx * headSize + hs + 1] * d1 - sin[t_idx * headSize + hs] * d0;
 }

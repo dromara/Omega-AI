@@ -321,7 +321,6 @@ public class DiTMainMoudue_REPA extends Layer {
 		 * decoders
 		 */
 		Tensor d_x = fusion.getOutput();
-		d_x.showDM("d_x");
     	for(int i = 0;i<num_h;i++) {
     		DiTBlock block = decoders.get(i);
     		block.forward(d_x, t, cond, cos, sin);
@@ -342,7 +341,7 @@ public class DiTMainMoudue_REPA extends Layer {
         	yShape = new int[] {number, oChannel, h, patchSize, w, patchSize};
     	}
     	Tensor_OP().permute(finalLayer.getOutput(), this.output, xShape, yShape, new int[] {0, 5, 1, 3, 2, 4});
-    	output.showDM("output");
+//    	output.showDM("output");
     }
 
     @Override
@@ -369,12 +368,13 @@ public class DiTMainMoudue_REPA extends Layer {
     	 * decoder backward
     	 */
     	Tensor dy = finalLayer.diff;
+//    	dy.showDMByOffsetRed(0, 100, "dy1");
     	for(int i = num_h - 1;i>=0;i--) {
     		DiTBlock block = decoders.get(i);
     		block.back(dy, dtc, dcontext, cos, sin);
     		dy = block.diff;
     	}
-
+//    	dy.showDMByOffsetRed(0, 100, "dy2");
     	/**
 		 * pad_mask backward
 		 */
@@ -388,7 +388,7 @@ public class DiTMainMoudue_REPA extends Layer {
 		 * mids backward
 		 */
 		Tensor dh = fusion.diff;
-		dh.showDMByOffsetRed(0, 100, "dh");
+//		dh.showDMByOffsetRed(0, 100, "dh1");
 		for(int i = num_g - 1;i>=0;i--) {
     		DiTBlock block = mids.get(i);
     		if(idsKeep != null) {
@@ -398,13 +398,14 @@ public class DiTMainMoudue_REPA extends Layer {
     		}
     		dh = block.diff;
     	}
-		
+//		dh.showDMByOffsetRed(0, 100, "dh2");
 		/**
 		 * sprint backward
 		 */
 		Tensor de = dh;
 		if(idsKeep != null) {
 			Tensor dx = encoders.get(num_f - 1).getOutput();
+			dx.clearGPU();
 			tokenDropKernel.imgTokenDropBack(dx, idsKeep, dh, token_t, hw, hiddenSize);
 			de = dx;
 		}
@@ -413,8 +414,8 @@ public class DiTMainMoudue_REPA extends Layer {
 		 * repa backward
 		 */
 		Tensor_OP().add(z_mlp.diff, de, de);
-    	Tensor_OP().add(dencoder, de, dencoder);
-		
+    	Tensor_OP().add(dencoder, de, de);
+//    	de.showDM("de");
 		/**
 		 * encoder backward
 		 */
@@ -428,7 +429,7 @@ public class DiTMainMoudue_REPA extends Layer {
      	
      	timeEmbd.back(dtc);
 
-     	patchEmbd.back(dencoder);
+     	patchEmbd.back(de);
      	
     }
 

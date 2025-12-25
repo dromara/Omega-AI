@@ -59,6 +59,7 @@ public class MMDiTAttention extends Layer {
     private SoftmaxCudnnKernel softmaxKernel;
     private RoPEKernel ropeKernel;
     
+    private Tensor kyt;
     private Tensor y_tmp;
     
     private Tensor k_tmp;
@@ -158,7 +159,7 @@ public class MMDiTAttention extends Layer {
         	this.vLinerLayer.bias.clearGPU();
         }
 
-        this.setoLinerLayer(new FullyLayer(embedDim, embedDim, bias, this.network));
+        this.setoLinerLayer(new FullyLayer(embedDim, embedDim, true, this.network));
         RandomUtils.xavier_uniform(this.oLinerLayer.weight, 1, embedDim, embedDim);
         if(this.oLinerLayer.bias != null) {
         	this.oLinerLayer.bias.clearGPU();
@@ -213,10 +214,11 @@ public class MMDiTAttention extends Layer {
             this.kt = Tensor.createGPUTensor(this.kt, batchSize, headNum, time, dk, true);
             this.vt = Tensor.createGPUTensor(this.vt, batchSize, headNum, time, dk, true);
             
+            this.kyt = Tensor.createGPUTensor(this.kyt, batchSize, headNum, txtTime, dk, true);
             this.y_tmp = CUDAMemoryManager.getCache("dit_block_attn_y_tmp", batchSize, headNum, txtTime, dk);
             
-            this.k_tmp = CUDAMemoryManager.getCache("dit_block_attn_k_tmp", batchSize, headNum, txtTime + time, dk);
-            this.v_tmp = CUDAMemoryManager.getCache("dit_block_attn_v_tmp", batchSize, headNum, txtTime + time, dk);
+            this.k_tmp = Tensor.createGPUTensor(this.k_tmp, batchSize, headNum, txtTime + time, dk, true);
+            this.v_tmp =Tensor.createGPUTensor(this.v_tmp, batchSize, headNum, txtTime + time, dk, true);
             
             // [batch_size，n_heads，len_q，len_k]
             if ((time + txtTime) < dk) {
@@ -235,6 +237,66 @@ public class MMDiTAttention extends Layer {
             this.getkLinerLayer().getOutput().viewOrg();
             this.getvLinerLayer().getOutput().viewOrg();
             this.getoLinerLayer().getOutput().viewOrg();
+            this.kyLinerLayer.getOutput().viewOrg();
+            this.vyLinerLayer.getOutput().viewOrg();
+            qt.viewOrg();
+            kt.viewOrg();
+            vt.viewOrg();
+        }
+        if(qkNorm && this.qNorm.getOutput() != null) {
+        	this.qNorm.getOutput().viewOrg();
+        	this.kNorm.getOutput().viewOrg();
+        	this.kyNorm.getOutput().viewOrg();
+        }
+    }
+    
+    public void init(Tensor input, Tensor idskeep) {
+        // TODO Auto-generated method stub
+        this.number = input.number;
+        this.batchSize = this.number/time;
+        if (this.qt != null) {
+            this.output.viewOrg();
+            this.qt.viewOrg();
+            this.kt.viewOrg();
+            this.vt.viewOrg();
+            this.oi.viewOrg();
+            this.rq.viewOrg();
+            this.rk.viewOrg();
+            temp.clearGPU();
+        }
+        if (this.qt == null || this.qt.number != this.batchSize || this.qt.height != this.time) {
+            // [batch_size，time，head_num，d_k]
+        	this.rq = Tensor.createGPUTensor(this.rq, batchSize, headNum, time, dk, true);
+            this.rk = Tensor.createGPUTensor(this.rk, batchSize, headNum, time, dk, true);
+            this.qt = Tensor.createGPUTensor(this.qt, batchSize, headNum, time, dk, true);
+            this.kt = Tensor.createGPUTensor(this.kt, batchSize, headNum, time, dk, true);
+            this.vt = Tensor.createGPUTensor(this.vt, batchSize, headNum, time, dk, true);
+            
+            this.kyt = Tensor.createGPUTensor(this.kyt, batchSize, headNum, txtTime, dk, true);
+            this.y_tmp = CUDAMemoryManager.getCache("dit_block_attn_y_tmp_ids", batchSize, headNum, txtTime, dk);
+            
+            this.k_tmp = Tensor.createGPUTensor(this.k_tmp, batchSize, headNum, txtTime + time, dk, true);
+            this.v_tmp =Tensor.createGPUTensor(this.v_tmp, batchSize, headNum, txtTime + time, dk, true);
+            
+            // [batch_size，n_heads，len_q，len_k]
+            if ((time + txtTime) < dk) {
+                this.temp = Tensor.createGPUTensor(this.temp, batchSize, headNum, time, dk, true);
+            } else {
+                this.temp = Tensor.createGPUTensor(this.temp, batchSize, headNum, time, (time + txtTime), true);
+            }
+            // [batch_size，n_heads，len_q，len_k]
+            this.attn = Tensor.createGPUTensor(this.attn, batchSize, headNum, time, (time + txtTime), true);
+            // [batch_size, len_q, n_heads * dim_v]
+            this.oi = Tensor.createGPUTensor(this.oi, batchSize * time, 1, 1, embedDim, true);
+//            this.output = Tensor.createGPUTensor(this.output, input.number, input.channel, input.height, input.width, true);
+        }
+        if (this.getqLinerLayer().getOutput() != null) {
+            this.getqLinerLayer().getOutput().viewOrg();
+            this.getkLinerLayer().getOutput().viewOrg();
+            this.getvLinerLayer().getOutput().viewOrg();
+            this.getoLinerLayer().getOutput().viewOrg();
+            this.kyLinerLayer.getOutput().viewOrg();
+            this.vyLinerLayer.getOutput().viewOrg();
             qt.viewOrg();
             kt.viewOrg();
             vt.viewOrg();
@@ -296,6 +358,23 @@ public class MMDiTAttention extends Layer {
         	this.dattn.viewOrg(batchSize, headNum, time, (time + txtTime));
         }
     }
+    
+    public void initBack(Tensor idskeep) {
+        // TODO Auto-generated method stub
+        if (this.dattn == null) {
+        	this.dqt = CUDAMemoryManager.getCache("cache_dqt_k", batchSize, headNum, time, dk);
+        	this.dkt = CUDAMemoryManager.getCache("cache_dkt_k", batchSize, headNum, (time + txtTime), dk);
+        	this.dvt = CUDAMemoryManager.getCache("cache_dvt_k", batchSize, headNum, (time + txtTime), dk);
+        	this.dattn = CUDAMemoryManager.getCache("cache_dattn_k", batchSize, headNum, time, (time + txtTime));
+        	this.diff_ky = CUDAMemoryManager.getCache("diff_ky_k", batchSize * txtTime, 1, 1, embedDim);
+        	this.diff_vy = CUDAMemoryManager.getCache("diff_vy_k", batchSize * txtTime, 1, 1, embedDim);
+        } else {
+        	this.dqt.viewOrg(batchSize, headNum, time, dk);
+        	this.dkt.viewOrg(batchSize, headNum, (time + txtTime), dk);
+        	this.dvt.viewOrg(batchSize, headNum, (time + txtTime), dk);
+        	this.dattn.viewOrg(batchSize, headNum, time, (time + txtTime));
+        }
+    }
 
     @Override
     public void initParam() {
@@ -342,17 +421,16 @@ public class MMDiTAttention extends Layer {
          * apply RoPE
          * qt = [B, HN, T, HS]
          */
-//        q.showDM("q");
         ropeKernel.forward2d(cos, sin, q, rq, time, headNum, dk);
         ropeKernel.forward2d(cos, sin, k, rk, time, headNum, dk);
         
-        Tensor_OP().permute(ky, y_tmp, p_0213);
-        Tensor kyt = y_tmp;
+        Tensor_OP().permute(ky, kyt, p_0213);
+        Tensor ky_in = kyt;
         if(qkNorm) {
-        	kyNorm.forward(kyt);
-        	kyt = kyNorm.getOutput();
+        	kyNorm.forward(ky_in);
+        	ky_in = kyNorm.getOutput();
         }
-        attentionKernel.concat_height_forward(rk, kyt, k_tmp, batchSize, headNum, time, txtTime, dk);
+        attentionKernel.concat_height_forward(rk, ky_in, k_tmp, batchSize, headNum, time, txtTime, dk);
         
         Tensor_OP().permute(vy, y_tmp, p_0213);
         Tensor vyt = y_tmp;
@@ -403,17 +481,16 @@ public class MMDiTAttention extends Layer {
          * apply RoPE
          * qt = [B, HN, T, HS]
          */
-//        q.showDM("q");
         ropeKernel.forward2d(cos, sin, idskeep, q, rq, time, headNum, dk);
         ropeKernel.forward2d(cos, sin, idskeep, k, rk, time, headNum, dk);
-        
-        Tensor_OP().permute(ky, y_tmp, p_0213);
-        Tensor kyt = y_tmp;
+
+        Tensor_OP().permute(ky, kyt, p_0213);
+        Tensor ky_in = kyt;
         if(qkNorm) {
-        	kyNorm.forward(kyt);
-        	kyt = kyNorm.getOutput();
+        	kyNorm.forward(ky_in);
+        	ky_in = kyNorm.getOutput();
         }
-        attentionKernel.concat_height_forward(rk, kyt, k_tmp, batchSize, headNum, time, txtTime, dk);
+        attentionKernel.concat_height_forward(rk, ky_in, k_tmp, batchSize, headNum, time, txtTime, dk);
         
         Tensor_OP().permute(vy, y_tmp, p_0213);
         Tensor vyt = y_tmp;
@@ -430,7 +507,7 @@ public class MMDiTAttention extends Layer {
 
     }
     
-    public void output_eval(Tensor context, Tensor pos) {
+    public void output_eval(Tensor context, Tensor cos, Tensor sin) {
         // TODO Auto-generated method stub
     	this.getqLinerLayer().forward(input);
         this.getkLinerLayer().forward(input);
@@ -439,12 +516,16 @@ public class MMDiTAttention extends Layer {
         this.kyLinerLayer.forward(context);
         this.vyLinerLayer.forward(context);
         
+        context.showDM("context");
+        
         Tensor qx = this.getqLinerLayer().getOutput().view(batchSize, time, headNum, dk);
         Tensor kx = this.getkLinerLayer().getOutput().view(batchSize, time, headNum, dk);
         Tensor vx = this.getvLinerLayer().getOutput().view(batchSize, time, headNum, dk);
 
         Tensor ky = kyLinerLayer.getOutput().view(batchSize, txtTime, headNum, dk);
         Tensor vy = vyLinerLayer.getOutput().view(batchSize, txtTime, headNum, dk);
+        
+        ky.showDM("ky");
         
         Tensor_OP().permute(qx, qt, p_0213);
         Tensor_OP().permute(kx, kt, p_0213);
@@ -463,9 +544,8 @@ public class MMDiTAttention extends Layer {
          * apply RoPE
          * qt = [B, HN, T, HS]
          */
-//        q.showDM("q");
-        ropeKernel.apply_rotary_emb(q, pos, rq);
-        ropeKernel.apply_rotary_emb(k, pos, rk);
+        ropeKernel.forward2d(cos, sin, q, rq, time, headNum, dk);
+        ropeKernel.forward2d(cos, sin, k, rk, time, headNum, dk);
         
         Tensor_OP().permute(ky, y_tmp, p_0213);
         Tensor kyt = y_tmp;
@@ -565,11 +645,10 @@ public class MMDiTAttention extends Layer {
          
          Tensor dvy = vyLinerLayer.getOutput().view(batchSize, txtTime, headNum, dk);
          Tensor_OP().permute(y_tmp, dvy, p_0213);
-         
-         attentionKernel.concat_height_backward(dkt, kt, y_tmp, batchSize, headNum, time, txtTime, dk);
 
          Tensor dkyt = y_tmp;
-         
+         attentionKernel.concat_height_backward(dkt, kt, dkyt, batchSize, headNum, time, txtTime, dk);
+
          if(qkNorm) {
         	 kyNorm.back(dkyt);
         	 dkyt = kyNorm.diff;
@@ -587,10 +666,10 @@ public class MMDiTAttention extends Layer {
          Tensor dqt_d = rq;
          Tensor dkt_d = rk;
          
-         Tensor_OP().permute(this.getkLinerLayer().getOutput(), kt, p_0213);
-         
          if(qkNorm) {
           	qNorm.back(dqt_d);
+            Tensor_OP().permute(this.getkLinerLayer().getOutput(), kt, p_0213);
+            kNorm.setInput(kt);
           	kNorm.back(dkt_d);
           	dqt_d = qNorm.diff;
           	dkt_d = kNorm.diff;
@@ -598,7 +677,6 @@ public class MMDiTAttention extends Layer {
 
          qt.view(batchSize, time, headNum, dk);
          kt.view(batchSize, time, headNum, dk);
-//         vt.view(batchSize, time, headNum, dk);
          
       	 Tensor_OP().permute(dqt_d, qt, p_0213);
          Tensor_OP().permute(dkt_d, kt, p_0213);
@@ -664,10 +742,10 @@ public class MMDiTAttention extends Layer {
         Tensor dqt_d = rq;
         Tensor dkt_d = rk;
         
-        Tensor_OP().permute(this.getkLinerLayer().getOutput(), kt, p_0213);
-        
         if(qkNorm) {
          	qNorm.back(dqt_d);
+            Tensor_OP().permute(this.getkLinerLayer().getOutput(), kt, p_0213);
+            kNorm.setInput(kt);
          	kNorm.back(dkt_d);
          	dqt_d = qNorm.diff;
          	dkt_d = kNorm.diff;
@@ -676,7 +754,7 @@ public class MMDiTAttention extends Layer {
         qt.view(batchSize, time, headNum, dk);
         kt.view(batchSize, time, headNum, dk);
 
-     	 Tensor_OP().permute(dqt_d, qt, p_0213);
+     	Tensor_OP().permute(dqt_d, qt, p_0213);
         Tensor_OP().permute(dkt_d, kt, p_0213);
 
         Tensor queryDelta = qt.view(this.getqLinerLayer().getOutput().getOrgShape());
@@ -753,7 +831,7 @@ public class MMDiTAttention extends Layer {
             /**
              * 计算输出
              */
-//            this.output_eval(pos);
+            this.output_eval(context, cos, sin);
     	}else {
     		/**
              * 参数初始化
@@ -784,12 +862,12 @@ public class MMDiTAttention extends Layer {
             /**
              * 计算输出
              */
-//            this.output_eval(pos);
+            this.output_eval(context, cos, sin);
     	}else {
     		/**
              * 参数初始化
              */
-            this.init(input);
+            this.init(input, idskeep);
             /**
              * 设置输入
              */
@@ -838,7 +916,7 @@ public class MMDiTAttention extends Layer {
     
     public void back(Tensor delta, Tensor dcontext, Tensor cos, Tensor sin, Tensor idskeep) {
         // TODO Auto-generated method stub
-        this.initBack();
+        this.initBack(idskeep);
         /**
          * 设置梯度
          */
@@ -1000,7 +1078,7 @@ public class MMDiTAttention extends Layer {
         ModeLoaderlUtils.loadData(block.vyLinerLayer.bias, weightMap, "v_y.bias");
         
         block.qNorm.gamma = ModeLoaderlUtils.loadData(block.qNorm.gamma, weightMap, 1, "q_norm.weight"); 
-        block.kNorm.beta = ModeLoaderlUtils.loadData(block.kNorm.beta, weightMap, 1, "k_norm.weight");
+        block.kNorm.gamma = ModeLoaderlUtils.loadData(block.kNorm.gamma, weightMap, 1, "k_norm.weight");
         block.kyNorm.gamma = ModeLoaderlUtils.loadData(block.kyNorm.gamma, weightMap, 1, "ky_norm.weight"); 
 
     }

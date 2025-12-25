@@ -55,6 +55,9 @@ public class Dinov2 extends Network {
     private Tensor cls_loss;
     private Tensor cls_delta;
     
+    private Tensor cfm_loss;
+    private Tensor cfm_delta;
+    
     public Dinov2(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int mlpRatio) {
         this.lossFunction = LossFactory.create(lossType, this);
         this.updater = updater;
@@ -351,6 +354,28 @@ public class Dinov2 extends Network {
 		}
 		mse_kernel.backward(p, t, cls_delta);
 		return cls_delta;
+	}
+	
+	public Tensor cfm_loss(Tensor p, Tensor t) {
+		if(mse_kernel == null) {
+			mse_kernel = new MSELossKernel(cudaManager);
+		}
+		if(cfm_loss == null || cfm_loss.number != p.number) {
+			cfm_loss = Tensor.createGPUTensor(cfm_loss, p.shape(), true);
+		}
+		mse_kernel.forward(p, t, cfm_loss);
+		return cfm_loss;
+	}
+	
+	public Tensor cfm_loss_back(Tensor p, Tensor t) {
+		if(mse_kernel == null) {
+			mse_kernel = new MSELossKernel(cudaManager);
+		}
+		if(cfm_delta == null || cfm_delta.number != p.number) {
+			cfm_delta = Tensor.createGPUTensor(cfm_delta, p.shape(), true);
+		}
+		mse_kernel.backward(p, t, cfm_delta);
+		return cfm_delta;
 	}
 	
 }

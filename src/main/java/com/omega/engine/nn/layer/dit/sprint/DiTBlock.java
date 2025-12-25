@@ -93,7 +93,7 @@ public class DiTBlock extends Layer {
         	adaLN_modulation.bias.clearGPU();
         }
 
-        this.attn = new MMDiTAttention(embedDim, headNum, time, maxContext, bias, qkNorm, network);
+        this.attn = new MMDiTAttention(embedDim, headNum, time, maxContext, false, qkNorm, network);
         this.norm3 = new RMSLayer(1, 1, embedDim, true, BNType.fully_bn, network);
         
         int swiNum = (int)(2.0f/3.0f * mlpHiddenDim);
@@ -227,7 +227,7 @@ public class DiTBlock extends Layer {
     	Tensor_OP().add(crossAttnInput, output, output);
     }
     
-    public void output(Tensor tc, Tensor context,Tensor cos,Tensor sin) {
+    public void output(Tensor tc, Tensor context, Tensor cos, Tensor sin) {
 
     	/**
     	 * shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = self.adaLN_modulation(c).chunk(6, dim=1)
@@ -423,7 +423,7 @@ public class DiTBlock extends Layer {
 
     }
 
-    public void diff(Tensor dtc, Tensor dcontext,Tensor cos,Tensor sin, Tensor idskeep) {
+    public void diff(Tensor dtc, Tensor dcontext, Tensor cos, Tensor sin, Tensor idskeep) {
 //    	delta.showDM("x3");
     	/**
     	 * x3 = x2 + gate_mlp.unsqueeze(1) * self.mlp(modulate(self.norm3(x2), shift_mlp, scale_mlp))

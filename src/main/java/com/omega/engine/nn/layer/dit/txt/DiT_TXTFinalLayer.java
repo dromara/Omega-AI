@@ -72,21 +72,21 @@ public class DiT_TXTFinalLayer extends Layer {
     public void initLayers() {
     	this.finalNorm = new RMSLayer(1, 1, hidden_size, normParams, BNType.fully_bn, network);
         this.finalLinear = new FullyLayer(hidden_size, oWidth, bias, network);
-//        this.finalLinear.weight.clearGPU();
-//        if(this.finalLinear.bias != null) {
-//        	this.finalLinear.bias.clearGPU();
-//        }
+        this.finalLinear.weight.clearGPU();
+        if(this.finalLinear.bias != null) {
+        	this.finalLinear.bias.clearGPU();
+        }
         this.m_active = new SiLULayer(network);
         this.m_linear1 = new FullyLayer(hidden_size, hidden_size, bias, network);
         this.m_linear2 = new FullyLayer(hidden_size, hidden_size, bias, network);
-//        this.m_linear1.weight.clearGPU();
-//        if(this.m_linear1.bias != null) {
-//        	this.m_linear1.bias.clearGPU();
-//        }
-//        this.m_linear2.weight.clearGPU();
-//        if(this.m_linear2.bias != null) {
-//        	this.m_linear2.bias.clearGPU();
-//        }
+        this.m_linear1.weight.clearGPU();
+        if(this.m_linear1.bias != null) {
+        	this.m_linear1.bias.clearGPU();
+        }
+        this.m_linear2.weight.clearGPU();
+        if(this.m_linear2.bias != null) {
+        	this.m_linear2.bias.clearGPU();
+        }
     }
 
     @Override

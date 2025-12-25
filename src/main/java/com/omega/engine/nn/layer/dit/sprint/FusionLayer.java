@@ -50,7 +50,7 @@ public class FusionLayer extends Layer {
     }
 
     public void initLayers() {
-    	
+    	this.hasBias = false;
     	this.weight = new Tensor(1, 1, 1, embedDim, true);
     	
         this.fusion_proj = new FullyLayer(embedDim * 2, embedDim, true, network);
@@ -99,25 +99,15 @@ public class FusionLayer extends Layer {
     }
     
     public void output(Tensor encoder) {
-    	
     	Tensor_OP().cat_width(encoder, input, e_m, embedDim, embedDim);
-    	
     	fusion_proj.forward(e_m);
-    	
     	this.output = fusion_proj.getOutput();
     }
     
     public void output(Tensor idskeep, Tensor encoder) {
-    	System.err.println(FT+":"+T+":"+embedDim);
     	pmKernel.forward(input, weight, idskeep, g_pad, FT, T, embedDim);
-    	input.showDM("input");
-    	idskeep.showDM("idskeep");
-    	weight.showDM("weight");
-    	g_pad.showDM("g_pad");
     	Tensor_OP().cat_width(encoder, g_pad, e_m, embedDim, embedDim);
-    	
     	fusion_proj.forward(e_m);
-    	
     	this.output = fusion_proj.getOutput();
     }
     
@@ -136,14 +126,14 @@ public class FusionLayer extends Layer {
     public void diff(Tensor idskeep, Tensor dencoder) {
         // TODO Auto-generated method stub
     	fusion_proj.back(delta);
-    	Tensor_OP().cat_width_back(fusion_proj.diff, dencoder, g_pad);
+    	Tensor_OP().cat_width_back(dencoder, g_pad, fusion_proj.diff, embedDim, embedDim);
     	pmKernel.backward(g_pad, idskeep, diff, diffW, FT, T, embedDim);
     }
     
     public void diff(Tensor dencoder) {
         // TODO Auto-generated method stub
     	fusion_proj.back(delta);
-    	Tensor_OP().cat_width_back(fusion_proj.diff, dencoder, diff);
+    	Tensor_OP().cat_width_back(dencoder, diff, fusion_proj.diff, embedDim, embedDim);
     }
 
     @Override

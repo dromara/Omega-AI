@@ -291,7 +291,7 @@ public class FluxDiTMainMoudue_REPA extends Layer {
     	Tensor t = timeEmbd.getOutput();
     	
     	Tensor cond = labelEmbd.getOutput();
-
+    	
     	baseKernel.concat_channel_forward(cond, x, cat_x, input.number, maxContextLen, hw, 1, patchEmbd.getOutput().width);
     	
     	Tensor bx = cat_x;

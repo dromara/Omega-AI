@@ -2,6 +2,7 @@ package com.omega.engine.nn.layer.dit.kernel;
 
 import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 
+import com.omega.common.utils.PrintUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.CUDAKernel;
 import com.omega.engine.gpu.CUDAManager;
@@ -10,6 +11,7 @@ import com.omega.engine.tensor.Tensor;
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUfunction;
+import jcuda.runtime.JCuda;
 import jcuda.runtime.cudaError;
 
 public class TokenDropKernel extends CUDAKernel {
@@ -48,7 +50,7 @@ public class TokenDropKernel extends CUDAKernel {
             	img_token_drop_back_function = getCudaManager().getLocalFunctionByModule("TokenDropKernel.cu", "img_token_drop_back");
             }
             if (rnd_int_function == null) {
-            	rnd_int_function = getCudaManager().getLocalFunctionByModule("TokenDropKernel.cu", "generateRandomUniqueIntegers");
+            	rnd_int_function = getCudaManager().getLocalFunctionByModule("TokenDropKernel.cu", "generateUniqueRandomIntsOptimized");
             }
         } catch (Exception e) {
             // TODO: handle exception
@@ -83,8 +85,9 @@ public class TokenDropKernel extends CUDAKernel {
     	Tensor idsKeep = new Tensor(N, 1, 1, W, true);
     	CUDAManager cudaManager = new CUDAManager(0);
     	TokenDropKernel maskKernel = new TokenDropKernel(cudaManager);
-    	maskKernel.idsKeep(idsKeep, N, T - 1, W);
-    	idsKeep.showDM("idsKeep");
+    	maskKernel.idsKeep(idsKeep, N, T, W);
+    	PrintUtils.printImage(idsKeep);
+//    	idsKeep.showDM("idsKeep");
     }
 
     public int CAFFE_GET_BLOCKS(int N) {
@@ -145,21 +148,21 @@ public class TokenDropKernel extends CUDAKernel {
             e.printStackTrace();
         }
     }
-    
+
     public void idsKeep(Tensor idsKeep, int batch, int T, int N) {
         try {
         	int seed = RandomUtils.rand();
-
             /**
              * 设置入参
              * int B, int N, int T, float *output, unsigned int seed
              */
-        	Pointer kernelParameters = Pointer.to(Pointer.to(new int[]{batch}), Pointer.to(new int[]{N}), Pointer.to(new int[]{T}), Pointer.to(idsKeep.getGpuData()), Pointer.to(new int[]{seed}));
+        	Pointer kernelParameters = Pointer.to(Pointer.to(new int[]{batch}), Pointer.to(new int[]{T}), Pointer.to(new int[]{N}), Pointer.to(idsKeep.getGpuData()), Pointer.to(new long[]{seed}));
             cuLaunchKernel(rnd_int_function, batch, 1, 1,      // Grid dimension
                     1, 1, 1,      // Block dimension
-                    N * Sizeof.INT, null,               // Shared memory size and stream
+                    T * Sizeof.INT, null,               // Shared memory size and stream
                     kernelParameters, null // Kernel- and extra parameters
             );
+            JCuda.cudaDeviceSynchronize();
         } catch (Exception e) {
             // TODO: handle exception
             e.printStackTrace();

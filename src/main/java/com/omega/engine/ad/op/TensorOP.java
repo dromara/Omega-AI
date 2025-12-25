@@ -225,7 +225,7 @@ public class TensorOP {
             c.data = MatrixOperation.multiplication(a.data, b.data);
         }
     }
-
+    
     public void mul(Tensor a, float b, Tensor c) {
         if (c.isHasGPU()) {
             op.mul_scalar_gpu(a, b, c);
@@ -705,6 +705,14 @@ public class TensorOP {
             //			c.data = MatrixOperation.add(a.data, b.data);
         }
     }
+    
+    public void cat_width_back(Tensor a, Tensor b, Tensor c, int aw, int bw) {
+        if (a.isHasGPU()) {
+            op.cat_width_back_gpu(a, b, c, aw, bw);
+        } else {
+            //			c.data = MatrixOperation.add(a.data, b.data);
+        }
+    }
 
     public void cat_width_back(Tensor c, Tensor a, Tensor b) {
         if (a.isHasGPU()) {
@@ -921,6 +929,13 @@ public class TensorOP {
     
     public void update_ema(Tensor ema,Tensor model,float decay) {
     	op.update_ema_gpu(ema, model, decay);
+    }
+    
+    public void roll(Tensor x, Tensor out, int shifts, int dims) {
+    	if(dims == 0) {
+    		op.roll_dims0(x, out, shifts);
+    	}
+    	
     }
     
 }
