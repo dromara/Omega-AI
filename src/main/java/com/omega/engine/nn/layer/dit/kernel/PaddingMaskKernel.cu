@@ -43,6 +43,53 @@ __global__ void set_ids_back(const size_t size, float *dx, const float *idskeep,
 }
 
 extern "C"
+__global__ void set_ids_igone(const size_t size, const float *x, const float *idskeep, float *out, const int FT, const int T, const int igoneT, const int W)
+{
+
+    for (size_t pos = blockIdx.x * blockDim.x + threadIdx.x; pos < (size); pos += blockDim.x * gridDim.x) {
+		int All_T = (FT + igoneT);
+		int len = (T + igoneT) * W;
+    	int b = pos / len;
+    	int t = pos % len / W;
+    	int w = pos % len % W;
+    	if(t >= igoneT){
+			int img_t = t - igoneT;
+			int t_idx = (int) idskeep[b * T + img_t] + igoneT;
+    		out[b * All_T * W + t_idx * W + w] = x[pos];
+		}else{
+			int out_idx = b * All_T * W + t * W + w;
+			out[out_idx] = x[pos];
+		}
+  	}
+
+}
+
+extern "C"
+__global__ void set_ids_igone_back(const size_t size, float *dx, const float *idskeep, float *dout, const int FT, const int T, const int igoneT, const int W)
+{
+
+    for (size_t pos = blockIdx.x * blockDim.x + threadIdx.x; pos < (size); pos += blockDim.x * gridDim.x) {
+		int All_T = (FT + igoneT);
+		int len = (T + igoneT) * W;
+    	int b = pos / len;
+    	int t = pos % len / W;
+    	int w = pos % len % W;
+    	if(t >= igoneT){
+			int img_t = t - igoneT;
+			int t_idx = (int) idskeep[b * T + img_t] + igoneT;
+    		dx[pos] = dout[b * All_T * W + t_idx * W + w];
+    		dout[b * All_T * W + t_idx * W + w] = 0;
+		}else{
+			int out_idx = b * All_T * W + t * W + w;
+			dx[pos] = dout[out_idx];
+			dout[out_idx] = 0;
+		}
+
+  	}
+
+}
+
+extern "C"
 __global__ void mask_diff(const float *dout, float *dw, const int rows, const int cols) {
     // 每个线程块处理一列
     int col = blockIdx.x;

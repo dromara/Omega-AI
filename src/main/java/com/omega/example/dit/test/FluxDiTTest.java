@@ -87,7 +87,7 @@ public class FluxDiTTest {
         ModelUtils.saveModel(dit, save_model_path);
     }
 	
-	public static void flux_repa_b_iddpm_train() throws Exception {
+	public static void flux_repa_b1_iddpm_train() throws Exception {
 		
 		String dataPath = "D:\\dataset\\amine\\dalle_vavae_latend.bin";
         String clipDataPath = "D:\\dataset\\amine\\dalle_full_clip.bin";
@@ -143,7 +143,7 @@ public class FluxDiTTest {
         
         ICPlan icplan = new ICPlan(dit.tensorOP);
 
-//        String model_path = "D:\\models\\dit_txt\\flux_ddt_b1_28.model";
+//        String model_path = "D:\\models\\dit_txt\\flux_ddt_b1_4.model";
 //        ModelUtils.loadModel(dit, model_path);
         
         MBSGDOptimizer optimizer = new MBSGDOptimizer(dit, 100, 0.00001f, batchSize, LearnRateUpdate.NONE, false);
@@ -230,7 +230,7 @@ public class FluxDiTTest {
 		String dataPath = "D:\\dataset\\amine\\dalle_vavae_latend.bin";
         String clipDataPath = "D:\\dataset\\amine\\dalle_full_clip.bin";
 		
-        int batchSize = 32;
+        int batchSize = 30;
         int latendDim = 32;
         int height = 16;
         int width = 16;
@@ -272,7 +272,7 @@ public class FluxDiTTest {
         int hiddenSize = 768;
         
         float y_prob = 0.1f;
-        float token_drop = 0.0f;
+        float token_drop = 0.75f;
         
         FluxDiT_SPRINT dit = new FluxDiT_SPRINT(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, textEmbedDim, maxContext, mlpRatio, dinov_hiddenSize, token_drop, y_prob);
         dit.CUDNN = true;
@@ -599,7 +599,7 @@ public class FluxDiTTest {
         
         ICPlan icplan = new ICPlan(network.tensorOP);
         
-        String model_path = "D:\\models\\dit_txt\\flux_ddt_b1_4.model";
+        String model_path = "D:\\models\\dit_txt\\flux_ddt_b1_24.model";
         ModelUtils.loadModel(network, model_path);
         
         Tensor label = new Tensor(batchSize * dataLoader.maxContextLen, 1, 1, 1, true);
@@ -1793,7 +1793,7 @@ public class FluxDiTTest {
 	        	
 //	        	test_dinov2();
 	        	
-//	        	flux_repa_b_iddpm_train();
+//	        	flux_repa_b1_iddpm_train();
 	        	
 //	        	flux_reg_b1_iddpm_train();
 	        	

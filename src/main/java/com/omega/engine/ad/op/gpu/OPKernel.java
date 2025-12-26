@@ -2136,7 +2136,7 @@ public class OPKernel extends BaseKernel implements Serializable {
         	/**
              * int N, float *a, float *b, float *y, int W
              */
-            Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{a.number * a.channel * a.height}), Pointer.to(a.getGpuData()), Pointer.to(b.getGpuData()), Pointer.to(c.getGpuData()), Pointer.to(new int[]{a.width}), Pointer.to(new int[]{b.width}));
+            Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{a.number * a.channel * a.height}), Pointer.to(a.getGpuData()), Pointer.to(b.getGpuData()), Pointer.to(c.getGpuData()), Pointer.to(new int[]{aw}), Pointer.to(new int[]{bw}));
             checkCUDA(cuLaunchKernel(cat_width_function2, CAFFE_GET_BLOCKS(a.number * a.channel * a.height), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
@@ -2155,7 +2155,7 @@ public class OPKernel extends BaseKernel implements Serializable {
         	/**
              * int N, float *a, float *b, float *y, int W
              */
-            Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{a.number * a.channel * a.height}), Pointer.to(a.getGpuData()), Pointer.to(b.getGpuData()), Pointer.to(c.getGpuData()), Pointer.to(new int[]{a.width}), Pointer.to(new int[]{b.width}));
+            Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{a.number * a.channel * a.height}), Pointer.to(a.getGpuData()), Pointer.to(b.getGpuData()), Pointer.to(c.getGpuData()), Pointer.to(new int[]{aw}), Pointer.to(new int[]{bw}));
             checkCUDA(cuLaunchKernel(cat_width_back_function2, CAFFE_GET_BLOCKS(a.number * a.channel * a.height), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream

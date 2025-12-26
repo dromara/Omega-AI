@@ -9,7 +9,7 @@ import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.layer.InputLayer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.SoftmaxWithCrossEntropyLayer;
-import com.omega.engine.nn.layer.dit.sprint.DiTMainMoudue_REPA;
+import com.omega.engine.nn.layer.dit.sprint.FluxDiTMainMoudue_Sprint;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.NetworkType;
 import com.omega.engine.nn.network.RunModel;
@@ -44,7 +44,7 @@ public class FluxDiT_SPRINT extends Network {
     private float token_drop_ratio = 0.75f;
     
     private InputLayer inputLayer;
-    public DiTMainMoudue_REPA main;
+    public FluxDiTMainMoudue_Sprint main;
     
     private Tensor input_null;
     private Tensor eps;
@@ -78,7 +78,7 @@ public class FluxDiT_SPRINT extends Network {
     	
         this.inputLayer = new InputLayer(inChannel, height, width);
         
-        main = new DiTMainMoudue_REPA(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, textEmbedDim, maxContextLen, mlpRatio, z_dim, y_drop_prob, token_drop_ratio, this);
+        main = new FluxDiTMainMoudue_Sprint(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, textEmbedDim, maxContextLen, mlpRatio, z_dim, y_drop_prob, token_drop_ratio, this);
         
         this.addLayer(inputLayer);
         this.addLayer(main);

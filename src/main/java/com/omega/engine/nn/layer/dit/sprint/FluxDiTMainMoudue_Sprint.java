@@ -3,6 +3,7 @@ package com.omega.engine.nn.layer.dit.sprint;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -13,7 +14,7 @@ import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.dit.DiTCaptionEmbeddingLayer;
 import com.omega.engine.nn.layer.dit.DiTOrgTimeEmbeddingLayer;
 import com.omega.engine.nn.layer.dit.DiTPatchEmbeddingLayer;
-import com.omega.engine.nn.layer.dit.flux.FluxDiTMainMoudue;
+import com.omega.engine.nn.layer.dit.flux.FluxDiTBlock;
 import com.omega.engine.nn.layer.dit.flux.REPAMLPLayer;
 import com.omega.engine.nn.layer.dit.kernel.TokenDropKernel;
 import com.omega.engine.nn.layer.dit.txt.DiT_TXTFinalLayer;
@@ -30,7 +31,7 @@ import com.omega.example.transformer.utils.LagJsonReader;
  * DiT_Block
  * @author Administrator
  */
-public class DiTMainMoudue_REPA extends Layer {
+public class FluxDiTMainMoudue_Sprint extends Layer {
 	
 	public int inChannel;
     public int width;
@@ -53,10 +54,10 @@ public class DiTMainMoudue_REPA extends Layer {
     public DiTPatchEmbeddingLayer patchEmbd;
     public DiTOrgTimeEmbeddingLayer timeEmbd;
     public DiTCaptionEmbeddingLayer labelEmbd;
-    public List<DiTBlock> encoders;
-    public List<DiTBlock> mids;
+    public List<FluxDiTBlock> encoders;
+    public List<FluxDiTBlock> mids;
     public FusionLayer fusion;
-    public List<DiTBlock> decoders;
+    public List<FluxDiTBlock> decoders;
     public DiT_TXTFinalLayer finalLayer;
     
     public REPAMLPLayer z_mlp;
@@ -65,8 +66,14 @@ public class DiTMainMoudue_REPA extends Layer {
     
     private Tensor posEmbd;
     
+    private Tensor cat_x;
+    private Tensor img_x;
+    
+    private Tensor z_img_x;
+    
+    private Tensor d_o;
+    
     private Tensor dtc;
-    private Tensor dcontext;
     private Tensor dencoder;
     
     private float y_drop_prob = 0.0f;
@@ -83,7 +90,9 @@ public class DiTMainMoudue_REPA extends Layer {
     private BaseKernel baseKernel;
     private TokenDropKernel tokenDropKernel;
     
-    public DiTMainMoudue_REPA(int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int textEmbedDim, int maxContextLen, int mlpRatio, int z_dim, float y_drop_prob, float token_drop_ratio, Network network) {
+    private List<Integer> ids;
+    
+    public FluxDiTMainMoudue_Sprint(int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int textEmbedDim, int maxContextLen, int mlpRatio, int z_dim, float y_drop_prob, float token_drop_ratio, Network network) {
 		this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
@@ -121,24 +130,24 @@ public class DiTMainMoudue_REPA extends Layer {
         
         labelEmbd = new DiTCaptionEmbeddingLayer(textEmbedDim, hiddenSize, maxContextLen, y_drop_prob, true, network);
         
-        encoders = new ArrayList<DiTBlock>();
-        mids = new ArrayList<DiTBlock>();
-        decoders = new ArrayList<DiTBlock>();
+        encoders = new ArrayList<FluxDiTBlock>();
+        mids = new ArrayList<FluxDiTBlock>();
+        decoders = new ArrayList<FluxDiTBlock>();
         
         for(int i = 0;i<num_f;i++) {
-        	DiTBlock block = new DiTBlock(hiddenSize, hiddenSize, patchEmbd.oChannel, mlpRatio * hiddenSize, headNum, maxContextLen, true, true, network);
+        	FluxDiTBlock block = new FluxDiTBlock(hiddenSize, hiddenSize, patchEmbd.oChannel + maxContextLen, mlpRatio * hiddenSize, headNum, maxContextLen, true, false, network);
         	encoders.add(block);
         }
         
         for(int i = 0;i<num_g;i++) {
-        	DiTBlock block = new DiTBlock(hiddenSize, hiddenSize, token_t, mlpRatio * hiddenSize, headNum, maxContextLen, true, true, network);
+        	FluxDiTBlock block = new FluxDiTBlock(hiddenSize, hiddenSize, token_t + maxContextLen, mlpRatio * hiddenSize, headNum, maxContextLen, true, false, network);
         	mids.add(block);
         }
         
-        fusion = new FusionLayer(hiddenSize, hw, token_t, network);
+        fusion = new FusionLayer(hiddenSize, hw, token_t, maxContextLen, network);
         
         for(int i = 0;i<num_h;i++) {
-        	DiTBlock block = new DiTBlock(hiddenSize, hiddenSize, patchEmbd.oChannel, mlpRatio * hiddenSize, headNum, maxContextLen, true, true, network);
+        	FluxDiTBlock block = new FluxDiTBlock(hiddenSize, hiddenSize, patchEmbd.oChannel + maxContextLen, mlpRatio * hiddenSize, headNum, maxContextLen, true, false, network);
         	decoders.add(block);
         }
         
@@ -157,7 +166,25 @@ public class DiTMainMoudue_REPA extends Layer {
         }
         
     }
-
+    
+    public void getRandomIds(Tensor idskeep) {
+    	if(ids == null) {
+    		ids = new ArrayList<Integer>(hw);
+    		for(int i = 0;i<hw;i++) {
+    			ids.add(i);
+    		}
+    		idskeep.syncHost();
+    	}
+    	for(int b = 0;b<idskeep.number;b++) {
+    		Collections.shuffle(ids);
+    		for(int w = 0;w<idskeep.width;w++) {
+        		idskeep.data[b * idskeep.width + w] = ids.get(w);
+    		}
+    	}
+    	idskeep.hostToDevice();
+//    	idskeep.showDM("idskeep");
+    }
+    
     @Override
     public void init() {
         // TODO Auto-generated method stub
@@ -217,6 +244,9 @@ public class DiTMainMoudue_REPA extends Layer {
         // TODO Auto-generated method stub
         this.number = input.number;
         if(this.output == null || this.output.number != number) {
+        	cat_x = Tensor.createGPUTensor(cat_x, number * (patchEmbd.oChannel + maxContextLen), 1, 1, patchEmbd.oWidth, true);
+        	img_x = Tensor.createGPUTensor(img_x, number * patchEmbd.oChannel, 1, 1, patchEmbd.oWidth, true);
+        	z_img_x = Tensor.createGPUTensor(z_img_x, number * patchEmbd.oChannel, 1, 1, patchEmbd.oWidth, true);
         	output = Tensor.createGPUTensor(output, number, oChannel, oHeight, oWidth, true);
         }
         if(posEmbd == null) {
@@ -225,24 +255,25 @@ public class DiTMainMoudue_REPA extends Layer {
         
         if(token_t < hw && (idsKeep == null || idsKeep.number != number)) {
         	idsKeep = Tensor.createGPUTensor(idsKeep, number, 1, 1, token_t, true);
-        	td_x = Tensor.createGPUTensor(td_x, number * token_t, 1, 1, hiddenSize, true);
+        	td_x = Tensor.createGPUTensor(td_x, number * (maxContextLen + token_t), 1, 1, hiddenSize, true);
         }
         
         if(patchEmbd.getOutput() != null){
         	patchEmbd.getOutput().viewOrg();
         }
+        
     }
     
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
     	if(dtc == null || dtc.number != timeEmbd.getOutput().number) {
+    		d_o = Tensor.createGPUTensor(d_o, input.number * (maxContextLen + hw), 1, 1, patchEmbd.getOutput().width, true);
     		dtc = Tensor.createGPUTensor(dtc, timeEmbd.getOutput().shape(), true);
-    		dcontext = Tensor.createGPUTensor(dcontext, labelEmbd.getOutput().shape(), true);
-    		dencoder = Tensor.createGPUTensor(dencoder, number * hw, 1, 1, hiddenSize, true);
+    		dencoder = Tensor.createGPUTensor(dencoder, number * (maxContextLen + hw), 1, 1, hiddenSize, true);
     	}else {
     		dtc.clearGPU();
-    		dcontext.clearGPU();
+    		d_o.clearGPU();
     	}
     }
 
@@ -273,13 +304,15 @@ public class DiTMainMoudue_REPA extends Layer {
     	
     	Tensor cond = labelEmbd.getOutput();
     	
+     	baseKernel.concat_channel_forward(cond, x, cat_x, input.number, maxContextLen, hw, 1, patchEmbd.getOutput().width);
+    	
     	/**
     	 * encoder
     	 */
-    	Tensor e_x = x;
+    	Tensor e_x = cat_x;
     	for(int i = 0;i<num_f;i++) {
-    		DiTBlock block = encoders.get(i);
-    		block.forward(e_x, t, cond, cos, sin);
+    		FluxDiTBlock block = encoders.get(i);
+    		block.forward(e_x, t, cos, sin);
     		e_x = block.getOutput();
     	}
     	
@@ -287,16 +320,18 @@ public class DiTMainMoudue_REPA extends Layer {
     	 * repa
     	 */
 		if(network.RUN_MODEL == RunModel.TRAIN) {
-			z_mlp.forward(e_x);
+			Tensor_OP().getByChannel(e_x, z_img_x, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
+			z_mlp.forward(z_img_x);
 		}
 		
 		/**
 		 * sprint
 		 */
 		Tensor h_x = e_x;
-		if(idsKeep != null) {
+		if(idsKeep != null && network.RUN_MODEL == RunModel.TRAIN) {
 			tokenDropKernel.idsKeep(idsKeep, number, (hw - 1), token_t);
-			tokenDropKernel.imgTokenDrop(e_x, idsKeep, td_x, token_t, hw, hiddenSize);
+//			getRandomIds(idsKeep);
+			tokenDropKernel.imgTokenDrop(e_x, idsKeep, td_x, token_t, hw, maxContextLen, hiddenSize);
 			h_x = td_x;
 		}
 
@@ -304,11 +339,11 @@ public class DiTMainMoudue_REPA extends Layer {
 		 * mids
 		 */
 		for(int i = 0;i<num_g;i++) {
-    		DiTBlock block = mids.get(i);
-    		if(idsKeep != null) {
-    			block.forward(h_x, t, cond, cos, sin, idsKeep);
+			FluxDiTBlock block = mids.get(i);
+    		if(idsKeep != null && network.RUN_MODEL == RunModel.TRAIN) {
+    			block.forward(h_x, t, cos, sin, idsKeep);
     		}else {
-     			block.forward(h_x, t, cond, cos, sin);
+     			block.forward(h_x, t, cos, sin);
     		}
     		h_x = block.getOutput();
     	}
@@ -316,7 +351,7 @@ public class DiTMainMoudue_REPA extends Layer {
 		/**
 		 * pad_mask
 		 */
-		if(idsKeep != null) {
+		if(idsKeep != null && network.RUN_MODEL == RunModel.TRAIN) {
 			fusion.forward(h_x, e_x, idsKeep);
 		}else {
 			fusion.forward(h_x, e_x);
@@ -327,12 +362,14 @@ public class DiTMainMoudue_REPA extends Layer {
 		 */
 		Tensor d_x = fusion.getOutput();
     	for(int i = 0;i<num_h;i++) {
-    		DiTBlock block = decoders.get(i);
-    		block.forward(d_x, t, cond, cos, sin);
+    		FluxDiTBlock block = decoders.get(i);
+    		block.forward(d_x, t, cos, sin);
     		d_x = block.getOutput();
     	}
+    	
+    	Tensor_OP().getByChannel(d_x, img_x, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
 
-    	finalLayer.forward(d_x, t);
+    	finalLayer.forward(img_x, t);
 
     	/**
     	 * unpatchify
@@ -369,17 +406,20 @@ public class DiTMainMoudue_REPA extends Layer {
     	
     	finalLayer.back(finalLayer.getOutput(), dtc);
     	
+    	Tensor dy = d_o;
+    	dy.clearGPU();
+
+    	Tensor_OP().getByChannel_back(dy, finalLayer.diff, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
+    	
     	/**
     	 * decoder backward
     	 */
-    	Tensor dy = finalLayer.diff;
-//    	dy.showDMByOffsetRed(0, 100, "dy1");
     	for(int i = num_h - 1;i>=0;i--) {
-    		DiTBlock block = decoders.get(i);
-    		block.back(dy, dtc, dcontext, cos, sin);
+    		FluxDiTBlock block = decoders.get(i);
+    		block.back(dy, dtc, cos, sin);
     		dy = block.diff;
     	}
-//    	dy.showDMByOffsetRed(0, 100, "dy2");
+    	
     	/**
 		 * pad_mask backward
 		 */
@@ -393,17 +433,16 @@ public class DiTMainMoudue_REPA extends Layer {
 		 * mids backward
 		 */
 		Tensor dh = fusion.diff;
-//		dh.showDMByOffsetRed(0, 100, "dh1");
 		for(int i = num_g - 1;i>=0;i--) {
-    		DiTBlock block = mids.get(i);
+			FluxDiTBlock block = mids.get(i);
     		if(idsKeep != null) {
-    			block.back(dh, dtc, dcontext, cos, sin, idsKeep);
+    			block.back(dh, dtc, cos, sin, idsKeep);
     		}else {
-     			block.back(dh, dtc, dcontext, cos, sin);
+     			block.back(dh, dtc, cos, sin);
     		}
     		dh = block.diff;
     	}
-//		dh.showDMByOffsetRed(0, 100, "dh2");
+
 		/**
 		 * sprint backward
 		 */
@@ -411,30 +450,32 @@ public class DiTMainMoudue_REPA extends Layer {
 		if(idsKeep != null) {
 			Tensor dx = encoders.get(num_f - 1).getOutput();
 			dx.clearGPU();
-			tokenDropKernel.imgTokenDropBack(dx, idsKeep, dh, token_t, hw, hiddenSize);
+			tokenDropKernel.imgTokenDropBack(dx, idsKeep, dh, token_t, hw, maxContextLen, hiddenSize);
 			de = dx;
 		}
 		
 		/**
 		 * repa backward
 		 */
-		Tensor_OP().add(z_mlp.diff, de, de);
+		Tensor_OP().getByChannel_add_back(de, z_mlp.diff, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
     	Tensor_OP().add(dencoder, de, de);
-//    	de.showDM("de");
+
 		/**
 		 * encoder backward
 		 */
     	for(int i = num_f - 1;i>=0;i--) {
-    		DiTBlock block = encoders.get(i);
-    		block.back(de, dtc, dcontext, cos, sin);
+    		FluxDiTBlock block = encoders.get(i);
+    		block.back(de, dtc, cos, sin);
     		de = block.diff;
     	}
     	
-     	labelEmbd.back(dcontext);
+    	baseKernel.concat_channel_backward(de, labelEmbd.getOutput(), img_x, input.number, maxContextLen, hw, 1, patchEmbd.getOutput().width);
+    	
+     	labelEmbd.back(labelEmbd.getOutput());
      	
      	timeEmbd.back(dtc);
 
-     	patchEmbd.back(de);
+     	patchEmbd.back(img_x);
      	
     }
 
@@ -676,7 +717,7 @@ public class DiTMainMoudue_REPA extends Layer {
     	finalLayer.accGrad(scale);
     }
     
-    public static void loadWeight(Map<String, Object> weightMap, DiTMainMoudue_REPA block, boolean showLayers) {
+    public static void loadWeight(Map<String, Object> weightMap, FluxDiTMainMoudue_Sprint block, boolean showLayers) {
         if (showLayers) {
             for (String key : weightMap.keySet()) {
                 System.out.println(key);
@@ -703,7 +744,7 @@ public class DiTMainMoudue_REPA extends Layer {
         nn.CUDNN = true;
         nn.number = N;
     	
-        DiTMainMoudue_REPA jb = new DiTMainMoudue_REPA(C, W, H, patchSize, hiddenSize, headNum, depth, 1000, TEM, TT, 4, 768, 0.0f, 0.0f, nn);
+        FluxDiTMainMoudue_Sprint jb = new FluxDiTMainMoudue_Sprint(C, W, H, patchSize, hiddenSize, headNum, depth, 1000, TEM, TT, 4, 768, 0.0f, 0.0f, nn);
     	
         String weight = "D:\\models\\dit_weight.json";
         loadWeight(LagJsonReader.readJsonFileBigWeightIterator(weight), jb, true);

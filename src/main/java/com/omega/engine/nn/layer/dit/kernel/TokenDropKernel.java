@@ -21,6 +21,8 @@ public class TokenDropKernel extends CUDAKernel {
     private CUfunction timestep_embedding_function;
     private CUfunction img_token_drop_function;
     private CUfunction img_token_drop_back_function;
+    private CUfunction img_token_drop_igone_function;
+    private CUfunction img_token_drop_igone_back_function;
     
     private CUfunction rnd_int_function;
     
@@ -48,6 +50,12 @@ public class TokenDropKernel extends CUDAKernel {
             }
             if (img_token_drop_back_function == null) {
             	img_token_drop_back_function = getCudaManager().getLocalFunctionByModule("TokenDropKernel.cu", "img_token_drop_back");
+            }
+            if (img_token_drop_igone_function == null) {
+            	img_token_drop_igone_function = getCudaManager().getLocalFunctionByModule("TokenDropKernel.cu", "img_token_drop_igone");
+            }
+            if (img_token_drop_igone_back_function == null) {
+            	img_token_drop_igone_back_function = getCudaManager().getLocalFunctionByModule("TokenDropKernel.cu", "img_token_drop_back_igone");
             }
             if (rnd_int_function == null) {
             	rnd_int_function = getCudaManager().getLocalFunctionByModule("TokenDropKernel.cu", "generateUniqueRandomIntsOptimized");
@@ -154,7 +162,7 @@ public class TokenDropKernel extends CUDAKernel {
         	int seed = RandomUtils.rand();
             /**
              * 设置入参
-             * int B, int N, int T, float *output, unsigned int seed
+             * int batch_size, int T, int N, float *result, unsigned long long seed
              */
         	Pointer kernelParameters = Pointer.to(Pointer.to(new int[]{batch}), Pointer.to(new int[]{T}), Pointer.to(new int[]{N}), Pointer.to(idsKeep.getGpuData()), Pointer.to(new long[]{seed}));
             cuLaunchKernel(rnd_int_function, batch, 1, 1,      // Grid dimension
@@ -195,6 +203,42 @@ public class TokenDropKernel extends CUDAKernel {
              */
             kernelParameters = Pointer.to(Pointer.to(new long[]{delta.dataLength}), Pointer.to(dx.getGpuData()), Pointer.to(idskeep.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(new int[]{xT}), Pointer.to(new int[]{T}), Pointer.to(new int[]{W}));
             cuLaunchKernel(img_token_drop_back_function, this.CAFFE_GET_BLOCKS(delta.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameters, null // Kernel- and extra parameters
+            );
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void imgTokenDrop(Tensor x, Tensor idskeep, Tensor output, int xT, int T, int igoneT, int W) {
+        try {
+            /**
+             * 设置入参
+             * const size_t size, const float *x, float *idskeep, float *out, const int xT, const int T, int igoneT, const int W
+             */
+            kernelParameters = Pointer.to(Pointer.to(new long[]{output.dataLength}), Pointer.to(x.getGpuData()), Pointer.to(idskeep.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{xT}), Pointer.to(new int[]{T}), Pointer.to(new int[]{igoneT}), Pointer.to(new int[]{W}));
+            cuLaunchKernel(img_token_drop_igone_function, this.CAFFE_GET_BLOCKS(output.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameters, null // Kernel- and extra parameters
+            );
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void imgTokenDropBack(Tensor dx, Tensor idskeep, Tensor delta, int xT, int T, int igoneT, int W) {
+        try {
+            /**
+             * 设置入参
+             * const size_t size, float *dx, float *idskeep, const float *dout, const int xT, const int T, int igoneT, const int W
+             */
+            kernelParameters = Pointer.to(Pointer.to(new long[]{delta.dataLength}), Pointer.to(dx.getGpuData()), Pointer.to(idskeep.getGpuData()), Pointer.to(delta.getGpuData()), Pointer.to(new int[]{xT}), Pointer.to(new int[]{T}), Pointer.to(new int[]{igoneT}), Pointer.to(new int[]{W}));
+            cuLaunchKernel(img_token_drop_igone_back_function, this.CAFFE_GET_BLOCKS(delta.dataLength), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameters, null // Kernel- and extra parameters

@@ -311,6 +311,54 @@ __global__ void rope_2d_back_igone(float* delta, float* diff,float* cos, float* 
 }
 
 extern "C"
+__global__ void rope_2d_norm_idskeep_igone(float* x, float* out,float* cos, float* sin, float *idskeep, int N, int T, int headNum, int headSize, int igoneIdx)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (i >= N/2) return;
+    int index = i * 2;
+    int n = index / T / headSize;
+    int once = index % (T * headSize);
+    int t = once / headSize;
+    int hs = once % headSize;
+    float cv = x[index];
+	float cn = x[index+1];
+    if(t >= igoneIdx){
+		int b = n / headNum;
+		int rt = t - igoneIdx;
+		int t_idx = (int) idskeep[b * (T - igoneIdx) + rt];
+		out[index] = cos[t_idx * headSize + hs] * cv - sin[t_idx * headSize + hs] * cn;
+    	out[index+1] = cos[t_idx * headSize + hs + 1] * cn + sin[t_idx * headSize + hs + 1] * cv;
+	}else{
+		out[index] = cv;
+    	out[index+1] = cn;
+	}
+}
+
+extern "C"
+__global__ void rope_2d_back_idskeep_igone(float* delta, float* diff,float* cos, float* sin, float *idskeep, int N, int T, int headNum,int headSize, int igoneIdx)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (i >= N/2) return;
+    int index = i * 2;
+    int n = index / T / headSize;
+    int once = index % (T * headSize);
+    int t = once / headSize;
+    int hs = once % headSize;
+    const float d0 = delta[index + 0];
+    const float d1 = delta[index + 1];
+    if(t >= igoneIdx){
+		int b = n / headNum;
+		int rt = t - igoneIdx;
+		int t_idx = (int) idskeep[b * (T - igoneIdx) + rt];
+	    diff[index] = cos[t_idx * headSize + hs] * d0 + sin[t_idx * headSize + hs + 1] * d1;
+	    diff[index+1] = cos[t_idx * headSize + hs + 1] * d1 - sin[t_idx * headSize + hs] * d0;
+    }else{
+		diff[index] = d0;
+    	diff[index+1] = d1;
+	}
+}
+
+extern "C"
 __global__ void rope_2d_norm_t(float* x, float* out,float* cos, float* sin, int N, int T, int headNum, int headSize)
 {
     int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;

@@ -13,7 +13,6 @@ import com.omega.common.utils.MathUtils;
 import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
-import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.check.BaseCheck;
 import com.omega.engine.gpu.CUDAModules;
 import com.omega.engine.gpu.GPUOP;
@@ -7557,6 +7556,7 @@ public class MBSGDOptimizer extends Optimizer {
                      */
                     Tensor z_loss = repa.projection_loss(network.main.getZ(), img);
                     Tensor z_diff = repa.projection_loss_back(network.main.getZ());
+                    network.tensorOP.mul(z_diff, 0.5f, z_diff);
                     network.main.setZGrad(z_diff);
                     
                     /**
@@ -7709,14 +7709,7 @@ public class MBSGDOptimizer extends Optimizer {
                      * loss diff
                      */
                     this.lossDiff = network.lossDiff(output, ut);
-                    
-//                    /**
-//                     * cos loss
-//                     */
-//                    icplan.cosine_similarity_loss(output, ut, cosine_similarity_loss);
-//                    icplan.cosine_similarity_loss_back(output, ut, cosine_similarity_loss);
-//                    network.tensorOP.add(lossDiff, cosine_similarity_loss, lossDiff);
-                    
+
                     /**
                      * cfm loss
                      * Contrastive Flow Matching
@@ -7762,7 +7755,7 @@ public class MBSGDOptimizer extends Optimizer {
 
                     	float mse_loss = MatrixOperation.sum(this.loss.syncHost()) / this.batchSize;
                     	float z_loss_mean = MatrixOperation.sum(z_loss.syncHost()) / z_loss.dataLength;
-                    	float cfm_loss_mean = MatrixOperation.sum(cfm_loss.syncHost()) / cfm_loss.dataLength * -0.05f;
+                    	float cfm_loss_mean = MatrixOperation.sum(cfm_loss.syncHost()) / cfm_loss.dataLength * -1;
 //                    	System.err.println("mse_loss:"+mse_loss+",z_loss_mean:"+z_loss_mean+",cfm_loss_mean:"+cfm_loss_mean);
                         this.currentError = mse_loss;
                         loss_100 += mse_loss;
@@ -7771,6 +7764,7 @@ public class MBSGDOptimizer extends Optimizer {
                         if(it > 0 && it % 100 == 0) {
                         	loss_100 = loss_100 / 100;
                         	z_loss_100 = z_loss_100 / 100;
+                        	cfm_loss_100 = cfm_loss_100 / 100;
                         	String msg = "training[" + this.trainIndex+"]{" + it + "/" + indexs.length + "} (lr:" + this.network.learnRate + ") train_loss:" + loss_100 + " z_loss:" + z_loss_100 + " cfm_loss_100:" + cfm_loss_100 +  " [costTime:" + (System.nanoTime() - start) / 1e6 + "ms.]";
                             System.out.println(msg);
                             loss_100 = 0.0f;

@@ -131,6 +131,46 @@ __global__ void img_token_drop_back(const size_t size, float *dx, float *idskeep
 }
 
 extern "C"
+__global__ void img_token_drop_igone(const size_t size, const float *x, float *idskeep, float *out, const int xT, const int T, int igoneT, const int W)
+{
+
+    for (size_t pos = blockIdx.x * blockDim.x + threadIdx.x; pos < (size); pos += blockDim.x * gridDim.x) {
+		int len = (xT + igoneT) * W;
+    	int b = pos / len;
+    	int t = pos % len / W;
+    	int w = pos % len % W;
+    	if(t >= igoneT){
+			int ids = (int) idskeep[b * xT + (t - igoneT)] + igoneT;
+    		out[pos] = x[b * (igoneT + T) * W + ids * W + w];
+		}else{
+			int xid = b * (igoneT + T) * W + t * W + w;
+			out[pos] = x[xid];
+		}
+  	}
+
+}
+
+extern "C"
+__global__ void img_token_drop_back_igone(const size_t size, float *dx, float *idskeep, const float *dout, const int xT, const int T, int igoneT, const int W)
+{
+
+    for (size_t pos = blockIdx.x * blockDim.x + threadIdx.x; pos < (size); pos += blockDim.x * gridDim.x) {
+		int len = (xT + igoneT) * W;
+    	int b = pos / len;
+    	int t = pos % len / W;
+    	int w = pos % len % W;
+    	if(t >= igoneT){
+			int ids = (int) idskeep[b * xT + (t - igoneT)] + igoneT;
+    		dx[b * (igoneT + T) * W + ids * W + w] = dout[pos];
+		}else{
+			int xid = b * (igoneT + T) * W + t * W + w;
+			dx[xid] = dout[pos];
+		}
+  	}
+
+}
+
+extern "C"
 __global__ void generateUniqueRandomIntsOptimized(int batch_size, int T, int N, float *result, unsigned long long seed) {
     // 每个线程处理一个batch中的一个样本
     int batch_idx = blockIdx.x;

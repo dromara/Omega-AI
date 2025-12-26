@@ -24,6 +24,7 @@ public class FusionLayer extends Layer {
     private int embedDim = 0;
     private int T;
     private int FT;
+    private int TT = 0;
 
     public FullyLayer fusion_proj;
     
@@ -39,6 +40,21 @@ public class FusionLayer extends Layer {
         }
         this.T = T;
         this.FT = FT;
+        this.embedDim = embedDim;
+        this.oChannel = 1;
+        this.oHeight = 1;
+        this.oWidth = embedDim;
+        this.initLayers();
+    }
+    
+    public FusionLayer(int embedDim, int FT, int T, int TT, Network network) {
+        this.network = network;
+        if (this.updater == null) {
+            this.setUpdater(UpdaterFactory.create(network));
+        }
+        this.T = T;
+        this.FT = FT;
+        this.TT = TT;
         this.embedDim = embedDim;
         this.oChannel = 1;
         this.oHeight = 1;
@@ -69,10 +85,12 @@ public class FusionLayer extends Layer {
     public void init() {
         // TODO Auto-generated method stub
         this.number = this.input.number;
-        this.batchSize = number / T;
-        if(g_pad == null || g_pad.number != batchSize * FT) {
-        	this.g_pad = Tensor.createGPUTensor(g_pad, batchSize * FT, 1, 1, embedDim, true);
-        	this.e_m = Tensor.createGPUTensor(e_m, batchSize * FT, 1, 1, embedDim * 2, true);
+        this.batchSize = number / (T + TT);
+        if(number != batchSize * (TT + FT) && (g_pad == null || g_pad.number != batchSize * (TT + FT))) {
+        	this.g_pad = Tensor.createGPUTensor(g_pad, batchSize * (TT + FT), 1, 1, embedDim, true);
+        }
+        if(e_m == null || e_m.number != batchSize * (TT + FT)) {
+        	this.e_m = Tensor.createGPUTensor(e_m, batchSize * (TT + FT), 1, 1, embedDim * 2, true);
         }
     }
 
@@ -104,8 +122,12 @@ public class FusionLayer extends Layer {
     	this.output = fusion_proj.getOutput();
     }
     
-    public void output(Tensor idskeep, Tensor encoder) {
-    	pmKernel.forward(input, weight, idskeep, g_pad, FT, T, embedDim);
+    public void output(Tensor encoder, Tensor idskeep) {
+    	if(TT > 0) {
+        	pmKernel.forward(input, weight, idskeep, g_pad, FT, T, TT, embedDim);
+    	}else {
+        	pmKernel.forward(input, weight, idskeep, g_pad, FT, T, embedDim);
+    	}
     	Tensor_OP().cat_width(encoder, g_pad, e_m, embedDim, embedDim);
     	fusion_proj.forward(e_m);
     	this.output = fusion_proj.getOutput();
@@ -123,11 +145,15 @@ public class FusionLayer extends Layer {
     	
     }
     
-    public void diff(Tensor idskeep, Tensor dencoder) {
+    public void diff(Tensor dencoder, Tensor idskeep) {
         // TODO Auto-generated method stub
     	fusion_proj.back(delta);
     	Tensor_OP().cat_width_back(dencoder, g_pad, fusion_proj.diff, embedDim, embedDim);
-    	pmKernel.backward(g_pad, idskeep, diff, diffW, FT, T, embedDim);
+    	if(TT > 0) {
+    		pmKernel.backward(g_pad, idskeep, diff, diffW, FT, T, TT, embedDim);
+    	}else {
+    		pmKernel.backward(g_pad, idskeep, diff, diffW, FT, T, embedDim);
+    	}
     }
     
     public void diff(Tensor dencoder) {
@@ -216,7 +242,7 @@ public class FusionLayer extends Layer {
         /**
          * 计算输出
          */
-        this.output(idskeep, encoder);
+        this.output(encoder, idskeep);
     }
     
     @Override
@@ -259,7 +285,7 @@ public class FusionLayer extends Layer {
         /**
          * 计算梯度
          */
-        this.diff(idskeep, dencoder);
+        this.diff(dencoder, idskeep);
     }
     
     @Override
