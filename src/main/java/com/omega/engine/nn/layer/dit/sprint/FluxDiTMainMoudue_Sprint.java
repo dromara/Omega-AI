@@ -75,11 +75,14 @@ public class FluxDiTMainMoudue_Sprint extends Layer {
     
     private Tensor dtc;
     private Tensor dencoder;
+    private Tensor drop_delta;
     
     private float y_drop_prob = 0.0f;
     
     private float token_drop_ratio = 0.75f;
     private int token_t = 0;
+    
+    private float path_drop_prob = 0.0f;
     
     private Tensor idsKeep;
     private Tensor td_x;
@@ -92,7 +95,9 @@ public class FluxDiTMainMoudue_Sprint extends Layer {
     
     private List<Integer> ids;
     
-    public FluxDiTMainMoudue_Sprint(int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int textEmbedDim, int maxContextLen, int mlpRatio, int z_dim, float y_drop_prob, float token_drop_ratio, Network network) {
+    public boolean uncond = false;
+    
+    public FluxDiTMainMoudue_Sprint(int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int textEmbedDim, int maxContextLen, int mlpRatio, int z_dim, float y_drop_prob, float token_drop_ratio, float path_drop_prob, Network network) {
 		this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
@@ -111,6 +116,7 @@ public class FluxDiTMainMoudue_Sprint extends Layer {
 		this.maxContextLen = maxContextLen;
 		this.mlpRatio = mlpRatio;
 		this.token_drop_ratio = token_drop_ratio;
+		this.path_drop_prob = path_drop_prob;
 		this.headNum = headNum;
 		this.z_dim = z_dim;
 		this.initLayers();
@@ -144,7 +150,7 @@ public class FluxDiTMainMoudue_Sprint extends Layer {
         	mids.add(block);
         }
         
-        fusion = new FusionLayer(hiddenSize, hw, token_t, maxContextLen, network);
+        fusion = new FusionLayer(hiddenSize, hw, token_t, maxContextLen, path_drop_prob, network);
         
         for(int i = 0;i<num_h;i++) {
         	FluxDiTBlock block = new FluxDiTBlock(hiddenSize, hiddenSize, patchEmbd.oChannel + maxContextLen, mlpRatio * hiddenSize, headNum, maxContextLen, true, false, network);
@@ -258,6 +264,10 @@ public class FluxDiTMainMoudue_Sprint extends Layer {
         	td_x = Tensor.createGPUTensor(td_x, number * (maxContextLen + token_t), 1, 1, hiddenSize, true);
         }
         
+//        if(token_t < hw && td_x == null) {
+//        	td_x = Tensor.createGPUTensor(td_x, number * (maxContextLen + token_t), 1, 1, hiddenSize, true);
+//        }
+        
         if(patchEmbd.getOutput() != null){
         	patchEmbd.getOutput().viewOrg();
         }
@@ -271,9 +281,12 @@ public class FluxDiTMainMoudue_Sprint extends Layer {
     		d_o = Tensor.createGPUTensor(d_o, input.number * (maxContextLen + hw), 1, 1, patchEmbd.getOutput().width, true);
     		dtc = Tensor.createGPUTensor(dtc, timeEmbd.getOutput().shape(), true);
     		dencoder = Tensor.createGPUTensor(dencoder, number * (maxContextLen + hw), 1, 1, hiddenSize, true);
+    		drop_delta = Tensor.createGPUTensor(drop_delta, number * (maxContextLen + hw), 1, 1, hiddenSize, true);
     	}else {
     		dtc.clearGPU();
     		d_o.clearGPU();
+//    		dencoder.clearGPU();
+    		drop_delta.clearGPU();
     	}
     }
 
@@ -305,7 +318,7 @@ public class FluxDiTMainMoudue_Sprint extends Layer {
     	Tensor cond = labelEmbd.getOutput();
     	
      	baseKernel.concat_channel_forward(cond, x, cat_x, input.number, maxContextLen, hw, 1, patchEmbd.getOutput().width);
-    	
+
     	/**
     	 * encoder
     	 */
@@ -315,7 +328,7 @@ public class FluxDiTMainMoudue_Sprint extends Layer {
     		block.forward(e_x, t, cos, sin);
     		e_x = block.getOutput();
     	}
-    	
+
     	/**
     	 * repa
     	 */
@@ -330,11 +343,12 @@ public class FluxDiTMainMoudue_Sprint extends Layer {
 		Tensor h_x = e_x;
 		if(idsKeep != null && network.RUN_MODEL == RunModel.TRAIN) {
 			tokenDropKernel.idsKeep(idsKeep, number, (hw - 1), token_t);
+//			idsKeep.showDM();
 //			getRandomIds(idsKeep);
 			tokenDropKernel.imgTokenDrop(e_x, idsKeep, td_x, token_t, hw, maxContextLen, hiddenSize);
 			h_x = td_x;
 		}
-
+		
 		/**
 		 * mids
 		 */
@@ -347,12 +361,14 @@ public class FluxDiTMainMoudue_Sprint extends Layer {
     		}
     		h_x = block.getOutput();
     	}
-
+		
 		/**
 		 * pad_mask
 		 */
 		if(idsKeep != null && network.RUN_MODEL == RunModel.TRAIN) {
 			fusion.forward(h_x, e_x, idsKeep);
+		}else if(uncond){
+			fusion.forward_uncond(h_x, e_x);
 		}else {
 			fusion.forward(h_x, e_x);
 		}
@@ -383,7 +399,6 @@ public class FluxDiTMainMoudue_Sprint extends Layer {
         	yShape = new int[] {number, oChannel, h, patchSize, w, patchSize};
     	}
     	Tensor_OP().permute(finalLayer.getOutput(), this.output, xShape, yShape, new int[] {0, 5, 1, 3, 2, 4});
-//    	output.showDM("output");
     }
 
     @Override
@@ -419,7 +434,7 @@ public class FluxDiTMainMoudue_Sprint extends Layer {
     		block.back(dy, dtc, cos, sin);
     		dy = block.diff;
     	}
-    	
+
     	/**
 		 * pad_mask backward
 		 */
@@ -428,7 +443,7 @@ public class FluxDiTMainMoudue_Sprint extends Layer {
 		}else {
 			fusion.back(dy, dencoder);
 		}
-		
+    	
 		/**
 		 * mids backward
 		 */
@@ -448,10 +463,8 @@ public class FluxDiTMainMoudue_Sprint extends Layer {
 		 */
 		Tensor de = dh;
 		if(idsKeep != null) {
-			Tensor dx = encoders.get(num_f - 1).getOutput();
-			dx.clearGPU();
-			tokenDropKernel.imgTokenDropBack(dx, idsKeep, dh, token_t, hw, maxContextLen, hiddenSize);
-			de = dx;
+			tokenDropKernel.imgTokenDropBack(drop_delta, idsKeep, dh, token_t, hw, maxContextLen, hiddenSize);
+			de = drop_delta;
 		}
 		
 		/**
@@ -468,7 +481,7 @@ public class FluxDiTMainMoudue_Sprint extends Layer {
     		block.back(de, dtc, cos, sin);
     		de = block.diff;
     	}
-    	
+
     	baseKernel.concat_channel_backward(de, labelEmbd.getOutput(), img_x, input.number, maxContextLen, hw, 1, patchEmbd.getOutput().width);
     	
      	labelEmbd.back(labelEmbd.getOutput());
@@ -723,7 +736,107 @@ public class FluxDiTMainMoudue_Sprint extends Layer {
                 System.out.println(key);
             }
         }
+        ModeLoaderlUtils.loadData(block.patchEmbd.patchEmbedding.weight, weightMap, "x_embedder.proj.weight", 4);
+        ModeLoaderlUtils.loadData(block.patchEmbd.patchEmbedding.bias, weightMap, "x_embedder.proj.bias");
+        
+        ModeLoaderlUtils.loadData(block.timeEmbd.linear1.weight, weightMap, "t_embedder.mlp.0.weight");
+        ModeLoaderlUtils.loadData(block.timeEmbd.linear1.bias, weightMap, "t_embedder.mlp.0.bias");
+        ModeLoaderlUtils.loadData(block.timeEmbd.linear2.weight, weightMap, "t_embedder.mlp.2.weight");
+        ModeLoaderlUtils.loadData(block.timeEmbd.linear2.bias, weightMap, "t_embedder.mlp.2.bias");
 
+        ModeLoaderlUtils.loadData(block.labelEmbd.init_y_embedding(), weightMap, "y_embedder.y_embedding");
+        
+        ModeLoaderlUtils.loadData(block.labelEmbd.linear1.weight, weightMap, "y_embedder.y_proj.fc1.weight");
+        ModeLoaderlUtils.loadData(block.labelEmbd.linear1.bias, weightMap, "y_embedder.y_proj.fc1.bias");
+        ModeLoaderlUtils.loadData(block.labelEmbd.linear2.weight, weightMap, "y_embedder.y_proj.fc2.weight");
+        ModeLoaderlUtils.loadData(block.labelEmbd.linear2.bias, weightMap, "y_embedder.y_proj.fc2.bias");
+
+        for(int i = 0;i<2;i++) {
+        	
+        	FluxDiTBlock b = block.encoders.get(i);
+        	
+        	b.norm1.gamma = ModeLoaderlUtils.loadData(b.norm1.gamma, weightMap, 1, "blocks."+i+".norm1.weight"); 
+        	b.norm3.gamma = ModeLoaderlUtils.loadData(b.norm3.gamma, weightMap, 1, "blocks."+i+".norm2.weight");  
+        	
+        	ModeLoaderlUtils.loadData(b.attn.qLinerLayer.weight, weightMap, "blocks."+i+".attn.q.weight");
+            ModeLoaderlUtils.loadData(b.attn.qLinerLayer.bias, weightMap, "blocks."+i+".attn.q.bias");
+        	ModeLoaderlUtils.loadData(b.attn.kLinerLayer.weight, weightMap, "blocks."+i+".attn.k.weight");
+            ModeLoaderlUtils.loadData(b.attn.kLinerLayer.bias, weightMap, "blocks."+i+".attn.k.bias");
+        	ModeLoaderlUtils.loadData(b.attn.vLinerLayer.weight, weightMap, "blocks."+i+".attn.v.weight");
+            ModeLoaderlUtils.loadData(b.attn.vLinerLayer.bias, weightMap, "blocks."+i+".attn.v.bias");
+        	ModeLoaderlUtils.loadData(b.attn.oLinerLayer.weight, weightMap, "blocks."+i+".attn.proj.weight");
+            ModeLoaderlUtils.loadData(b.attn.oLinerLayer.bias, weightMap, "blocks."+i+".attn.proj.bias");
+            
+        	ModeLoaderlUtils.loadData(b.mlp.w12.weight, weightMap, "blocks."+i+".mlp.w12.weight");
+        	ModeLoaderlUtils.loadData(b.mlp.w12.bias, weightMap, "blocks."+i+".mlp.w12.bias");
+        	ModeLoaderlUtils.loadData(b.mlp.w3.weight, weightMap, "blocks."+i+".mlp.w3.weight");
+        	ModeLoaderlUtils.loadData(b.mlp.w3.bias, weightMap, "blocks."+i+".mlp.w3.bias");
+        	
+        	ModeLoaderlUtils.loadData(b.adaLN_modulation.weight, weightMap, "blocks."+i+".adaLN_modulation.1.weight");
+        	ModeLoaderlUtils.loadData(b.adaLN_modulation.bias, weightMap, "blocks."+i+".adaLN_modulation.1.bias");
+        }
+        
+        for(int i = 0;i<8;i++) {
+        	int idx = i + 2;
+        	FluxDiTBlock b = block.mids.get(i);
+        	
+        	b.norm1.gamma = ModeLoaderlUtils.loadData(b.norm1.gamma, weightMap, 1, "blocks."+idx+".norm1.weight"); 
+        	b.norm3.gamma = ModeLoaderlUtils.loadData(b.norm3.gamma, weightMap, 1, "blocks."+idx+".norm2.weight");  
+        	
+        	ModeLoaderlUtils.loadData(b.attn.qLinerLayer.weight, weightMap, "blocks."+idx+".attn.q.weight");
+            ModeLoaderlUtils.loadData(b.attn.qLinerLayer.bias, weightMap, "blocks."+idx+".attn.q.bias");
+        	ModeLoaderlUtils.loadData(b.attn.kLinerLayer.weight, weightMap, "blocks."+idx+".attn.k.weight");
+            ModeLoaderlUtils.loadData(b.attn.kLinerLayer.bias, weightMap, "blocks."+idx+".attn.k.bias");
+        	ModeLoaderlUtils.loadData(b.attn.vLinerLayer.weight, weightMap, "blocks."+idx+".attn.v.weight");
+            ModeLoaderlUtils.loadData(b.attn.vLinerLayer.bias, weightMap, "blocks."+idx+".attn.v.bias");
+        	ModeLoaderlUtils.loadData(b.attn.oLinerLayer.weight, weightMap, "blocks."+idx+".attn.proj.weight");
+            ModeLoaderlUtils.loadData(b.attn.oLinerLayer.bias, weightMap, "blocks."+idx+".attn.proj.bias");
+            
+        	ModeLoaderlUtils.loadData(b.mlp.w12.weight, weightMap, "blocks."+idx+".mlp.w12.weight");
+        	ModeLoaderlUtils.loadData(b.mlp.w12.bias, weightMap, "blocks."+idx+".mlp.w12.bias");
+        	ModeLoaderlUtils.loadData(b.mlp.w3.weight, weightMap, "blocks."+idx+".mlp.w3.weight");
+        	ModeLoaderlUtils.loadData(b.mlp.w3.bias, weightMap, "blocks."+idx+".mlp.w3.bias");
+        	
+        	ModeLoaderlUtils.loadData(b.adaLN_modulation.weight, weightMap, "blocks."+idx+".adaLN_modulation.1.weight");
+        	ModeLoaderlUtils.loadData(b.adaLN_modulation.bias, weightMap, "blocks."+idx+".adaLN_modulation.1.bias");
+        }
+
+        block.fusion.weight = ModeLoaderlUtils.loadData(block.fusion.weight, weightMap, 3, "mask_token"); 
+        ModeLoaderlUtils.loadData(block.fusion.fusion_proj.weight, weightMap, "fusion_proj.weight");
+        ModeLoaderlUtils.loadData(block.fusion.fusion_proj.bias, weightMap, "fusion_proj.bias");
+        
+        for(int i = 0;i<2;i++) {
+        	int idx = i + 10;
+        	FluxDiTBlock b = block.decoders.get(i);
+        	
+        	b.norm1.gamma = ModeLoaderlUtils.loadData(b.norm1.gamma, weightMap, 1, "blocks."+idx+".norm1.weight"); 
+        	b.norm3.gamma = ModeLoaderlUtils.loadData(b.norm3.gamma, weightMap, 1, "blocks."+idx+".norm2.weight");  
+        	
+        	ModeLoaderlUtils.loadData(b.attn.qLinerLayer.weight, weightMap, "blocks."+idx+".attn.q.weight");
+            ModeLoaderlUtils.loadData(b.attn.qLinerLayer.bias, weightMap, "blocks."+idx+".attn.q.bias");
+        	ModeLoaderlUtils.loadData(b.attn.kLinerLayer.weight, weightMap, "blocks."+idx+".attn.k.weight");
+            ModeLoaderlUtils.loadData(b.attn.kLinerLayer.bias, weightMap, "blocks."+idx+".attn.k.bias");
+        	ModeLoaderlUtils.loadData(b.attn.vLinerLayer.weight, weightMap, "blocks."+idx+".attn.v.weight");
+            ModeLoaderlUtils.loadData(b.attn.vLinerLayer.bias, weightMap, "blocks."+idx+".attn.v.bias");
+        	ModeLoaderlUtils.loadData(b.attn.oLinerLayer.weight, weightMap, "blocks."+idx+".attn.proj.weight");
+            ModeLoaderlUtils.loadData(b.attn.oLinerLayer.bias, weightMap, "blocks."+idx+".attn.proj.bias");
+            
+        	ModeLoaderlUtils.loadData(b.mlp.w12.weight, weightMap, "blocks."+idx+".mlp.w12.weight");
+        	ModeLoaderlUtils.loadData(b.mlp.w12.bias, weightMap, "blocks."+idx+".mlp.w12.bias");
+        	ModeLoaderlUtils.loadData(b.mlp.w3.weight, weightMap, "blocks."+idx+".mlp.w3.weight");
+        	ModeLoaderlUtils.loadData(b.mlp.w3.bias, weightMap, "blocks."+idx+".mlp.w3.bias");
+        	
+        	ModeLoaderlUtils.loadData(b.adaLN_modulation.weight, weightMap, "blocks."+idx+".adaLN_modulation.1.weight");
+        	ModeLoaderlUtils.loadData(b.adaLN_modulation.bias, weightMap, "blocks."+idx+".adaLN_modulation.1.bias");
+        }
+        
+        block.finalLayer.finalNorm.gamma = ModeLoaderlUtils.loadData(block.finalLayer.finalNorm.gamma, weightMap, 1, "final_layer.norm_final.weight"); 
+        ModeLoaderlUtils.loadData(block.finalLayer.finalLinear.weight, weightMap, "final_layer.linear.weight");
+        ModeLoaderlUtils.loadData(block.finalLayer.finalLinear.bias, weightMap, "final_layer.linear.bias");
+        ModeLoaderlUtils.loadData(block.finalLayer.m_linear1.weight, weightMap, "final_layer.adaLN_modulation_linear1.weight");
+        ModeLoaderlUtils.loadData(block.finalLayer.m_linear1.bias, weightMap, "final_layer.adaLN_modulation_linear1.bias");
+        ModeLoaderlUtils.loadData(block.finalLayer.m_linear2.weight, weightMap, "final_layer.adaLN_modulation_linear2.weight");
+        ModeLoaderlUtils.loadData(block.finalLayer.m_linear2.bias, weightMap, "final_layer.adaLN_modulation_linear2.bias");
     }
     
     public static void main(String[] args) {
@@ -744,7 +857,7 @@ public class FluxDiTMainMoudue_Sprint extends Layer {
         nn.CUDNN = true;
         nn.number = N;
     	
-        FluxDiTMainMoudue_Sprint jb = new FluxDiTMainMoudue_Sprint(C, W, H, patchSize, hiddenSize, headNum, depth, 1000, TEM, TT, 4, 768, 0.0f, 0.0f, nn);
+        FluxDiTMainMoudue_Sprint jb = new FluxDiTMainMoudue_Sprint(C, W, H, patchSize, hiddenSize, headNum, depth, 1000, TEM, TT, 4, 768, 0.0f, 0.75f, 0.00f, nn);
     	
         String weight = "D:\\models\\dit_weight.json";
         loadWeight(LagJsonReader.readJsonFileBigWeightIterator(weight), jb, true);
@@ -759,6 +872,11 @@ public class FluxDiTMainMoudue_Sprint extends Layer {
 	    Tensor cy = new Tensor(N, TT, 1, TEM, true);
 	    ModeLoaderlUtils.loadData(cy, cydatas, "context", 3);
 	    
+	    String idskeepPath = "D:\\models\\dit_ids_keep.json";
+	    Map<String, Object> idskeepDatas = LagJsonReader.readJsonFileSmallWeight(idskeepPath);
+	    Tensor idskeep = new Tensor(N, 1, 1, 64, true);
+	    ModeLoaderlUtils.loadData(idskeep, idskeepDatas, "ids_keep", 2);
+	    
 	    Tensor t = new Tensor(N, 1, 1, 1, new float[] {0.1f, 0.8f}, true);
 	    int time = (W / patchSize) * (H / patchSize);
 	    Tensor[] cs = RoPEKernel.getCosAndSin2D(time, hiddenSize, headNum);
@@ -766,11 +884,18 @@ public class FluxDiTMainMoudue_Sprint extends Layer {
         Tensor sin = cs[1];
 	    
         cy.view(N * TT, 1, 1, TEM);
+        jb.setIdsKeep(idskeep);
 	    jb.forward(input, t, cy, cos, sin);
 	    
-	    jb.getOutput().showDM();
+	    jb.getOutput().showDM("output");
 	    
-//	    jb.back(input, cos, sin);
+	    String deltaPath = "D:\\models\\dit_delta.json";
+	    Map<String, Object> deltaDatas = LagJsonReader.readJsonFileSmallWeight(deltaPath);
+	    Tensor delta = new Tensor(N, C, H, W, true);
+	    ModeLoaderlUtils.loadData(delta, deltaDatas, "delta");
+	    
+	    jb.back(delta, cos, sin);
+	    
     }
     
     public Tensor getZ() {
@@ -780,6 +905,10 @@ public class FluxDiTMainMoudue_Sprint extends Layer {
     public void setZGrad(Tensor delta) {
     	z_mlp.back(delta);
     }
+
+	public void setIdsKeep(Tensor idsKeep) {
+		this.idsKeep = idsKeep;
+	}
     
 }
 

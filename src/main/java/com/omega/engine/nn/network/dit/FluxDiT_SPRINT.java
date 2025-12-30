@@ -42,6 +42,7 @@ public class FluxDiT_SPRINT extends Network {
     private float y_drop_prob = 0.0f;
     
     private float token_drop_ratio = 0.75f;
+    private float path_drop_prob = 0.0f;
     
     private InputLayer inputLayer;
     public FluxDiTMainMoudue_Sprint main;
@@ -52,7 +53,7 @@ public class FluxDiT_SPRINT extends Network {
     private Tensor head;
     private Tensor tail;
     
-    public FluxDiT_SPRINT(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int textEmbedDim, int maxContextLen, int mlpRatio, int z_dim, float token_drop_ratio, float y_drop_prob) {
+    public FluxDiT_SPRINT(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int textEmbedDim, int maxContextLen, int mlpRatio, int z_dim, float token_drop_ratio, float path_drop_prob, float y_drop_prob) {
         this.lossFunction = LossFactory.create(lossType, this);
 //        this.weight_decay = 0.1f;
         this.updater = updater;
@@ -68,6 +69,7 @@ public class FluxDiT_SPRINT extends Network {
         this.maxContextLen = maxContextLen;
         this.mlpRatio = mlpRatio;
         this.token_drop_ratio = token_drop_ratio;
+        this.path_drop_prob = path_drop_prob;
         this.y_drop_prob = y_drop_prob;
 		this.z_dim = z_dim;
         this.time = (width / patchSize) * (height / patchSize);
@@ -78,7 +80,7 @@ public class FluxDiT_SPRINT extends Network {
     	
         this.inputLayer = new InputLayer(inChannel, height, width);
         
-        main = new FluxDiTMainMoudue_Sprint(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, textEmbedDim, maxContextLen, mlpRatio, z_dim, y_drop_prob, token_drop_ratio, this);
+        main = new FluxDiTMainMoudue_Sprint(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, textEmbedDim, maxContextLen, mlpRatio, z_dim, y_drop_prob, token_drop_ratio, path_drop_prob, this);
         
         this.addLayer(inputLayer);
         this.addLayer(main);
@@ -145,6 +147,30 @@ public class FluxDiT_SPRINT extends Network {
     	tensorOP.cat_batch(input, input, input_null);
         this.main.forward(input_null, t, context, cos, sin);
         tensorOP.cat_bacth_copy(this.main.getOutput(), eps, uncond_eps);
+        /**
+         * out = uncond_eps + cfg_scale * (eps - uncond_eps)
+         */
+        tensorOP.sub(eps, uncond_eps, eps);
+        tensorOP.mul(eps, cfg_scale, eps);
+        tensorOP.add(uncond_eps, eps, eps);
+        return eps;
+    }
+    
+    public Tensor forward_with_path_drop_cfg(Tensor input, Tensor t, Tensor context, Tensor null_context, Tensor cos, Tensor sin, Tensor eps, float cfg_scale) {
+        /**
+         * 设置输入数据
+         */
+        if(input_null == null || input_null.number != input.number) {
+    		input_null = Tensor.createGPUTensor(input_null, input.number, input.channel, input.height, input.width, true);
+    	}
+        input.copyGPU(input_null);
+        this.main.uncond = false;
+        this.main.forward(input, t, context, cos, sin);
+        this.main.getOutput().copyGPU(eps);
+        this.main.uncond = true;
+        this.main.forward(input_null, t, null_context, cos, sin);
+        uncond_eps = this.main.getOutput();
+        
         /**
          * out = uncond_eps + cfg_scale * (eps - uncond_eps)
          */

@@ -230,7 +230,7 @@ public class FluxDiTTest {
 		String dataPath = "D:\\dataset\\amine\\dalle_vavae_latend.bin";
         String clipDataPath = "D:\\dataset\\amine\\dalle_full_clip.bin";
 		
-        int batchSize = 30;
+        int batchSize = 44;
         int latendDim = 32;
         int height = 16;
         int width = 16;
@@ -273,14 +273,15 @@ public class FluxDiTTest {
         
         float y_prob = 0.1f;
         float token_drop = 0.75f;
+        float path_drop_prob = 0.05f;
         
-        FluxDiT_SPRINT dit = new FluxDiT_SPRINT(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, textEmbedDim, maxContext, mlpRatio, dinov_hiddenSize, token_drop, y_prob);
+        FluxDiT_SPRINT dit = new FluxDiT_SPRINT(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, textEmbedDim, maxContext, mlpRatio, dinov_hiddenSize, token_drop, path_drop_prob, y_prob);
         dit.CUDNN = true;
         dit.learnRate = 2e-4f;
         
         ICPlan icplan = new ICPlan(dit.tensorOP);
 
-//        String model_path = "D:\\models\\dit_txt\\flux_sprint_b1_1.model";
+//        String model_path = "D:\\models\\dit_txt\\flux_sprint_b1_4.model";
 //        ModelUtils.loadModel(dit, model_path);
         
         MBSGDOptimizer optimizer = new MBSGDOptimizer(dit, 100, 0.00001f, batchSize, LearnRateUpdate.NONE, false);
@@ -441,7 +442,7 @@ public class FluxDiTTest {
         
         ICPlan icplan = new ICPlan(network.tensorOP);
         
-        String model_path = "D:\\test\\dit_vavae\\flux\\flux_dit_l1_ema9_80000.model";
+        String model_path = "D:\\test\\dit_vavae\\flux\\flux_dit_l1_ema3_60000.model";
         ModelUtils.loadModel(network, model_path);
         
         Tensor label = new Tensor(batchSize * dataLoader.maxContextLen, 1, 1, 1, true);
@@ -744,14 +745,15 @@ public class FluxDiTTest {
         
         float y_prob = 0.1f;
         float token_drop = 0.0f;
+        float path_drop_prob = 0.05f;
         
-        FluxDiT_SPRINT network = new FluxDiT_SPRINT(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, textEmbedDim, maxContextLen, mlpRatio, 768, token_drop, y_prob);
+        FluxDiT_SPRINT network = new FluxDiT_SPRINT(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, textEmbedDim, maxContextLen, mlpRatio, 768, token_drop, path_drop_prob, y_prob);
         network.CUDNN = true;
         network.learnRate = 2e-4f;
         
         ICPlan icplan = new ICPlan(network.tensorOP);
         
-        String model_path = "D:\\models\\dit_txt\\flux_sprint_b1_24.model";
+        String model_path = "D:\\models\\dit_txt\\flux_sprint_b1_80.model";
         ModelUtils.loadModel(network, model_path);
         
         Tensor label = new Tensor(batchSize * dataLoader.maxContextLen, 1, 1, 1, true);
@@ -843,6 +845,157 @@ public class FluxDiTTest {
             result.data = MatrixOperation.clampSelf(result.syncHost(), -1, 1);
 
             showImgs("D:\\test\\dit_vavae\\flux_sprint\\" + i + "_T", result, mean, std);
+            
+            System.out.println("finish create.");
+        }
+        
+	}
+	
+	public static void test_flux_sprint_path_drop_cfg() throws Exception {
+		String labelPath = "D:\\dataset\\amine\\data.json";
+        String imgDirPath = "D:\\dataset\\amine\\256\\";
+        boolean horizontalFilp = true;
+        int imgSize = 256;
+        int maxContextLen = 77;
+        int batchSize = 10;
+        float[] mean = new float[]{0.5f, 0.5f, 0.5f};
+        float[] std = new float[]{0.5f, 0.5f, 0.5f};
+        String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
+        String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
+        BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+        SDImageDataLoaderEN dataLoader = new SDImageDataLoaderEN(bpe, labelPath, imgDirPath, imgSize, imgSize, maxContextLen, batchSize, horizontalFilp, mean, std);
+        int maxPositionEmbeddingsSize = 77;
+        int vocabSize = 49408;
+        int headNum = 12;
+        int n_layers = 12;
+        int textEmbedDim = 768;
+        int intermediateSize = 3072;
+        ClipTextModel clip = new ClipTextModel(LossType.MSE, UpdaterType.adamw, headNum, maxContextLen, vocabSize, textEmbedDim, maxPositionEmbeddingsSize, intermediateSize, n_layers);
+        clip.CUDNN = true;
+        clip.time = maxContextLen;
+        clip.RUN_MODEL = RunModel.EVAL;
+        String clipWeight = "D:\\models\\CLIP-GmP-ViT-L-14\\CLIP-GmP-ViT-L-14.json";
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, "", false);
+
+        int latendDim = 32;
+        int num_res_blocks = 2;
+        int[] ch_mult = new int[]{1, 1, 2, 2, 4};
+        int ch = 128;
+        VA_VAE vae = new VA_VAE(LossType.MSE, UpdaterType.adamw, latendDim, imgSize, ch_mult, ch, num_res_blocks, true);
+        vae.CUDNN = true;
+        vae.learnRate = 0.001f;
+        vae.RUN_MODEL = RunModel.EVAL;
+        String vaeWeight = "D:\\models\\vavae.json";
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
+        
+        int ditHeadNum = 12;
+        int latendSize = 16;
+        int depth = 12;
+        int timeSteps = 1000;
+        int mlpRatio = 4;
+        int patchSize = 1;
+        int hiddenSize = 768;
+        
+        float y_prob = 0.1f;
+        float token_drop = 0.0f;
+        float path_drop_prob = 0.05f;
+        
+        FluxDiT_SPRINT network = new FluxDiT_SPRINT(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, textEmbedDim, maxContextLen, mlpRatio, 768, token_drop, path_drop_prob, y_prob);
+        network.CUDNN = true;
+        network.learnRate = 2e-4f;
+        
+        ICPlan icplan = new ICPlan(network.tensorOP);
+        
+        String model_path = "D:\\models\\dit_txt\\flux_sprint_b1_20.model";
+        ModelUtils.loadModel(network, model_path);
+        
+        Tensor label = new Tensor(batchSize * dataLoader.maxContextLen, 1, 1, 1, true);
+       
+        Tensor condInput = null;
+        Tensor condInput_ynull = null;
+        Tensor t = new Tensor(batchSize, 1, 1, 1, true);
+        
+        Tensor noise = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+        Tensor latend = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+        Tensor eps = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+        
+        Tensor noise2 = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+        
+        Tensor[] cs = RoPEKernel.getCosAndSin2D(network.time, network.hiddenSize, network.headNum);
+        Tensor cos = cs[0];
+        Tensor sin = cs[1];
+
+        Tensor latendMean = new Tensor(latendDim, 1, 1, 1, new float[] {0.57625645f,0.09338784f,-0.42964765f,-0.37670407f,-0.08795908f,-1.5591346f,-0.44817135f,-0.30657783f,0.13237366f,0.65041465f,-0.7171756f,1.9741942f,0.028869499f,0.6699318f,0.42782572f,1.7180899f,-1.1657567f,1.8240571f,-0.27507848f,-0.64780587f,0.57183015f,-0.015657624f,-1.6581186f,0.64075494f,2.8023534f,2.1147559f,-0.46823075f,0.06350619f,-1.3322849f,-0.3576193f,0.589975f,-0.28093442f}, true);
+        Tensor latendStd = new Tensor(latendDim, 1, 1, 1, new float[] {4.092015f,4.054383f,3.416052f,3.608325f,3.6037152f,3.1869633f,3.0185716f,3.4761536f,3.730099f,3.6259832f,3.608243f,3.562f,3.7766607f,3.6814737f,3.208086f,3.5293725f,3.8835256f,3.5182753f,3.679344f,3.277554f,3.3914754f,3.0021727f,3.5673943f,4.2805233f,2.5594256f,3.3488555f,4.982151f,3.1698997f,3.1933618f,3.8946505f,4.275168f,4.1173005f}, true);
+
+//        String zPath = "D:\\test\\dit_vavae\\lightingdit_z.json";
+//	    Map<String, Object> zdatas = LagJsonReader.readJsonFileSmallWeight(zPath);
+//	    ModeLoaderlUtils.loadData(noise, zdatas, "x");
+        
+        network.RUN_MODEL = RunModel.EVAL;
+        String[] labels = new String[batchSize];
+        labels[0] = "A cat";
+        labels[1] = "a vibrant anime mountain lands";
+        labels[2] = "a highly detailed anime landscape,big tree on the water, epic sky,golden grass,detailed";
+        labels[3] = "a woman";
+        labels[4] = "fruit cream cake";
+        labels[5] = "bright red phlox flowers bloom in a garden";
+        labels[6] = "the cambridge shoulder bag";
+        labels[7] = "A yellow mushroom grows in the forest";
+        labels[8] = "a dog";
+        labels[9] = "A lovely corgi is taking a walk under the sea";
+        dataLoader.loadLabel_offset(label, 0, labels[0]);
+        dataLoader.loadLabel_offset(label, 1, labels[1]);
+        dataLoader.loadLabel_offset(label, 2, labels[2]);
+        dataLoader.loadLabel_offset(label, 3, labels[3]);
+        dataLoader.loadLabel_offset(label, 4, labels[4]);
+        dataLoader.loadLabel_offset(label, 5, labels[5]);
+        dataLoader.loadLabel_offset(label, 6, labels[6]);
+        dataLoader.loadLabel_offset(label, 7, labels[7]);
+        dataLoader.loadLabel_offset(label, 8, labels[8]);
+        dataLoader.loadLabel_offset(label, 9, labels[9]);
+        condInput = clip.get_full_clip_prompt_embeds(label);
+        
+        if(condInput_ynull == null) {
+        	condInput_ynull = Tensor.createGPUTensor(condInput_ynull, condInput.number, condInput.channel, condInput.height, condInput.width, true);
+        }
+        
+        Tensor y_null = network.main.labelEmbd.getY_embedding();
+        int part_input_size = y_null.dataLength;
+        for(int b = 0;b<batchSize;b++) {
+        	network.tensorOP.op.copy_gpu(y_null, condInput_ynull, part_input_size, 0, 1, 0, 1);
+        }
+        for(int i = 0;i<10;i++) {
+        	System.out.println("start create test images.");
+
+            GPUOP.getInstance().cudaRandn(noise);
+            noise.copyGPU(noise2);
+            
+            Tensor sample = icplan.forward_with_path_drop_cfg(network, noise, t, condInput, condInput_ynull, cos, sin, latend, eps, 1.0f);
+            
+            icplan.latend_un_norm(sample, latendMean, latendStd);
+
+            Tensor result = vae.decode(sample);
+            
+            JCuda.cudaDeviceSynchronize();
+            
+            result.data = MatrixOperation.clampSelf(result.syncHost(), -1, 1);
+
+            showImgs("D:\\test\\dit_vavae\\flux_path_drop_sprint\\" + i, result, mean, std);
+            
+            System.out.println("finish create.");
+            
+            sample = icplan.forward_with_path_drop_cfg(network, noise2, t, condInput, condInput_ynull, cos, sin, latend, eps, 2.5f);
+            
+            icplan.latend_un_norm(sample, latendMean, latendStd);
+
+            result = vae.decode(sample);
+            
+            JCuda.cudaDeviceSynchronize();
+            
+            result.data = MatrixOperation.clampSelf(result.syncHost(), -1, 1);
+
+            showImgs("D:\\test\\dit_vavae\\flux_path_drop_sprint\\" + i + "_T", result, mean, std);
             
             System.out.println("finish create.");
         }
@@ -1802,6 +1955,8 @@ public class FluxDiTTest {
 	        	flux_sprint_b1_iddpm_train();
 	        	
 //	        	test_flux_sprint_cfg();
+	        	
+//	        	test_flux_sprint_path_drop_cfg();
 	        	
 	        } catch (Exception e) {
 	            // TODO: handle exception

@@ -7726,7 +7726,7 @@ public class MBSGDOptimizer extends Optimizer {
                      */
                     Tensor z_loss = repa.projection_loss(network.main.getZ(), img);
                     Tensor z_diff = repa.projection_loss_back(network.main.getZ());
-//                    network.tensorOP.mul(z_diff, 0.5f, z_diff);
+                    network.tensorOP.mul(z_diff, 0.5f, z_diff);
                     network.main.setZGrad(z_diff);
                     
                     /**

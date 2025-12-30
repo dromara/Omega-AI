@@ -9,6 +9,7 @@ import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.dit.kernel.PaddingMaskKernel;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.nn.network.utils.ModelUtils;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
@@ -25,6 +26,8 @@ public class FusionLayer extends Layer {
     private int T;
     private int FT;
     private int TT = 0;
+    
+    private float path_drop_prob = 0.0f;
 
     public FullyLayer fusion_proj;
     
@@ -32,6 +35,8 @@ public class FusionLayer extends Layer {
     private Tensor e_m;
     
     private PaddingMaskKernel pmKernel;
+    
+    private float pdp = 0.0f;
 
     public FusionLayer(int embedDim, int FT, int T, Network network) {
         this.network = network;
@@ -61,8 +66,25 @@ public class FusionLayer extends Layer {
         this.oWidth = embedDim;
         this.initLayers();
     }
+    
+    public FusionLayer(int embedDim, int FT, int T, int TT, float path_drop_prob, Network network) {
+        this.network = network;
+        if (this.updater == null) {
+            this.setUpdater(UpdaterFactory.create(network));
+        }
+        this.T = T;
+        this.FT = FT;
+        this.TT = TT;
+        this.path_drop_prob = path_drop_prob;
+        this.embedDim = embedDim;
+        this.oChannel = 1;
+        this.oHeight = 1;
+        this.oWidth = embedDim;
+        this.initLayers();
+    }
 
     public static void main(String[] args) {
+    	
     }
 
     public void initLayers() {
@@ -99,6 +121,8 @@ public class FusionLayer extends Layer {
         // TODO Auto-generated method stub
     	if(diffW == null) {
     		diffW = Tensor.createGPUTensor(diffW, weight.shape(), true);
+    	}else {
+    		diffW.clearGPU();
     	}
     	if(diff == null || diff.number != number) {
     		diff = Tensor.createGPUTensor(diff, input.shape(), true);
@@ -117,6 +141,17 @@ public class FusionLayer extends Layer {
     }
     
     public void output(Tensor encoder) {
+    	pdp = RandomUtils.randomFloat();
+    	if(network.RUN_MODEL == RunModel.TRAIN && path_drop_prob > 0 && pdp < path_drop_prob) {
+    		pmKernel.set_mask_igone(weight, input, FT, TT, embedDim);
+    	}
+    	Tensor_OP().cat_width(encoder, input, e_m, embedDim, embedDim);
+    	fusion_proj.forward(e_m);
+    	this.output = fusion_proj.getOutput();
+    }
+    
+    public void output_uncond(Tensor encoder) {
+    	pmKernel.set_mask_igone(weight, input, FT, TT, embedDim);
     	Tensor_OP().cat_width(encoder, input, e_m, embedDim, embedDim);
     	fusion_proj.forward(e_m);
     	this.output = fusion_proj.getOutput();
@@ -127,6 +162,10 @@ public class FusionLayer extends Layer {
         	pmKernel.forward(input, weight, idskeep, g_pad, FT, T, TT, embedDim);
     	}else {
         	pmKernel.forward(input, weight, idskeep, g_pad, FT, T, embedDim);
+    	}
+    	pdp = RandomUtils.randomFloat();
+    	if(network.RUN_MODEL == RunModel.TRAIN && path_drop_prob > 0 && pdp < path_drop_prob) {
+    		pmKernel.set_mask_igone(weight, g_pad, FT, TT, embedDim);
     	}
     	Tensor_OP().cat_width(encoder, g_pad, e_m, embedDim, embedDim);
     	fusion_proj.forward(e_m);
@@ -149,6 +188,9 @@ public class FusionLayer extends Layer {
         // TODO Auto-generated method stub
     	fusion_proj.back(delta);
     	Tensor_OP().cat_width_back(dencoder, g_pad, fusion_proj.diff, embedDim, embedDim);
+    	if(path_drop_prob > 0  && pdp < path_drop_prob) {
+    		pmKernel.set_mask_back_igone(g_pad, FT, TT, embedDim);
+    	}
     	if(TT > 0) {
     		pmKernel.backward(g_pad, idskeep, diff, diffW, FT, T, TT, embedDim);
     	}else {
@@ -160,6 +202,10 @@ public class FusionLayer extends Layer {
         // TODO Auto-generated method stub
     	fusion_proj.back(delta);
     	Tensor_OP().cat_width_back(dencoder, diff, fusion_proj.diff, embedDim, embedDim);
+    	if(path_drop_prob > 0 && pdp < path_drop_prob) {
+    		pmKernel.set_mask_back_igone(diff, FT, TT, embedDim);
+    		pmKernel.mask_igone_diff(diff, diffW, diff.number, embedDim, FT + TT, TT);
+    	}
     }
 
     @Override
@@ -227,6 +273,22 @@ public class FusionLayer extends Layer {
          * 计算输出
          */
         this.output(encoder);
+    }
+    
+    public void forward_uncond(Tensor input, Tensor encoder) {
+        // TODO Auto-generated method stub
+        /**
+         * 设置输入
+         */
+        this.setInput(input);
+        /**
+         * 参数初始化
+         */
+        this.init();
+        /**
+         * 计算输出
+         */
+        this.output_uncond(encoder);
     }
     
     public void forward(Tensor input, Tensor encoder, Tensor idskeep) {

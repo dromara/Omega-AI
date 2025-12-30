@@ -412,6 +412,8 @@ public class DiTAttentionLayer2 extends Layer {
         ropeKernel.forward2d(cos, sin, idskeep, q, rq, time, headNum, dk, igone);
         ropeKernel.forward2d(cos, sin, idskeep, k, rk, time, headNum, dk, igone);
 
+//        rq.showDM("rq");
+//        rq.showDMByOffsetRed(77 * dk, dk, "rq");
         scaledDotProductAttention(rq, rk, vt);
         
         Tensor vaccum = temp;

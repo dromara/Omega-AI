@@ -4,7 +4,6 @@ import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 
 import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.RandomUtils;
-import com.omega.engine.ad.op.gpu.OPKernel;
 import com.omega.engine.gpu.CUDAKernel;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.tensor.Tensor;
@@ -19,8 +18,10 @@ public class PaddingMaskKernel extends CUDAKernel {
     private CUfunction igone_function;
     private CUfunction igone_function2;
     private CUfunction mask_function;
+    private CUfunction mask_back_function;
+    private CUfunction mask_igone_function;
     private CUfunction mask_diff_function;
-    private CUfunction mask_diff_function2;
+    private CUfunction mask_igone_diff_function;
     private int CAFFE_CUDA_NUM_THREADS = 1024;
     private Pointer kernelParameters;
 
@@ -46,11 +47,17 @@ public class PaddingMaskKernel extends CUDAKernel {
             if (mask_function == null) {
             	mask_function = getCudaManager().getLocalFunctionByModule("PaddingMaskKernel.cu", "set_mask");
             }
+            if (mask_igone_function == null) {
+            	mask_igone_function = getCudaManager().getLocalFunctionByModule("PaddingMaskKernel.cu", "set_mask_igone");
+            }
+            if (mask_back_function == null) {
+            	mask_back_function = getCudaManager().getLocalFunctionByModule("PaddingMaskKernel.cu", "set_mask_back_igone");
+            }
             if (mask_diff_function == null) {
             	mask_diff_function = getCudaManager().getLocalFunctionByModule("PaddingMaskKernel.cu", "mask_diff");
             }
-            if (mask_diff_function2 == null) {
-            	mask_diff_function2 = getCudaManager().getLocalFunctionByModule("PaddingMaskKernel.cu", "mask_diff2");
+            if (mask_igone_diff_function == null) {
+            	mask_igone_diff_function = getCudaManager().getLocalFunctionByModule("PaddingMaskKernel.cu", "mask_igone_diff");
             }
         } catch (Exception e) {
             // TODO: handle exception
@@ -84,7 +91,7 @@ public class PaddingMaskKernel extends CUDAKernel {
     	CUDAManager cudaManager = new CUDAManager(0);
     	PaddingMaskKernel kernel = new PaddingMaskKernel(cudaManager);
     	
-    	kernel.mask_diff2(x, gpu, M, N);
+    	kernel.mask_diff(x, gpu, M, N);
     	
     	gpu.showDM();
     	System.err.println(JsonUtils.toJson(cpu));
@@ -126,7 +133,43 @@ public class PaddingMaskKernel extends CUDAKernel {
          }
     }
     
-    public void forward(Tensor x, Tensor mask, Tensor idskeep, Tensor output, int FT, int T, int W) {
+    public void set_mask_igone(Tensor mask, Tensor out, int T, int igoneT, int W) {
+    	try {
+            /**
+             * 设置入参
+             * const size_t size, const float *mask, float *out, const int W
+             */
+            kernelParameters = Pointer.to(Pointer.to(new long[]{out.dataLength}), Pointer.to(mask.getGpuData()), Pointer.to(out.getGpuData()), Pointer.to(new int[]{T}), Pointer.to(new int[]{igoneT}), Pointer.to(new int[]{W}));
+            cuLaunchKernel(mask_igone_function, this.CAFFE_GET_BLOCKS(out.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameters, null // Kernel- and extra parameters
+            );
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+   }
+   
+   public void set_mask_back_igone(Tensor dout, int T, int igoneT, int W) {
+    	try {
+            /**
+             * 设置入参
+             * const size_t size, float *dout, const int T, const int igoneT, const int W
+             */
+            kernelParameters = Pointer.to(Pointer.to(new long[]{dout.dataLength}), Pointer.to(dout.getGpuData()), Pointer.to(new int[]{T}), Pointer.to(new int[]{igoneT}), Pointer.to(new int[]{W}));
+            cuLaunchKernel(mask_back_function, this.CAFFE_GET_BLOCKS(dout.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameters, null // Kernel- and extra parameters
+            );
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+   }
+    
+   public void forward(Tensor x, Tensor mask, Tensor idskeep, Tensor output, int FT, int T, int W) {
         try {
         	/**
         	 * set mask value
@@ -172,7 +215,7 @@ public class PaddingMaskKernel extends CUDAKernel {
     
     public void backward(Tensor delta, Tensor idskeep, Tensor dx, Tensor dw, int FT, int T, int W) {
     	set_ids_back(dx, delta, idskeep, FT, T, W);
-    	mask_diff2(delta, dw, delta.number, W);
+    	mask_diff(delta, dw, delta.number, W);
     }
     
     public void backward(Tensor delta, Tensor idskeep, Tensor dx, Tensor dw, int FT, int T, int igoneT, int W) {
@@ -184,7 +227,7 @@ public class PaddingMaskKernel extends CUDAKernel {
     	set_ids_back(dx, delta, idskeep, FT, T, igoneT, W);
 //    	delta.showDMByOffsetRed((idx + igoneT) * W, W, "delta2");
 //    	System.err.println("-----");
-    	mask_diff2(delta, dw, delta.number, W);
+    	mask_diff(delta, dw, delta.number, W);
     }
     
     public void set_ids_back(Tensor dx, Tensor delta, Tensor idskeep, int FT, int T, int W) {
@@ -244,7 +287,7 @@ public class PaddingMaskKernel extends CUDAKernel {
         }
     }
     
-    public void mask_diff2(Tensor delta, Tensor dw, int rows, int cols) {
+    public void mask_igone_diff(Tensor delta, Tensor dw, int rows, int cols, int T, int igoneT) {
         try {
             int block_size = 256;
             int grid_dim =  (cols + block_size - 1) / block_size;
@@ -252,8 +295,8 @@ public class PaddingMaskKernel extends CUDAKernel {
              * 设置入参
              * const float* __restrict__ inp,float* __restrict__ out, int M, int N 
              */
-            kernelParameters = Pointer.to(Pointer.to(delta.getGpuData()), Pointer.to(dw.getGpuData()), Pointer.to(new int[]{rows}), Pointer.to(new int[]{cols}));
-            cuLaunchKernel(mask_diff_function2, grid_dim, 1, 1,      // Grid dimension
+            kernelParameters = Pointer.to(Pointer.to(delta.getGpuData()), Pointer.to(dw.getGpuData()), Pointer.to(new int[]{rows}), Pointer.to(new int[]{cols}), Pointer.to(new int[]{T}), Pointer.to(new int[]{igoneT}));
+            cuLaunchKernel(mask_igone_diff_function, grid_dim, 1, 1,      // Grid dimension
             		block_size, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameters, null // Kernel- and extra parameters
