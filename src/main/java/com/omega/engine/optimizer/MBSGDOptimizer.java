@@ -7682,10 +7682,14 @@ public class MBSGDOptimizer extends Optimizer {
                     icplan.t(t);
                     
                     GPUOP.getInstance().cudaRandn(noise);
-
-                    trainingData.loadData(indexs[it], latend, condInput, it);
-                    dataLoader.loadData(indexs[it], img);
                     
+                    int[] next = indexs[0];
+                    if(it < indexs.length - 1) {
+                    	next = indexs[it+1];
+                    }
+                    trainingData.loadData(indexs[it], next, latend, condInput, it);
+                    dataLoader.loadData(indexs[it], next, img);
+
                     icplan.latend_norm(latend, mean, std);    
                     network.tensorOP.mul(latend, scale_factor, latend);
                    
@@ -7754,7 +7758,7 @@ public class MBSGDOptimizer extends Optimizer {
                     if (this.loss.isHasGPU()) {
 
                     	float mse_loss = MatrixOperation.sum(this.loss.syncHost()) / this.batchSize;
-                    	float z_loss_mean = MatrixOperation.sum(z_loss.syncHost()) / z_loss.dataLength;
+                    	float z_loss_mean = MatrixOperation.sum(z_loss.syncHost()) / z_loss.dataLength * 0.5f;
                     	float cfm_loss_mean = MatrixOperation.sum(cfm_loss.syncHost()) / cfm_loss.dataLength * -1;
 //                    	System.err.println("mse_loss:"+mse_loss+",z_loss_mean:"+z_loss_mean+",cfm_loss_mean:"+cfm_loss_mean);
                         this.currentError = mse_loss;

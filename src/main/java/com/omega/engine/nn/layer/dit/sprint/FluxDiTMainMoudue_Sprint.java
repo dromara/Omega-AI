@@ -400,7 +400,7 @@ public class FluxDiTMainMoudue_Sprint extends Layer {
     	}
     	Tensor_OP().permute(finalLayer.getOutput(), this.output, xShape, yShape, new int[] {0, 5, 1, 3, 2, 4});
     }
-
+    
     @Override
     public Tensor getOutput() {
         // TODO Auto-generated method stub
@@ -412,7 +412,7 @@ public class FluxDiTMainMoudue_Sprint extends Layer {
 
     }
     
-    public void diff(Tensor cos,Tensor sin) {
+    public void diff(Tensor cos, Tensor sin) {
         // TODO Auto-generated method stub
     	/**
     	 * unpatchify back
@@ -483,6 +483,8 @@ public class FluxDiTMainMoudue_Sprint extends Layer {
     	}
 
     	baseKernel.concat_channel_backward(de, labelEmbd.getOutput(), img_x, input.number, maxContextLen, hw, 1, patchEmbd.getOutput().width);
+    	
+//    	img_x.showDM("d_img_x");
     	
      	labelEmbd.back(labelEmbd.getOutput());
      	
@@ -857,7 +859,7 @@ public class FluxDiTMainMoudue_Sprint extends Layer {
         nn.CUDNN = true;
         nn.number = N;
     	
-        FluxDiTMainMoudue_Sprint jb = new FluxDiTMainMoudue_Sprint(C, W, H, patchSize, hiddenSize, headNum, depth, 1000, TEM, TT, 4, 768, 0.0f, 0.75f, 0.00f, nn);
+        FluxDiTMainMoudue_Sprint jb = new FluxDiTMainMoudue_Sprint(C, W, H, patchSize, hiddenSize, headNum, depth, 1000, TEM, TT, 4, 768, 0.0f, 0.75f, 0.8f, nn);
     	
         String weight = "D:\\models\\dit_weight.json";
         loadWeight(LagJsonReader.readJsonFileBigWeightIterator(weight), jb, true);

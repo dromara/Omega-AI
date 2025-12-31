@@ -3,6 +3,7 @@ package com.omega.example.sd.utils;
 import java.io.File;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 import com.omega.common.utils.MathUtils;
 import com.omega.common.utils.RandomUtils;
@@ -39,6 +40,7 @@ public class SDImageDataLoaderEN extends BaseDataLoader {
     private String[] idxSet;
     private BPETokenizerEN tokenizer;
     private BaseKernel kernel;
+    private CompletableFuture<Boolean> cf;
 
     public SDImageDataLoaderEN(BPETokenizerEN tokenizer, String labelPath, String imgDirPath, int img_w, int img_h, int maxContextLen, int batchSize, boolean horizontalFilp) {
         this.horizontalFilp = horizontalFilp;
@@ -521,6 +523,52 @@ public class SDImageDataLoaderEN extends BaseDataLoader {
          *
          */
         input.hostToDevice();
+    }
+    
+    public void loadData(int[] indexs, int[] next, Tensor input) {
+        // TODO Auto-generated method stub
+    	try {
+            //			System.out.println(it);
+            if (cf != null) {
+                boolean success = cf.get();
+                if(success){
+                	input.hostToDevice();
+                	cf = loadAsyncData(next, input);
+                }
+            } else {
+                cf = loadAsyncData(indexs, input);
+                boolean success = cf.get();
+                if(success){
+                	input.hostToDevice();
+                	cf = loadAsyncData(next, input);
+                }
+            }
+//            System.out.println("load cost:"+(System.nanoTime() - start)/1e6+"ms.");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public CompletableFuture<Boolean> loadAsyncData(int[] indexs, Tensor input) {
+        CompletableFuture<Boolean> cf = CompletableFuture.supplyAsync(() -> {
+            try {
+            	 /**
+                 * 加载input数据
+                 *
+                 */
+                if (mean != null) {
+                    SegImageLoader.load(imgDirPath, extName, idxSet, indexs, input.number, input, false, true, mean, std);
+                } else {
+                    SegImageLoader.load(imgDirPath, extName, idxSet, indexs, input.number, input, false, true);
+                }
+            } catch (Exception e) {
+                // TODO: handle exception
+                e.printStackTrace();
+            }
+            return true;
+        });
+        return cf;
     }
 
     public void loadData(String filePath, Tensor input) {

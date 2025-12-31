@@ -143,7 +143,7 @@ public class FusionLayer extends Layer {
     public void output(Tensor encoder) {
     	pdp = RandomUtils.randomFloat();
     	if(network.RUN_MODEL == RunModel.TRAIN && path_drop_prob > 0 && pdp < path_drop_prob) {
-    		pmKernel.set_mask_igone(weight, input, FT, TT, embedDim);
+    		pmKernel.set_mask_igone(weight, input, FT + TT, TT, embedDim);
     	}
     	Tensor_OP().cat_width(encoder, input, e_m, embedDim, embedDim);
     	fusion_proj.forward(e_m);
@@ -164,9 +164,11 @@ public class FusionLayer extends Layer {
         	pmKernel.forward(input, weight, idskeep, g_pad, FT, T, embedDim);
     	}
     	pdp = RandomUtils.randomFloat();
+//    	pdp = 0.001f;
     	if(network.RUN_MODEL == RunModel.TRAIN && path_drop_prob > 0 && pdp < path_drop_prob) {
-    		pmKernel.set_mask_igone(weight, g_pad, FT, TT, embedDim);
+    		pmKernel.set_mask_igone(weight, g_pad, FT + TT, TT, embedDim);
     	}
+//    	g_pad.showDM("g_pad");
     	Tensor_OP().cat_width(encoder, g_pad, e_m, embedDim, embedDim);
     	fusion_proj.forward(e_m);
     	this.output = fusion_proj.getOutput();
@@ -187,15 +189,27 @@ public class FusionLayer extends Layer {
     public void diff(Tensor dencoder, Tensor idskeep) {
         // TODO Auto-generated method stub
     	fusion_proj.back(delta);
+//    	fusion_proj.diff.showDM("fusion_proj.diff");
     	Tensor_OP().cat_width_back(dencoder, g_pad, fusion_proj.diff, embedDim, embedDim);
     	if(path_drop_prob > 0  && pdp < path_drop_prob) {
-    		pmKernel.set_mask_back_igone(g_pad, FT, TT, embedDim);
-    	}
-    	if(TT > 0) {
-    		pmKernel.backward(g_pad, idskeep, diff, diffW, FT, T, TT, embedDim);
+    		pmKernel.mask_igone_diff(g_pad, diffW, g_pad.number, embedDim, FT + TT, TT);
+    		pmKernel.set_mask_back_igone(g_pad, FT + TT, TT, embedDim);
+//    		g_pad.showDM("dg_pad");
+//    		diffW.showDM("diffW");
+    		if(TT > 0) {
+    			pmKernel.set_ids_back(diff, g_pad, idskeep, FT, T, TT, embedDim);
+    		}else {
+    			pmKernel.set_ids_back(diff, g_pad, idskeep, FT, T, embedDim);
+    		}
     	}else {
-    		pmKernel.backward(g_pad, idskeep, diff, diffW, FT, T, embedDim);
+    		if(TT > 0) {
+        		pmKernel.backward(g_pad, idskeep, diff, diffW, FT, T, TT, embedDim);
+        	}else {
+        		pmKernel.backward(g_pad, idskeep, diff, diffW, FT, T, embedDim);
+        	}
     	}
+//    	diff.showDM("diff");
+//    	diffW.showDM("diffW");
     }
     
     public void diff(Tensor dencoder) {
@@ -203,8 +217,8 @@ public class FusionLayer extends Layer {
     	fusion_proj.back(delta);
     	Tensor_OP().cat_width_back(dencoder, diff, fusion_proj.diff, embedDim, embedDim);
     	if(path_drop_prob > 0 && pdp < path_drop_prob) {
-    		pmKernel.set_mask_back_igone(diff, FT, TT, embedDim);
     		pmKernel.mask_igone_diff(diff, diffW, diff.number, embedDim, FT + TT, TT);
+    		pmKernel.set_mask_back_igone(diff, FT + TT, TT, embedDim);
     	}
     }
 
