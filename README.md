@@ -60,7 +60,7 @@ public static void main(String[] args) {
 ## Demo展示
 
 ### Omega-mini-dit（130M参数文生图）
-#### [基于dit_b/1+va-vae+clip+repa+sprint+rms]
+#### [基于dit_b/1+va-vae+clip+repa+sprint+rms](https://gitee.com/dromara/omega-ai#omega-mini-dit%E6%96%87%E7%94%9F%E5%9B%BE)
 注：以下演示图片训练集为2M图文对数据集
 | ![输入图片说明](images/0_2_T_0.png)  |![输入图片说明](images/2_3_T_0.png)  | ![输入图片说明](images/2_1_T_2.png)   | ![输入图片说明](images/2_3_T_1.png) |   
 |---|---|---|---|
