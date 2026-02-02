@@ -62,7 +62,7 @@ public static void main(String[] args) {
 ### Omega-mini-dit（130M参数文生图）
 #### [基于dit_b/1+va-vae+clip+repa+sprint+rms](https://gitee.com/dromara/omega-ai#omega-mini-dit%E6%96%87%E7%94%9F%E5%9B%BE)
 注：以下演示图片训练集为2M图文对数据集
-|<img src="https://gitee.com/dromara/omega-ai/blob/master/images/0_2_T_0.png" style="width:256px; height:256px; object-fit: contain; border: 1px solid #ccc;"> |![输入图片说明](images/2_3_T_0.png)  | ![输入图片说明](images/2_1_T_2.png)   | ![输入图片说明](images/2_3_T_1.png) |   
+|![输入图片说明](images/0_2_T_0.png) |![输入图片说明](images/2_3_T_0.png)  | ![输入图片说明](images/2_1_T_2.png)   | ![输入图片说明](images/2_3_T_1.png) |   
 |---|---|---|---|
 | A cat  | A dog  | A cat holding a sign that says hello world | A lovely corgi is taking a walk under the sea  |  
 |![输入图片说明](images/0_1_T_2.png)|![输入图片说明](images/0_2_T_1.png)|![输入图片说明](images/4_0_T_2.png)|![输入图片说明](images/1_3_T_0.png)|
