@@ -311,6 +311,85 @@ public class FluxDiTBlock extends Layer {
 
     }
     
+    public void output_txt(Tensor tc,Tensor cos,Tensor sin) {
+
+    	/**
+    	 * shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = self.adaLN_modulation(c).chunk(6, dim=1)
+    	 */
+    	modulationAct.forward(tc);
+    	
+    	adaLN_modulation.forward(modulationAct.getOutput());
+    	
+    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), shift_msa, shape, 0);
+    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), scale_msa, shape, 1);
+    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), gate_msa, shape, 2);
+    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), shift_mlp, shape, 3);
+    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), scale_mlp, shape, 4);
+    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), gate_mlp, shape, 5);
+    	
+    	/**
+    	 *  x1 = x + gate_msa.unsqueeze(1) * self.attn(modulate(self.norm1(x), shift_msa, scale_msa))
+    	 */
+    	norm1.forward(input);
+    	modulate(norm1.getOutput(), shift_msa, scale_msa, attnInput);
+    	attn.forward(attnInput, cos, sin);
+//    	attn.getOutput().showDM("attn");
+    	Tensor_OP().mul(attn.getOutput(), gate_msa, crossAttnInput, batchSize, time, 1, crossAttnInput.width, 1);
+    	Tensor_OP().add(input, crossAttnInput, crossAttnInput);
+
+    	/**
+    	 * x3 = x1 + gate_mlp.unsqueeze(1) * self.mlp(modulate(self.norm3(x1), shift_mlp, scale_mlp))
+    	 */
+    	norm3.forward(crossAttnInput);
+    	modulate(norm3.getOutput(), shift_mlp, scale_mlp, mlpInput);
+
+    	mlp.forward(mlpInput);
+
+    	Tensor_OP().mul(mlp.getOutput(), gate_mlp, output, batchSize, time, 1, output.width, 1);
+    	Tensor_OP().add(crossAttnInput, output, output);
+
+    }
+    
+    public void output_txt(Tensor tc, Tensor cos, Tensor sin, Tensor idskeep) {
+
+    	/**
+    	 * shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = self.adaLN_modulation(c).chunk(6, dim=1)
+    	 */
+    	modulationAct.forward(tc);
+    	
+    	adaLN_modulation.forward(modulationAct.getOutput());
+
+    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), shift_msa, shape, 0);
+    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), scale_msa, shape, 1);
+    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), gate_msa, shape, 2);
+    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), shift_mlp, shape, 3);
+    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), scale_mlp, shape, 4);
+    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), gate_mlp, shape, 5);
+    	
+    	/**
+    	 *  x1 = x + gate_msa.unsqueeze(1) * self.attn(modulate(self.norm1(x), shift_msa, scale_msa))
+    	 */
+    	norm1.forward(input);
+    	modulate(norm1.getOutput(), shift_msa, scale_msa, attnInput);
+
+    	attn.forward_txt(attnInput, cos , sin, idskeep, maxContext);
+//    	attn.getOutput().showDM("attn");
+    	Tensor_OP().mul(attn.getOutput(), gate_msa, crossAttnInput, batchSize, time, 1, crossAttnInput.width, 1);
+    	Tensor_OP().add(input, crossAttnInput, crossAttnInput);
+
+    	/**
+    	 * x3 = x1 + gate_mlp.unsqueeze(1) * self.mlp(modulate(self.norm3(x1), shift_mlp, scale_mlp))
+    	 */
+    	norm3.forward(crossAttnInput);
+    	modulate(norm3.getOutput(), shift_mlp, scale_mlp, mlpInput);
+
+    	mlp.forward(mlpInput);
+
+    	Tensor_OP().mul(mlp.getOutput(), gate_mlp, output, batchSize, time, 1, output.width, 1);
+    	Tensor_OP().add(crossAttnInput, output, output);
+
+    }
+    
     @Override
     public Tensor getOutput() {
         // TODO Auto-generated method stub
@@ -491,7 +570,125 @@ public class FluxDiTBlock extends Layer {
     	this.diff = norm1.diff;
 
     }
+    
+    public void diff_txt(Tensor dtc,Tensor cos,Tensor sin) {
+//    	delta.showDM("x3");
+    	/**
+    	 * x3 = x2 + gate_mlp.unsqueeze(1) * self.mlp(modulate(self.norm3(x2), shift_mlp, scale_mlp))
+    	 */
+    	Tensor_OP().mul_left_back(gate_mlp, delta, output,  batchSize, time, 1, output.width, 1);
+    	mlp.back(output);
+//    	mlp.diff.showDM("mlp");
+    	Tensor_OP().mul_right_back(mlp.getOutput(), delta, gate_mlp, batchSize, time, 1, output.width, 1);
+    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), gate_mlp, shape, 5);
+    	
+    	Tensor dShift = shift_mlp;
+    	Tensor dScale = gate_mlp;
+    	Tensor x = norm3.getOutput();
+    	Tensor scale = scale_mlp;
+    	modulate_back(dShift, dScale, output, x, scale, mlp.diff);
+    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dShift, shape, 3);
+    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dScale, shape, 4);
+    	
+    	norm3.back(output, norm3.getOutput());
 
+    	Tensor_OP().add(norm3.diff, delta, norm3.diff);
+
+    	/**
+    	 *  x1 = x + gate_msa.unsqueeze(1) * self.attn(modulate(self.norm1(x), shift_msa, scale_msa))
+    	 */
+    	Tensor_OP().mul_left_back(gate_msa, norm3.diff, output,  batchSize, time, 1, output.width, 1);
+
+//    	output.showDM("attn_delta");
+    	
+    	attn.back(output, cos, sin);
+
+//    	attn.diff.showDM("attn.diff");
+
+    	Tensor_OP().mul_right_back(attn.getOutput(), norm3.diff, gate_msa, batchSize, time, 1, output.width, 1);
+    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), gate_msa, shape, 2);
+    	
+    	dShift = shift_msa;
+    	dScale = gate_msa;
+    	x = norm1.getOutput();
+    	scale = scale_msa;
+    	modulate_back(dShift, dScale, output, x, scale, attn.diff);
+    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dShift, shape, 0);
+    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dScale, shape, 1);
+
+    	norm1.back(output, norm1.getOutput());
+
+    	Tensor_OP().add(norm1.diff, norm3.diff, norm1.diff);
+    	
+    	adaLN_modulation.back(adaLN_modulation.getOutput());
+
+        modulationAct.back(adaLN_modulation.diff);
+        
+    	Tensor_OP().add(dtc, modulationAct.diff, dtc);
+
+    	this.diff = norm1.diff;
+
+    }
+    
+    public void diff_txt(Tensor dtc,Tensor cos,Tensor sin,Tensor idskeep) {
+//    	delta.showDM("x3");
+    	/**
+    	 * x3 = x2 + gate_mlp.unsqueeze(1) * self.mlp(modulate(self.norm3(x2), shift_mlp, scale_mlp))
+    	 */
+    	Tensor_OP().mul_left_back(gate_mlp, delta, output,  batchSize, time, 1, output.width, 1);
+    	mlp.back(output);
+//    	mlp.diff.showDM("mlp");
+    	Tensor_OP().mul_right_back(mlp.getOutput(), delta, gate_mlp, batchSize, time, 1, output.width, 1);
+    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), gate_mlp, shape, 5);
+    	
+    	Tensor dShift = shift_mlp;
+    	Tensor dScale = gate_mlp;
+    	Tensor x = norm3.getOutput();
+    	Tensor scale = scale_mlp;
+    	modulate_back(dShift, dScale, output, x, scale, mlp.diff);
+    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dShift, shape, 3);
+    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dScale, shape, 4);
+    	
+    	norm3.back(output, norm3.getOutput());
+
+    	Tensor_OP().add(norm3.diff, delta, norm3.diff);
+
+    	/**
+    	 *  x1 = x + gate_msa.unsqueeze(1) * self.attn(modulate(self.norm1(x), shift_msa, scale_msa))
+    	 */
+    	Tensor_OP().mul_left_back(gate_msa, norm3.diff, output,  batchSize, time, 1, output.width, 1);
+
+//    	output.showDM("attn_delta");
+    	
+    	attn.back_txt(output, cos, sin, idskeep, maxContext);
+
+//    	attn.diff.showDM("attn.diff");
+
+    	Tensor_OP().mul_right_back(attn.getOutput(), norm3.diff, gate_msa, batchSize, time, 1, output.width, 1);
+    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), gate_msa, shape, 2);
+    	
+    	dShift = shift_msa;
+    	dScale = gate_msa;
+    	x = norm1.getOutput();
+    	scale = scale_msa;
+    	modulate_back(dShift, dScale, output, x, scale, attn.diff);
+    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dShift, shape, 0);
+    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dScale, shape, 1);
+
+    	norm1.back(output, norm1.getOutput());
+
+    	Tensor_OP().add(norm1.diff, norm3.diff, norm1.diff);
+    	
+    	adaLN_modulation.back(adaLN_modulation.getOutput());
+
+        modulationAct.back(adaLN_modulation.diff);
+        
+    	Tensor_OP().add(dtc, modulationAct.diff, dtc);
+
+    	this.diff = norm1.diff;
+
+    }
+    
     @Override
     public void forward() {
         // TODO Auto-generated method stub
@@ -603,6 +800,44 @@ public class FluxDiTBlock extends Layer {
          */
         this.output(tc, cos, sin, idsKeep);
     }
+    
+    /**
+     * 
+     * @param input
+     * @param tc time cond
+     * @param text
+     */
+    public void forward_txt(Tensor input,Tensor tc,Tensor cos,Tensor sin) {
+        // TODO Auto-generated method stub
+        /**
+         * 设置输入
+         */
+        this.setInput(input);
+        /**
+         * 参数初始化
+         */
+        this.init(input, tc);
+        /**
+         * 计算输出
+         */
+        this.output_txt(tc, cos, sin);
+    }
+    
+    public void forward_txt(Tensor input,Tensor tc,Tensor cos,Tensor sin, Tensor idsKeep) {
+        // TODO Auto-generated method stub
+        /**
+         * 设置输入
+         */
+        this.setInput(input);
+        /**
+         * 参数初始化
+         */
+        this.init(input, tc);
+        /**
+         * 计算输出
+         */
+        this.output_txt(tc, cos, sin, idsKeep);
+    }
 
     @Override
     public void back(Tensor delta) {
@@ -666,6 +901,38 @@ public class FluxDiTBlock extends Layer {
          * 计算梯度
          */
         this.diff(dtc, cos, sin, idskeep);
+        if (this.network.GRADIENT_CHECK) {
+            this.gradientCheck();
+        }
+    }
+    
+    public void back_txt(Tensor delta,Tensor dtc,Tensor cos,Tensor sin) {
+        // TODO Auto-generated method stub
+        this.initBack();
+        /**
+         * 设置梯度
+         */
+        this.setDelta(delta);
+        /**
+         * 计算梯度
+         */
+        this.diff_txt(dtc, cos, sin);
+        if (this.network.GRADIENT_CHECK) {
+            this.gradientCheck();
+        }
+    }
+    
+    public void back_txt(Tensor delta,Tensor dtc,Tensor cos,Tensor sin,Tensor idskeep) {
+        // TODO Auto-generated method stub
+        this.initBack();
+        /**
+         * 设置梯度
+         */
+        this.setDelta(delta);
+        /**
+         * 计算梯度
+         */
+        this.diff_txt(dtc, cos, sin, idskeep);
         if (this.network.GRADIENT_CHECK) {
             this.gradientCheck();
         }

@@ -409,7 +409,6 @@ public class GPUOP {
 			Pointer alphaP = Pointer.to(new float[]{alpha});
 			Pointer betaP = Pointer.to(new float[]{beta});
 			int status = JCublas2.cublasSgemm(getHandle(), transb, transa, n, m, k, alphaP, B, ldb, A, lda, betaP, C, ldc);
-			checkCUBLASResult(status);
 			//            cudaDeviceSynchronize();
 		} catch (Exception e) {
 		// TODO: handle exception

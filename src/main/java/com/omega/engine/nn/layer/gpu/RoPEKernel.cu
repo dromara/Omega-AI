@@ -359,6 +359,54 @@ __global__ void rope_2d_back_idskeep_igone(float* delta, float* diff,float* cos,
 }
 
 extern "C"
+__global__ void rope_2d_norm_idskeep_txt(float* x, float* out,float* cos, float* sin, float *idskeep, int N, int T, int headNum, int headSize, int txt_len)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (i >= N/2) return;
+    int index = i * 2;
+    int n = index / T / headSize;
+    int once = index % (T * headSize);
+    int t = once / headSize;
+    int hs = once % headSize;
+    float cv = x[index];
+	float cn = x[index+1];
+    if(t >= txt_len){
+		int b = n / headNum;
+		int rt = t - txt_len;
+		int t_idx = (int) idskeep[b * (T - txt_len) + rt] + txt_len;
+		out[index] = cos[t_idx * headSize + hs] * cv - sin[t_idx * headSize + hs] * cn;
+    	out[index+1] = cos[t_idx * headSize + hs + 1] * cn + sin[t_idx * headSize + hs + 1] * cv;
+	}else{
+		out[index] = cos[t * headSize + hs] * cv - sin[t * headSize + hs] * cn;
+    	out[index+1] = cos[t * headSize + hs + 1] * cn + sin[t * headSize + hs + 1] * cv;
+	}
+}
+
+extern "C"
+__global__ void rope_2d_back_idskeep_txt(float* delta, float* diff,float* cos, float* sin, float *idskeep, int N, int T, int headNum,int headSize, int txt_len)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (i >= N/2) return;
+    int index = i * 2;
+    int n = index / T / headSize;
+    int once = index % (T * headSize);
+    int t = once / headSize;
+    int hs = once % headSize;
+    const float d0 = delta[index + 0];
+    const float d1 = delta[index + 1];
+    if(t >= txt_len){
+		int b = n / headNum;
+		int rt = t - txt_len;
+		int t_idx = (int) idskeep[b * (T - txt_len) + rt] + txt_len;
+	    diff[index] = cos[t_idx * headSize + hs] * d0 + sin[t_idx * headSize + hs + 1] * d1;
+	    diff[index+1] = cos[t_idx * headSize + hs + 1] * d1 - sin[t_idx * headSize + hs] * d0;
+    }else{
+		diff[index] = cos[t * headSize + hs] * d0 + sin[t * headSize + hs + 1] * d1;
+	    diff[index+1] = cos[t * headSize + hs + 1] * d1 - sin[t * headSize + hs] * d0;
+	}
+}
+
+extern "C"
 __global__ void rope_2d_norm_t(float* x, float* out,float* cos, float* sin, int N, int T, int headNum, int headSize)
 {
     int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
@@ -388,6 +436,40 @@ __global__ void rope_2d_back_t(float* delta, float* diff,float* cos, float* sin,
     const float d1 = delta[index + 1];
     diff[index] = cos[t * headSize + hs] * d0 + sin[t * headSize + hs + 1] * d1;
 	diff[index+1] = cos[t * headSize + hs + 1] * d1 - sin[t * headSize + hs] * d0;
+}
+
+extern "C"
+__global__ void rope_2d_norm_t_idskeep(float* x, float* out,float* cos, float* sin, float *idskeep, int N, int T, int headNum, int headSize)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (i >= N/2) return;
+    int index = i * 2;
+    int n = index / T / headNum / headSize;
+    int once = index % (T * headNum * headSize);
+    int t = once / headNum / headSize;
+    int hs = once % (headNum * headSize) % headSize;
+    float cv = x[index];
+	float cn = x[index+1];
+	int t_idx = (int) idskeep[n * T + t];
+	out[index] = cos[t_idx * headSize + hs] * cv - sin[t_idx * headSize + hs] * cn;
+	out[index+1] = cos[t_idx * headSize + hs + 1] * cn + sin[t_idx * headSize + hs + 1] * cv;
+}
+
+extern "C"
+__global__ void rope_2d_back_t_idskeep(float* delta, float* diff,float* cos, float* sin, float *idskeep, int N, int T, int headNum, int headSize)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (i >= N/2) return;
+    int index = i * 2;
+    int n = index / T / headNum / headSize;
+    int once = index % (T * headNum * headSize);
+    int t = once / headNum / headSize;
+    int hs = once % (headNum * headSize) % headSize;
+    const float d0 = delta[index + 0];
+    const float d1 = delta[index + 1];
+	int t_idx = (int) idskeep[n * T + t];
+    diff[index] = cos[t_idx * headSize + hs] * d0 + sin[t_idx * headSize + hs + 1] * d1;
+    diff[index+1] = cos[t_idx * headSize + hs + 1] * d1 - sin[t_idx * headSize + hs] * d0;
 }
 
 extern "C"

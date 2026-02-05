@@ -87,7 +87,7 @@ public class PatchEmbed extends Layer {
     }
 
     public void initLayers(int inChannel, int height, int width, int patchSize, boolean bias) {
-        this.patchEmbedding = new ConvolutionLayer(inChannel, embedDim, height, width, patchSize, patchSize, 0, patchSize, bias, network);
+        this.patchEmbedding = new ConvolutionLayer(inChannel, embedDim, width, height, patchSize, patchSize, 0, patchSize, bias, network);
         patchEmbedding.PROPAGATE_DOWN = false;
         RandomUtils.xavier_uniform(patchEmbedding.weight, 1, inChannel * patchSize * patchSize, embedDim * patchSize * patchSize);
         if(this.patchEmbedding.bias != null) {

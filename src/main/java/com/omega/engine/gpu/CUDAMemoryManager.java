@@ -171,6 +171,9 @@ public class CUDAMemoryManager {
         for (Pointer p : cu_porints) {
             GPUOP.getInstance().free(p);
         }
+        for(String key : CUDAStreamManager.streamMap.keySet()) {
+        	 CUDAModules.checkCUDA(JCuda.cudaStreamDestroy(CUDAStreamManager.streamMap.get(key)));
+        }
     }
 
     public static void checkCUDA(int code, String op, long size) {

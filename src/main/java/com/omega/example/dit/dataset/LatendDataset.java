@@ -210,6 +210,9 @@ public class LatendDataset extends BaseTokenizer {
     public void loadData(int[] index, int[] next,Tensor input, Tensor label, int it) {
         try {
             //			System.out.println(it);
+        	if(it == 0) {
+        		cf = null;
+        	}
             if (cf != null) {
                 boolean success = cf.get();//等待数据从文件加载完毕
                 if(success){

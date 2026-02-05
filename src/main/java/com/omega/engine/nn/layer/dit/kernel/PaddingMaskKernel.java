@@ -22,6 +22,7 @@ public class PaddingMaskKernel extends CUDAKernel {
     private CUfunction mask_igone_function;
     private CUfunction mask_diff_function;
     private CUfunction mask_igone_diff_function;
+    private CUfunction mask_igone_diff_cond_function;
     private int CAFFE_CUDA_NUM_THREADS = 1024;
     private Pointer kernelParameters;
 
@@ -58,6 +59,9 @@ public class PaddingMaskKernel extends CUDAKernel {
             }
             if (mask_igone_diff_function == null) {
             	mask_igone_diff_function = getCudaManager().getLocalFunctionByModule("PaddingMaskKernel.cu", "mask_igone_diff");
+            }
+            if (mask_igone_diff_cond_function == null) {
+            	mask_igone_diff_cond_function = getCudaManager().getLocalFunctionByModule("PaddingMaskKernel.cu", "mask_igone_diff_cond");
             }
         } catch (Exception e) {
             // TODO: handle exception
@@ -297,6 +301,26 @@ public class PaddingMaskKernel extends CUDAKernel {
              */
             kernelParameters = Pointer.to(Pointer.to(delta.getGpuData()), Pointer.to(dw.getGpuData()), Pointer.to(new int[]{rows}), Pointer.to(new int[]{cols}), Pointer.to(new int[]{T}), Pointer.to(new int[]{igoneT}));
             cuLaunchKernel(mask_igone_diff_function, grid_dim, 1, 1,      // Grid dimension
+            		block_size, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameters, null // Kernel- and extra parameters
+            );
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void mask_igone_diff_cond(Tensor delta, Tensor dw, int rows, int cols, int T) {
+        try {
+            int block_size = 256;
+            int grid_dim =  (cols + block_size - 1) / block_size;
+        	/**
+             * 设置入参
+             * const float* __restrict__ inp,float* __restrict__ out, int M, int N 
+             */
+            kernelParameters = Pointer.to(Pointer.to(delta.getGpuData()), Pointer.to(dw.getGpuData()), Pointer.to(new int[]{rows}), Pointer.to(new int[]{cols}), Pointer.to(new int[]{T}), Pointer.to(new int[]{0}));
+            cuLaunchKernel(mask_igone_diff_cond_function, grid_dim, 1, 1,      // Grid dimension
             		block_size, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameters, null // Kernel- and extra parameters

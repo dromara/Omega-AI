@@ -62,9 +62,9 @@ public class DinoVisionTransformer extends Layer {
     public void initLayers() {
     	
     	patchEmbd = new PatchEmbed(inChannel, width, hiddenSize, patchSize, true, network);
-        
+
     	hw = patchEmbd.oChannel - num_tokens;
-  
+
         blocks = new ArrayList<NestedTensorBlock>();
          
         for(int i = 0;i<depth;i++) {

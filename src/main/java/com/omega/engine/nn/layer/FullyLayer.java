@@ -9,6 +9,7 @@ import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 import jcuda.Sizeof;
 import jcuda.jcublas.cublasOperation;
+import jcuda.runtime.cudaStream_t;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -238,6 +239,18 @@ public class FullyLayer extends Layer {
         }
         if (hasBias) {
             kernel.addBias(output, bias);
+        }
+    }
+    
+    public void output(cudaStream_t stream) {
+       
+        if (this.input != null) {
+
+            GPU_OP().multiplyFloat(cublasOperation.CUBLAS_OP_N, cublasOperation.CUBLAS_OP_T, this.number, this.oWidth, this.width, 1, input.getGpuData(), this.width, weight.getGpuData(), this.width, 0, output.getGpuData(), this.oWidth);
+
+        }
+        if (hasBias) {
+            kernel.addBias(output, bias, stream);
         }
     }
 

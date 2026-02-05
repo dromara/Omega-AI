@@ -93,6 +93,9 @@ public class RMSLayer extends NormalizationLayer {
         this.oWidth = this.width;
         this.bnType = bnType;
         this.hasParams = hasParams;
+        if(!hasParams) {
+        	this.freeze = true;
+        }
         this.meanNum = width;
     }
 
@@ -449,9 +452,10 @@ public class RMSLayer extends NormalizationLayer {
     }
 
     public void saveModel(RandomAccessFile outputStream) throws IOException {
-    	if(hasParams) {
-    		ModelUtils.saveParams(outputStream, gamma);
-    	}
+//    	if(hasParams) {
+//    		ModelUtils.saveParams(outputStream, gamma);
+//    	}
+    	ModelUtils.saveParams(outputStream, gamma);
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
@@ -460,10 +464,12 @@ public class RMSLayer extends NormalizationLayer {
     }
 
     public void loadModel(RandomAccessFile inputStream, int channel, int height, int width, BNType bnType) throws IOException {
-    	if(hasParams) {
-	        init(channel, height, width, bnType);
-	        ModelUtils.loadParams(inputStream, gamma);
-    	}
+//    	if(hasParams) {
+//	        init(channel, height, width, bnType);
+//	        ModelUtils.loadParams(inputStream, gamma);
+//    	}
+    	init(channel, height, width, bnType);
+        ModelUtils.loadParams(inputStream, gamma);
     }
 
     

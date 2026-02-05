@@ -12,7 +12,9 @@ import com.omega.engine.tensor.Tensor;
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUfunction;
+import jcuda.driver.CUstream;
 import jcuda.runtime.cudaError;
+import jcuda.runtime.cudaStream_t;
 
 public class FullyKernel extends BaseKernel {
     private CUfunction function;
@@ -120,6 +122,28 @@ public class FullyKernel extends BaseKernel {
             checkCUDA(cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(output.dataLength), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
+                    kernelParameters, null // Kernel- and extra parameters
+            ));
+            //	        JCudaDriver.cuCtxSynchronize();
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void addBias(Tensor output, Tensor bias, cudaStream_t stream) {
+        try {
+            if (kernelParameters == null || output.number != this.N) {
+                /**
+                 * 设置入参
+                 * float* output, float* biases, int batch, int n, int size
+                 */
+                kernelParameters = Pointer.to(Pointer.to(output.getGpuData()), Pointer.to(bias.getGpuData()), Pointer.to(new int[]{output.number * output.channel * output.height}), Pointer.to(new int[]{output.getWidth()}), Pointer.to(new int[]{1}));
+                this.N = output.number;
+            }
+            checkCUDA(cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(output.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, new CUstream(stream),               // Shared memory size and stream
                     kernelParameters, null // Kernel- and extra parameters
             ));
             //	        JCudaDriver.cuCtxSynchronize();

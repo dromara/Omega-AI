@@ -14,6 +14,8 @@ import com.omega.engine.nn.network.dit.FluxDiT2;
 import com.omega.engine.nn.network.dit.FluxDiT3;
 import com.omega.engine.nn.network.dit.FluxDiT_REPA;
 import com.omega.engine.nn.network.dit.FluxDiT_SPRINT;
+import com.omega.engine.nn.network.dit.OmegaDiT;
+import com.omega.engine.nn.network.dit.FluxDiT_SPRINT3;
 import com.omega.engine.nn.network.dit.JiT;
 import com.omega.engine.nn.network.dit.JiT_REPA;
 import com.omega.engine.nn.network.dit.MMDiT_RoPE;
@@ -288,6 +290,54 @@ public class ICPlan {
 	}
 	
 	public Tensor forward_with_path_drop_cfg(FluxDiT_SPRINT dit, Tensor y0, Tensor t, Tensor context, Tensor null_context, Tensor cos, Tensor sin, Tensor y1, Tensor eps, float cfg_scale) {
+		ininT(0, 1, count);
+		int j = 1;
+		Tensor out = null;
+		Tensor f0 = null;
+		for(int i = 0;i<count - 1;i++) {
+			float t0 = T[i];
+			float t1 = T[i + 1];
+			float dt = t1 - t0;
+			MatrixUtils.val(t.data, t0);
+			t.hostToDevice();
+			f0 = dit.forward_with_path_drop_cfg(y0, t, context, null_context, cos, sin, eps, cfg_scale);
+			dit.tensorOP.mul(f0, dt, f0);
+			dit.tensorOP.add(y0, f0, y1);
+			float tj = T[j];
+			if(j < T.length && t1 >= tj) {
+				out = linear_interp(dit.tensorOP, t0, t1, y0, y1, tj);
+				j++;
+			}
+			dit.tensorOP.copyGPU(y1, y0);
+		}
+		return out;
+	}
+	
+	public Tensor forward_with_path_drop_cfg(OmegaDiT dit, Tensor y0, Tensor t, Tensor context, Tensor null_context, Tensor cos, Tensor sin, Tensor y1, Tensor eps, float cfg_scale) {
+		ininT(0, 1, count);
+		int j = 1;
+		Tensor out = null;
+		Tensor f0 = null;
+		for(int i = 0;i<count - 1;i++) {
+			float t0 = T[i];
+			float t1 = T[i + 1];
+			float dt = t1 - t0;
+			MatrixUtils.val(t.data, t0);
+			t.hostToDevice();
+			f0 = dit.forward_with_path_drop_cfg(y0, t, context, null_context, cos, sin, eps, cfg_scale);
+			dit.tensorOP.mul(f0, dt, f0);
+			dit.tensorOP.add(y0, f0, y1);
+			float tj = T[j];
+			if(j < T.length && t1 >= tj) {
+				out = linear_interp(dit.tensorOP, t0, t1, y0, y1, tj);
+				j++;
+			}
+			dit.tensorOP.copyGPU(y1, y0);
+		}
+		return out;
+	}
+	
+	public Tensor forward_with_path_drop_cfg(FluxDiT_SPRINT3 dit, Tensor y0, Tensor t, Tensor context, Tensor null_context, Tensor cos, Tensor sin, Tensor y1, Tensor eps, float cfg_scale) {
 		ininT(0, 1, count);
 		int j = 1;
 		Tensor out = null;
@@ -747,6 +797,24 @@ public class ICPlan {
 	public void t(Tensor t) {
 		RandomUtils.gaussianRandomLogitNormal(t);
 	}
+	
+//	public void t_time_shift(Tensor t, int C, int H, int W) {
+//		RandomUtils.gaussianRandomLogitNormal(t);
+//		int shift_base = 4096;
+//		int shift_dim = C * H * W;
+//		double shift = Math.sqrt(shift_dim / shift_base);
+//		if( t.data == null) {
+//    		t.data = new float[t.dataLength];
+//    	}
+//		for (int i = 0; i < t.dataLength; i++) {
+//			double time_input =  t.data[i];
+//			time_input = (shift * time_input) / (1 + (shift - 1) * time_input);
+//	        t.data[i] = (float) Math.clamp(time_input, 0, 1);
+//	    }
+//        if (t.isHasGPU()) {
+//            t.hostToDevice();
+//        }
+//	}
 	
 	/**
 	 * 

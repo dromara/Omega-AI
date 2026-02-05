@@ -160,7 +160,7 @@ public class DiT_TXTFinal_REGLayer extends Layer {
     	Tensor_OP().add(m_linear2.getOutput(), 1, m_linear2.getOutput());
     	Tensor_OP().mul(finalNorm.getOutput(), m_linear2.getOutput(), linearInput, batchSize, time + 1, 1, finalNorm.getOutput().width, 1);
     	Tensor_OP().addAxis(linearInput, m_linear1.getOutput(), linearInput, batchSize, time + 1, 1, finalNorm.getOutput().width, 1);
-    	
+
     	Tensor_OP().getByChannel(linearInput, cls_token, new int[] {batchSize, time + 1, 1, hidden_size}, 0, 1);
     	Tensor_OP().getByChannel(linearInput, img, new int[] {batchSize, time + 1, 1, hidden_size}, 1, time);
     	
@@ -193,7 +193,10 @@ public class DiT_TXTFinal_REGLayer extends Layer {
     
     public void diff(Tensor dtc) {
         // TODO Auto-generated method stub
+    	
     	finalLinear.back(this.delta);
+    	
+//    	finalLinear.diff.showDM("img_ddd");
     	
     	linear_cls.back(dcls);
     	
@@ -203,7 +206,9 @@ public class DiT_TXTFinal_REGLayer extends Layer {
 
     	Tensor_OP().mul_right_back(finalNorm.getOutput(), linearInput, dScale, batchSize, time + 1, 1, finalNorm.getOutput().width, 1);
     	Tensor_OP().mul_left_back(m_linear2.getOutput(), linearInput, linearInput,  batchSize, time + 1, 1, finalNorm.getOutput().width, 1);
-
+    	
+//    	linearInput.showDM("linearInput");
+    	
     	finalNorm.back(linearInput);
 
     	m_linear1.back(dShift);
@@ -216,6 +221,7 @@ public class DiT_TXTFinal_REGLayer extends Layer {
     	Tensor_OP().add(dtc, m_active.diff, dtc);
     	
         this.diff = finalNorm.diff;
+//        diff.showDM("diff");
     }
 
     @Override
@@ -319,7 +325,24 @@ public class DiT_TXTFinal_REGLayer extends Layer {
             this.gradientCheck();
         }
     }
-
+    
+    public void back(Tensor delta, Tensor cls_detla, Tensor dtc) {
+        // TODO Auto-generated method stub
+        this.initBack();
+        /**
+         * 设置梯度
+         */
+        this.setDelta(delta);
+        /**
+         * 计算梯度
+         */
+        setDCLS(cls_detla);
+        this.diff(dtc);
+        if (this.network.GRADIENT_CHECK) {
+            this.gradientCheck();
+        }
+    }
+    
     @Override
     public void update() {
         // TODO Auto-generated method stub

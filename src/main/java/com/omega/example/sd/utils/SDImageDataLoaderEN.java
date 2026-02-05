@@ -525,10 +525,13 @@ public class SDImageDataLoaderEN extends BaseDataLoader {
         input.hostToDevice();
     }
     
-    public void loadData(int[] indexs, int[] next, Tensor input) {
+    public void loadData(int[] indexs, int[] next, Tensor input, int it) {
         // TODO Auto-generated method stub
     	try {
             //			System.out.println(it);
+    		if(it == 0) {
+    			cf = null;
+    		}
             if (cf != null) {
                 boolean success = cf.get();
                 if(success){

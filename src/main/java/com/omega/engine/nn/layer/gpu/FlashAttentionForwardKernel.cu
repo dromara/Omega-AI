@@ -187,4 +187,3 @@ __global__ void forward_attention_kernel(
     }
 }
 
-

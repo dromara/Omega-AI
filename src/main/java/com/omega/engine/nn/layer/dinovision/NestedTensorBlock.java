@@ -49,7 +49,6 @@ public class NestedTensorBlock extends Layer {
     }
 
     public void initLayers() {
-    	
         this.norm1 = new LNLayer(1, 1, embedDim, true, BNType.fully_bn, network);
         this.attn = new MemEffAttention(embedDim, headNum, time, bias, network);
         this.scale1 = new LayerScale(embedDim, network);

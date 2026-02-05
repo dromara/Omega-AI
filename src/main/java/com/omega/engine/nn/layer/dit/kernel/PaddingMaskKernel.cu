@@ -64,7 +64,8 @@ __global__ void set_ids_back(const size_t size, float *dx, const float *idskeep,
     	int t = pos % len / W;
     	int w = pos % len % W;
     	int t_idx = (int) idskeep[b * T + t];
-    	dx[pos] = dout[b * FT * W + t_idx * W + w];
+    	float val = dout[b * FT * W + t_idx * W + w];
+    	dx[pos] = val;
     	dout[b * FT * W + t_idx * W + w] = 0;
   	}
 
@@ -105,11 +106,13 @@ __global__ void set_ids_igone_back(const size_t size, float *dx, const float *id
     	if(t >= igoneT){
 			int img_t = t - igoneT;
 			int t_idx = (int) idskeep[b * T + img_t] + igoneT;
-    		dx[pos] = dout[b * All_T * W + t_idx * W + w];
+			float val = dout[b * All_T * W + t_idx * W + w];
+    		dx[pos] = val;
     		dout[b * All_T * W + t_idx * W + w] = 0;
 		}else{
 			int out_idx = b * All_T * W + t * W + w;
-			dx[pos] = dout[out_idx];
+			float val = dout[out_idx];
+			dx[pos] = val;
 			dout[out_idx] = 0;
 		}
 
@@ -188,7 +191,7 @@ __global__ void mask_igone_diff(
         for (int br = 0; br < block_rows; br++) {
             int row = row_block + br;
             int t = row % T;
-            if (row < M && t <= igoneT) {
+            if (row < M && t >= igoneT) {
                 // 共享内存索引：br*blockDim.x + tx（按行存储，避免bank冲突）
                 s_data[br * blockDim.x + tx] = inp[row * N + col];
             } else {
@@ -206,4 +209,51 @@ __global__ void mask_igone_diff(
 
     // 写入结果（单线程写单列，无竞争）
     out[col] = col_sum;
+}
+
+extern "C"
+__global__ void mask_igone_diff_cond(
+    const float* __restrict__ inp,  // 输入：(M, N) 行优先存储
+    float* __restrict__ out,        // 输出：(N,)
+    int M,                      // 行数
+    int N,                       // 列数
+    int T,
+    int igoneT
+) {
+    // 共享内存：缓存当前线程块的列数据（按块加载，减少全局内存访问）
+    __shared__ float s_data[SHARED_SIZE];
+
+    // 线程索引：tx=列块内索引（0~255），对应处理1列
+    const int tx = threadIdx.x;
+    // 全局列索引 = 块索引×块大小 + 列块内索引
+    const int col = blockIdx.x * blockDim.x + tx;
+    if (col >= N) return;  // 超出列范围直接退出
+
+    float col_sum = 0.0;
+    const int block_rows = 4;  // 每次加载4行到共享内存
+
+    // 分块遍历行维度，共享内存缓存数据
+    for (int row_block = 0; row_block < M; row_block += block_rows) {
+        // 步骤1：加载4行数据到共享内存（批量加载，合并访问）
+        for (int br = 0; br < block_rows; br++) {
+            int row = row_block + br;
+            int t = row % T;
+            if (row < M && t >= igoneT) {
+                // 共享内存索引：br*blockDim.x + tx（按行存储，避免bank冲突）
+                s_data[br * blockDim.x + tx] = inp[row * N + col];
+            } else {
+                s_data[br * blockDim.x + tx] = 0.0;  // 超出范围置0
+            }
+        }
+        __syncthreads();  // 等待共享内存加载完成
+
+        // 步骤2：共享内存内批量累加（无需再访问全局内存）
+        for (int br = 0; br < block_rows; br++) {
+            col_sum += s_data[br * blockDim.x + tx];
+        }
+        __syncthreads();  // 等待累加完成
+    }
+
+    // 写入结果（单线程写单列，无竞争）
+    out[col] += col_sum;
 }

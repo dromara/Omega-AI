@@ -1,4 +1,4 @@
-package com.omega.engine.nn.layer.dit.mmdit;
+package com.omega.engine.nn.layer.dit.sprint;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -8,6 +8,7 @@ import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.active.SiLULayer;
+import com.omega.engine.nn.layer.dit.org.DiTSwiGLUFFN;
 import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.RMSLayer;
 import com.omega.engine.nn.network.Network;
@@ -19,16 +20,10 @@ import com.omega.engine.updater.UpdaterFactory;
  *
  * @author Administrator
  */
-public class DiTJoinBlockHead extends Layer {
+public class FluxDiTJoinBlockHead extends Layer {
 	
     private SiLULayer modulationAct;
     public FullyLayer adaLN_modulation;
-	
-//    public RMSLayer qNorm;
-//    public RMSLayer kNorm;
-//	
-//    public RMSLayer norm1;
-//    public RMSLayer norm2;
 
     public RMSLayer qNorm;
     public RMSLayer kNorm;
@@ -41,7 +36,8 @@ public class DiTJoinBlockHead extends Layer {
     public FullyLayer vLinerLayer;
     public FullyLayer oLinerLayer;
     
-    public MMDiTMLPLayer mlp;
+//    public MMDiTMLPLayer mlp;
+    public DiTSwiGLUFFN mlp;
     
     private int mlp_ratio;
     private int time;
@@ -72,7 +68,7 @@ public class DiTJoinBlockHead extends Layer {
     
     private int[] shape;
 
-    public DiTJoinBlockHead(int embedDim, int cEmbedDim, int mlp_ratio, int time, boolean bias, boolean qkNorm, boolean pre_only, boolean normParams, Network network) {
+    public FluxDiTJoinBlockHead(int embedDim, int cEmbedDim, int mlp_ratio, int time, boolean bias, boolean qkNorm, boolean pre_only, boolean normParams, Network network) {
     	this.pre_only = pre_only;
         if(pre_only) {
         	n_mods = 2;
@@ -98,15 +94,7 @@ public class DiTJoinBlockHead extends Layer {
         this.initLayers();
     }
     public void initLayers() {
-       
-//    	if(qkNorm) {
-//        	qNorm = new RMSLayer(network);
-//        	kNorm = new RMSLayer(network);
-//        }
-//    	
-//    	this.norm1 = new RMSLayer(network);
-//    	this.norm2 = new RMSLayer(network);
-    	
+
     	if(qkNorm) {
 	    	qNorm = new RMSLayer(1, 1, embedDim, normParams, BNType.fully_bn, network);
 	    	kNorm = new RMSLayer(1, 1, embedDim, normParams, BNType.fully_bn, network);
@@ -155,7 +143,9 @@ public class DiTJoinBlockHead extends Layer {
         
         if(!pre_only) {
         	int mlp_hidden_dim = embedDim * mlp_ratio;
-        	mlp = new MMDiTMLPLayer(embedDim, mlp_hidden_dim, true, network);
+//        	mlp = new MMDiTMLPLayer(embedDim, mlp_hidden_dim, true, network);
+            int swiNum = (int)(2.0f/3.0f * mlp_hidden_dim);
+            this.mlp = new DiTSwiGLUFFN(embedDim, swiNum, embedDim, bias, network);
         }
     }
 
@@ -201,34 +191,10 @@ public class DiTJoinBlockHead extends Layer {
         }
     }
     
-//    public void init_eval(Tensor input) {
-//        // TODO Auto-generated method stub
-//        this.number = input.number;
-//        this.batchSize = this.number/time;
-//
-//    	this.qt = CUDAMemoryManager.getCache("dit_block_attn_qt", batchSize, headNum, time, dk);
-//    	this.kt = CUDAMemoryManager.getCache("dit_block_attn_kt", batchSize, headNum, time, dk);
-//    	this.vt = CUDAMemoryManager.getCache("dit_block_attn_vt", batchSize, headNum, time, dk);
-//
-//        // [batch_size, len_q, n_heads * dim_v]
-//        this.oi = CUDAMemoryManager.getCache("dit_block_attn_oi", batchSize * time, 1, 1, embedDim);
-//        this.output = CUDAMemoryManager.getCache("dit_block_attn_out", input.number, input.channel, input.height, input.width);
-//    }
-
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
-//        if (this.dattn == null) {
-//            this.dqt = Tensor.createGPUTensor(this.dqt, batchSize, headNum, time, dk, true);
-//            this.dkt = Tensor.createGPUTensor(this.dkt, batchSize, headNum, time, dk, true);
-//            this.dvt = Tensor.createGPUTensor(this.dvt, batchSize, headNum, time, dk, true);
-//            this.dattn = Tensor.createGPUTensor(this.dattn, batchSize, headNum, time, time, true);
-//        } else {
-//            dattn.viewOrg();
-//            dqt.viewOrg();
-//            dkt.viewOrg();
-//            dvt.viewOrg();
-//        }
+
     }
 
     @Override
@@ -276,23 +242,48 @@ public class DiTJoinBlockHead extends Layer {
 	    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), scale_mlp, shape, 4);
 	    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), gate_mlp, shape, 5);
     	}
-    	
-//    	input.showDMByOffsetRed(10 * 384, 384, "sdfsdf");
-//    	norm1.gamma.showDM("gammae");
-//    	norm1.beta.showDM("beta");
+
         norm1.forward(input);
 
-//        norm1.getOutput().showDM("norm1");
     	modulate(norm1.getOutput(), shift_msa, scale_msa, attnInput);
     	
         Tensor x = attnInput;
-//    	x.showDM("q_in");
+
         this.getqLinerLayer().forward(x);
         this.getkLinerLayer().forward(x);
         this.getvLinerLayer().forward(x);
         
-//        this.getqLinerLayer().getOutput().showDM("q");
+    }
+    
+    public void pre_attention_back(Tensor xDiff, Tensor dc, Tensor dq, Tensor dk, Tensor dv) {
+    	dq = dq.view(batchSize * time, 1, 1, width);
+    	dk = dk.view(batchSize * time, 1, 1, width);
+    	dv = dv.view(batchSize * time, 1, 1, width);
+    	
+    	qLinerLayer.back(dq);
+    	kLinerLayer.back(dk);
+    	vLinerLayer.back(dv);
+    	
+    	Tensor dattnInput = qLinerLayer.diff;
+    	Tensor_OP().add(dattnInput, kLinerLayer.diff, dattnInput);
+    	Tensor_OP().add(dattnInput, vLinerLayer.diff, dattnInput);
+    	
+    	Tensor tmp = shift_msa;
+    	Tensor x = norm1.getOutput();
+    	Tensor scale = scale_msa;
+    	modulate_back2(tmp, norm1.getOutput(), x, scale, dattnInput, 0, 1);
 
+    	adaLN_modulation.back(adaLN_modulation.getOutput());
+
+    	modulationAct.back(adaLN_modulation.diff);
+    	
+    	Tensor_OP().add(dc, modulationAct.diff, dc);
+
+    	norm1.back(norm1.getOutput());
+    	
+    	Tensor_OP().add(norm1.diff, xDiff, norm1.diff);
+    	
+    	this.diff = norm1.diff;
     }
     
     public void pre_attention_back(Tensor xDiff, Tensor dc) {
@@ -375,12 +366,6 @@ public class DiTJoinBlockHead extends Layer {
     	
     }
     
-//    public void modulate_back(Tensor dShift,Tensor dScale,Tensor dx,Tensor x,Tensor scale,Tensor delta) {
-//    	Tensor_OP().addAxisBack(dShift, delta, batchSize, time, 1, delta.width, 1);
-//    	Tensor_OP().mul_right_back(x, delta, dScale, batchSize, time, 1, delta.width, 1);
-//    	Tensor_OP().mul_left_back(scale, delta, dx,  batchSize, time, 1, delta.width, 1);
-//    }
-    
     public void modulate_back2(Tensor tmp,Tensor dx,Tensor x,Tensor scale,Tensor delta, int idx1, int idx2) {
     	Tensor_OP().addAxisBack(tmp, delta, batchSize, time, 1, delta.width, 1);
     	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), tmp, shape, idx1);
@@ -390,7 +375,7 @@ public class DiTJoinBlockHead extends Layer {
     }
     
     public Tensor post_attention_back(Tensor delta, String name) {
-//    	adaLN_modulation.getOutput().clearGPU();
+
     	Tensor_OP().mul_left_back(gate_mlp, delta, output,  batchSize, time, 1, embedDim, 1);
 
     	mlp.back(output);
@@ -527,9 +512,6 @@ public class DiTJoinBlockHead extends Layer {
         return null;
     }
 
-    //	public Tensor getWeights() {
-    //		return weights;
-    //	}
     @Override
     public void initCache() {
         // TODO Auto-generated method stub

@@ -1,4 +1,4 @@
-package com.omega.engine.nn.layer.dit.mmdit;
+package com.omega.engine.nn.layer.dit.sprint;
 
 import static jcuda.jcublas.cublasOperation.CUBLAS_OP_N;
 import static jcuda.jcublas.cublasOperation.CUBLAS_OP_T;
@@ -16,14 +16,13 @@ import com.omega.engine.nn.layer.gpu.RoPEKernel;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
-import com.omega.example.common.ModeLoaderlUtils;
 
 /**
  * DiTAttentionLayer2
  *
  * @author Administrator
  */
-public class DiTJoinBlockRoPE extends Layer {
+public class FluxDiTJoinBlockRoPE extends Layer {
     
     private boolean qkNorm = false;
     
@@ -42,8 +41,8 @@ public class DiTJoinBlockRoPE extends Layer {
     private boolean normParams = true;
     private boolean pre_only = false;
     
-    public DiTJoinBlockHead x_block;
-    public DiTJoinBlockHead context_block;
+    public FluxDiTJoinBlockHead x_block;
+    public FluxDiTJoinBlockHead context_block;
     
     private AttentionKernel attentionKernel;
     private SoftmaxCudnnKernel softmaxKernel;
@@ -72,7 +71,7 @@ public class DiTJoinBlockRoPE extends Layer {
     private int[] shape;
     private int[] t_shape;
 
-    public DiTJoinBlockRoPE(int embedDim, int cEmbedDim, int mlp_ratio, int headNum, int imgTime, int textTime, boolean bias, boolean qkNorm, boolean pre_only, boolean normParams, Network network) {
+    public FluxDiTJoinBlockRoPE(int embedDim, int cEmbedDim, int mlp_ratio, int headNum, int imgTime, int textTime, boolean bias, boolean qkNorm, boolean pre_only, boolean normParams, Network network) {
         this.bias = bias;
         this.mlp_ratio = mlp_ratio;
         this.network = network;
@@ -104,9 +103,9 @@ public class DiTJoinBlockRoPE extends Layer {
     
     public void initLayers() {
         
-    	x_block = new DiTJoinBlockHead(embedDim, cEmbedDim, mlp_ratio, imgTime, bias, qkNorm, false, normParams, network);
+    	x_block = new FluxDiTJoinBlockHead(embedDim, cEmbedDim, mlp_ratio, imgTime, bias, qkNorm, false, normParams, network);
     	
-    	context_block = new DiTJoinBlockHead(embedDim, cEmbedDim, mlp_ratio, textTime, bias, qkNorm, pre_only, normParams, network);
+    	context_block = new FluxDiTJoinBlockHead(embedDim, cEmbedDim, mlp_ratio, textTime, bias, qkNorm, pre_only, normParams, network);
     	
         if (attentionKernel == null) {
             attentionKernel = new AttentionKernel(cuda());
@@ -144,12 +143,12 @@ public class DiTJoinBlockRoPE extends Layer {
         	shape = new int[] {batchSize, time, headNum, dk};
         	t_shape = new int[] {batchSize, headNum, time, dk};
             // [batch_size，time，head_num，d_k]
-            this.x_rq = CUDAMemoryManager.getCache("mmdit_block_x_rq", batchSize, imgTime, headNum, dk);
-            this.x_rk = CUDAMemoryManager.getCache("mmdit_block_x_rk", batchSize, imgTime, headNum, dk);
+            this.x_rq = CUDAMemoryManager.getCache("mmdit_block_x_rq_" + imgTime, batchSize, imgTime, headNum, dk);
+            this.x_rk = CUDAMemoryManager.getCache("mmdit_block_x_rk_" + imgTime, batchSize, imgTime, headNum, dk);
             
-            this.q = CUDAMemoryManager.getCache("mmdit_block_q", batchSize, time, 1, embedDim);
-            this.k = CUDAMemoryManager.getCache("mmdit_block_k", batchSize, time, 1, embedDim);
-            this.v = CUDAMemoryManager.getCache("mmdit_block_v", batchSize, time, 1, embedDim);
+            this.q = CUDAMemoryManager.getCache("mmdit_block_q_" + time, batchSize, time, 1, embedDim);
+            this.k = CUDAMemoryManager.getCache("mmdit_block_k_" + time, batchSize, time, 1, embedDim);
+            this.v = CUDAMemoryManager.getCache("mmdit_block_v_" + time, batchSize, time, 1, embedDim);
             
             this.qt = Tensor.createGPUTensor(this.qt, batchSize, headNum, time, dk, true);
             this.kt = Tensor.createGPUTensor(this.kt, batchSize, headNum, time, dk, true);
@@ -165,7 +164,7 @@ public class DiTJoinBlockRoPE extends Layer {
             // [batch_size, len_q, n_heads * dim_v]
             this.oi = Tensor.createGPUTensor(this.oi, batchSize, time, 1, embedDim, true);
    
-            this.x_attn = CUDAMemoryManager.getCache("mmdit_block_x_attn", batchSize * imgTime, 1, 1, embedDim);
+            this.x_attn = CUDAMemoryManager.getCache("mmdit_block_x_attn_" + imgTime, batchSize * imgTime, 1, 1, embedDim);
             this.context_attn = CUDAMemoryManager.getCache("mmdit_block_context_attn", batchSize * textTime, 1, 1, embedDim);
         }
     }
@@ -175,7 +174,7 @@ public class DiTJoinBlockRoPE extends Layer {
         // TODO Auto-generated method stub
         if (this.dattn == null) {
 //            this.dattn = Tensor.createGPUTensor(this.dattn, batchSize, headNum, time, time, true);
-        	this.dattn = CUDAMemoryManager.getCache("mmdit_block_dattn", batchSize, headNum, time, time);
+        	this.dattn = CUDAMemoryManager.getCache("mmdit_block_dattn_" + time, batchSize, headNum, time, time);
             if(pre_only) {
 //            	dattn_cx = Tensor.createGPUTensor(this.dattn_cx, batchSize * textTime, 1, 1, embedDim, true);
             	this.dattn_cx = CUDAMemoryManager.getCache("mmdit_block_dattn_cx", batchSize * textTime, 1, 1, embedDim);
@@ -208,6 +207,37 @@ public class DiTJoinBlockRoPE extends Layer {
          */
         ropeKernel.forward2d_t(cos, sin, x_block.q(), x_rq, imgTime, headNum, dk);
         ropeKernel.forward2d_t(cos, sin, x_block.k(), x_rk, imgTime, headNum, dk);
+        
+    	context_block.pre_attention(context, c);
+    	
+    	attentionKernel.concat_channel_forward(context_block.q(), x_rq, q, batchSize, textTime, imgTime, 1, embedDim);
+    	attentionKernel.concat_channel_forward(context_block.k(), x_rk, k, batchSize, textTime, imgTime, 1, embedDim);
+    	attentionKernel.concat_channel_forward(context_block.v(), x_block.v(), v, batchSize, textTime, imgTime, 1, embedDim);
+
+        Tensor_OP().permute(q, qt, shape, t_shape, new int[]{0, 2, 1, 3});
+        Tensor_OP().permute(k, kt, shape, t_shape, new int[]{0, 2, 1, 3});
+        Tensor_OP().permute(v, vt, shape, t_shape, new int[]{0, 2, 1, 3});
+        
+        scaledDotProductAttention(qt, kt, vt);
+        
+        attentionKernel.unpermute(temp, oi, batchSize, time, headNum, dk);
+        attentionKernel.concat_channel_backward(oi, context_attn, x_attn, batchSize, textTime, imgTime, 1, embedDim);
+        
+        x_block.post_attention(x_attn);
+        if(!pre_only) {
+        	context_block.post_attention(context_attn);
+        }
+
+        this.output = x_block.getOutput();
+    }
+    
+    public void output(Tensor context, Tensor c, Tensor cos, Tensor sin, Tensor idskeep) {
+    	x_block.pre_attention(input, c);
+        /**
+         * apply RoPE
+         */
+        ropeKernel.forward2d_t(cos, sin, idskeep, x_block.q(), x_rq, imgTime, headNum, dk);
+        ropeKernel.forward2d_t(cos, sin, idskeep, x_block.k(), x_rk, imgTime, headNum, dk);
         
     	context_block.pre_attention(context, c);
     	
@@ -291,16 +321,16 @@ public class DiTJoinBlockRoPE extends Layer {
         
     }
     
-    public void diff(Tensor dcx, Tensor dc, Tensor cos, Tensor sin) {
+    public void diff(Tensor dcx,Tensor dc, Tensor cos, Tensor sin) {
         // TODO Auto-generated method stub
     	//recomplate the active status
-    	attentionKernel.concat_channel_forward(context_block.q(), x_rq, q, batchSize, textTime, imgTime, 1, embedDim);
-    	attentionKernel.concat_channel_forward(context_block.k(), x_rk, k, batchSize, textTime, imgTime, 1, embedDim);
-    	attentionKernel.concat_channel_forward(context_block.v(), x_block.v(), v, batchSize, textTime, imgTime, 1, embedDim);
+//    	attentionKernel.concat_channel_forward(context_block.q(), x_rq, q, batchSize, textTime, imgTime, 1, embedDim);
+//    	attentionKernel.concat_channel_forward(context_block.k(), x_rk, k, batchSize, textTime, imgTime, 1, embedDim);
+//    	attentionKernel.concat_channel_forward(context_block.v(), x_block.v(), v, batchSize, textTime, imgTime, 1, embedDim);
         attentionKernel.concat_channel_backward(oi, context_attn, x_attn, batchSize, textTime, imgTime, 1, embedDim);
-        ropeKernel.forward2d_t(cos, sin, x_block.q(), x_rq, imgTime, headNum, dk);
-        ropeKernel.forward2d_t(cos, sin, x_block.k(), x_rk, imgTime, headNum, dk);
-    	
+//        ropeKernel.forward2d_t(cos, sin, x_block.q(), x_rq, imgTime, headNum, dk);
+//        ropeKernel.forward2d_t(cos, sin, x_block.k(), x_rk, imgTime, headNum, dk);
+
         Tensor x_diff = x_block.post_attention_back(delta, "x_diff");
         Tensor dattn = x_block.oLinerLayer.diff;
 
@@ -324,14 +354,56 @@ public class DiTJoinBlockRoPE extends Layer {
         attentionKernel.concat_channel_backward(kt, context_block.k(), x_block.k(), batchSize, textTime, imgTime, 1, embedDim);
         attentionKernel.concat_channel_backward(vt, context_block.v(), x_block.v(), batchSize, textTime, imgTime, 1, embedDim);
         
-        context_block.pre_attention_back(cx_diff, dc);
+        context_block.pre_attention_back(cx_diff, dc, context_block.q(), context_block.k(), context_block.v());
         
         /**
          * RoPE backward
          */
         ropeKernel.backward2d_t(cos, sin, x_block.q(), x_rq, imgTime, headNum, dk);
         ropeKernel.backward2d_t(cos, sin, x_block.k(), x_rk, imgTime, headNum, dk);
-        x_block.pre_attention_back(x_diff, dc, x_rq, x_rk);
+        
+        x_block.pre_attention_back(x_diff, dc, x_rq, x_rk, x_block.v());
+        
+        this.diff = x_block.diff;
+    }
+    
+    public void diff(Tensor dcx,Tensor dc, Tensor cos, Tensor sin, Tensor idskeep) {
+        // TODO Auto-generated method stub
+    	//recomplate the active status
+        attentionKernel.concat_channel_backward(oi, context_attn, x_attn, batchSize, textTime, imgTime, 1, embedDim);
+
+        Tensor x_diff = x_block.post_attention_back(delta, "x_diff");
+        Tensor dattn = x_block.oLinerLayer.diff;
+
+        if(!pre_only) {
+//        	System.err.println("in-----------pre_only");
+        	cx_diff = context_block.post_attention_back(dcx, "cx_diff");
+        	dattn_cx = context_block.oLinerLayer.diff;
+        }
+
+        attentionKernel.concat_channel_forward(dattn_cx, dattn, oi, batchSize, textTime, imgTime, 1, embedDim);
+
+        attentionKernel.unpermute_backward(temp, oi, batchSize, time, headNum, dk);
+
+        scaledDotProductAttentionBackward();
+        
+        Tensor_OP().permute(q, qt, t_shape, shape, new int[]{0, 2, 1, 3});
+        Tensor_OP().permute(k, kt, t_shape, shape, new int[]{0, 2, 1, 3});
+        Tensor_OP().permute(v, vt, t_shape, shape, new int[]{0, 2, 1, 3});
+        
+        attentionKernel.concat_channel_backward(qt, context_block.q(), x_block.q(), batchSize, textTime, imgTime, 1, embedDim);
+        attentionKernel.concat_channel_backward(kt, context_block.k(), x_block.k(), batchSize, textTime, imgTime, 1, embedDim);
+        attentionKernel.concat_channel_backward(vt, context_block.v(), x_block.v(), batchSize, textTime, imgTime, 1, embedDim);
+        
+        context_block.pre_attention_back(cx_diff, dc, context_block.q(), context_block.k(), context_block.v());
+        
+        /**
+         * RoPE backward
+         */
+        ropeKernel.backward2d_t(cos, sin, x_block.q(), x_rq, imgTime, headNum, dk);
+        ropeKernel.backward2d_t(cos, sin, x_block.k(), x_rk, imgTime, headNum, dk);
+        
+        x_block.pre_attention_back(x_diff, dc, x_rq, x_rk, x_block.v());
         
         this.diff = x_block.diff;
     }
@@ -379,6 +451,22 @@ public class DiTJoinBlockRoPE extends Layer {
         this.output(context, c, cos, sin);
     }
     
+    public void forward(Tensor input, Tensor context, Tensor c, Tensor cos, Tensor sin, Tensor idskeep) {
+        // TODO Auto-generated method stub
+        /**
+         * 参数初始化
+         */
+        this.init(input);
+        /**
+         * 设置输入
+         */
+        this.setInput(input);
+        /**
+         * 计算输出
+         */
+        this.output(context, c, cos, sin, idskeep);
+    }
+    
     @Override
     public void back(Tensor delta) {
         // TODO Auto-generated method stub
@@ -407,6 +495,22 @@ public class DiTJoinBlockRoPE extends Layer {
          * 计算梯度
          */
         this.diff(cx_delta, cd, cos, sin);
+        if (this.network.GRADIENT_CHECK) {
+            this.gradientCheck();
+        }
+    }
+    
+    public void back(Tensor delta, Tensor cx_delta, Tensor cd, Tensor cos, Tensor sin, Tensor idskeep) {
+        // TODO Auto-generated method stub
+        this.initBack();
+        /**
+         * 设置梯度
+         */
+        this.setDelta(delta);
+        /**
+         * 计算梯度
+         */
+        this.diff(cx_delta, cd, cos, sin, idskeep);
         if (this.network.GRADIENT_CHECK) {
             this.gradientCheck();
         }
@@ -462,47 +566,13 @@ public class DiTJoinBlockRoPE extends Layer {
 
     }
     
-    public static void loadWeight(Map<String, Object> weightMap, DiTJoinBlockRoPE block, boolean showLayers) {
+    public static void loadWeight(Map<String, Object> weightMap, FluxDiTJoinBlockRoPE block, boolean showLayers) {
         if (showLayers) {
             for (String key : weightMap.keySet()) {
                 System.out.println(key);
             }
         }
-        
-        block.context_block.norm1.gamma = ModeLoaderlUtils.loadData(block.context_block.norm1.gamma, weightMap, 1, "context_block.norm1.weight"); 
-        ModeLoaderlUtils.loadData(block.context_block.qLinerLayer.weight, weightMap, "context_block.attn.ql.weight");
-        ModeLoaderlUtils.loadData(block.context_block.kLinerLayer.weight, weightMap, "context_block.attn.kl.weight");
-        ModeLoaderlUtils.loadData(block.context_block.vLinerLayer.weight, weightMap, "context_block.attn.vl.weight");
-        if(block.context_block.oLinerLayer != null) {
-        	 ModeLoaderlUtils.loadData(block.context_block.oLinerLayer.weight, weightMap, "context_block.attn.proj.weight");
-             ModeLoaderlUtils.loadData(block.context_block.oLinerLayer.bias, weightMap, "context_block.attn.proj.bias");
-        }
-        
-        if(block.context_block.mlp != null) {
-        	 block.context_block.norm2.gamma = ModeLoaderlUtils.loadData(block.context_block.norm2.gamma, weightMap, 1, "context_block.norm2.weight"); 
-        	 ModeLoaderlUtils.loadData(block.context_block.mlp.linear1.weight, weightMap, "context_block.mlp.fc1.weight");
-             ModeLoaderlUtils.loadData(block.context_block.mlp.linear1.bias, weightMap, "context_block.mlp.fc1.bias");
-             ModeLoaderlUtils.loadData(block.context_block.mlp.linear2.weight, weightMap, "context_block.mlp.fc2.weight");
-             ModeLoaderlUtils.loadData(block.context_block.mlp.linear2.bias, weightMap, "context_block.mlp.fc2.bias");
-        }
-        ModeLoaderlUtils.loadData(block.context_block.adaLN_modulation.weight, weightMap, "context_block.adaLN_modulation.1.weight");
-        ModeLoaderlUtils.loadData(block.context_block.adaLN_modulation.bias, weightMap, "context_block.adaLN_modulation.1.bias");
-        
-        block.x_block.norm1.gamma = ModeLoaderlUtils.loadData(block.x_block.norm1.gamma, weightMap, 1, "x_block.norm1.weight"); 
-        ModeLoaderlUtils.loadData(block.x_block.qLinerLayer.weight, weightMap, "x_block.attn.ql.weight");
-        ModeLoaderlUtils.loadData(block.x_block.kLinerLayer.weight, weightMap, "x_block.attn.kl.weight");
-        ModeLoaderlUtils.loadData(block.x_block.vLinerLayer.weight, weightMap, "x_block.attn.vl.weight");
-        ModeLoaderlUtils.loadData(block.x_block.oLinerLayer.weight, weightMap, "x_block.attn.proj.weight");
-        ModeLoaderlUtils.loadData(block.x_block.oLinerLayer.bias, weightMap, "x_block.attn.proj.bias");
-        block.x_block.norm2.gamma = ModeLoaderlUtils.loadData(block.x_block.norm2.gamma, weightMap, 1, "x_block.norm2.weight"); 
-        ModeLoaderlUtils.loadData(block.x_block.mlp.linear1.weight, weightMap, "x_block.mlp.fc1.weight");
-        ModeLoaderlUtils.loadData(block.x_block.mlp.linear1.bias, weightMap, "x_block.mlp.fc1.bias");
-        ModeLoaderlUtils.loadData(block.x_block.mlp.linear2.weight, weightMap, "x_block.mlp.fc2.weight");
-        ModeLoaderlUtils.loadData(block.x_block.mlp.linear2.bias, weightMap, "x_block.mlp.fc2.bias");
-        ModeLoaderlUtils.loadData(block.x_block.adaLN_modulation.weight, weightMap, "x_block.adaLN_modulation.1.weight");
-        ModeLoaderlUtils.loadData(block.x_block.adaLN_modulation.bias, weightMap, "x_block.adaLN_modulation.1.bias");
-        
-        
+       
     }
     
     public static void main(String[] args) {

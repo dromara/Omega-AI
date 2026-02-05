@@ -2,7 +2,9 @@ package com.omega.engine.nn.network.dit;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.Map;
 
+import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.ad.op.gpu.NormalizeKernel;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.loss.LossFactory;
@@ -12,11 +14,15 @@ import com.omega.engine.nn.layer.InputLayer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.SoftmaxWithCrossEntropyLayer;
 import com.omega.engine.nn.layer.dinovision.DinoVisionTransformer;
+import com.omega.engine.nn.network.CNN;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.NetworkType;
 import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
+import com.omega.example.common.ModeLoaderlUtils;
+import com.omega.example.dit.models.ICPlan;
+import com.omega.example.transformer.utils.LagJsonReader;
 
 import jcuda.Sizeof;
 import jcuda.runtime.JCuda;
@@ -58,6 +64,9 @@ public class Dinov2 extends Network {
     private Tensor cfm_loss;
     private Tensor cfm_delta;
     
+    private Tensor cfm_cls_loss;
+    private Tensor cfm_cls_delta;
+    
     public Dinov2(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int mlpRatio) {
         this.lossFunction = LossFactory.create(lossType, this);
         this.updater = updater;
@@ -76,7 +85,7 @@ public class Dinov2 extends Network {
     public void initLayers() {
     	
         this.inputLayer = new InputLayer(inChannel, height, width);
-        
+
         main = new DinoVisionTransformer(inChannel, width, height, patchSize, hiddenSize, headNum, depth, mlpRatio, this);
         
         this.addLayer(inputLayer);
@@ -138,9 +147,9 @@ public class Dinov2 extends Network {
         this.main.forward(input);
         if(patchtokens == null) {
         	patchtokens = Tensor.createGPUTensor(patchtokens, input.number, this.main.hw, 1, hiddenSize, true);
-        	clstokens = Tensor.createGPUTensor(getClstokens(), input.number, 1, 1, hiddenSize, true);
+        	clstokens = Tensor.createGPUTensor(clstokens, input.number, 1, 1, hiddenSize, true);
         }
-        tensorOP.getByChannel(this.main.getOutput(), getClstokens(), new int[] {input.number, this.main.hw + this.main.num_tokens, 1, hiddenSize}, 0, this.main.num_tokens);
+        tensorOP.getByChannel(this.main.getOutput(), clstokens, new int[] {input.number, this.main.hw + this.main.num_tokens, 1, hiddenSize}, 0, this.main.num_tokens);
         tensorOP.getByChannel(this.main.getOutput(), patchtokens, new int[] {input.number, this.main.hw + this.main.num_tokens, 1, hiddenSize}, this.main.num_tokens, this.main.hw);
         return patchtokens;
     }
@@ -152,9 +161,9 @@ public class Dinov2 extends Network {
        this.setInputData(input);
        this.main.forward(input);
        if(clstokens == null) {
-    	   clstokens = Tensor.createGPUTensor(getClstokens(), input.number, 1, 1, hiddenSize, true);
+    	   clstokens = Tensor.createGPUTensor(clstokens, input.number, 1, 1, hiddenSize, true);
        }
-       tensorOP.getByChannel(this.main.getOutput(), getClstokens(), new int[] {input.number, this.main.hw + this.main.num_tokens, 1, hiddenSize}, 0, this.main.num_tokens);
+       tensorOP.getByChannel(this.main.getOutput(), clstokens, new int[] {input.number, this.main.hw + this.main.num_tokens, 1, hiddenSize}, 0, this.main.num_tokens);
        return this.main.getOutput();
    }
     
@@ -270,7 +279,8 @@ public class Dinov2 extends Network {
     	}
     	
     	Tensor rz = this.forward_features(img);
-    	
+//    	rz.showShape("rz");
+//    	dit_z.showShape("dit_z");
     	norm_kernel.l2norm3Dim(dit_z, n_z);
     	norm_kernel.l2norm3Dim(rz, r_z);
     	
@@ -331,7 +341,7 @@ public class Dinov2 extends Network {
     }
 
 	public Tensor getClstokens() {
-		return clstokens;
+		return this.clstokens;
 	}
     
 	public Tensor cls_loss(Tensor p, Tensor t) {
@@ -376,6 +386,63 @@ public class Dinov2 extends Network {
 		}
 		mse_kernel.backward(p, t, cfm_delta);
 		return cfm_delta;
+	}
+	
+	public Tensor cfm_cls_loss(Tensor p, Tensor t) {
+		if(mse_kernel == null) {
+			mse_kernel = new MSELossKernel(cudaManager);
+		}
+		if(cfm_cls_loss == null || cfm_cls_loss.number != p.number) {
+			cfm_cls_loss = Tensor.createGPUTensor(cfm_cls_loss, p.shape(), true);
+		}
+		mse_kernel.forward(p, t, cfm_cls_loss);
+		return cfm_cls_loss;
+	}
+	
+	public Tensor cfm_cls_loss_back(Tensor p, Tensor t) {
+		if(mse_kernel == null) {
+			mse_kernel = new MSELossKernel(cudaManager);
+		}
+		if(cfm_cls_delta == null || cfm_cls_delta.number != p.number) {
+			cfm_cls_delta = Tensor.createGPUTensor(cfm_cls_delta, p.shape(), true);
+		}
+		mse_kernel.backward(p, t, cfm_cls_delta);
+		return cfm_cls_delta;
+	}
+	
+	public static void main(String[] args) {
+		
+		int N = 2;
+		int C = 32;
+		int H = 16;
+		int W = 16;
+		
+		String inputPath = "D:\\models\\roll_x.json";
+	    Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
+	    Tensor input = new Tensor(N, C, H, W, true);
+	    ModeLoaderlUtils.loadData(input, datas, "x");
+    	
+	    String cyPath = "D:\\models\\roll_target.json";
+	    Map<String, Object> cydatas = LagJsonReader.readJsonFileSmallWeight(cyPath);
+	    Tensor target = new Tensor(N, C, H, W, true);
+	    ModeLoaderlUtils.loadData(target, cydatas, "target");
+	    
+	    Tensor cfm_ut = new Tensor(N, C, H, W, true);
+	    
+	    CNN nn = new CNN(null);
+        nn.CUDNN = true;
+        nn.number = N;
+        
+        nn.tensorOP.roll(target, cfm_ut, 1, 0);
+        
+        MSELossKernel mse_kernel = new MSELossKernel(nn.cudaManager);
+        Tensor cfm_loss = new Tensor(N, C, H, W, true);
+		mse_kernel.forward(input, cfm_ut, cfm_loss);
+		
+		cfm_loss.showDM("cfm_cls_loss");
+		
+		float cfm_loss_mean = MatrixOperation.sum(cfm_loss.syncHost()) / cfm_loss.number * -1;
+		System.err.println(cfm_loss_mean);
 	}
 	
 }
