@@ -61,6 +61,7 @@ public static void main(String[] args) {
 
 ### Omega-mini-dit（130M参数文生图）
 #### [基于dit_b/1+va-vae+clip+repa+sprint+rms](https://gitee.com/dromara/omega-ai#omega-mini-dit%E6%96%87%E7%94%9F%E5%9B%BE)
+#### [OmegaDiT pytorch版本：https://github.com/yongchuan/OmegaDiT](https://github.com/yongchuan/OmegaDiT)
 注：以下演示图片训练集为2M图文对数据集
 |<img src="images/0_2_T_0.png" height="200px" width="200px" style="object-fit: contain;"/> |<img src="images/2_3_T_0.png" height="200px" width="200px" style="object-fit: contain;"/> | <img src="images/2_1_T_2.png" height="200px" width="200px" style="object-fit: contain;"/>  | <img src="images/2_3_T_1.png" height="200px" width="200px" style="object-fit: contain;"/> |   
 |---|---|---|---|
