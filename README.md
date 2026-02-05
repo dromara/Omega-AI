@@ -59,6 +59,21 @@ public static void main(String[] args) {
 
 ## Demo展示
 
+### Omega-mini-dit（130M参数文生图）
+#### [基于dit_b/1+va-vae+clip+repa+sprint+rms](https://gitee.com/dromara/omega-ai#omega-mini-dit%E6%96%87%E7%94%9F%E5%9B%BE)
+#### [OmegaDiT pytorch版本：https://github.com/yongchuan/OmegaDiT](https://github.com/yongchuan/OmegaDiT)
+注：以下演示图片训练集为2M图文对数据集
+|<img src="images/0_2_T_0.png" height="200px" width="200px" style="object-fit: contain;"/> |<img src="images/2_3_T_0.png" height="200px" width="200px" style="object-fit: contain;"/> | <img src="images/2_1_T_2.png" height="200px" width="200px" style="object-fit: contain;"/>  | <img src="images/2_3_T_1.png" height="200px" width="200px" style="object-fit: contain;"/> |   
+|---|---|---|---|
+| A cat  | A dog  | A cat holding a sign that says hello world | A lovely corgi is taking a walk under the sea  |  
+|![输入图片说明](images/0_1_T_2.png)|![输入图片说明](images/0_2_T_1.png)|![输入图片说明](images/4_0_T_2.png)|![输入图片说明](images/1_3_T_0.png)|
+| a highly detailed anime landscape,big tree on the water, epic sky,golden grass,detailed  | vibrant anime mountain lands  | a car runing on the sand. |fruit cream cake |
+|![输入图片说明](images/5_1_T_0.png)|![输入图片说明](images/0_0_T_3.png)|![输入图片说明](images/5_0_T_3.png)|![输入图片说明](images/4_1_T_0.png)|
+| a highly detailed anime sexy beauty  |a girl wearning a white dress standing under the apple tree   |beautiful girl with hair flowing like a cascading waterfail   |A beautiful girl with golden hair, cool and sunny|
+|![输入图片说明](images/6_3_T_1.png)|![输入图片说明](images/6_0_T_2.png)|![输入图片说明](images/3_1_T_2.png)|![输入图片说明](images/6_3_T_0.png)|
+|cyberpunk panda is taking a walk on the street|Happy dreamy owl monster sitting on a tree branch, colorful glittering particles, forest background, detailed feathers.|Half human, half robot, repaired human|Game-Art - An island with different geographical properties and multiple small cities floating in space|
+
+
 ### 卷积神经网络系列
 #### [基于卷积神经网络mnist手写数字识别](http://120.237.148.121:8011/mnist)
 
@@ -1665,6 +1680,416 @@ public static void tiny_sd_train_anime_32() throws Exception {
 		
 		String save_model_path = "/omega/models/sd_anime256.model";
 		ModelUtils.saveModel(unet, save_model_path);
+	}
+```
+
+#### Omega-mini-dit文生图
+##### 硬件要求: tiny版本建议3090 24G单卡或以上，mini版本建议L40 48G或以上.
+##### 数据集: mini版本使用2M图文对训练集，tiny版本使用10w图文对训练集。
+##### 1.生成va-vae潜空间向量vavae_latend.bin
+```java
+public static void createLatendDataset_vavae() {
+    	
+    	try {
+    		
+    		String outputPath = "/root/gpufree-data/txt2img_2m_2/vavae_latend.bin";
+    		String clipDataPath = "/root/gpufree-data/txt2img_2m_2/vavae_clip.bin";
+    		
+        	String labelPath = "/root/gpufree-data/txt2img_2m_2/labels.json";
+            String imgDirPath = "/root/gpufree-data/diffusiondb_processed/";
+            boolean horizontalFilp = false;
+            int imgSize = 256;
+            int maxContextLen = 77;
+            int batchSize = 40;
+            float[] mean = new float[]{0.5f, 0.5f, 0.5f};
+            float[] std = new float[]{0.5f, 0.5f, 0.5f};
+            String vocabPath = "/omega/models/CLIP-GmP-ViT-L-14/vocab.json";
+            String mergesPath = "/omega/models/CLIP-GmP-ViT-L-14/merges.txt";
+            BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+            SDImageDataLoaderEN dataLoader = new SDImageDataLoaderEN(bpe, labelPath, imgDirPath, ".jpg", imgSize, imgSize, maxContextLen, batchSize, horizontalFilp, mean, std);
+
+            int maxPositionEmbeddingsSize = 77;
+            int vocabSize = 49408;
+            int headNum = 12;
+            int n_layers = 12;
+            int textEmbedDim = 768;
+            int intermediateSize = 3072;
+            ClipTextModel clip = new ClipTextModel(LossType.MSE, UpdaterType.adamw, headNum, maxContextLen, vocabSize, textEmbedDim, maxPositionEmbeddingsSize, intermediateSize, n_layers);
+            clip.CUDNN = true;
+            clip.time = maxContextLen;
+            clip.RUN_MODEL = RunModel.EVAL;
+            String clipWeight = "/omega/models/CLIP-GmP-ViT-L-14.json";
+            ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, "", false);
+            
+            
+            int latendDim = 32;
+            int num_res_blocks = 2;
+            int[] ch_mult = new int[]{1, 1, 2, 2, 4};
+            int ch = 128;
+            
+            VA_VAE vae = new VA_VAE(LossType.MSE, UpdaterType.adamw, latendDim, imgSize, ch_mult, ch, num_res_blocks, true);
+            vae.CUDNN = true;
+            vae.learnRate = 0.001f;
+            vae.RUN_MODEL = RunModel.EVAL;
+            String vaeWeight = "/omega/models/vavae.json";
+            ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
+            
+            
+            int[][] indexs = dataLoader.order();
+            
+            Tensor input = new Tensor(batchSize, 3, dataLoader.img_h, dataLoader.img_w, true);
+            Tensor label = new Tensor(batchSize * dataLoader.maxContextLen, 1, 1, 1, true);
+            Tensor eosIds = new Tensor(batchSize, 1, 1, 1, true);
+            String[] labels = new String[batchSize];
+
+            File file = new File(outputPath);
+            FileOutputStream writer = new FileOutputStream(file);
+            
+            File clipFile = new File(clipDataPath);
+            FileOutputStream clipWriter = new FileOutputStream(clipFile);
+            
+            Tensor condInput = null;
+            
+            for(int it = 0;it<indexs.length;it++) {
+            	 long start = System.nanoTime();
+            	 dataLoader.loadData(indexs[it], input, label, labels, eosIds);
+            	 Tensor latend = vae.encode(input);
+                 JCudaDriver.cuCtxSynchronize();
+                 writeTensor(latend, writer);
+                 condInput = clip.get_full_clip_prompt_embeds(label);
+                 writeTensor(condInput, clipWriter);
+                 System.out.println(it + "/" + indexs.length + " cost["+(System.nanoTime() - start)/1e6+"ms] finish.");
+            }
+            
+            System.out.println("create ["+dataLoader.count+"] finish.");
+           
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+
+    }
+```
+##### 2.生成文本条件编码full_clip.bin
+```java
+public static void createLatendDatasetFullClip() {
+    	
+    	try {
+    		
+    		String outputPath = "/root/gpufree-data/txt2img_1m/vavae_1m_latend.bin";
+    		String clipDataPath = "/root/gpufree-data/txt2img_1m/vavae_1m_clip.bin";
+    		
+        	String labelPath = "/root/gpufree-data/txt2img_1m/labels.json";
+            String imgDirPath = "/root/gpufree-data/txt2img_1m/processed_images/";
+            boolean horizontalFilp = false;
+            int imgSize = 256;
+            int maxContextLen = 77;
+            int batchSize = 50;
+            float[] mean = new float[]{0.5f, 0.5f, 0.5f};
+            float[] std = new float[]{0.5f, 0.5f, 0.5f};
+            String vocabPath = "/omega/models/CLIP-GmP-ViT-L-14/vocab.json";
+            String mergesPath = "/omega/models/CLIP-GmP-ViT-L-14/merges.txt";
+            BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+            SDImageDataLoaderEN dataLoader = new SDImageDataLoaderEN(bpe, labelPath, imgDirPath, ".jpg", imgSize, imgSize, maxContextLen, batchSize, horizontalFilp, mean, std);
+
+            int maxPositionEmbeddingsSize = 77;
+            int vocabSize = 49408;
+            int headNum = 12;
+            int n_layers = 12;
+            int textEmbedDim = 768;
+            int intermediateSize = 3072;
+            ClipTextModel clip = new ClipTextModel(LossType.MSE, UpdaterType.adamw, headNum, maxContextLen, vocabSize, textEmbedDim, maxPositionEmbeddingsSize, intermediateSize, n_layers);
+            clip.CUDNN = true;
+            clip.time = maxContextLen;
+            clip.RUN_MODEL = RunModel.EVAL;
+            String clipWeight = "/omega/models/CLIP-GmP-ViT-L-14/CLIP-GmP-ViT-L-14.json";
+            ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, "", false);
+            
+            int latendDim = 32;
+            int num_res_blocks = 2;
+            int[] ch_mult = new int[]{1, 1, 2, 2, 4};
+            int ch = 128;
+            
+            VA_VAE vae = new VA_VAE(LossType.MSE, UpdaterType.adamw, latendDim, imgSize, ch_mult, ch, num_res_blocks, true);
+            vae.CUDNN = true;
+            vae.learnRate = 0.001f;
+            vae.RUN_MODEL = RunModel.EVAL;
+            String vaeWeight = "/omega/models/vavae.json";
+            ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
+            
+            int[][] indexs = dataLoader.order();
+            
+            Tensor input = new Tensor(batchSize, 3, dataLoader.img_h, dataLoader.img_w, true);
+            Tensor label = new Tensor(batchSize * dataLoader.maxContextLen, 1, 1, 1, true);
+            Tensor eosIds = new Tensor(batchSize, 1, 1, 1, true);
+            String[] labels = new String[batchSize];
+
+            File file = new File(outputPath);
+            FileOutputStream writer = new FileOutputStream(file);
+            
+            File clipFile = new File(clipDataPath);
+            FileOutputStream clipWriter = new FileOutputStream(clipFile);
+            
+            for(int it = 0;it<indexs.length;it++) {
+            	 long start = System.nanoTime();
+            	 dataLoader.loadData(indexs[it], input, label, labels, eosIds);
+            	 Tensor latend = vae.encode(input);
+                 JCudaDriver.cuCtxSynchronize();
+                 writeTensor(latend, writer);
+            	 Tensor condInput = clip.get_full_clip_prompt_embeds(label);
+            	 JCudaDriver.cuCtxSynchronize();
+                 writeTensor(condInput, clipWriter);
+                 System.out.println(it + "/" + indexs.length + " cost["+(System.nanoTime() - start)/1e6+"ms] finish.");
+            }
+            
+            System.out.println("create ["+dataLoader.count+"] finish.");
+           
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+
+    }
+```
+##### 3.预训练dit模型（256*256分辨率）
+```java
+public static void flux_sprint_b1_iddpm_train2() throws Exception {
+		String dataPath = "D:\\dataset\\amine\\dalle_vavae_latend.bin";
+        String clipDataPath = "D:\\dataset\\amine\\dalle_full_clip.bin";
+		
+        int batchSize = 30;
+        int latendDim = 32;
+        int height = 16;
+        int width = 16;
+        int textEmbedDim = 768;
+        int maxContext = 77;
+        
+        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, maxContext, textEmbedDim, BinDataType.float32);
+        
+        String labelPath = "D:\\dataset\\labels.json";
+		String imgDirPath = "D:\\dataset\\images_224_224\\";
+		boolean horizontalFilp = false;
+        int imgSize = 224;
+
+        float[] mean = new float[]{0.485f, 0.456f, 0.406f};
+        float[] std = new float[]{0.229f, 0.224f, 0.225f};
+        String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
+        String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
+        BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+        SDImageDataLoaderEN dataLoader2 = new SDImageDataLoaderEN(bpe, labelPath, imgDirPath, ".jpg", imgSize, imgSize, maxContext, batchSize, horizontalFilp, mean, std);
+		
+		int dinov_patchSize = 14;
+		int dinov_hiddenSize = 768;
+		int headNum = 12;
+		int dinov_depth = 12;
+		int dinov_mlpRatio = 4;
+		Dinov2 dinov = new Dinov2(LossType.MSE, UpdaterType.adamw, 3, imgSize, imgSize, dinov_patchSize, dinov_hiddenSize, headNum, dinov_depth, dinov_mlpRatio);
+		dinov.CUDNN = true;
+		dinov.RUN_MODEL = RunModel.EVAL;
+        
+        String repa_model_path = "D:\\models\\dionv2-14-b.model";
+        ModelUtils.loadModel(dinov, repa_model_path);
+		
+		int ditHeadNum = 12;
+        int latendSize = 16;
+        int depth = 12;
+        int timeSteps = 1000;
+        int mlpRatio = 4;
+        int patchSize = 1;
+        int hiddenSize = 768;
+        
+        float y_prob = 0.1f;
+        float token_drop = 0.0f;
+        float path_drop_prob = 0.05f;
+        
+        FluxDiT_SPRINT2 dit = new FluxDiT_SPRINT2(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, textEmbedDim, maxContext, mlpRatio, dinov_hiddenSize, token_drop, path_drop_prob, y_prob);
+        dit.CUDNN = true;
+        dit.learnRate = 2e-5f;
+        
+        ICPlan icplan = new ICPlan(dit.tensorOP);
+
+        MBSGDOptimizer optimizer = new MBSGDOptimizer(dit, 60, 0.00001f, batchSize, LearnRateUpdate.NONE, false);
+        
+        Tensor latend_mean = new Tensor(latendDim, 1, 1, 1, new float[] {0.23869862f,0.4016211f,-0.15087046f,-0.52679396f,-0.15986611f,-1.6260003f,-0.5108059f,0.036283042f,0.3879915f,0.5334558f,-0.96909237f,1.4872372f,0.071545064f,0.7708449f,0.16623285f,0.7733368f,-0.9222466f,1.2859207f,-0.30753133f,-0.70088845f,0.5247328f,0.09425582f,-1.1671793f,0.53027356f,2.7668183f,1.4706479f,0.09313846f,-0.25821307f,-0.81280077f,-0.56423014f,0.49580055f,-0.35338005f}, true);
+        Tensor latend_std = new Tensor(latendDim, 1, 1, 1, new float[] {4.1767454f,4.245004f,3.4222624f,3.6970704f,3.6395364f,3.3921142f,3.0486407f,3.6789029f,3.922576f,3.760961f,3.7205217f,3.70206f,3.7118554f,3.6425886f,3.223105f,3.3205664f,4.135744f,3.6481087f,3.6758296f,3.0634696f,3.3749795f,2.9729145f,3.8634508f,4.518134f,2.7782023f,3.4923503f,4.7507596f,3.2647762f,3.3624852f,3.7219477f,4.659944f,4.2925563f}, true);
+
+        optimizer.train_Flux_Sprint_ICPlan2(dinov, dataLoader2, dataLoader, icplan, "D://models//dit_txt2//", latend_mean, latend_std, 1f, 4);
+        String save_model_path = "D://models//dit_txt//flux_sprint_b1.model";
+        ModelUtils.saveModel(dit, save_model_path);
+    }
+```
+##### 4.分辨率微调训练 (512*512分辨率）
+```java
+public static void flux_sprint_b1_iddpm_train2_512() throws Exception {
+		String dataPath = "D:\\dataset\\amine\\dalle_vavae_latend_512.bin";
+        String clipDataPath = "D:\\dataset\\amine\\dalle_full_clip.bin";
+		
+        int batchSize = 5;
+        int latendDim = 32;
+        int height = 32;
+        int width = 32;
+        int textEmbedDim = 768;
+        int maxContext = 77;
+        
+        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, maxContext, textEmbedDim, BinDataType.float32);
+        
+        String labelPath = "D:\\dataset\\labels.json";
+		String imgDirPath = "D:\\dataset\\images_448_448\\";
+		boolean horizontalFilp = false;
+        int imgSize = 448;
+
+        float[] mean = new float[]{0.485f, 0.456f, 0.406f};
+        float[] std = new float[]{0.229f, 0.224f, 0.225f};
+        String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
+        String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
+        BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+        SDImageDataLoaderEN dataLoader2 = new SDImageDataLoaderEN(bpe, labelPath, imgDirPath, ".jpg", imgSize, imgSize, maxContext, batchSize, horizontalFilp, mean, std);
+		
+		int dinov_patchSize = 14;
+		int dinov_hiddenSize = 768;
+		int headNum = 12;
+		int dinov_depth = 12;
+		int dinov_mlpRatio = 4;
+		Dinov2 dinov = new Dinov2(LossType.MSE, UpdaterType.adamw, 3, imgSize, imgSize, dinov_patchSize, dinov_hiddenSize, headNum, dinov_depth, dinov_mlpRatio);
+		dinov.CUDNN = true;
+		dinov.RUN_MODEL = RunModel.EVAL;
+        
+        String repa_model_path = "D:\\models\\dionv2-14-b-512.model";
+        ModelUtils.loadModel(dinov, repa_model_path);
+		
+		int ditHeadNum = 12;
+        int latendSize = 32;
+        int depth = 12;
+        int timeSteps = 1000;
+        int mlpRatio = 4;
+        int patchSize = 1;
+        int hiddenSize = 768;
+        
+        float y_prob = 0.1f;
+        float token_drop = 0.0f;
+        float path_drop_prob = 0.05f;
+        
+        FluxDiT_SPRINT2 dit = new FluxDiT_SPRINT2(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, textEmbedDim, maxContext, mlpRatio, dinov_hiddenSize, token_drop, path_drop_prob, y_prob);
+        dit.CUDNN = true;
+        dit.learnRate = 5e-5f;
+        
+        ICPlan icplan = new ICPlan(dit.tensorOP);
+
+        String model_path = "D:\\models\\dit_txt2_512\\flux_sprint_b1_256.model";
+        ModelUtils.loadModel(dit, model_path);
+        
+        MBSGDOptimizer optimizer = new MBSGDOptimizer(dit, 10, 0.00001f, batchSize, LearnRateUpdate.NONE, false);
+        
+        Tensor latend_mean = new Tensor(latendDim, 1, 1, 1, new float[] {0.23869862f,0.4016211f,-0.15087046f,-0.52679396f,-0.15986611f,-1.6260003f,-0.5108059f,0.036283042f,0.3879915f,0.5334558f,-0.96909237f,1.4872372f,0.071545064f,0.7708449f,0.16623285f,0.7733368f,-0.9222466f,1.2859207f,-0.30753133f,-0.70088845f,0.5247328f,0.09425582f,-1.1671793f,0.53027356f,2.7668183f,1.4706479f,0.09313846f,-0.25821307f,-0.81280077f,-0.56423014f,0.49580055f,-0.35338005f}, true);
+        Tensor latend_std = new Tensor(latendDim, 1, 1, 1, new float[] {4.1767454f,4.245004f,3.4222624f,3.6970704f,3.6395364f,3.3921142f,3.0486407f,3.6789029f,3.922576f,3.760961f,3.7205217f,3.70206f,3.7118554f,3.6425886f,3.223105f,3.3205664f,4.135744f,3.6481087f,3.6758296f,3.0634696f,3.3749795f,2.9729145f,3.8634508f,4.518134f,2.7782023f,3.4923503f,4.7507596f,3.2647762f,3.3624852f,3.7219477f,4.659944f,4.2925563f}, true);
+
+        optimizer.train_Flux_Sprint_ICPlan2_512(dinov, dataLoader2, dataLoader, icplan, "D://models//dit_txt2_512//", latend_mean, latend_std, 1f, 1);
+        String save_model_path = "D://models//dit_txt//flux_sprint_b1_512.model";
+        ModelUtils.saveModel(dit, save_model_path);
+    }
+```
+##### 5.推理阶段
+```java
+public static void test_flux_sprint2_path_drop_cfg_512() throws Exception {
+        int imgSize = 512;
+        int maxContextLen = 77;
+        int batchSize = 4;
+        float[] mean = new float[]{0.5f, 0.5f, 0.5f};
+        float[] std = new float[]{0.5f, 0.5f, 0.5f};
+        String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
+        String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
+        BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+
+        int maxPositionEmbeddingsSize = 77;
+        int vocabSize = 49408;
+        int headNum = 12;
+        int n_layers = 12;
+        int textEmbedDim = 768;
+        int intermediateSize = 3072;
+        ClipTextModel clip = new ClipTextModel(LossType.MSE, UpdaterType.adamw, headNum, maxContextLen, vocabSize, textEmbedDim, maxPositionEmbeddingsSize, intermediateSize, n_layers);
+        clip.CUDNN = true;
+        clip.time = maxContextLen;
+        clip.RUN_MODEL = RunModel.EVAL;
+        String clipWeight = "D:\\models\\CLIP-GmP-ViT-L-14\\CLIP-GmP-ViT-L-14.json";
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, "", false);
+
+        int latendDim = 32;
+        int num_res_blocks = 2;
+        int[] ch_mult = new int[]{1, 1, 2, 2, 4};
+        int ch = 128;
+        VA_VAE vae = new VA_VAE(LossType.MSE, UpdaterType.adamw, latendDim, imgSize, ch_mult, ch, num_res_blocks, true);
+        vae.CUDNN = true;
+        vae.learnRate = 0.001f;
+        vae.RUN_MODEL = RunModel.EVAL;
+        String vaeWeight = "D:\\models\\vavae.json";
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
+        
+        int ditHeadNum = 12;
+        int latendSize = 32;
+        int depth = 12;
+        int timeSteps = 1000;
+        int mlpRatio = 4;
+        int patchSize = 1;
+        int hiddenSize = 768;
+        
+        float y_prob = 0.1f;
+        float token_drop = 0.0f;
+        float path_drop_prob = 0.05f;
+        
+        FluxDiT_SPRINT2 network = new FluxDiT_SPRINT2(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, textEmbedDim, maxContextLen, mlpRatio, 768, token_drop, path_drop_prob, y_prob);
+        network.CUDNN = true;
+        network.learnRate = 2e-4f;
+        
+        ICPlan icplan = new ICPlan(network.tensorOP);
+
+        String model_path = "D:\\test\\dit_vavae\\models\\512\\flux_sprint_b1_512.model";
+        ModelUtils.loadModel(network, model_path);
+        
+        Tensor label = new Tensor(batchSize * maxContextLen, 1, 1, 1, true);
+       
+        Tensor condInput = null;
+        Tensor condInput_ynull = null;
+        Tensor t = new Tensor(batchSize, 1, 1, 1, true);
+        
+        Tensor noise = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+        Tensor latend = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+        Tensor eps = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+        
+        Tensor[] cs = RoPEKernel.getCosAndSin2D(network.time, network.hiddenSize, network.headNum);
+        Tensor cos = cs[0];
+        Tensor sin = cs[1];
+
+        Tensor latendMean = new Tensor(latendDim, 1, 1, 1, new float[] {0.23869862f,0.4016211f,-0.15087046f,-0.52679396f,-0.15986611f,-1.6260003f,-0.5108059f,0.036283042f,0.3879915f,0.5334558f,-0.96909237f,1.4872372f,0.071545064f,0.7708449f,0.16623285f,0.7733368f,-0.9222466f,1.2859207f,-0.30753133f,-0.70088845f,0.5247328f,0.09425582f,-1.1671793f,0.53027356f,2.7668183f,1.4706479f,0.09313846f,-0.25821307f,-0.81280077f,-0.56423014f,0.49580055f,-0.35338005f}, true);
+        Tensor latendStd = new Tensor(latendDim, 1, 1, 1, new float[] {4.1767454f,4.245004f,3.4222624f,3.6970704f,3.6395364f,3.3921142f,3.0486407f,3.6789029f,3.922576f,3.760961f,3.7205217f,3.70206f,3.7118554f,3.6425886f,3.223105f,3.3205664f,4.135744f,3.6481087f,3.6758296f,3.0634696f,3.3749795f,2.9729145f,3.8634508f,4.518134f,2.7782023f,3.4923503f,4.7507596f,3.2647762f,3.3624852f,3.7219477f,4.659944f,4.2925563f}, true);
+       
+        network.RUN_MODEL = RunModel.EVAL;
+        String[] labels = new String[28];
+        labels[0] = "A cat";
+        labels[1] = "a vibrant anime mountain lands";
+        labels[2] = "a highly detailed anime landscape,big tree on the water, epic sky,golden grass,detailed";
+        labels[3] = "a girl wearning a white dress standing under the apple tree";
+        loadLabel_offset(bpe, label, 0, maxContextLen, labels[i * batchSize + 0]);
+			loadLabel_offset(bpe, label, 1, maxContextLen, labels[i * batchSize + 1]);
+			loadLabel_offset(bpe, label, 2, maxContextLen, labels[i * batchSize + 2]);
+			loadLabel_offset(bpe, label, 3, maxContextLen, labels[i * batchSize + 3]);
+        condInput = clip.get_full_clip_prompt_embeds(label);
+        if(condInput_ynull == null) {
+            	condInput_ynull = Tensor.createGPUTensor(condInput_ynull, condInput.number, condInput.channel, condInput.height, condInput.width, true);
+                Tensor y_null = network.main.labelEmbd.getY_embedding();
+                int part_input_size = y_null.dataLength;
+                for(int b = 0;b<batchSize;b++) {
+                	network.tensorOP.op.copy_gpu(y_null, condInput_ynull, part_input_size, 0, 1, 0, 1);
+                }
+            }
+        System.out.println("start create test images.");
+        GPUOP.getInstance().cudaRandn(noise);
+        Tensor sample = icplan.forward_with_path_drop_cfg(network, noise, t, condInput, condInput_ynull, cos, sin, latend, eps, 2.0f);
+        icplan.latend_un_norm(sample, latendMean, latendStd);
+        Tensor result = vae.decode(sample);
+        JCuda.cudaDeviceSynchronize();
+        result.data = MatrixOperation.clampSelf(result.syncHost(), -1, 1);
+        showImgs("D:\\test\\dit_vavae\\flux_path_drop_sprint_512\\", result, mean, std);
+        System.out.println("finish create.");
 	}
 ```
 
