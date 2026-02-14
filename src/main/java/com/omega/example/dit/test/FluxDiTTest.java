@@ -24,12 +24,14 @@ import com.omega.engine.nn.network.dit.OmegaDiT;
 import com.omega.engine.nn.network.dit.FluxDiT_SPRINT3;
 import com.omega.engine.nn.network.dit.FluxDiT_SPRINT4;
 import com.omega.engine.nn.network.dit.FluxDiT_SPRINT_REG;
+import com.omega.engine.nn.network.vae.Flux_VAE;
 import com.omega.engine.nn.network.vae.VA_VAE;
 import com.omega.engine.optimizer.MBSGDOptimizer;
 import com.omega.engine.optimizer.lr.LearnRateUpdate;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 import com.omega.example.common.ModeLoaderlUtils;
+import com.omega.example.diffusion.utils.DiffusionImageDataLoader;
 import com.omega.example.dit.dataset.LatendDataset;
 import com.omega.example.dit.models.ICPlan;
 import com.omega.example.dit.utils.RandomMaskUtils;
@@ -39,6 +41,7 @@ import com.omega.example.transformer.utils.ModelUtils;
 import com.omega.example.transformer.utils.bpe.BPETokenizerEN;
 import com.omega.example.transformer.utils.bpe.BinDataType;
 
+import jcuda.driver.JCudaDriver;
 import jcuda.runtime.JCuda;
 
 public class FluxDiTTest {
@@ -439,7 +442,7 @@ public class FluxDiTTest {
 		String dataPath = "D:\\dataset\\amine\\dalle_vavae_latend.bin";
         String clipDataPath = "D:\\dataset\\amine\\dalle_full_clip.bin";
 		
-        int batchSize = 36;
+        int batchSize = 26;
         int latendDim = 32;
         int height = 16;
         int width = 16;
@@ -481,16 +484,16 @@ public class FluxDiTTest {
         int hiddenSize = 768;
         
         float y_prob = 0.1f;
-        float token_drop = 0.75f;
+        float token_drop = 0.0f;
         float path_drop_prob = 0.05f;
         
         FluxDiT_SPRINT3 dit = new FluxDiT_SPRINT3(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, textEmbedDim, maxContext, mlpRatio, dinov_hiddenSize, token_drop, path_drop_prob, y_prob);
         dit.CUDNN = true;
-        dit.learnRate = 1e-6f;
+        dit.learnRate = 2e-6f;
         
         ICPlan icplan = new ICPlan(dit.tensorOP);
 
-        String model_path = "D:\\models\\dit_txt3\\flux_sprint_b1_32.model";
+        String model_path = "D:\\models\\dit_txt3\\flux_sprint_b1_20.model";
         ModelUtils.loadModel(dit, model_path);
         
         MBSGDOptimizer optimizer = new MBSGDOptimizer(dit, 60, 0.00001f, batchSize, LearnRateUpdate.NONE, false);
@@ -1789,7 +1792,7 @@ public class FluxDiTTest {
         ICPlan icplan = new ICPlan(network.tensorOP);
         
 //        String model_path = "D:\\models\\dit_txt2_512\\flux_sprint_b1_512_2_5000.model";
-        String model_path = "D:\\test\\dit_vavae\\models\\512\\flux_sprint_b1_512_0_80000.model";
+        String model_path = "D:\\test\\dit_vavae\\models\\512\\flux_sprint_b1_512_0_30000.model";
         ModelUtils.loadModel(network, model_path);
         
         Tensor label = new Tensor(batchSize * maxContextLen, 1, 1, 1, true);
@@ -2129,7 +2132,7 @@ public class FluxDiTTest {
         
         ICPlan icplan = new ICPlan(network.tensorOP);
         
-        String model_path = "D:\\models\\dit_txt3\\flux_sprint_b1_40.model";
+        String model_path = "D:\\models\\dit_txt3\\flux_sprint_b1_28.model";
         ModelUtils.loadModel(network, model_path);
         
         Tensor label = new Tensor(batchSize * dataLoader.maxContextLen, 1, 1, 1, true);
@@ -3192,6 +3195,90 @@ public class FluxDiTTest {
         System.err.println(JsonUtils.toJson(result));
     }
     
+	public static void test_flux_vae() {
+		int imgSize = 256;
+    	int latendDim = 16;
+        int num_res_blocks = 2;
+        int[] ch_mult = new int[]{1, 2, 4, 4};
+        int ch = 128;
+        Flux_VAE vae = new Flux_VAE(LossType.MSE, UpdaterType.adamw, latendDim, imgSize, ch_mult, ch, num_res_blocks);
+        vae.CUDNN = true;
+        vae.learnRate = 0.001f;
+        vae.RUN_MODEL = RunModel.EVAL;
+        String vaeWeight = "D:\\models\\e2e-flux-vae.json";
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
+        
+        int batchSize = 4;
+        int imageSize = 256;
+        float[] mean = new float[]{0.5f, 0.5f, 0.5f};
+        float[] std = new float[]{0.5f, 0.5f, 0.5f};
+        String imgDirPath = "D:\\dataset\\amine\\256\\";
+        DiffusionImageDataLoader dataLoader = new DiffusionImageDataLoader(imgDirPath, imageSize, imageSize, batchSize, true, true, mean, std);
+        
+        int[] indexs = new int[]{3960, 145, 2, 9876};
+//        int[] indexs = new int[] {145};
+        Tensor input = new Tensor(batchSize, 3, imageSize, imageSize, true);
+        dataLoader.loadData(indexs, input);
+        JCudaDriver.cuCtxSynchronize();
+        Tensor latent = vae.encode(input);
+        //		latent.showDM("latent");
+        latent.showShape();
+        //		Tensor latent = new Tensor(batchSize, 4, 32, 32, RandomUtils.gaussianRandom(batchSize * 4 * 32 * 32, 1.0f, 0.0f), true);
+        Tensor out = vae.decode(latent);
+        //		out.showDM("out");
+        out.showShape();
+        out.syncHost();
+        out.data = MatrixOperation.clampSelf(out.data, -1, 1);
+        /**
+         * print image
+         */
+        MBSGDOptimizer.showImgs("D:\\test\\flux_vae\\", out, "test", mean, std);
+        
+	}
+    
+	public static void testVAVAE() {
+		int imgSize = 256;
+		
+        int latendDim = 32;
+        int num_res_blocks = 2;
+        int[] ch_mult = new int[]{1, 1, 2, 2, 4};
+        int ch = 128;
+        
+        VA_VAE vae = new VA_VAE(LossType.MSE, UpdaterType.adamw, latendDim, imgSize, ch_mult, ch, num_res_blocks, true);
+        vae.CUDNN = true;
+        vae.learnRate = 0.001f;
+        vae.RUN_MODEL = RunModel.EVAL;
+        String vaeWeight = "D:\\models\\vavae.json";
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
+        
+        int batchSize = 4;
+        int imageSize = 256;
+        float[] mean = new float[]{0.5f, 0.5f, 0.5f};
+        float[] std = new float[]{0.5f, 0.5f, 0.5f};
+        String imgDirPath = "D:\\dataset\\amine\\256\\";
+        DiffusionImageDataLoader dataLoader = new DiffusionImageDataLoader(imgDirPath, imageSize, imageSize, batchSize, true, true, mean, std);
+        
+        int[] indexs = new int[]{3960, 145, 2, 9876};
+//        int[] indexs = new int[] {145};
+        Tensor input = new Tensor(batchSize, 3, imageSize, imageSize, true);
+        dataLoader.loadData(indexs, input);
+        JCudaDriver.cuCtxSynchronize();
+        Tensor latent = vae.encode(input);
+        //		latent.showDM("latent");
+        latent.showShape();
+        //		Tensor latent = new Tensor(batchSize, 4, 32, 32, RandomUtils.gaussianRandom(batchSize * 4 * 32 * 32, 1.0f, 0.0f), true);
+        Tensor out = vae.decode(latent);
+        //		out.showDM("out");
+        out.showShape();
+        out.syncHost();
+        out.data = MatrixOperation.clampSelf(out.data, -1, 1);
+        /**
+         * print image
+         */
+        MBSGDOptimizer.showImgs("D:\\test\\va_vae\\", out, "test", mean, std);
+        
+	}
+    
     public static void main(String[] args) {
 		 
 	        try {
@@ -3228,7 +3315,7 @@ public class FluxDiTTest {
 	        	
 //	        	test_flux_sprint2_path_drop_cfg_512();
 	        	
-	        	flux_sprint_b1_iddpm_train3();
+//	        	flux_sprint_b1_iddpm_train3();
 	        	
 //	        	flux_sprint_b1_iddpm_train4();
 	        	
@@ -3245,6 +3332,10 @@ public class FluxDiTTest {
 //	        	test_flux_sprint_path_drop_cfg2();
 	        	
 //	        	flux_sprint_reg_b1_iddpm_train();
+	        	
+//	        	test_flux_vae();
+	        	
+//	        	testVAVAE();
 	        	
 	        } catch (Exception e) {
 	            // TODO: handle exception

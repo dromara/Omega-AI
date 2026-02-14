@@ -21,7 +21,6 @@ import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 import com.omega.example.common.ModeLoaderlUtils;
-import com.omega.example.dit.models.ICPlan;
 import com.omega.example.transformer.utils.LagJsonReader;
 
 import jcuda.Sizeof;

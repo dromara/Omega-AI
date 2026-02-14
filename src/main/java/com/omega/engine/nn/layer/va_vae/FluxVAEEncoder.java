@@ -12,29 +12,29 @@ import com.omega.engine.nn.layer.active.SiLULayer;
 import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.GNLayer;
 import com.omega.engine.nn.layer.sd_vae.moudles.SDVAEAttentionLayer;
+import com.omega.engine.nn.layer.sd_vae.moudles.SDVAEDownsample;
 import com.omega.engine.nn.layer.sd_vae.moudles.SDVAEResidual;
-import com.omega.engine.nn.layer.sd_vae.moudles.SDVAEUpsample;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.tensor.Tensor;
 
 /**
- * VQVAEDecoder
+ * FluxVAEEncoder
  *
  * @author Administrator
  */
-public class VAVAEDecoder extends Layer {
+public class FluxVAEEncoder extends Layer {
     private int num_res_blocks = 2;
     private int groups = 32;
-    private int[] ch_mult;
     private int ch;
+    private int[] ch_mult;
     public ConvolutionLayer convIn;
-    public List<Layer> up;
+    public List<Layer> down;
     public GNLayer convNormOut;
-    private SiLULayer convAct;
+    public SiLULayer convAct;
     public ConvolutionLayer convOut;
-    public boolean hasAttn;
-    
-    public VAVAEDecoder(int channel, int oChannel, int height, int width, int num_res_blocks, int groups, int[] ch_mult, int ch, Network network) {
+    public boolean hasAttn = true;
+
+    public FluxVAEEncoder(int channel, int oChannel, int height, int width, int num_res_blocks, int groups, int[] ch_mult, int ch, Network network) {
         this.network = network;
         this.channel = channel;
         this.oChannel = oChannel;
@@ -47,7 +47,7 @@ public class VAVAEDecoder extends Layer {
         initLayers();
     }
     
-    public VAVAEDecoder(int channel, int oChannel, int height, int width, int num_res_blocks, int groups, int[] ch_mult, int ch, boolean hasAttn, Network network) {
+    public FluxVAEEncoder(int channel, int oChannel, int height, int width, int num_res_blocks, int groups, int[] ch_mult, int ch, boolean hasAttn, Network network) {
         this.network = network;
         this.channel = channel;
         this.oChannel = oChannel;
@@ -62,48 +62,43 @@ public class VAVAEDecoder extends Layer {
     }
 
     public void initLayers() {
-        up = new ArrayList<Layer>();
-        int c_in = ch * ch_mult[ch_mult.length - 1];
-        convIn = new ConvolutionLayer(channel, c_in, width, height, 3, 3, 1, 1, true, this.network);
+        down = new ArrayList<Layer>();
+        convIn = new ConvolutionLayer(channel, ch, width, height, 3, 3, 1, 1, true, this.network);
+        int[] in_ch_mult = new int[ch_mult.length + 1];
+        in_ch_mult[0] = 1;
+        System.arraycopy(ch_mult, 0, in_ch_mult, 1, ch_mult.length);
+        int c_out = 0;
         int ih = convIn.oHeight;
         int iw = convIn.oWidth;
-        //middle
-        SDVAEResidual res1 = new SDVAEResidual(c_in, c_in, ih, iw, this.groups, network);
-        up.add(res1);
-        VAVAEAttentionLayer attn = new VAVAEAttentionLayer(c_in, ih, iw, groups, true, network);
-        up.add(attn);
-        SDVAEResidual res2 = new SDVAEResidual(c_in, c_in, ih, iw, this.groups, network);
-        up.add(res2);
-        // up
-        int c_out = 0;
-        for (int i = ch_mult.length - 1; i >= 0; i--) {
-            c_out = ch_mult[i] * ch;
-            for (int ri = 0; ri < num_res_blocks + 1; ri++) {
+        for (int i = 0; i < ch_mult.length; i++) {
+            int c_in = in_ch_mult[i] * ch;
+            c_out = in_ch_mult[i + 1] * ch;
+            for (int ri = 0; ri < num_res_blocks; ri++) {
                 SDVAEResidual res = new SDVAEResidual(c_in, c_out, ih, iw, this.groups, network);
-                up.add(res);
+                down.add(res);
                 c_in = c_out;
                 ih = res.oHeight;
                 iw = res.oWidth;
-                if (hasAttn && i == ch_mult.length - 1) {
-                	VAVAEAttentionLayer rattn = new VAVAEAttentionLayer(c_out, ih, iw, groups, true, network);
-                    up.add(rattn);
-                }
             }
-            if (i != 0) {
-                SDVAEUpsample upsample = new SDVAEUpsample(c_out, ih, iw, network);
-                up.add(upsample);
-                c_in = c_out;
-                ih = upsample.oHeight;
-                iw = upsample.oWidth;
+            if (i != ch_mult.length - 1) {
+            	SDVAEDownsample downConv = new SDVAEDownsample(c_out, ih, iw, network);
+                down.add(downConv);
+                ih = downConv.oHeight;
+                iw = downConv.oWidth;
             }
         }
-        Layer lastLayer = up.get(up.size() - 1);
-        convNormOut = new GNLayer(groups, c_out, ih, iw, BNType.conv_bn, lastLayer);
+        //middle
+        SDVAEResidual res1 = new SDVAEResidual(c_out, c_out, ih, iw, this.groups, network);
+        down.add(res1);
+        VAVAEAttentionLayer attn = new VAVAEAttentionLayer(c_out, ih, iw, groups, true, network);
+        down.add(attn);
+        SDVAEResidual res2 = new SDVAEResidual(c_out, c_out, ih, iw, this.groups, network);
+        down.add(res2);
+        convNormOut = new GNLayer(groups, c_out, ih, iw, BNType.conv_bn, res2);
         convAct = new SiLULayer(convNormOut);
         convOut = new ConvolutionLayer(c_out, oChannel, iw, ih, 3, 3, 1, 1, true, this.network);
         this.oHeight = convOut.oHeight;
         this.oWidth = convOut.oWidth;
-        
     }
 
     @Override
@@ -123,21 +118,23 @@ public class VAVAEDecoder extends Layer {
     @Override
     public void output() {
         // TODO Auto-generated method stub
-
+//    	input.showDMByOffsetRed(0, 100, "input");
         convIn.forward(this.input);
         Tensor x = convIn.getOutput();
+//        x.showShape("en-x");
 
-        for (int i = 0; i < up.size(); i++) {
-            Layer l = up.get(i);
+        for (int i = 0; i < down.size(); i++) {
+            Layer l = down.get(i);
             l.forward(x);
             x = l.getOutput();
-            //			System.err.println(l);
-            //			x.showDMByOffsetRed(0, 100, "x"+i);
+//            x.showDMByOffsetRed(0, 100, "x:"+Layer.class);
         }
+//        x.showDMByOffsetRed(0, 100, "x");
         convNormOut.forward(x);
         convAct.forward(convNormOut.getOutput());
         convOut.forward(convAct.getOutput());
         this.output = convOut.getOutput();
+//        output.showDMByOffsetRed(0, 100, "output");
     }
 
     @Override
@@ -153,8 +150,8 @@ public class VAVAEDecoder extends Layer {
         convAct.back(convOut.diff);
         convNormOut.back(convAct.diff);
         Tensor d = convNormOut.diff;
-        for (int i = up.size() - 1; i >= 0; i--) {
-            Layer l = up.get(i);
+        for (int i = down.size() - 1; i >= 0; i--) {
+            Layer l = down.get(i);
             if(l instanceof ConvolutionLayer) {
             	ConvolutionLayer conv = (ConvolutionLayer) l;
             	conv.back(d, conv.input);
@@ -163,7 +160,9 @@ public class VAVAEDecoder extends Layer {
             }
             d = l.diff;
         }
+        //		d.showDM("d");
         convIn.back(d);
+        //		convIn.diff.showDMByOffset(0, 100, "encode_conv_in");
         this.diff = convIn.diff;
     }
 
@@ -207,8 +206,10 @@ public class VAVAEDecoder extends Layer {
     public void update() {
         // TODO Auto-generated method stub
         convIn.update();
-        for (int i = 0; i < up.size(); i++) {
-            up.get(i).update();
+        //		convIn.weight.showDM("convIn.weight");
+        //		convIn.bias.showDM("convIn.bias");
+        for (int i = 0; i < down.size(); i++) {
+            down.get(i).update();
         }
         convNormOut.update();
         convOut.update();
@@ -241,17 +242,14 @@ public class VAVAEDecoder extends Layer {
         // TODO Auto-generated method stub
         /**
          * 参数初始化
-
          */
         this.init();
         /**
          * 设置输入
-
          */
         this.setInput(input);
         /**
          * 计算输出
-
          */
         this.output();
     }
@@ -284,8 +282,8 @@ public class VAVAEDecoder extends Layer {
 
     public void saveModel(RandomAccessFile outputStream) throws IOException {
         convIn.saveModel(outputStream);
-        for (int i = 0; i < up.size(); i++) {
-            Layer l = up.get(i);
+        for (int i = 0; i < down.size(); i++) {
+            Layer l = down.get(i);
             if (l instanceof SDVAEResidual) {
                 SDVAEResidual r = (SDVAEResidual) l;
                 r.saveModel(outputStream);
@@ -298,10 +296,6 @@ public class VAVAEDecoder extends Layer {
                 ConvolutionLayer c = (ConvolutionLayer) l;
                 c.saveModel(outputStream);
             }
-            if (l instanceof SDVAEUpsample) {
-                SDVAEUpsample u = (SDVAEUpsample) l;
-                u.saveModel(outputStream);
-            }
         }
         convNormOut.saveModel(outputStream);
         convOut.saveModel(outputStream);
@@ -309,8 +303,8 @@ public class VAVAEDecoder extends Layer {
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
         convIn.loadModel(inputStream);
-        for (int i = 0; i < up.size(); i++) {
-            Layer l = up.get(i);
+        for (int i = 0; i < down.size(); i++) {
+            Layer l = down.get(i);
             if (l instanceof SDVAEResidual) {
                 SDVAEResidual r = (SDVAEResidual) l;
                 r.loadModel(inputStream);
@@ -322,10 +316,6 @@ public class VAVAEDecoder extends Layer {
             if (l instanceof ConvolutionLayer) {
                 ConvolutionLayer c = (ConvolutionLayer) l;
                 c.loadModel(inputStream);
-            }
-            if (l instanceof SDVAEUpsample) {
-                SDVAEUpsample u = (SDVAEUpsample) l;
-                u.loadModel(inputStream);
             }
         }
         convNormOut.loadModel(inputStream);

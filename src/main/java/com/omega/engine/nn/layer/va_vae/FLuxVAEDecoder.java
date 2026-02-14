@@ -18,11 +18,11 @@ import com.omega.engine.nn.network.Network;
 import com.omega.engine.tensor.Tensor;
 
 /**
- * VQVAEDecoder
+ * FLuxVAEDecoder
  *
  * @author Administrator
  */
-public class VAVAEDecoder extends Layer {
+public class FLuxVAEDecoder extends Layer {
     private int num_res_blocks = 2;
     private int groups = 32;
     private int[] ch_mult;
@@ -34,7 +34,7 @@ public class VAVAEDecoder extends Layer {
     public ConvolutionLayer convOut;
     public boolean hasAttn;
     
-    public VAVAEDecoder(int channel, int oChannel, int height, int width, int num_res_blocks, int groups, int[] ch_mult, int ch, Network network) {
+    public FLuxVAEDecoder(int channel, int oChannel, int height, int width, int num_res_blocks, int groups, int[] ch_mult, int ch, Network network) {
         this.network = network;
         this.channel = channel;
         this.oChannel = oChannel;
@@ -47,7 +47,7 @@ public class VAVAEDecoder extends Layer {
         initLayers();
     }
     
-    public VAVAEDecoder(int channel, int oChannel, int height, int width, int num_res_blocks, int groups, int[] ch_mult, int ch, boolean hasAttn, Network network) {
+    public FLuxVAEDecoder(int channel, int oChannel, int height, int width, int num_res_blocks, int groups, int[] ch_mult, int ch, boolean hasAttn, Network network) {
         this.network = network;
         this.channel = channel;
         this.oChannel = oChannel;
@@ -76,23 +76,19 @@ public class VAVAEDecoder extends Layer {
         up.add(res2);
         // up
         int c_out = 0;
-        for (int i = ch_mult.length - 1; i >= 0; i--) {
-            c_out = ch_mult[i] * ch;
+        for (int i = 0; i < ch_mult.length; i++) {
+        	int c_idx = ch_mult.length - 1 - i;
+            c_out = ch_mult[c_idx] * ch;
             for (int ri = 0; ri < num_res_blocks + 1; ri++) {
                 SDVAEResidual res = new SDVAEResidual(c_in, c_out, ih, iw, this.groups, network);
                 up.add(res);
                 c_in = c_out;
                 ih = res.oHeight;
                 iw = res.oWidth;
-                if (hasAttn && i == ch_mult.length - 1) {
-                	VAVAEAttentionLayer rattn = new VAVAEAttentionLayer(c_out, ih, iw, groups, true, network);
-                    up.add(rattn);
-                }
             }
-            if (i != 0) {
+            if (i != ch_mult.length - 1) {
                 SDVAEUpsample upsample = new SDVAEUpsample(c_out, ih, iw, network);
                 up.add(upsample);
-                c_in = c_out;
                 ih = upsample.oHeight;
                 iw = upsample.oWidth;
             }
