@@ -138,14 +138,14 @@ public class YoloV7Test {
             //			y.createMaskTrainTestDataSet();
 //            			y.yolov7_tiny_mask();
 //            y.yolov7_tiny_mask_test();
-//            y.yolov7_tiny_helmet();
+            y.yolov7_tiny_helmet();
 //            y.yolov7_tiny_helmet_test();
 //            y.createTrainVailByJson();
 //            y.createCarTrainTestDataSet();
 //            y.yolov7_tiny_traffic();
 //            y.yolov7_tiny_traffic_test();
 //            y.yolov7_tiny_traffic_test2();
-            y.yolov7_tiny_traffic_test3();
+//            y.yolov7_tiny_traffic_test3();
             //			y.yolov7_tiny_sm();
             //			y.yolov7_tiny_yz();
             //			y.yolov3_tiny_voc();

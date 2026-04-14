@@ -20,10 +20,11 @@ import com.omega.engine.nn.network.dit.FluxDiT3;
 import com.omega.engine.nn.network.dit.FluxDiT_REG;
 import com.omega.engine.nn.network.dit.FluxDiT_REPA;
 import com.omega.engine.nn.network.dit.FluxDiT_SPRINT;
-import com.omega.engine.nn.network.dit.OmegaDiT;
 import com.omega.engine.nn.network.dit.FluxDiT_SPRINT3;
 import com.omega.engine.nn.network.dit.FluxDiT_SPRINT4;
+import com.omega.engine.nn.network.dit.FluxDiT_TREAD;
 import com.omega.engine.nn.network.dit.FluxDiT_SPRINT_REG;
+import com.omega.engine.nn.network.dit.OmegaDiT;
 import com.omega.engine.nn.network.vae.Flux_VAE;
 import com.omega.engine.nn.network.vae.VA_VAE;
 import com.omega.engine.optimizer.MBSGDOptimizer;
@@ -36,6 +37,7 @@ import com.omega.example.dit.dataset.LatendDataset;
 import com.omega.example.dit.models.ICPlan;
 import com.omega.example.dit.utils.RandomMaskUtils;
 import com.omega.example.sd.utils.SDImageDataLoaderEN;
+import com.omega.example.sd.utils.SDImageLoader;
 import com.omega.example.transformer.utils.LagJsonReader;
 import com.omega.example.transformer.utils.ModelUtils;
 import com.omega.example.transformer.utils.bpe.BPETokenizerEN;
@@ -322,10 +324,7 @@ public class FluxDiTTest {
 
         float[] mean = new float[]{0.485f, 0.456f, 0.406f};
         float[] std = new float[]{0.229f, 0.224f, 0.225f};
-        String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
-        String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
-        BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
-        SDImageDataLoaderEN dataLoader2 = new SDImageDataLoaderEN(bpe, labelPath, imgDirPath, ".jpg", imgSize, imgSize, maxContext, batchSize, horizontalFilp, mean, std);
+        SDImageLoader dataLoader2 = new SDImageLoader(labelPath, imgDirPath, ".jpg", imgSize, imgSize, batchSize, horizontalFilp, mean, std);
 		
 		int dinov_patchSize = 14;
 		int dinov_hiddenSize = 768;
@@ -353,17 +352,19 @@ public class FluxDiTTest {
         
         OmegaDiT dit = new OmegaDiT(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, textEmbedDim, maxContext, mlpRatio, dinov_hiddenSize, token_drop, path_drop_prob, y_prob);
         dit.CUDNN = true;
-        dit.learnRate = 2e-5f;
+        dit.learnRate = 2e-4f;
         
         ICPlan icplan = new ICPlan(dit.tensorOP);
 
-        String model_path = "D:\\models\\dit_txt2\\flux_sprint_b1_28.model";
-        ModelUtils.loadModel(dit, model_path);
+//        String model_path = "D:\\models\\dit_txt2\\flux_sprint_b1_28.model";
+//        ModelUtils.loadModel(dit, model_path);
         
-        MBSGDOptimizer optimizer = new MBSGDOptimizer(dit, 60, 0.00001f, batchSize, LearnRateUpdate.NONE, false);
+        MBSGDOptimizer optimizer = new MBSGDOptimizer(dit, 100, 0.00001f, batchSize, LearnRateUpdate.NONE, false);
         
-        Tensor latend_mean = new Tensor(latendDim, 1, 1, 1, new float[] {0.23869862f,0.4016211f,-0.15087046f,-0.52679396f,-0.15986611f,-1.6260003f,-0.5108059f,0.036283042f,0.3879915f,0.5334558f,-0.96909237f,1.4872372f,0.071545064f,0.7708449f,0.16623285f,0.7733368f,-0.9222466f,1.2859207f,-0.30753133f,-0.70088845f,0.5247328f,0.09425582f,-1.1671793f,0.53027356f,2.7668183f,1.4706479f,0.09313846f,-0.25821307f,-0.81280077f,-0.56423014f,0.49580055f,-0.35338005f}, true);
-        Tensor latend_std = new Tensor(latendDim, 1, 1, 1, new float[] {4.1767454f,4.245004f,3.4222624f,3.6970704f,3.6395364f,3.3921142f,3.0486407f,3.6789029f,3.922576f,3.760961f,3.7205217f,3.70206f,3.7118554f,3.6425886f,3.223105f,3.3205664f,4.135744f,3.6481087f,3.6758296f,3.0634696f,3.3749795f,2.9729145f,3.8634508f,4.518134f,2.7782023f,3.4923503f,4.7507596f,3.2647762f,3.3624852f,3.7219477f,4.659944f,4.2925563f}, true);
+        //[0.2580713,0.41303077,-0.17897944,-0.593331,-0.18632421,-1.7637733,-0.54968524,0.027559364,0.41386542,0.62200934,-1.0693398,1.680629,0.103141084,0.8374718,0.18392913,0.8740971,-1.0440301,1.4362086,-0.32072797,-0.7607167,0.58934206,0.11546381,-1.2952809,0.612079,3.0053487,1.6832577,0.056598995,-0.2920768,-0.9245258,-0.65787494,0.56643915,-0.3693799]
+        //[4.1784525,4.2560844,3.4338517,3.6914275,3.6218529,3.390063,3.060225,3.6699965,3.9034598,3.753831,3.7214353,3.6986103,3.716805,3.6442988,3.22384,3.3135345,4.127044,3.642752,3.6825655,3.0699682,3.3633635,2.9721425,3.8364065,4.5173664,2.760846,3.4888804,4.732718,3.2708733,3.353005,3.7254717,4.6618576,4.287393]
+        Tensor latend_mean = new Tensor(latendDim, 1, 1, 1, new float[] {0.2580713f,0.41303077f,-0.17897944f,-0.593331f,-0.18632421f,-1.7637733f,-0.54968524f,0.027559364f,0.41386542f,0.62200934f,-1.0693398f,1.680629f,0.103141084f,0.8374718f,0.18392913f,0.8740971f,-1.0440301f,1.4362086f,-0.32072797f,-0.7607167f,0.58934206f,0.11546381f,-1.2952809f,0.612079f,3.0053487f,1.6832577f,0.056598995f,-0.2920768f,-0.9245258f,-0.65787494f,0.56643915f,-0.3693799f}, true);
+        Tensor latend_std = new Tensor(latendDim, 1, 1, 1, new float[] {4.1784525f,4.2560844f,3.4338517f,3.6914275f,3.6218529f,3.390063f,3.060225f,3.6699965f,3.9034598f,3.753831f,3.7214353f,3.6986103f,3.716805f,3.6442988f,3.22384f,3.3135345f,4.127044f,3.642752f,3.6825655f,3.0699682f,3.3633635f,2.9721425f,3.8364065f,4.5173664f,2.760846f,3.4888804f,4.732718f,3.2708733f,3.353005f,3.7254717f,4.6618576f,4.287393f}, true);
 
         optimizer.train_Flux_Sprint_ICPlan2(dinov, dataLoader2, dataLoader, icplan, "D://models//dit_txt2//", latend_mean, latend_std, 1f, 4);
         String save_model_path = "D://models//dit_txt//flux_sprint_b1.model";
@@ -374,7 +375,7 @@ public class FluxDiTTest {
 		String dataPath = "D:\\dataset\\amine\\dalle_vavae_latend_512.bin";
         String clipDataPath = "D:\\dataset\\amine\\dalle_full_clip.bin";
 		
-        int batchSize = 5;
+        int batchSize = 8;
         int latendDim = 32;
         int height = 32;
         int width = 32;
@@ -390,10 +391,7 @@ public class FluxDiTTest {
 
         float[] mean = new float[]{0.485f, 0.456f, 0.406f};
         float[] std = new float[]{0.229f, 0.224f, 0.225f};
-        String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
-        String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
-        BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
-        SDImageDataLoaderEN dataLoader2 = new SDImageDataLoaderEN(bpe, labelPath, imgDirPath, ".jpg", imgSize, imgSize, maxContext, batchSize, horizontalFilp, mean, std);
+        SDImageLoader dataLoader2 = new SDImageLoader(labelPath, imgDirPath, ".jpg", imgSize, imgSize, batchSize, horizontalFilp, mean, std);
 		
 		int dinov_patchSize = 14;
 		int dinov_hiddenSize = 768;
@@ -416,17 +414,17 @@ public class FluxDiTTest {
         int hiddenSize = 768;
         
         float y_prob = 0.1f;
-        float token_drop = 0.0f;
+        float token_drop = 0.75f;
         float path_drop_prob = 0.05f;
         
         OmegaDiT dit = new OmegaDiT(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, textEmbedDim, maxContext, mlpRatio, dinov_hiddenSize, token_drop, path_drop_prob, y_prob);
         dit.CUDNN = true;
-        dit.learnRate = 5e-5f;
+        dit.learnRate = 2e-4f;
         
         ICPlan icplan = new ICPlan(dit.tensorOP);
 
-        String model_path = "D:\\models\\dit_txt2_512\\flux_sprint_b1_512_2_5000.model";
-        ModelUtils.loadModel(dit, model_path);
+//        String model_path = "D:\\models\\dit_txt2_512\\flux_sprint_b1_512_2_5000.model";
+//        ModelUtils.loadModel(dit, model_path);
         
         MBSGDOptimizer optimizer = new MBSGDOptimizer(dit, 10, 0.00001f, batchSize, LearnRateUpdate.NONE, false);
         
@@ -570,6 +568,140 @@ public class FluxDiTTest {
         Tensor latend_std = new Tensor(latendDim, 1, 1, 1, new float[] {4.1767454f,4.245004f,3.4222624f,3.6970704f,3.6395364f,3.3921142f,3.0486407f,3.6789029f,3.922576f,3.760961f,3.7205217f,3.70206f,3.7118554f,3.6425886f,3.223105f,3.3205664f,4.135744f,3.6481087f,3.6758296f,3.0634696f,3.3749795f,2.9729145f,3.8634508f,4.518134f,2.7782023f,3.4923503f,4.7507596f,3.2647762f,3.3624852f,3.7219477f,4.659944f,4.2925563f}, true);
 
         optimizer.train_Flux_Sprint_ICPlan4(dinov, dataLoader2, dataLoader, icplan, "D://models//dit_txt2//", latend_mean, latend_std, 1f, 4);
+        String save_model_path = "D://models//dit_txt//flux_sprint_b1.model";
+        ModelUtils.saveModel(dit, save_model_path);
+    }
+	
+	public static void flux_tread_b1_iddpm_train() throws Exception {
+		String dataPath = "D:\\dataset\\amine\\dalle_vavae_latend.bin";
+        String clipDataPath = "D:\\dataset\\amine\\dalle_full_clip.bin";
+		
+        int batchSize = 32;
+        int latendDim = 32;
+        int height = 16;
+        int width = 16;
+        int textEmbedDim = 768;
+        int maxContext = 77;
+        
+        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, maxContext, textEmbedDim, BinDataType.float32);
+        
+        String labelPath = "D:\\dataset\\labels.json";
+		String imgDirPath = "D:\\dataset\\images_224_224\\";
+		boolean horizontalFilp = false;
+        int imgSize = 224;
+
+        float[] mean = new float[]{0.485f, 0.456f, 0.406f};
+        float[] std = new float[]{0.229f, 0.224f, 0.225f};
+        String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
+        String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
+        BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+        SDImageDataLoaderEN dataLoader2 = new SDImageDataLoaderEN(bpe, labelPath, imgDirPath, ".jpg", imgSize, imgSize, maxContext, batchSize, horizontalFilp, mean, std);
+		
+		int dinov_patchSize = 14;
+		int dinov_hiddenSize = 768;
+		int headNum = 12;
+		int dinov_depth = 12;
+		int dinov_mlpRatio = 4;
+		Dinov2 dinov = new Dinov2(LossType.MSE, UpdaterType.adamw, 3, imgSize, imgSize, dinov_patchSize, dinov_hiddenSize, headNum, dinov_depth, dinov_mlpRatio);
+		dinov.CUDNN = true;
+		dinov.RUN_MODEL = RunModel.EVAL;
+        
+        String repa_model_path = "D:\\models\\dionv2-14-b.model";
+        ModelUtils.loadModel(dinov, repa_model_path);
+		
+		int ditHeadNum = 12;
+        int latendSize = 16;
+        int depth = 12;
+        int timeSteps = 1000;
+        int mlpRatio = 4;
+        int patchSize = 1;
+        int hiddenSize = 768;
+        
+        float y_prob = 0.1f;
+        float token_drop = 0.5f;
+
+        FluxDiT_TREAD dit = new FluxDiT_TREAD(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, textEmbedDim, maxContext, mlpRatio, dinov_hiddenSize, token_drop, y_prob);
+        dit.CUDNN = true;
+        dit.learnRate = 2e-4f;
+        
+        ICPlan icplan = new ICPlan(dit.tensorOP);
+
+//        String model_path = "D:\\models\\dit_txt5\\flux_sprint_b1_20.model";
+//        ModelUtils.loadModel(dit, model_path);
+        
+        MBSGDOptimizer optimizer = new MBSGDOptimizer(dit, 60, 0.00001f, batchSize, LearnRateUpdate.NONE, false);
+        
+        Tensor latend_mean = new Tensor(latendDim, 1, 1, 1, new float[] {0.23869862f,0.4016211f,-0.15087046f,-0.52679396f,-0.15986611f,-1.6260003f,-0.5108059f,0.036283042f,0.3879915f,0.5334558f,-0.96909237f,1.4872372f,0.071545064f,0.7708449f,0.16623285f,0.7733368f,-0.9222466f,1.2859207f,-0.30753133f,-0.70088845f,0.5247328f,0.09425582f,-1.1671793f,0.53027356f,2.7668183f,1.4706479f,0.09313846f,-0.25821307f,-0.81280077f,-0.56423014f,0.49580055f,-0.35338005f}, true);
+        Tensor latend_std = new Tensor(latendDim, 1, 1, 1, new float[] {4.1767454f,4.245004f,3.4222624f,3.6970704f,3.6395364f,3.3921142f,3.0486407f,3.6789029f,3.922576f,3.760961f,3.7205217f,3.70206f,3.7118554f,3.6425886f,3.223105f,3.3205664f,4.135744f,3.6481087f,3.6758296f,3.0634696f,3.3749795f,2.9729145f,3.8634508f,4.518134f,2.7782023f,3.4923503f,4.7507596f,3.2647762f,3.3624852f,3.7219477f,4.659944f,4.2925563f}, true);
+
+        optimizer.train_Flux_Sprint_ICPlan5(dinov, dataLoader2, dataLoader, icplan, "D://models//dit_txt5//", latend_mean, latend_std, 1f, 4);
+        String save_model_path = "D://models//dit_txt//flux_sprint_b1.model";
+        ModelUtils.saveModel(dit, save_model_path);
+    }
+	
+	public static void flux_tread_b1_iddpm_train_512() throws Exception {
+		String dataPath = "D:\\dataset\\amine\\dalle_vavae_latend_512.bin";
+        String clipDataPath = "D:\\dataset\\amine\\dalle_full_clip.bin";
+		
+        int batchSize = 8;
+        int latendDim = 32;
+        int height = 32;
+        int width = 32;
+        int textEmbedDim = 768;
+        int maxContext = 77;
+        
+        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, maxContext, textEmbedDim, BinDataType.float32);
+        
+        String labelPath = "D:\\dataset\\labels.json";
+		String imgDirPath = "D:\\dataset\\images_448_448\\";
+		boolean horizontalFilp = false;
+        int imgSize = 448;
+
+        float[] mean = new float[]{0.485f, 0.456f, 0.406f};
+        float[] std = new float[]{0.229f, 0.224f, 0.225f};
+        String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
+        String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
+        BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+        SDImageDataLoaderEN dataLoader2 = new SDImageDataLoaderEN(bpe, labelPath, imgDirPath, ".jpg", imgSize, imgSize, maxContext, batchSize, horizontalFilp, mean, std);
+		
+		int dinov_patchSize = 14;
+		int dinov_hiddenSize = 768;
+		int headNum = 12;
+		int dinov_depth = 12;
+		int dinov_mlpRatio = 4;
+		Dinov2 dinov = new Dinov2(LossType.MSE, UpdaterType.adamw, 3, imgSize, imgSize, dinov_patchSize, dinov_hiddenSize, headNum, dinov_depth, dinov_mlpRatio);
+		dinov.CUDNN = true;
+		dinov.RUN_MODEL = RunModel.EVAL;
+        
+        String repa_model_path = "D:\\models\\dionv2-14-b-512.model";
+        ModelUtils.loadModel(dinov, repa_model_path);
+		
+		int ditHeadNum = 12;
+        int latendSize = 32;
+        int depth = 12;
+        int timeSteps = 1000;
+        int mlpRatio = 4;
+        int patchSize = 1;
+        int hiddenSize = 768;
+        
+        float y_prob = 0.1f;
+        float token_drop = 0.75f;
+
+        FluxDiT_TREAD dit = new FluxDiT_TREAD(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, textEmbedDim, maxContext, mlpRatio, dinov_hiddenSize, token_drop, y_prob);
+        dit.CUDNN = true;
+        dit.learnRate = 2e-4f;
+        
+        ICPlan icplan = new ICPlan(dit.tensorOP);
+
+//        String model_path = "D:\\models\\dit_txt5\\flux_sprint_b1_20.model";
+//        ModelUtils.loadModel(dit, model_path);
+        
+        MBSGDOptimizer optimizer = new MBSGDOptimizer(dit, 10, 0.00001f, batchSize, LearnRateUpdate.NONE, false);
+        
+        Tensor latend_mean = new Tensor(latendDim, 1, 1, 1, new float[] {0.23869862f,0.4016211f,-0.15087046f,-0.52679396f,-0.15986611f,-1.6260003f,-0.5108059f,0.036283042f,0.3879915f,0.5334558f,-0.96909237f,1.4872372f,0.071545064f,0.7708449f,0.16623285f,0.7733368f,-0.9222466f,1.2859207f,-0.30753133f,-0.70088845f,0.5247328f,0.09425582f,-1.1671793f,0.53027356f,2.7668183f,1.4706479f,0.09313846f,-0.25821307f,-0.81280077f,-0.56423014f,0.49580055f,-0.35338005f}, true);
+        Tensor latend_std = new Tensor(latendDim, 1, 1, 1, new float[] {4.1767454f,4.245004f,3.4222624f,3.6970704f,3.6395364f,3.3921142f,3.0486407f,3.6789029f,3.922576f,3.760961f,3.7205217f,3.70206f,3.7118554f,3.6425886f,3.223105f,3.3205664f,4.135744f,3.6481087f,3.6758296f,3.0634696f,3.3749795f,2.9729145f,3.8634508f,4.518134f,2.7782023f,3.4923503f,4.7507596f,3.2647762f,3.3624852f,3.7219477f,4.659944f,4.2925563f}, true);
+
+        optimizer.train_Flux_Sprint_ICPlan5(dinov, dataLoader2, dataLoader, icplan, "D://models//dit_txt5//", latend_mean, latend_std, 1f, 1);
         String save_model_path = "D://models//dit_txt//flux_sprint_b1.model";
         ModelUtils.saveModel(dit, save_model_path);
     }
@@ -1792,7 +1924,7 @@ public class FluxDiTTest {
         ICPlan icplan = new ICPlan(network.tensorOP);
         
 //        String model_path = "D:\\models\\dit_txt2_512\\flux_sprint_b1_512_2_5000.model";
-        String model_path = "D:\\test\\dit_vavae\\models\\512\\flux_sprint_b1_512_0_30000.model";
+        String model_path = "D:\\test\\dit_vavae\\models\\512\\flux_sprint_b1_512_0_180000.model";
         ModelUtils.loadModel(network, model_path);
         
         Tensor label = new Tensor(batchSize * maxContextLen, 1, 1, 1, true);
@@ -3336,6 +3468,14 @@ public class FluxDiTTest {
 //	        	test_flux_vae();
 	        	
 //	        	testVAVAE();
+	        	
+//	        	flux_sprint_b1_iddpm_train5();
+	        	
+//	        	flux_sprint_b1_iddpm_train5_512();
+	        	
+//	        	flux_tread_b1_iddpm_train();
+	        	
+	        	flux_sprint_b1_iddpm_train2();
 	        	
 	        } catch (Exception e) {
 	            // TODO: handle exception

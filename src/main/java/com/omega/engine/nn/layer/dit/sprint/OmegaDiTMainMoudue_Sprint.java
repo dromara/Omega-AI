@@ -133,7 +133,7 @@ public class OmegaDiTMainMoudue_Sprint extends Layer {
 		this.token_t = (int) (hw * (1.0f - token_drop_ratio));
 
         timeEmbd = new DiTOrgTimeEmbeddingLayer(timeSteps, 256, hiddenSize, true, network);
-        
+
         labelEmbd = new DiTCaptionEmbeddingLayer(textEmbedDim, hiddenSize, maxContextLen, y_drop_prob, true, network);
         
         encoders = new ArrayList<FluxDiTBlock>();
@@ -318,7 +318,7 @@ public class OmegaDiTMainMoudue_Sprint extends Layer {
     	Tensor cond = labelEmbd.getOutput();
     	
      	baseKernel.concat_channel_forward(cond, x, cat_x, input.number, maxContextLen, hw, 1, patchEmbd.getOutput().width);
-
+     	
     	/**
     	 * encoder
     	 */
@@ -388,9 +388,9 @@ public class OmegaDiTMainMoudue_Sprint extends Layer {
     	}
     	
     	Tensor_OP().getByChannel(d_x, img_x, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
-
+//    	img_x.showShape("img_x");
     	finalLayer.forward(img_x, t);
-
+//    	finalLayer.getOutput().showShape("finalLayer");
     	/**
     	 * unpatchify
     	 * x: (N, T, patch_size**2 * C)
@@ -403,6 +403,7 @@ public class OmegaDiTMainMoudue_Sprint extends Layer {
         	yShape = new int[] {number, oChannel, h, patchSize, w, patchSize};
     	}
     	Tensor_OP().permute(finalLayer.getOutput(), this.output, xShape, yShape, new int[] {0, 5, 1, 3, 2, 4});
+
     }
     
     public void output(Tensor tc, Tensor label, Tensor cos, Tensor sin, Tensor idskeep) {
@@ -525,12 +526,12 @@ public class OmegaDiTMainMoudue_Sprint extends Layer {
     	Tensor_OP().permute(delta, finalLayer.getOutput(), yShape, xShape, new int[] {0, 2, 4, 3, 5, 1});
     	
     	finalLayer.back(finalLayer.getOutput(), dtc);
-    	
+
     	Tensor dy = d_o;
     	dy.clearGPU();
 
     	Tensor_OP().getByChannel_back(dy, finalLayer.diff, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
-    	
+
     	/**
     	 * decoder backward
     	 */
@@ -539,7 +540,7 @@ public class OmegaDiTMainMoudue_Sprint extends Layer {
     		block.back(dy, dtc, cos, sin);
     		dy = block.diff;
     	}
-
+    	
     	/**
 		 * pad_mask backward
 		 */
@@ -562,7 +563,7 @@ public class OmegaDiTMainMoudue_Sprint extends Layer {
     		}
     		dh = block.diff;
     	}
-
+		
 		/**
 		 * sprint backward
 		 */
@@ -577,7 +578,7 @@ public class OmegaDiTMainMoudue_Sprint extends Layer {
 		 */
 		Tensor_OP().getByChannel_add_back(de, z_mlp.diff, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
     	Tensor_OP().add(dencoder, de, de);
-
+ 
 		/**
 		 * encoder backward
 		 */
@@ -588,7 +589,7 @@ public class OmegaDiTMainMoudue_Sprint extends Layer {
     	}
 
     	baseKernel.concat_channel_backward(de, labelEmbd.getOutput(), img_x, input.number, maxContextLen, hw, 1, patchEmbd.getOutput().width);
-    	
+
 //    	img_x.showDM("d_img_x");
     	
      	labelEmbd.back(labelEmbd.getOutput());
@@ -654,14 +655,13 @@ public class OmegaDiTMainMoudue_Sprint extends Layer {
 		Tensor de = dh;
 		if(idskeep != null) {
 			tokenDropKernel.imgTokenDropBack(drop_delta, idskeep, dh, token_t, hw, maxContextLen, hiddenSize);
-//			drop_delta.showDMByOffsetRed(78 * 768, 768, "drop_delta");
 			de = drop_delta;
 		}
 
 		/**
 		 * repa backward
 		 */
-//		Tensor_OP().getByChannel_add_back(de, z_mlp.diff, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
+		Tensor_OP().getByChannel_add_back(de, z_mlp.diff, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
     	Tensor_OP().add(dencoder, de, de);
 
 		/**
@@ -1081,7 +1081,7 @@ public class OmegaDiTMainMoudue_Sprint extends Layer {
         nn.CUDNN = true;
         nn.number = N;
     	
-        OmegaDiTMainMoudue_Sprint jb = new OmegaDiTMainMoudue_Sprint(C, W, H, patchSize, hiddenSize, headNum, depth, 1000, TEM, TT, 4, 768, 0.0f, 0.75f, 0.99f, nn);
+        OmegaDiTMainMoudue_Sprint jb = new OmegaDiTMainMoudue_Sprint(C, W, H, patchSize, hiddenSize, headNum, depth, 1000, TEM, TT, 4, 768, 0.0f, 0.75f, 0.01f, nn);
     	
         String weight = "D:\\models\\dit_weight.json";
         loadWeight(LagJsonReader.readJsonFileBigWeightIterator(weight), jb, true);

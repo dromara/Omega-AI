@@ -131,3 +131,51 @@ __global__ void ConstantPadGrad3d_self(const size_t size, const float *dy, const
   	}
 
 }
+
+extern "C"
+__global__ void padding_time_head(const size_t size, const float *x, float *out, const int C, const int F, const int H, const int W, int repeat) {
+	for (size_t pos = blockIdx.x * blockDim.x + threadIdx.x; pos < (size); pos += blockDim.x * gridDim.x) {
+		int os = C * F * H * W;
+		int ocs = F * H * W;
+	    const int b = pos / os;
+	    int p_os = pos % os;
+	    const int c = p_os / ocs;
+	    int p_ocs = p_os % ocs;
+	    const int f = p_ocs / (H * W);
+	    const int h = p_ocs % (H * W) / W;
+	    const int w = p_ocs % (H * W) % W;
+	    int xf = f - repeat;
+	    if(xf < 0){
+	    	xf = 0;
+	    }
+	    int xs = C * (F - repeat) * H * W;
+		int xcs = (F - repeat) * H * W;
+	    int xidx = b * xs + c * xcs + xf * H * W + h * W + w;
+	    out[pos] = x[xidx];
+	}
+}
+
+extern "C"
+__global__ void padding_time_head_fair(const size_t size, const float *x, float *out, const int C, const int F, const int H, const int W) {
+	for (size_t pos = blockIdx.x * blockDim.x + threadIdx.x; pos < (size); pos += blockDim.x * gridDim.x) {
+				int os = C * F * H * W;
+		int ocs = F * H * W;
+	    const int b = pos / os;
+	    int p_os = pos % os;
+	    const int c = p_os / ocs;
+	    int p_ocs = p_os % ocs;
+	    const int f = p_ocs / (H * W);
+	    const int h = p_ocs % (H * W) / W;
+	    const int w = p_ocs % (H * W) % W;
+	    int xf = f - 1;
+	    if(xf < 0){
+			xf = 0;
+	    }else if(xf >= F - 2){
+			xf = xf - 1;
+		}
+	    int xs = C * (F - 2) * H * W;
+		int xcs = (F - 2) * H * W;
+	    int xidx = b * xs + c * xcs + xf * H * W + h * W + w;
+	    out[pos] = x[xidx];
+	}
+}

@@ -18,6 +18,10 @@ public class PaddingKernel extends CUDAKernel {
     private CUfunction gradFunction2d;
     private CUfunction function_self;
     private CUfunction gradFunction_self;
+    
+    private CUfunction function_repart;
+    private CUfunction function_hf;
+    
     private int CAFFE_CUDA_NUM_THREADS = 1024;
     private Pointer kernelParameters;
 
@@ -87,6 +91,12 @@ public class PaddingKernel extends CUDAKernel {
             }
             if (function_self == null) {
             	function_self = getCudaManager().getLocalFunctionByModule("PaddingKernel.cu", "constPadding3d_seft");
+            }
+            if (function_repart == null) {
+            	function_repart = getCudaManager().getLocalFunctionByModule("PaddingKernel.cu", "padding_time_head");
+            }
+            if (function_hf == null) {
+            	function_hf = getCudaManager().getLocalFunctionByModule("PaddingKernel.cu", "padding_time_head_fair");
             }
             if (gradFunction_self == null) {
             	gradFunction_self = getCudaManager().getLocalFunctionByModule("PaddingKernel.cu", "ConstantPadGrad3d_self");
@@ -385,6 +395,34 @@ public class PaddingKernel extends CUDAKernel {
             
             kernelParameters = Pointer.to(Pointer.to(new long[]{dy.dataLength}), Pointer.to(dy.getGpuData()), Pointer.to(new int[]{dy.number}), Pointer.to(new int[]{C}), Pointer.to(new int[]{D}), Pointer.to(new int[]{H}), Pointer.to(new int[]{W}), Pointer.to(new int[]{D * H * W}), Pointer.to(new int[]{H * W}), Pointer.to(new int[]{oDepth}), Pointer.to(new int[]{oHeight}), Pointer.to(new int[]{oWidth}), Pointer.to(new int[]{oDepth * oHeight * oWidth}), Pointer.to(new int[]{oHeight * oWidth}), Pointer.to(new int[]{padding[4]}), Pointer.to(new int[]{padding[2]}), Pointer.to(new int[]{padding[0]}), Pointer.to(dx.getGpuData()));
             cuLaunchKernel(gradFunction_self, this.CAFFE_GET_BLOCKS(dy.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameters, null // Kernel- and extra parameters
+            );
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void padding_time_head_fair(Tensor x, Tensor out, int C, int F, int H, int W) {
+        try {
+            kernelParameters = Pointer.to(Pointer.to(new long[]{out.dataLength}), Pointer.to(x.getGpuData()), Pointer.to(out.getGpuData()), Pointer.to(new int[]{C}), Pointer.to(new int[]{F}), Pointer.to(new int[]{H}), Pointer.to(new int[]{W}));
+            cuLaunchKernel(function_hf, this.CAFFE_GET_BLOCKS(out.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameters, null // Kernel- and extra parameters
+            );
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void padding_time_head(Tensor x, Tensor out, int C, int F, int H, int W, int repeat) {
+        try {
+            kernelParameters = Pointer.to(Pointer.to(new long[]{out.dataLength}), Pointer.to(x.getGpuData()), Pointer.to(out.getGpuData()), Pointer.to(new int[]{C}), Pointer.to(new int[]{F}), Pointer.to(new int[]{H}), Pointer.to(new int[]{W}), Pointer.to(new int[]{repeat}));
+            cuLaunchKernel(function_repart, this.CAFFE_GET_BLOCKS(out.dataLength), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameters, null // Kernel- and extra parameters

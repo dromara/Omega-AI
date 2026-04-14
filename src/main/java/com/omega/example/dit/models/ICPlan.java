@@ -14,11 +14,12 @@ import com.omega.engine.nn.network.dit.FluxDiT2;
 import com.omega.engine.nn.network.dit.FluxDiT3;
 import com.omega.engine.nn.network.dit.FluxDiT_REPA;
 import com.omega.engine.nn.network.dit.FluxDiT_SPRINT;
-import com.omega.engine.nn.network.dit.OmegaDiT;
 import com.omega.engine.nn.network.dit.FluxDiT_SPRINT3;
 import com.omega.engine.nn.network.dit.JiT;
 import com.omega.engine.nn.network.dit.JiT_REPA;
 import com.omega.engine.nn.network.dit.MMDiT_RoPE;
+import com.omega.engine.nn.network.dit.OmegaDiT;
+import com.omega.engine.nn.network.dit.OmegaDiTFullLabel;
 import com.omega.engine.nn.network.dit.SanaDiT;
 import com.omega.engine.tensor.Tensor;
 import com.omega.example.common.ModeLoaderlUtils;
@@ -325,6 +326,30 @@ public class ICPlan {
 			MatrixUtils.val(t.data, t0);
 			t.hostToDevice();
 			f0 = dit.forward_with_path_drop_cfg(y0, t, context, null_context, cos, sin, eps, cfg_scale);
+			dit.tensorOP.mul(f0, dt, f0);
+			dit.tensorOP.add(y0, f0, y1);
+			float tj = T[j];
+			if(j < T.length && t1 >= tj) {
+				out = linear_interp(dit.tensorOP, t0, t1, y0, y1, tj);
+				j++;
+			}
+			dit.tensorOP.copyGPU(y1, y0);
+		}
+		return out;
+	}
+	
+	public Tensor forward_with_path_drop_cfg(OmegaDiTFullLabel dit, Tensor y0, Tensor t, Tensor clip, Tensor null_clip, Tensor t5, Tensor null_t5, Tensor cos, Tensor sin, Tensor y1, Tensor eps, float cfg_scale) {
+		ininT(0, 1, count);
+		int j = 1;
+		Tensor out = null;
+		Tensor f0 = null;
+		for(int i = 0;i<count - 1;i++) {
+			float t0 = T[i];
+			float t1 = T[i + 1];
+			float dt = t1 - t0;
+			MatrixUtils.val(t.data, t0);
+			t.hostToDevice();
+			f0 = dit.forward_with_path_drop_cfg(y0, t, clip, null_clip, t5, null_t5, cos, sin, eps, cfg_scale);
 			dit.tensorOP.mul(f0, dt, f0);
 			dit.tensorOP.add(y0, f0, y1);
 			float tj = T[j];

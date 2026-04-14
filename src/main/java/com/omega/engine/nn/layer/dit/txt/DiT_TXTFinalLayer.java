@@ -132,7 +132,7 @@ public class DiT_TXTFinalLayer extends Layer {
     	m_linear2.forward(m_active.getOutput());
     	
     	finalNorm.forward(input);
-
+    	
     	/**
     	 * modulate
     	 * x = x * (1 + scale) + shift

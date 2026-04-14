@@ -14,6 +14,7 @@ import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.layer.active.GeluType;
 import com.omega.engine.nn.network.ClipTextModel;
 import com.omega.engine.nn.network.RunModel;
+import com.omega.engine.nn.network.T5Encoder;
 import com.omega.engine.nn.network.dit.Dinov2;
 import com.omega.engine.nn.network.utils.ModelUtils;
 import com.omega.engine.nn.network.vae.Flux_VAE;
@@ -25,6 +26,7 @@ import com.omega.engine.updater.UpdaterType;
 import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.sd.utils.SDImageDataLoaderEN;
 import com.omega.example.transformer.utils.LagJsonReader;
+import com.omega.example.transformer.utils.SentencePieceTokenizer;
 import com.omega.example.transformer.utils.bpe.BPETokenizerEN;
 
 import jcuda.driver.JCudaDriver;
@@ -559,10 +561,10 @@ public class DatasetCreater {
     	
     	int batchSize = 10;
     	int channel = 32;
-    	int height = 32;
-    	int width = 32;
+    	int height = 16;
+    	int width = 16;
     	
-    	int imgSize = 512;
+    	int imgSize = 256;
     	float[] mean = new float[]{0.5f, 0.5f, 0.5f};
         float[] std = new float[]{0.5f, 0.5f, 0.5f};
 
@@ -580,7 +582,7 @@ public class DatasetCreater {
          String vaeWeight = "D:\\models\\vavae.json";
          ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
 
-    	String dataPath = "D:\\dataset\\amine\\dalle_vavae_latend_512.bin";
+    	String dataPath = "D:\\dataset\\flux_train_sampled\\vavae_latend.bin";
     	
         try {
         	RandomAccessFile file = new RandomAccessFile(dataPath, "r");
@@ -603,7 +605,7 @@ public class DatasetCreater {
                 /**
                  * print image
                  */
-                MBSGDOptimizer.showImgs("D:\\test\\va_vae2_512\\", output, "test_"+i, mean, std);
+                MBSGDOptimizer.showImgs("D:\\test\\va_vae\\", output, "test_"+i, mean, std);
                 
             }
             
@@ -643,8 +645,16 @@ public class DatasetCreater {
         //		System.out.println(JsonUtils.toJson(label.data));
     }
     
-    public static void loadLabels(BPETokenizerEN tokenizer,List<Map<String, Object>> datas, int[] indexs, Tensor label, int maxContextLen, int batchSize) {
-        LabelsLoader.load(tokenizer, datas, indexs, batchSize, label, maxContextLen);
+    public static void loadLabels(BPETokenizerEN tokenizer,List<Map<String, Object>> datas, String key, int[] indexs, Tensor label, int maxContextLen, int batchSize) {
+        LabelsLoader.load(tokenizer, datas, key, indexs, batchSize, label, maxContextLen);
+        /**
+         * copy data to gpu.
+         */
+        label.hostToDevice();
+    }
+    
+    public static void loadLabels(SentencePieceTokenizer tokenizer,List<Map<String, Object>> datas, String key, int[] indexs, Tensor label, Tensor mask, int maxContextLen, int batchSize) {
+    	T5LabelsLoader.load(tokenizer, datas, key, indexs, batchSize, label, mask, maxContextLen);
         /**
          * copy data to gpu.
          */
@@ -655,10 +665,10 @@ public class DatasetCreater {
     	
     	try {
     		
-    		String outputPath = "D:\\dataset\\amine\\dalle_vavae_latend.bin";
+    		String outputPath = "D:\\dataset\\flux_train_sampled\\vavae_latend.bin";
     		
-        	String labelPath = "D:\\dataset\\labels.json";
-            String imgDirPath = "D:\\dataset\\images_256_256\\";
+        	String labelPath = "D:\\dataset\\flux_train_sampled\\metadata.json";
+            String imgDirPath = "D:\\dataset\\flux_train_sampled\\images\\";
             boolean horizontalFilp = false;
             int imgSize = 256;
             int maxContextLen = 77;
@@ -668,7 +678,7 @@ public class DatasetCreater {
             String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
             String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
             BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
-            SDImageDataLoaderEN dataLoader = new SDImageDataLoaderEN(bpe, labelPath, imgDirPath, ".jpg", imgSize, imgSize, maxContextLen, batchSize, horizontalFilp, mean, std);
+            SDImageDataLoaderEN dataLoader = new SDImageDataLoaderEN(bpe, labelPath, imgDirPath, ".png", imgSize, imgSize, maxContextLen, batchSize, horizontalFilp, mean, std);
 
             int latendDim = 32;
             int num_res_blocks = 2;
@@ -897,7 +907,7 @@ public class DatasetCreater {
         String vaeWeight = "D:\\models\\e2e-flux-vae.json";
         ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
 
-    	String dataPath = "D:\\dataset\\amine\\dalle_fluxvae_latend.bin";
+    	String dataPath = "D:\\dataset\\amine\\dalle_fluxvae_latend_512.bin";
     	
         try {
         	RandomAccessFile file = new RandomAccessFile(dataPath, "r");
@@ -1041,7 +1051,7 @@ public class DatasetCreater {
             
             for(int it = 0;it<indexs.length;it++) {
 //            	 loadLabels(bpe, datas, indexs[it], label, labels, eosIds, maxContextLen);
-           	 	 loadLabels(bpe, datas, indexs[it], label, maxContextLen, batchSize);
+           	 	 loadLabels(bpe, datas, "label", indexs[it], label, maxContextLen, batchSize);
             	 Tensor condInput = clip.get_full_clip_prompt_embeds(label);
             	 JCudaDriver.cuCtxSynchronize();
                  writeTensor(condInput, clipWriter);
@@ -1056,7 +1066,62 @@ public class DatasetCreater {
     	
     }
     
+    public static void createT5Data() {
+    	
+    	int batchSize = 100;
+    	int maxContextLen = 120;
 
+//		String t5DataPath = "D:\\dataset\\flux_train_sampled\\vavae_t5.bin";
+//    	String labelPath = "D:\\dataset\\flux_train_sampled\\metadata.json";
+    	
+    	String t5DataPath = "D:\\dataset\\amine\\vavae_t5.bin";
+    	String labelPath = "D:\\dataset\\labels.json";
+    	
+    	Tensor label = new Tensor(batchSize * maxContextLen, 1, 1, 1, true);
+    	Tensor mask = new Tensor(batchSize, 1, 1, maxContextLen, true);
+
+    	try {
+
+    		String tokenizer_path = "D:\\models\\t5\\spiece.model";
+    		SentencePieceTokenizer tokenizer = new SentencePieceTokenizer(tokenizer_path);
+    		
+    		int time = maxContextLen;
+    		int voc_size = 250112;
+    		int num_layers = 24;
+    		int head_num = 32;
+    		int embed_size = 2048;
+    		int d_ff = 5120;
+    		T5Encoder t5 = new T5Encoder(LossType.MSE, UpdaterType.adamw, voc_size, num_layers, head_num, time, embed_size, d_ff, false);
+    		t5.CUDNN = true;
+    		t5.RUN_MODEL = RunModel.EVAL;
+        	
+    		String model_path = "D://models//t5//t5_encoder.model";
+    		com.omega.example.transformer.utils.ModelUtils.loadModel(t5, model_path);
+            
+    		List<Map<String, Object>> datas = LagJsonReader.readJsonDataSamll(labelPath);
+            int count = datas.size();
+            System.err.println("data count[" + count + "].");
+
+            int[][] indexs = MathUtils.orderInts(count, batchSize);
+            
+            File clipFile = new File(t5DataPath);
+            FileOutputStream clipWriter = new FileOutputStream(clipFile);
+
+            for(int it = 0;it<indexs.length;it++) {
+           	 	 loadLabels(tokenizer, datas, "en", indexs[it], label, mask, maxContextLen, batchSize);
+            	 Tensor condInput = t5.forward(label, mask);
+            	 JCudaDriver.cuCtxSynchronize();
+                 writeTensor(condInput, clipWriter);
+                 System.out.println(it + "/" + indexs.length + " finish.");
+            }
+            
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    	
+    }
+    
     public static void createTwoClip() {
     	
     	try {
@@ -1114,7 +1179,7 @@ public class DatasetCreater {
             
             for(int it = 0;it<indexs.length;it++) {
             	 long start  = System.nanoTime();
-            	 loadLabels(bpe, datas, indexs[it], label, maxContextLen, batchSize);
+            	 loadLabels(bpe, datas, "label", indexs[it], label, maxContextLen, batchSize);
             	 System.out.println((System.nanoTime() - start)/1e6);
             	 long start1  = System.nanoTime();
             	 Tensor condInput2 = clip2.get_full_clip_prompt_embeds(label);
@@ -1282,7 +1347,13 @@ public class DatasetCreater {
         	
 //        	createLatend_fluxvae_512();
         	
-        	test_fluxvae_latend();
+//        	test_fluxvae_latend();
+        	
+        	createT5Data();
+        	
+//        	createLatend_vavae();
+        	
+//        	test_vavae_latend();
         	
         } catch (Exception e) {
             // TODO: handle exception

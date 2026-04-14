@@ -514,6 +514,25 @@ public class ImageUtils {
         }
         return rgb;
     }
+    
+    public static int[][] color2argb(float[] data, int channel, int height, int width) {
+        int[][] rgb = new int[height][width];
+        int ocount = height * width;
+        for (int i = 0; i < height; i++) {
+            for (int j = 0; j < width; j++) {
+                int index = i * width + j;
+                int r = (int) ((data[index] + 1.0f) * 127.5f);
+                int g = (int) ((data[ocount + index] + 1.0f) * 127.5f);
+                int b = (int) ((data[ocount * 2 + index] + 1.0f) * 127.5f);
+                r = clamp(r, 0, 255);
+                g = clamp(g, 0, 255);
+                b = clamp(b, 0, 255);
+                int orgb = colorToRGB(255, r, g, b);
+                rgb[i][j] = orgb;
+            }
+        }
+        return rgb;
+    }
 
     public static int[][] color2rgb3(float[] data, int channel, int height, int width, boolean format, float[] mean, float[] std) {
         int[][] rgb = new int[height][width];

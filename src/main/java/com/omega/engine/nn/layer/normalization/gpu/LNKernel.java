@@ -62,6 +62,8 @@ public class LNKernel extends BaseKernel {
     private CUfunction forward_llm_function;
     private CUfunction backward_llm_function;
     
+    private CUfunction forward_t5_function;
+    
     private CUfunction forward_llm_np_function;
     private CUfunction backward_llm_np_function;
     
@@ -240,29 +242,10 @@ public class LNKernel extends BaseKernel {
         for (int i = 0; i < 10; i++) {
             ln.forward(input2);
             ln.getOutput().showDM();
-            //    		ln.forward(input2);
-            //        	ln.getOutput().showDM();
             ln.back(delta2);
             ln.diff.showDM();
         }
-        //    	tf.number = 1 * T;
-        //    	ln.forward(input2);
-        //    	ln.getOutput().showDM();
-        //    	Tensor dgamma = new Tensor(1, 1, 1, W, true);
-        //    	Tensor dbeta = new Tensor(1, 1, 1, W, true);
-        //    	Tensor diff3 = new Tensor(N, T, 1, W, true);
-        //    	kernel.backward(input, delta, diff, gamma, dgamma, dbeta);
-        //
-        //    	diff.showShape();
-        //    	diff.showDM();
-        //    	dgamma.showShape();
-        //    	dgamma.showDM();
-        //    	dbeta.showShape();
-        //    	dbeta.showDM();
-        //    	kernel.backward3(input, delta, diff3, gamma, dgamma, dbeta);
-        //
-        //
-        //    	diff3.showDM();
+
     }
 
     private void initKernel() {
@@ -272,105 +255,27 @@ public class LNKernel extends BaseKernel {
 
          */
         if (this.aten_mean != null) {
-            //				CUDAMemoryManager.free(this.d_mean);
-            //				CUDAMemoryManager.free(this.d_var);
             CUDAMemoryManager.free(this.aten_mean);
             CUDAMemoryManager.free(this.aten_var);
         }
-        //			this.d_mean = CUDAMemoryManager.getDevice(B);
-        //			this.d_var = CUDAMemoryManager.getDevice(B);
-        //			this.aten_mean = Tensor.createTensor(this.aten_mean, B, 1, 1, 1, true);
-        //			this.aten_var = Tensor.createTensor(this.aten_var, B, 1, 1, 1, true);
+
         this.aten_mean = CUDAMemoryManager.getPointer(B);
         this.aten_var = CUDAMemoryManager.getPointer(B);
         this.scratch = CUDAMemoryManager.getDevice(W * 2 + 1);
-        //			this.d_s = CUDAMemoryManager.getDevice(B);
-        //			this.d_b = CUDAMemoryManager.getDevice(B);
-        //			this.d_scale = CUDAMemoryManager.getDevice(B);
-        //			this.d_bias = CUDAMemoryManager.getDevice(B);
-        //			this.mean = new Tensor(B, 1, 1, 1, true);
-        //			this.simga = new Tensor(B, 1, 1, 1, true);
-        //			this.rstd = new Tensor(B, 1, 1, 1, true);
-        //			this.scale = new Tensor(B, 1, 1, 1, true);
-        //			this.bias = new Tensor(B, 1, 1, 1, true);
-        //			this.ds = new Tensor(B, 1, 1, 1, true);
-        //			this.db = new Tensor(B, 1, 1, 1, true);
-        //			this.g_scale = new Tensor(B, 1, 1, W, true);
-        //			this.X_scale = new Tensor(B, 1, 1, 1, true);
-        //			this.ones = new Tensor(B, 1, 1, 1, MatrixUtils.one(B), true);
-        //		}
+
     }
 
     public void initFunction() {
         try {
-            //			if(forward_test_function == null) {
-            //				forward_test_function = CUDAModules.getLocalFunctionByModule("LNKernel3.cu", "LayerNormFusedForwardKernel");
-            //			}
-            //
-            //			if(backward_ig_function == null) {
-            //				backward_ig_function = CUDAModules.getLocalFunctionByModule("LNKernel3.cu", "ComputeInternalGradientsCUDAKernel");
-            //			}
-            //
-            //			if(backward_fp_function == null) {
-            //				backward_fp_function = CUDAModules.getLocalFunctionByModule("LNKernel3.cu", "ComputeGradientFusedParamsCUDAKernel");
-            //			}
-            //
-            //			if(backward_input_function == null) {
-            //				backward_input_function = CUDAModules.getLocalFunctionByModule("LNKernel3.cu", "layer_norm_grad_input_kernel");
-            //			}
-            //
-            //			if(backward_gamma_function == null) {
-            //				backward_gamma_function = CUDAModules.getLocalFunctionByModule("LNKernel3.cu", "GammaBetaBackwardCUDAKernel");
-            //			}
-            //
-            //			if(backward_gamma_simple_function == null) {
-            //				backward_gamma_simple_function = CUDAModules.getLocalFunctionByModule("LNKernel3.cu", "GammaBetaBackwardSimpleCUDAKernel");
-            //			}
-            //
-            //			if(mean_var_function == null) {
-            //				mean_var_function = CUDAModules.getLocalFunctionByModule("LNKernel_aten.cu", "RowwiseMomentsCUDAKernel");
-            //			}
-            //
-            //			if(fused_params_function == null) {
-            //				fused_params_function = CUDAModules.getLocalFunctionByModule("LNKernel_aten.cu", "ComputeSigmaAndFusedParamsCUDAKernel");
-            //			}
-            //
-            //			if(forward_fused_function == null) {
-            //				forward_fused_function = CUDAModules.getLocalFunctionByModule("LNKernel_aten.cu", "LayerNormForwardCUDAKernel");
-            //			}
-            //
-            //			if(inter_grad_function == null) {
-            //				inter_grad_function = CUDAModules.getLocalFunctionByModule("LNKernel_aten.cu", "ComputeInternalGradientsCUDAKernel");
-            //			}
-            //
-            //			if(backward_fused_function == null) {
-            //				backward_fused_function = CUDAModules.getLocalFunctionByModule("LNKernel_aten.cu", "ComputeFusedParamsCUDAKernel");
-            //			}
-            //
-            //			if(ln_backward_function == null) {
-            //				ln_backward_function = CUDAModules.getLocalFunctionByModule("LNKernel_aten.cu", "LayerNormBackwardCUDAKernel");
-            //			}
-            //
-            //			if(forward_aten_function == null) {
-            //				forward_aten_function = CUDAModules.getLocalFunctionByModule("LNKernel_aten2.cu", "vectorized_layer_norm_kernel");
-            //			}
-            //
-            //			if(backward_aten_function == null) {
-            //				backward_aten_function = CUDAModules.getLocalFunctionByModule("LNKernel_aten2.cu", "layer_norm_grad_input_kernel_vectorized");
-            //			}
-            //
-            //			if(backward_aten_function2 == null) {
-            //				backward_aten_function2 = CUDAModules.getLocalFunctionByModule("LNKernel_aten2.cu", "layer_norm_grad_input_kernel");
-            //			}
-            //
-            //			if(backward_aten_gamma_function2 == null) {
-            //				backward_aten_gamma_function2 = CUDAModules.getLocalFunctionByModule("LNKernel_aten2.cu", "GammaBetaBackwardCUDAKernel");
-            //			}
             if (forward_llm_function == null) {
                 forward_llm_function = getCudaManager().getLocalFunctionByModule("LNKernel.cu", "layernorm_forward_kernel5");
             }
             if (backward_llm_function == null) {
                 backward_llm_function = getCudaManager().getLocalFunctionByModule("LNKernel.cu", "layernorm_backward_kernel7");
+            }
+            
+            if (forward_t5_function == null) {
+            	forward_t5_function = getCudaManager().getLocalFunctionByModule("LNKernel.cu", "t5_layernorm_forward_kernel");
             }
             
             if (forward_llm_np_function == null) {
@@ -396,7 +301,6 @@ public class LNKernel extends BaseKernel {
     public void init() {
         /**
          * 初始化cuda函数
-
          */
         initFunction();
     }
@@ -700,6 +604,29 @@ public class LNKernel extends BaseKernel {
              */
             forwardLLMParameters = Pointer.to(Pointer.to(output.getGpuData()), Pointer.to(aten_mean), Pointer.to(aten_var), Pointer.to(input.getGpuData()), Pointer.to(gamma.getGpuData()), Pointer.to(beta.getGpuData()), Pointer.to(new int[]{B}), Pointer.to(new int[]{W}));
             checkCUDA(cuLaunchKernel(forward_llm_function, B, 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    forwardLLMParameters, null // Kernel- and extra parameters
+            ));
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void forward_t5(Tensor gamma, Tensor input, Tensor output) {
+        try {
+            boolean check = checkBatch(input);
+            if (!check) {
+                initKernel();
+            }
+            /**
+             * float* __restrict__ out, float* __restrict__ mean, float* __restrict__ rstd,
+             const float*  __restrict__ inp, const float*  __restrict__ weight,
+             const float* __restrict__ bias, int N, int C
+             */
+            forwardLLMParameters = Pointer.to(Pointer.to(output.getGpuData()), Pointer.to(aten_var), Pointer.to(input.getGpuData()), Pointer.to(gamma.getGpuData()), Pointer.to(new int[]{B}), Pointer.to(new int[]{W}));
+            checkCUDA(cuLaunchKernel(forward_t5_function, B, 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     forwardLLMParameters, null // Kernel- and extra parameters

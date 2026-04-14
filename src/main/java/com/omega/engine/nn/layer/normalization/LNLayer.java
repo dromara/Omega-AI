@@ -115,6 +115,22 @@ public class LNLayer extends NormalizationLayer {
         this.hasParams = hasParams;
         this.meanNum = width;
     }
+    
+    public LNLayer(int channel, int height, int width, boolean hasParams, boolean hasBias, BNType bnType, Network network) {
+    	this.network = network;
+        network.paramLayers.add(this);
+		this.setUpdater(UpdaterFactory.create(this.network));
+		this.hasBias = hasBias;
+        this.channel = channel;
+        this.height = height;
+        this.width = width;
+        this.oChannel = this.channel;
+        this.oHeight = this.height;
+        this.oWidth = this.width;
+        this.bnType = bnType;
+        this.hasParams = hasParams;
+        this.meanNum = width;
+    }
 
     public LNLayer(Layer preLayer, boolean hasBias) {
         this.setPreLayer(preLayer);
@@ -337,6 +353,10 @@ public class LNLayer extends NormalizationLayer {
         //		output.showDM();
     }
     
+    public void output_t5() {
+    	kernel.forward_t5(gamma, input, output);
+    }
+    
     public void output_llmc() {
         // TODO Auto-generated method stub
         //		System.out.println(this.index+":"+input.number+":"+input.channel+":"+input.height+":"+input.width);
@@ -359,7 +379,11 @@ public class LNLayer extends NormalizationLayer {
         //		System.out.println("bn-output:");
         //		output.showDM();
     }
-
+    
+    public void forward_t5() {
+    	kernel.forward_t5(gamma, input, output);
+    }
+    
     @Override
     public Tensor getOutput() {
         // TODO Auto-generated method stub
@@ -532,6 +556,22 @@ public class LNLayer extends NormalizationLayer {
          * 计算输出
          */
         this.output_llmc();
+    }
+    
+    public void forward_t5(Tensor input) {
+        // TODO Auto-generated method stub
+        /**
+         * 参数初始化
+         */
+        this.init(input);
+        /**
+         * 设置输入
+         */
+        this.setInput(input);
+        /**
+         * 计算输出
+         */
+        this.output_t5();
     }
     
     public void forward_llmc(Tensor input, Tensor output) {

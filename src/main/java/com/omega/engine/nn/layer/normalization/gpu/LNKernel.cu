@@ -46,7 +46,7 @@ __global__ void layernorm_forward_kernel(float* __restrict__ out, float* __restr
     block_sum2 /= C; // mean(x**2)
     float m = block_sum;
     float var = block_sum2 - m * m;
-    float s = rsqrtf(var + 1e-5f);
+    float s = rsqrtf(var + 1e-6f);
     // store the mean, no need to cache it
     if(threadIdx.x == 0 && mean != nullptr) {
         __stcs(mean + idx, m);
@@ -208,7 +208,7 @@ __global__ void layernorm_forward_kernel5(float* __restrict__ out, float* __rest
     block_sum2 /= C; // mean(x**2)
     float m = block_sum;
     float var = block_sum2 - m * m;
-    float s = rsqrtf(var + 1e-5f);
+    float s = rsqrtf(var + 1e-6f);
     // store the mean, no need to cache it
     if(threadIdx.x == 0 && mean != nullptr) {
         __stcs(mean + idx, m);
@@ -222,6 +222,52 @@ __global__ void layernorm_forward_kernel5(float* __restrict__ out, float* __rest
     for (int i = threadIdx.x; i < C; i += blockDim.x) {
         float n = s * (__ldcs(x+i) - m);
         __stcs(o+i, n * weight[i] + bias[i]);
+    }
+}
+
+extern "C"
+__global__ void t5_layernorm_forward_kernel(float* __restrict__ out, float* __restrict__ rstd,
+                                    const float*  __restrict__ inp, const float*  __restrict__ weight,
+                                    int N, int C) {
+    namespace cg = cooperative_groups;
+    cg::thread_block block = cg::this_thread_block();
+    cg::thread_block_tile<32> warp = cg::tiled_partition<32>(block);
+    __shared__ float shared_sum2[32]; // warps will be writing into shared memeory after warp-reduce
+    int num_warps = blockDim.x / 32;
+    int warp_id = threadIdx.x / 32;
+    int lane_id = threadIdx.x % 32;
+    int idx = blockIdx.x; // simpoy one block per row
+    // the row of input that this group of threads is responsible for
+    const float* x = inp + idx * C;
+    // thread coarsening through the row, reduce the sum in series
+    float thread_sum2 = 0.0; // stores sum(x**2)
+    // for (int i = C + threadIdx.x - blockDim.x; i >= 0; i -= blockDim.x) {
+    for (int i = threadIdx.x; i < C; i += blockDim.x) {
+        float xi = x[i];
+        thread_sum2 += xi * xi;
+    }
+    // warp-level reduction
+    float warp_sum2 = cg::reduce(warp, thread_sum2, cg::plus<float>{}); // sum(x**2)
+    // store the warp-level reduction in shared memory (we could have lane_id == 0 guard but not needed)
+    shared_sum2[warp_id] = warp_sum2;
+    __syncthreads();
+    // load results from shared memory to threads, pad with zeros for threads that are out of bounds
+    warp_sum2 = (lane_id < num_warps) ? shared_sum2[lane_id] : 0.0f;
+    // now reduce the warp-level reductions
+    float block_sum2 = cg::reduce(warp, warp_sum2, cg::plus<float>{}); // sum(x**2)
+    // var, rstd
+    block_sum2 /= C; // mean(x**2)
+    float var = block_sum2;
+    float s = rsqrt(var + 1e-6f);
+    // store the rstd, no need to cache it
+    if(threadIdx.x == 0 && rstd != nullptr) {
+        __stcs(rstd + idx, s);
+    }
+    // final normalization and scaling by weight/bias
+    float* o = out + idx * C;
+    for (int i = threadIdx.x; i < C; i += blockDim.x) {
+        float n = s * __ldcs(x+i);
+        __stcs(o+i, n * weight[i]);
     }
 }
 

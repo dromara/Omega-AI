@@ -12,6 +12,16 @@ __global__ void set_mask(const size_t size, const float *mask, float *out, const
 }
 
 extern "C"
+__global__ void set_allmask(const size_t size, const float *mask, float *out)
+{
+
+    for (size_t pos = blockIdx.x * blockDim.x + threadIdx.x; pos < (size); pos += blockDim.x * gridDim.x) {
+    	out[pos] = mask[pos];
+  	}
+
+}
+
+extern "C"
 __global__ void set_mask_igone(const size_t size, const float *mask, float *out, const int T, const int igoneT, const int W)
 {
 
@@ -256,4 +266,27 @@ __global__ void mask_igone_diff_cond(
 
     // 写入结果（单线程写单列，无竞争）
     out[col] += col_sum;
+}
+
+extern "C"
+__global__ void mask_igone_diff2(
+    const float* __restrict__ inp,  // 输入：(M, N) 行优先存储
+    float* __restrict__ out,        // 输出：(N,)                     // 行数
+    int B,                       // 列数
+    int T,
+    int W,
+    int igoneT
+) {
+	int w = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+	float val = 0;
+    for(int b = 0;b<B;b++){
+		for(int t = 0;t<T;t++){
+			float v = 0;
+			if(t >= igoneT){
+				v = inp[b * T * W + t * W + w];
+			}
+			val += v;
+		}
+	}
+	out[w] = val;
 }

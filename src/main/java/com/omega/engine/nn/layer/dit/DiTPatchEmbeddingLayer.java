@@ -114,6 +114,7 @@ public class DiTPatchEmbeddingLayer extends Layer {
     @Override
     public void diff() {
         // TODO Auto-generated method stub
+
     	Tensor_OP().permute(delta, getPatchEmbedding().getOutput(), t_shape, shape, new int[]{0, 3, 2, 1});
     	getPatchEmbedding().back(getPatchEmbedding().getOutput());
     	this.diff =  getPatchEmbedding().diff;

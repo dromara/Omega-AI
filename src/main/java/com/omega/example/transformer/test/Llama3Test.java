@@ -894,8 +894,8 @@ public class Llama3Test {
 //            			llama3_monkey_med_predict();
             //			llama3_monkey_sql_sft();
             //			llama3_monkey_sql_predict();
-        	llama3_monkey_zc_qa_sft();
-//        	llama3_monkey_med_predict();
+//        	llama3_monkey_zc_qa_sft();
+        	llama3_monkey_med_predict();
         } catch (Exception e) {
             // TODO: handle exception
             e.printStackTrace();

@@ -9,6 +9,7 @@ import java.text.Normalizer.Form;
 import java.util.*;
 
 public class TokenizerUtils {
+	
     public static String clean_text(String text) {
         // Performs invalid character removal and whitespace cleanup on text."""
         StringBuilder output = new StringBuilder();

@@ -1691,7 +1691,8 @@ public class DiTTest {
 
 		String dataPath = "D:\\dataset\\amine\\dalle_vavae_latend.bin";
         String clipDataPath = "D:\\dataset\\amine\\dalle_vavae_clip.bin";
-
+//		String dataPath = "D:\\dataset\\flux_train_sampled\\vavae_latend.bin";
+//        String clipDataPath = "D:\\dataset\\flux_train_sampled\\vavae_t5.bin";
         int batchSize = 1000;
         int latendDim = 32;
         int height = 16;
@@ -3580,7 +3581,9 @@ public class DiTTest {
 	        	
 //	        	test_sana_cfg();
 	        	
-	        	test_flux_cfg();
+//	        	test_flux_cfg();
+	        	
+	        	complate_ms2();
 	        	
 	        } catch (Exception e) {
 	            // TODO: handle exception

@@ -28,21 +28,23 @@ public class LabelsLoader extends RecursiveAction {
     private int[] indexs;
     private Tensor label;
     private int maxContextLen;
+    private String key;
 
-    public LabelsLoader(BPETokenizerEN tokenizer, List<Map<String, Object>> datas, int[] indexs, int batchSize, Tensor label, int maxContextLen, int start, int end) {
+    public LabelsLoader(BPETokenizerEN tokenizer, List<Map<String, Object>> datas, String key, int[] indexs, int batchSize, Tensor label, int maxContextLen, int start, int end) {
         this.setStart(start);
         this.setEnd(end);
         this.batchSize = batchSize;
         this.setTokenizer(tokenizer);
         this.setDatas(datas);
         this.maxContextLen = maxContextLen;
+        this.key = key;
         this.setIndexs(indexs);
         this.setLabel(label);
     }
 
-    public static LabelsLoader getInstance(BPETokenizerEN tokenizer, List<Map<String, Object>> datas, int[] indexs, int batchSize, Tensor label, int maxContextLen, int start, int end) {
+    public static LabelsLoader getInstance(BPETokenizerEN tokenizer, List<Map<String, Object>> datas, String key, int[] indexs, int batchSize, Tensor label, int maxContextLen, int start, int end) {
         if (job == null) {
-            job = new LabelsLoader(tokenizer, datas, indexs, batchSize, label, maxContextLen, start, end);
+            job = new LabelsLoader(tokenizer, datas, key, indexs, batchSize, label, maxContextLen, start, end);
         } else {
             if (label != job.getLabel()) {
                 job.setLabel(label);
@@ -57,12 +59,12 @@ public class LabelsLoader extends RecursiveAction {
         return job;
     }
 
-    public static void load(BPETokenizerEN tokenizer, List<Map<String, Object>> datas, int[] indexs, int batchSize, Tensor label, int maxContextLen) {
+    public static void load(BPETokenizerEN tokenizer, List<Map<String, Object>> datas, String key, int[] indexs, int batchSize, Tensor label, int maxContextLen) {
         //		FileDataLoader job = new FileDataLoader(path, extName, names, indexs, batchSize, input, 0, batchSize - 1);
-        LabelsLoader job = getInstance(tokenizer, datas, indexs, batchSize, label, maxContextLen, 0, batchSize - 1);
+        LabelsLoader job = getInstance(tokenizer, datas, key, indexs, batchSize, label, maxContextLen, 0, batchSize - 1);
         ForkJobEngine.run(job);
     }
-
+    
     @Override
     protected void compute() {
         // TODO Auto-generated method stub
@@ -73,8 +75,8 @@ public class LabelsLoader extends RecursiveAction {
             int mid = (getStart() + getEnd() + 1) >>> 1;
             LabelsLoader left = null;
             LabelsLoader right = null;
-            left = new LabelsLoader(tokenizer, datas, indexs, batchSize, label, maxContextLen, getStart(), mid - 1);
-            right = new LabelsLoader(tokenizer, datas, indexs, batchSize, label, maxContextLen, mid, getEnd());
+            left = new LabelsLoader(tokenizer, datas, key, indexs, batchSize, label, maxContextLen, getStart(), mid - 1);
+            right = new LabelsLoader(tokenizer, datas, key, indexs, batchSize, label, maxContextLen, mid, getEnd());
             ForkJoinTask<Void> leftTask = left.fork();
             ForkJoinTask<Void> rightTask = right.fork();
             leftTask.join();
@@ -85,7 +87,7 @@ public class LabelsLoader extends RecursiveAction {
     private void load() {
         for (int i = getStart(); i <= getEnd(); i++) {
         	int idx = indexs[i];
-            String text = datas.get(idx).get("label").toString();
+            String text = datas.get(idx).get(key).toString();
             int[] ids = tokenizer.encodeInt(text, maxContextLen);
             for (int j = 0; j < maxContextLen; j++) {
                 if (j < ids.length) {

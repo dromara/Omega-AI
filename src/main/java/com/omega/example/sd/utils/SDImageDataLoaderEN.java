@@ -41,6 +41,7 @@ public class SDImageDataLoaderEN extends BaseDataLoader {
     private BPETokenizerEN tokenizer;
     private BaseKernel kernel;
     private CompletableFuture<Boolean> cf;
+    private String key;
 
     public SDImageDataLoaderEN(BPETokenizerEN tokenizer, String labelPath, String imgDirPath, int img_w, int img_h, int maxContextLen, int batchSize, boolean horizontalFilp) {
         this.horizontalFilp = horizontalFilp;
@@ -82,7 +83,23 @@ public class SDImageDataLoaderEN extends BaseDataLoader {
         this.extName = extName;
         init();
     }
-
+    
+    public SDImageDataLoaderEN(BPETokenizerEN tokenizer, String labelPath, String imgDirPath, String extName, String key, int img_w, int img_h, int maxContextLen, int batchSize, boolean horizontalFilp, float[] mean, float[] std) {
+        this.horizontalFilp = horizontalFilp;
+        this.imgDirPath = imgDirPath;
+        this.labelPath = labelPath;
+        this.maxContextLen = maxContextLen;
+        this.tokenizer = tokenizer;
+        this.img_w = img_w;
+        this.img_h = img_h;
+        this.batchSize = batchSize;
+        this.mean = mean;
+        this.std = std;
+        this.extName = extName;
+        this.key = key;
+        init();
+    }
+    
     public void init() {
         loadFileCount();
     }
@@ -443,7 +460,12 @@ public class SDImageDataLoaderEN extends BaseDataLoader {
     public void loadLabels(int[] indexs, Tensor label, String[] labels, Tensor eos_idx) {
         for (int i = 0; i < indexs.length; i++) {
             int idx = indexs[i];
-            String text = datas.get(idx).get("en").toString();
+            String text = "";
+            if(key != null && !key.equals("")) {
+            	text = datas.get(idx).get(key).toString();
+            }else {
+            	text = datas.get(idx).get("en").toString();
+            }
             labels[i] = text;
             //			System.out.println(text);
             int[] ids = tokenizer.encodeInt(text, maxContextLen);

@@ -6,7 +6,7 @@ import java.io.RandomAccessFile;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.normalization.BNType;
-import com.omega.engine.nn.layer.normalization.RMSLayer;
+import com.omega.engine.nn.layer.normalization.LNLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
@@ -20,7 +20,7 @@ public class T5LayerFF extends Layer {
     private int ff_size = 1;
     private boolean bias = false;
 
-    public RMSLayer norm;
+    public LNLayer norm;
     public DenseRelu dr;
 
     public T5LayerFF(int embed_size, int ff_size, boolean bias) {
@@ -51,7 +51,7 @@ public class T5LayerFF extends Layer {
     }
 
     public void initLayers() {
-        this.norm = new RMSLayer(1, 1, embed_size, true, BNType.fully_bn, network);
+        this.norm = new LNLayer(1, 1, embed_size, true, false, BNType.fully_bn, network);
         this.dr = new DenseRelu(embed_size, ff_size, bias, network);
     }
 
@@ -74,10 +74,10 @@ public class T5LayerFF extends Layer {
     @Override
     public void output() {
         // TODO Auto-generated method stub
-    	norm.forward(input);
+    	norm.forward_t5(input);
     	dr.forward(norm.getOutput());
-    	Tensor_OP().add(norm.getOutput(), dr.getOutput(), norm.getOutput());
-        this.output = norm.getOutput();
+    	Tensor_OP().add(input, dr.getOutput(), dr.getOutput());
+        this.output = dr.getOutput();
     }
     
     @Override

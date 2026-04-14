@@ -91,11 +91,15 @@ public class SentencePieceTokenizer extends Tokenizer {
         //    	String tokenizer_path = "H:\\transformer_dataset\\chinese_sp.model";
         try {
             SentencePieceTokenizer t = new SentencePieceTokenizer(tokenizer_path);
-			String txt = "a photo of a cat";
+			String txt = "一只猫在苹果树下游泳";
 
 			String[] tokens = t.tokenize(txt);
-
+			
 			System.out.println(JsonUtils.toJson(tokens));
+
+			int[] tokensInt = t.encodeInt(txt, 120);
+			
+			System.out.println(JsonUtils.toJson(tokensInt));
 
 			int[] idx = t.encodeInt(txt);
 
@@ -165,7 +169,7 @@ public class SentencePieceTokenizer extends Tokenizer {
     public int[] encodeInt(String text) {
         return encode(text, false, false);
     }
-
+    
     public int[] encode(String text, boolean bos, boolean eos) {
         int[] t = tokenizer.encode(text);
         int length = t.length;
@@ -193,7 +197,7 @@ public class SentencePieceTokenizer extends Tokenizer {
     public String[] tokenize(String text) {
         return tokenizer.tokenize(text);
     }
-
+    
     public void encodeDataset(String dataPath, String outputPath) {
         try {
             List<Map<String, String>> list = LagJsonReader.readJsonFileSamll(dataPath);
@@ -598,7 +602,21 @@ public class SentencePieceTokenizer extends Tokenizer {
     @Override
     public int[] encodeInt(String txt, int maxLen) {
         // TODO Auto-generated method stub
-        return null;
+    	int[] org = encode(txt, false, false);
+    	int[] out = new int[maxLen];
+    	for(int i = 0;i<org.length;i++) {
+    		if(i < maxLen) {
+    			out[i] = org[i];
+        		if(i == org.length - 1) {
+        			if(i < out.length - 1) {
+        				out[i + 1] = 1;
+        			}else {
+        				out[i] = 1;
+        			}
+        		}
+    		}
+    	}
+        return out;
     }
 }
 

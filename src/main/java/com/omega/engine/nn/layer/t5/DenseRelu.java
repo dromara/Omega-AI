@@ -79,8 +79,11 @@ public class DenseRelu extends Layer {
     @Override
     public void output() {
         // TODO Auto-generated method stub
+//    	input.showDM("input");
         linear1.forward(input);
+//        linear1.getOutput().showDM("act0:");
         active.forward(linear1.getOutput(), linear1.getOutput());
+//        linear1.getOutput().showDM("act1:");
         linear2.forward(input);
         Tensor_OP().mul(active.getOutput(), linear2.getOutput(), linear2.getOutput());
         linear3.forward(linear2.getOutput(), input);

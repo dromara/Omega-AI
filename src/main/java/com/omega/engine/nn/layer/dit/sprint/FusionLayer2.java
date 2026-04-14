@@ -216,8 +216,9 @@ public class FusionLayer2 extends Layer {
     	fusion_proj.back(delta);
     	Tensor_OP().cat_width_back(dencoder, diff, fusion_proj.diff, embedDim, embedDim);
     	if(path_drop_prob > 0 && pdp < path_drop_prob) {
-    		pmKernel.mask_igone_diff(diff, diffW, diff.number, embedDim, FT + TT, 0);
+//    		pmKernel.mask_igone_diff(diff, diffW, diff.number, embedDim, FT + TT, 0);
 //    		pmKernel.set_mask_back_igone(diff, FT + TT, 0, embedDim);
+    		pmKernel.mask_igone_diff2(diff, diffW, batchSize, FT + TT, embedDim, 0);
     		diff.clearGPU();
     	}
     }

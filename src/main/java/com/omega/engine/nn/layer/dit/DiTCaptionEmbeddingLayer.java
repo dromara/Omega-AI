@@ -146,11 +146,9 @@ public class DiTCaptionEmbeddingLayer extends Layer {
     @Override
     public void diff() {
         // TODO Auto-generated method stub
-
         linear2.back(delta);
         act.back(linear2.diff);
         linear1.back(act.diff);
-
     }
 
     @Override

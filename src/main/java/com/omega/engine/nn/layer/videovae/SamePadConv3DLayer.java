@@ -21,8 +21,6 @@ import com.omega.engine.nn.network.utils.ModelUtils;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
-import cn.hutool.json.JSONUtil;
-
 /**
  * ConvolutionLayer
  *

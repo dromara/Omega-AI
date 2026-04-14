@@ -6,6 +6,7 @@ import static jcuda.jcudnn.cudnnConvolutionMode.CUDNN_CROSS_CORRELATION;
 import static jcuda.jcudnn.cudnnDataType.CUDNN_DATA_FLOAT;
 import static jcuda.jcudnn.cudnnTensorFormat.CUDNN_TENSOR_NCHW;
 
+import com.omega.common.utils.JsonUtils;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.nn.layer.gpu.Conv3DBaseKernel;
 import com.omega.engine.nn.network.Network;
@@ -148,9 +149,12 @@ public class Conv3DCudnnKernel extends Conv3DBaseKernel {
     
     public void init(int number, int[] padA, int[] stride) {
         if (this.N != number) {
+//        	System.err.println(JsonUtils.toJson(padA));
+//        	System.err.println(JsonUtils.toJson(stride));
             this.N = number;
             int convDims = 3;
             int[] weight = {ko, C, kf, kh, kw};
+//            System.err.println(JsonUtils.toJson(weight));
             int[] upscaleA = {1, 1, 1};
             int[] tensorOuputDimA = {N, C, F, H, W};
             int[] strideA = computeStride(tensorOuputDimA);
