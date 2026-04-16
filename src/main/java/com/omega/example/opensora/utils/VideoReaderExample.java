@@ -3,15 +3,71 @@ package com.omega.example.opensora.utils;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.imageio.ImageIO;
+
+import com.omega.common.utils.ImageUtils;
+import com.omega.engine.tensor.Tensor;
 
 /**
  * 视频读取和写入示例
  */
 public class VideoReaderExample {
+	
+	public static Tensor loadVideo2Tesnro(String videoPath, int maxFrames, int targetHeight, int targetWidth) {
+		
+		VideoReader reader = new VideoReader(videoPath, 30);
+		
+		float[] mean = new float[] {0.5f, 0.5f, 0.5f};
+		float[] std = new float[] {0.5f, 0.5f, 0.5f};
+		
+		try {
+			 // 1. 打开视频
+            reader.open();
 
+            // 2. 获取视频信息
+            VideoReader.VideoInfo info = reader.getVideoInfo();
+            System.out.println("\n" + info);
+            System.out.println();
+
+            // 3. 使用新方法顺序读取所有帧（按30FPS采样）
+            System.out.println("开始读取帧（按30FPS采样）...");
+
+            List<BufferedImage> frames = reader.readAllFramesByFPS(maxFrames);
+            
+            // 方式2: 自定义宽高输出 (例如 320x240)
+            System.out.println("\n开始 Resize (CenterCrop " + targetWidth + "x" + targetHeight + ")...");
+            List<BufferedImage> resizedFrames = VideoReader.resizeCenterCrop(frames, targetWidth, targetHeight);
+            
+            Tensor x = new Tensor(1, 3 * (int) maxFrames, targetHeight, targetWidth, true);
+            
+            List<float[]> frameRGB = new ArrayList<float[]>();
+            
+            for(int f = 0;f<maxFrames;f++) {
+            	float[] rgb = ImageUtils.getImageData(resizedFrames.get(f), true, true, mean, std);
+            	frameRGB.add(rgb);
+            }
+            int os = maxFrames * targetHeight * targetWidth;
+            for(int c = 0;c<3;c++) {
+            	for(int f = 0;f<maxFrames;f++) {
+            		float[] rgb = frameRGB.get(f);
+            		for(int s = 0;s<targetHeight*targetWidth;s++) {
+            			x.data[c * os + f * targetHeight * targetWidth + s] = rgb[c * targetHeight * targetWidth + s];
+            		}
+            	}
+            }
+            
+            x.hostToDevice();
+            return x;
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+		return null;
+	}
+	
     public static void main(String[] args) {
         // 视频文件路径 - 请替换为实际的视频路径
         String videoPath = "D:\\dataset\\wfvae\\4105473_scene-0_cut-border.mp4";

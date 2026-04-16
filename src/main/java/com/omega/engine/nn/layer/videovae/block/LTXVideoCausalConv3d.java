@@ -271,9 +271,16 @@ public class LTXVideoCausalConv3d extends Layer {
     	}else {
     		kernel.conv(input, weight, output, padding3d, stride3d);
     	}
+//    	System.err.println(JsonUtils.toJson(padding3d));
+//    	System.err.println(JsonUtils.toJson(stride3d));
         if (this.hasBias) {
+//        	output.showShape("conv_out");
+//        	bias.showDM("bias");
+//        	output.showDMByOffsetRed((3 * oDepth + 2) * output.height * output.width, output.height * output.width, "output");
             biasKernel.addConvBiasFast(output, bias, oChannel, oDepth);
+//            output.showDMByOffsetRed((3 * oDepth + 2) * output.height * output.width, output.height * output.width, "output");
         }
+        
     }
 
     /**

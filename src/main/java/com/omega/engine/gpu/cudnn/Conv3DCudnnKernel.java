@@ -159,7 +159,7 @@ public class Conv3DCudnnKernel extends Conv3DBaseKernel {
             int[] tensorOuputDimA = {N, C, F, H, W};
             int[] strideA = computeStride(tensorOuputDimA);
 //            System.out.println("strideA:"+JsonUtils.toJson(strideA));
-            //			System.out.println(JsonUtils.toJson(tensorOuputDimA));
+//            System.out.println(JsonUtils.toJson(tensorOuputDimA));
             JCudnn.cudnnSetTensorNdDescriptor(xDesc, CUDNN_DATA_FLOAT, 5, tensorOuputDimA, strideA);
             JCudnn.cudnnSetFilterNdDescriptor(kernelDesc, CUDNN_DATA_FLOAT, CUDNN_TENSOR_NCHW, 5, weight);
             int[] filterStrideA = stride;

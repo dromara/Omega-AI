@@ -156,29 +156,32 @@ public class VideoTest {
 	        int N = 1;
 	        int C = 3;
 
-			String inputPath = "D:\\models\\ltx_vae\\video.json";
-		    Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
-		    Tensor input = new Tensor(N, C * num_frames, height, width, true);
-		    ModeLoaderlUtils.loadData(input, datas, "video", 5);
+//			String inputPath = "D:\\models\\ltx_vae\\video.json";
+//		    Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
+//		    Tensor input = new Tensor(N, C * num_frames, height, width, true);
+//		    ModeLoaderlUtils.loadData(input, datas, "video", 5);
 	        
-			String samplePath = "D:\\models\\ltx_vae\\sample.json";
-		    Map<String, Object> sampleDatas = LagJsonReader.readJsonFileSmallWeight(samplePath);
-		    Tensor sample = new Tensor(N, 128 * 3, 11, 20, true);
-		    ModeLoaderlUtils.loadData(sample, sampleDatas, "sample", 5);
-		    sample.view(1, 128, 33, 20);
-		    sample.showDM("sample");
-		    Tensor z = vae.encode(input, sample);
-		    z.showDM("z");
+//			String samplePath = "D:\\models\\ltx_vae\\sample.json";
+//		    Map<String, Object> sampleDatas = LagJsonReader.readJsonFileSmallWeight(samplePath);
+//		    Tensor sample = new Tensor(N, 128 * 3, 11, 20, true);
+//		    ModeLoaderlUtils.loadData(sample, sampleDatas, "sample", 5);
+//		    sample.view(1, 128, 33, 20);
+//		    sample.showDM("sample");
+//		    Tensor z = vae.encode(input, sample);
+//		    z.showDM("z");
 //		    System.err.println("----------------");
-//		    z = vae.encode(input);
+	        String videoPath = "D:\\dataset\\wfvae\\4105473_scene-0_cut-border.mp4";
+	        Tensor input = VideoReaderExample.loadVideo2Tesnro(videoPath, num_frames, height, width);
+	        
+		    Tensor z = vae.encode(input);
 //		    z.showDM("z");
 		    z.view(N, 128 * 3, 11, 20);
 		    
-			String zPath = "D:\\models\\ltx_vae\\z.json";
-		    Map<String, Object> zDatas = LagJsonReader.readJsonFileSmallWeight(zPath);
-		    Tensor torch_z = new Tensor(N, 128 * 3, 11, 20, true);
-		    ModeLoaderlUtils.loadData(torch_z, zDatas, "z", 5);
-		    torch_z.showDM("torch_z");
+//			String zPath = "D:\\models\\ltx_vae\\z.json";
+//		    Map<String, Object> zDatas = LagJsonReader.readJsonFileSmallWeight(zPath);
+//		    Tensor torch_z = new Tensor(N, 128 * 3, 11, 20, true);
+//		    ModeLoaderlUtils.loadData(torch_z, zDatas, "z", 5);
+//		    torch_z.showDM("torch_z");
 		    Tensor decoder = vae.decode(z);
 		    Tensor out = new Tensor(N * num_frames, C, height, width, true);
 		    vae.tensorOP.permute(decoder, out, new int[] {N, C, num_frames, height, width}, new int[] {N, num_frames, C, height, width}, new int[] {0, 2, 1, 3, 4});
@@ -194,7 +197,6 @@ public class VideoTest {
 	
 	public static void tensor2video(Tensor org, int N, int F, int C, int H, int W, String outputPath) throws Exception {
 		ImageUtils utils = new ImageUtils();
-		
         for (int b = 0; b < N; b++) {
         	List<BufferedImage> frames = new ArrayList<BufferedImage>();
         	for(int f = 0;f<F;f++) {
@@ -205,7 +207,7 @@ public class VideoTest {
         		BufferedImage bufferedImage = utils.convertRGBImage(rgb);
         		frames.add(bufferedImage);
         	}
-        	VideoReaderExample.writeFramesToVideo(frames, outputPath + b + "_.mp4");
+        	VideoReaderExample.writeFramesToVideo(frames, outputPath + b + "_2.mp4");
         }
 	}
 	
