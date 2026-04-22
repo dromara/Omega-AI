@@ -168,17 +168,17 @@ public class LTXVideoEncoder3d extends Layer {
     	conv_in.forward(video_x);
     	
     	Tensor x = conv_in.getOutput();
-    	x.showDMByOffsetRed(0, post_patch_height * post_patch_width, "conv_in");
+//    	x.showDMByOffsetRed(0, post_patch_height * post_patch_width, "conv_in");
     	for(int i = 0;i<down_blocks.size();i++) {
     		LTXVideoDownBlock3D down = down_blocks.get(i);
     		down.forward(x);
     		x = down.getOutput();
-    		x.showShape(i+"");
-    		x.showDMByOffsetRed((3 * down.oDepth + 2) * x.height * x.width, x.height * x.width, i+"");
+//    		x.showShape(i+"");
+//    		x.showDMByOffsetRed((3 * down.oDepth + 2) * x.height * x.width, x.height * x.width, i+"");
     	}
     	
     	mid_block.forward(x);
-    	mid_block.getOutput().showDMByOffsetRed((3 * mid_block.oDepth + 2) * x.height * x.width, x.height * x.width, "mid_block");
+//    	mid_block.getOutput().showDMByOffsetRed((3 * mid_block.oDepth + 2) * x.height * x.width, x.height * x.width, "mid_block");
     	
     	int inChannel = mid_block.oChannel;
     	int inDepth = mid_block.oDepth;
@@ -190,11 +190,11 @@ public class LTXVideoEncoder3d extends Layer {
         normInput.view(number, inChannel * inDepth, inHeight, inWidth);
         conv_act.forward(normInput);
         conv_out.forward(conv_act.getOutput());
-        conv_out.getOutput().showDMByOffsetRed((3 * 3 + 2) * conv_out.getOutput().height * conv_out.getOutput().width, conv_out.getOutput().height * conv_out.getOutput().width, "conv_out.getOutput()");
+//        conv_out.getOutput().showDMByOffsetRed((3 * 3 + 2) * conv_out.getOutput().height * conv_out.getOutput().width, conv_out.getOutput().height * conv_out.getOutput().width, "conv_out.getOutput()");
 
         kernel.encoder_repeat(conv_out.getOutput(), output, oChannel * 2, oDepth, oHeight, oWidth, oChannel, oChannel-1);
-        output.showShape("output");
-        output.showDMByOffsetRed((255 * 3 + 2) * output.height * output.width, output.height * output.width, "output");
+//        output.showShape("output");
+//        output.showDMByOffsetRed((255 * 3 + 2) * output.height * output.width, output.height * output.width, "output");
         
     }
 
@@ -274,7 +274,6 @@ public class LTXVideoEncoder3d extends Layer {
         // TODO Auto-generated method stub
         /**
          * 参数初始化
-
          */
         this.init();
         /**

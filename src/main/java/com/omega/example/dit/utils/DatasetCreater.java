@@ -1008,7 +1008,6 @@ public class DatasetCreater {
 //		String labelPath = "/root/gpufree-data/txt2img_2m/labels.json";
 //    	String labelPath = "D:\\dataset\\labels.json";
 		String clipDataPath = "/root/gpufree-data/txt2img_2m_2/vavae_clip.bin";
-		
     	String labelPath = "/root/gpufree-data/txt2img_2m_2/labels.json";
     	
     	Tensor label = new Tensor(batchSize * 77, 1, 1, 1, true);

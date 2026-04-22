@@ -49,11 +49,11 @@ public class VideoReader {
     public void open() throws FrameGrabber.Exception {
         grabber = new FFmpegFrameGrabber(videoPath);
         grabber.start();
-        System.out.println("视频已打开: " + videoPath);
-        System.out.println("原始帧率: " + grabber.getVideoFrameRate() + " FPS");
-        System.out.println("视频分辨率: " + grabber.getImageWidth() + "x" + grabber.getImageHeight());
-        System.out.println("视频时长: " + grabber.getLengthInTime() / 1000000 + " 秒");
-        System.out.println("目标帧率: " + targetFPS + " FPS");
+//        System.out.println("视频已打开: " + videoPath);
+//        System.out.println("原始帧率: " + grabber.getVideoFrameRate() + " FPS");
+//        System.out.println("视频分辨率: " + grabber.getImageWidth() + "x" + grabber.getImageHeight());
+//        System.out.println("视频时长: " + grabber.getLengthInTime() / 1000000 + " 秒");
+//        System.out.println("目标帧率: " + targetFPS + " FPS");
     }
 
     /**
@@ -145,7 +145,7 @@ public class VideoReader {
         int skipCounter = 0;
         int targetSkip = (int) Math.round(skipRatio);
 
-        System.out.println("原始帧率: " + originalFrameRate + ", 目标帧率: " + targetFPS + ", 跳帧比例: " + skipRatio);
+//        System.out.println("原始帧率: " + originalFrameRate + ", 目标帧率: " + targetFPS + ", 跳帧比例: " + skipRatio);
 
         int framesRead = 0;
 
@@ -431,8 +431,9 @@ public class VideoReader {
 
         @Override
         public String toString() {
-            return String.format("VideoInfo[分辨率: %dx%d, 帧率: %.2f FPS, 时长: %.2f秒, 总帧数: %d]",
-                    width, height, frameRate, duration, totalFrames);
+        	return "";
+//            return String.format("VideoInfo[分辨率: %dx%d, 帧率: %.2f FPS, 时长: %.2f秒, 总帧数: %d]",
+//                    width, height, frameRate, duration, totalFrames);
         }
     }
 }

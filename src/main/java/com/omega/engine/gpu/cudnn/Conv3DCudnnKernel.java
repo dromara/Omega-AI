@@ -6,7 +6,6 @@ import static jcuda.jcudnn.cudnnConvolutionMode.CUDNN_CROSS_CORRELATION;
 import static jcuda.jcudnn.cudnnDataType.CUDNN_DATA_FLOAT;
 import static jcuda.jcudnn.cudnnTensorFormat.CUDNN_TENSOR_NCHW;
 
-import com.omega.common.utils.JsonUtils;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.nn.layer.gpu.Conv3DBaseKernel;
 import com.omega.engine.nn.network.Network;
@@ -244,13 +243,13 @@ public class Conv3DCudnnKernel extends Conv3DBaseKernel {
             //             System.out.println("Testing cudnnFindConvolutionForwardAlgorithm ...");
             JCudnn.cudnnFindConvolutionForwardAlgorithm(CudnnHandleManager.getHandle(), xDesc, wDesc, convDesc, dstDesc, requestedAlgoCount, returnedAlgoCountArray, results);
             returnedAlgoCount = returnedAlgoCountArray[0];
-            //             for(int algoIndex = 0; algoIndex < returnedAlgoCount; ++algoIndex){
-            //            	 String result = checkError(results[algoIndex].status);
-            //                 System.out.printf("^^^^ for Algo %d: %f time requiring %d memory %s \n",
-            //                     results[algoIndex].algo, results[algoIndex].time,
-            //                     (long)results[algoIndex].memory, "["+result+"]");
-            //             }
-            
+//                         for(int algoIndex = 0; algoIndex < returnedAlgoCount; ++algoIndex){
+//                        	 String result = checkError(results[algoIndex].status);
+//                             System.out.printf("^^^^ for Algo %d: %f time requiring %d memory %s \n",
+//                                 results[algoIndex].algo, results[algoIndex].time,
+//                                 (long)results[algoIndex].memory, "["+result+"]");
+//                         }
+//            System.err.println("-------");
             return results[0].algo;
         } else {
             return convAlgorithm;

@@ -1226,6 +1226,7 @@ public class ImageUtils {
         int minx = bi.getMinX();
         int miny = bi.getMinY();
         int size = height * width * 3;
+//        System.err.println("size:"+size);
         float[] color = new float[size];
         float n = 1.0f;
         int r = 0;

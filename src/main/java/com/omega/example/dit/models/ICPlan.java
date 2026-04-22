@@ -5,6 +5,8 @@ import java.util.Map;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.ad.op.TensorOP;
+import com.omega.engine.gpu.CUDAManager;
+import com.omega.engine.loss.gpu.MSELossKernel;
 import com.omega.engine.nn.network.CNN;
 import com.omega.engine.nn.network.Transformer;
 import com.omega.engine.nn.network.dit.DiT_ORG;
@@ -51,6 +53,11 @@ public class ICPlan {
 	private Tensor t_next_input;
 	private Tensor z_next_euler;
 	private Tensor z_next;
+	
+    private Tensor cfm_loss;
+    private Tensor cfm_delta;
+    
+    private MSELossKernel mse_kernel;
 	
 	public ICPlan(TensorOP op) {
 		this.op = op;
@@ -718,6 +725,14 @@ public class ICPlan {
 		kernel.latend_un_norm(x, mean, std);
 	}
 	
+	public void latend_norm(Tensor x,Tensor mean,Tensor std, int thw) {
+		kernel.latend3d_norm(x, mean, std, thw);
+	}
+	 
+	public void latend_un_norm(Tensor x,Tensor mean,Tensor std, int thw) {
+		kernel.latend3d_un_norm(x, mean, std, thw);
+	}
+	
 	public static void main(String[] args) {
 		
 //		cos_f();
@@ -975,6 +990,28 @@ public class ICPlan {
 		return z_next;
 	}
 
+	public Tensor cfm_loss(CUDAManager cudaManager, Tensor p, Tensor t) {
+		if(mse_kernel == null) {
+			mse_kernel = new MSELossKernel(cudaManager);
+		}
+		if(cfm_loss == null || cfm_loss.number != p.number) {
+			cfm_loss = Tensor.createGPUTensor(cfm_loss, p.shape(), true);
+		}
+		mse_kernel.forward(p, t, cfm_loss);
+		return cfm_loss;
+	}
+	
+	public Tensor cfm_loss_back(CUDAManager cudaManager, Tensor p, Tensor t) {
+		if(mse_kernel == null) {
+			mse_kernel = new MSELossKernel(cudaManager);
+		}
+		if(cfm_delta == null || cfm_delta.number != p.number) {
+			cfm_delta = Tensor.createGPUTensor(cfm_delta, p.shape(), true);
+		}
+		mse_kernel.backward(p, t, cfm_delta);
+		return cfm_delta;
+	}
+	
 	public void setTimestep_shift(float timestep_shift) {
 		if(timestep_shift > 0) {
 			this.timestep_shift = timestep_shift;

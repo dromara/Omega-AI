@@ -139,6 +139,52 @@ public class ICPlanKernel extends CUDAKernel {
         }
     }
     
+    public void latend3d_norm(Tensor x,Tensor mean,Tensor std, int thw) {
+        try {
+            /**
+             * 设置入参
+			    float* x1,
+			    float* mean,
+			    float* std
+			    int N,
+			    int C
+             */
+            kernelParameters = Pointer.to(Pointer.to(x.getGpuData()), Pointer.to(mean.getGpuData()), Pointer.to(std.getGpuData()),
+            		Pointer.to(new int[]{x.dataLength}), Pointer.to(new int[]{mean.dataLength}), Pointer.to(new int[]{thw}));
+            cuLaunchKernel(latend_norm_function, this.CAFFE_GET_BLOCKS(x.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameters, null // Kernel- and extra parameters
+            );
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+
+    public void latend3d_un_norm(Tensor x,Tensor mean,Tensor std, int thw) {
+        try {
+            /**
+             * 设置入参
+			    float* x1,
+			    float* mean,
+			    float* std
+			    int N,
+			    int C
+             */
+            kernelParameters = Pointer.to(Pointer.to(x.getGpuData()), Pointer.to(mean.getGpuData()), Pointer.to(std.getGpuData()),
+            		Pointer.to(new int[]{x.dataLength}), Pointer.to(new int[]{mean.dataLength}), Pointer.to(new int[]{thw}));
+            cuLaunchKernel(latend_un_norm_function, this.CAFFE_GET_BLOCKS(x.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameters, null // Kernel- and extra parameters
+            );
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
     public void compute_xt(Tensor latend,Tensor noise,Tensor t,Tensor xt) {
         try {
             /**

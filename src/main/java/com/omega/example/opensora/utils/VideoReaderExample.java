@@ -18,7 +18,7 @@ public class VideoReaderExample {
 	
 	public static Tensor loadVideo2Tesnro(String videoPath, int maxFrames, int targetHeight, int targetWidth) {
 		
-		VideoReader reader = new VideoReader(videoPath, 30);
+		VideoReader reader = new VideoReader(videoPath, 10);
 		
 		float[] mean = new float[] {0.5f, 0.5f, 0.5f};
 		float[] std = new float[] {0.5f, 0.5f, 0.5f};
@@ -46,7 +46,11 @@ public class VideoReaderExample {
             List<float[]> frameRGB = new ArrayList<float[]>();
             
             for(int f = 0;f<maxFrames;f++) {
-            	float[] rgb = ImageUtils.getImageData(resizedFrames.get(f), true, true, mean, std);
+            	int rf = f;
+            	if(f >= resizedFrames.size()) {
+            		rf = resizedFrames.size() - 1;
+            	}
+            	float[] rgb = ImageUtils.getImageData(resizedFrames.get(rf), true, true, mean, std);
             	frameRGB.add(rgb);
             }
             int os = maxFrames * targetHeight * targetWidth;
@@ -66,6 +70,58 @@ public class VideoReaderExample {
 			e.printStackTrace();
 		}
 		return null;
+	}
+	
+	public static void loadVideo2Tensor(String videoPath, int maxFrames, int targetHeight, int targetWidth, Tensor input, int index) {
+		
+		VideoReader reader = new VideoReader(videoPath, 10);
+		
+		float[] mean = new float[] {0.5f, 0.5f, 0.5f};
+		float[] std = new float[] {0.5f, 0.5f, 0.5f};
+		
+		try {
+			 // 1. 打开视频
+            reader.open();
+
+            // 2. 获取视频信息
+//            VideoReader.VideoInfo info = reader.getVideoInfo();
+//            System.out.println("\n" + info);
+//            System.out.println();
+
+            // 3. 使用新方法顺序读取所有帧（按30FPS采样）
+//            System.out.println("开始读取帧（按30FPS采样）...");
+
+            List<BufferedImage> frames = reader.readAllFramesByFPS(maxFrames);
+            
+            // 方式2: 自定义宽高输出 (例如 320x240)
+//            System.out.println("\n开始 Resize (CenterCrop " + targetWidth + "x" + targetHeight + ")...");
+            List<BufferedImage> resizedFrames = VideoReader.resizeCenterCrop(frames, targetWidth, targetHeight);
+            
+            List<float[]> frameRGB = new ArrayList<float[]>();
+            
+            for(int f = 0;f<maxFrames;f++) {
+            	int real_f = f;
+            	if(f >= resizedFrames.size()) {
+            		real_f = resizedFrames.size() - 1;
+            	}
+            	float[] rgb = ImageUtils.getImageData(resizedFrames.get(real_f), true, true, mean, std);
+            	frameRGB.add(rgb);
+            }
+            int os = maxFrames * targetHeight * targetWidth;
+            for(int c = 0;c<3;c++) {
+            	for(int f = 0;f<maxFrames;f++) {
+            		float[] rgb = frameRGB.get(f);
+            		for(int s = 0;s<targetHeight*targetWidth;s++) {
+            			input.data[index * 3 * os + c * os + f * targetHeight * targetWidth + s] = rgb[c * targetHeight * targetWidth + s];
+            		}
+            	}
+            }
+
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+
 	}
 	
     public static void main(String[] args) {
@@ -143,7 +199,7 @@ public class VideoReaderExample {
 
         System.out.println("输出视频尺寸: " + width + "x" + height);
 
-        VideoWriter writer = new VideoWriter(outputPath, 30, width, height);
+        VideoWriter writer = new VideoWriter(outputPath, 10, width, height);
 
         // 可选：设置编码质量和速度
         // writer.setQuality(23);  // CRF值 (1-51, 默认23)

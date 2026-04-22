@@ -2,6 +2,7 @@ package com.omega.engine.gpu.cudnn;
 
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
+import com.omega.engine.nn.network.CNN;
 import com.omega.engine.tensor.Tensor;
 
 import jcuda.Pointer;
@@ -60,7 +61,7 @@ public class SoftmaxCudnnKernel extends BaseKernel {
     public void init(int number) {
         if (this.N != number) {
             this.N = number;
-            //			System.out.println(this.N+":"+C+":"+H+":"+W);
+//            			System.out.println(this.N+":"+C+":"+H+":"+W);
             handle(JCudnn.cudnnSetTensor4dDescriptor(xDesc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, N, C, H, W));
             handle(JCudnn.cudnnSetTensor4dDescriptor(yDesc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, N, C, H, W));
             handle(JCudnn.cudnnSetTensor4dDescriptor(diffDesc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, N, C, H, W));
@@ -85,5 +86,28 @@ public class SoftmaxCudnnKernel extends BaseKernel {
     public void softmax_backward(Tensor output, Tensor delta, Tensor diff) {
         handle(JCudnn.cudnnSoftmaxBackward(CudnnHandleManager.getHandle(), CUDNN_SOFTMAX_ACCURATE, CUDNN_SOFTMAX_MODE_CHANNEL, alpha_P, xDesc, output.getGpuData(), diffDesc, delta.getGpuData(), beta_P, yDesc, diff.getGpuData()));
     }
+    
+    public static void main(String[] arg) {
+    	
+    	int C = 737;
+    	int H = 1;
+    	int W = 1;
+    	int N = 16 * C * 5;
+    	
+    	CNN nn = new CNN(null);
+        nn.CUDNN = true;
+        nn.number = N;
+    	
+        SoftmaxCudnnKernel kernel = new SoftmaxCudnnKernel(C, H, W, nn.cudaManager);
+        
+        Tensor input = new Tensor(5, 16, C, C, true);
+        Tensor output = new Tensor(5, 16, C, C, true);
+        
+        kernel.softmax(input, output, N);
+        
+        output.showDMByOffsetRed(0, 100, "output");
+        
+    }
+    
 }
 
