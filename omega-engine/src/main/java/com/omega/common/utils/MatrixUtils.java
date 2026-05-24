@@ -14,7 +14,16 @@ import com.omega.common.task.TaskEngine;
  */
 public class MatrixUtils {
     private static final int threadNum = 8;
-
+    
+    public static float[] repeat(float[] x, int number) {
+        float[] y = new float[x.length * number];
+        for (int i = 0; i < y.length; i++) {
+        	int idx = i % x.length;
+            y[i] = x[idx];
+        }
+        return y;
+    }
+    
     public static float sum(float[] x) {
         float y = 0.0f;
         for (int i = 0; i < x.length; i++) {

@@ -14,8 +14,12 @@ public class ICPlanKernel extends CUDAKernel {
 	
     private CUfunction compute_xt_function;
     private CUfunction compute_ut_function;
+    private CUfunction compute_v_function;
+    private CUfunction compute_dv_function;
+    private CUfunction compute_z_next_function;
     
     private CUfunction cosine_similarity_loss_function;
+    private CUfunction cosine_similarity_loss_dim1_function;
     private CUfunction cosine_similarity_loss_back1_function;
     private CUfunction cosine_similarity_loss_back2_function;
     
@@ -44,8 +48,20 @@ public class ICPlanKernel extends CUDAKernel {
             if (compute_ut_function == null) {
             	compute_ut_function = getCudaManager().getLocalFunctionByModule("icplan.cu", "compute_ut");
             }
+            if (compute_v_function == null) {
+            	compute_v_function = getCudaManager().getLocalFunctionByModule("icplan.cu", "compute_v");
+            }
+            if (compute_dv_function == null) {
+            	compute_dv_function = getCudaManager().getLocalFunctionByModule("icplan.cu", "compute_dv");
+            }
+            if (compute_z_next_function == null) {
+            	compute_z_next_function = getCudaManager().getLocalFunctionByModule("icplan.cu", "compute_z_next");
+            }
             if (cosine_similarity_loss_function == null) {
             	cosine_similarity_loss_function = getCudaManager().getLocalFunctionByModule("icplan.cu", "cosine_similarity_loss");
+            }
+            if(cosine_similarity_loss_dim1_function == null) {
+            	cosine_similarity_loss_dim1_function = getCudaManager().getLocalFunctionByModule("icplan.cu", "cosine_similarity_loss_dim1");
             }
             if (cosine_similarity_loss_back1_function == null) {
             	cosine_similarity_loss_back1_function = getCudaManager().getLocalFunctionByModule("icplan.cu", "cosine_similarity_loss_back1");
@@ -169,6 +185,77 @@ public class ICPlanKernel extends CUDAKernel {
         }
     }
     
+    public void compute_v(Tensor x,Tensor z,Tensor t,Tensor v, float t_eps) {
+        try {
+            /**
+             * 设置入参
+             *  float* x,
+			    float* z,
+			    float* t,
+			    float* output,
+			    float t_eps,
+			    int N, int W
+             */
+            kernelParameters = Pointer.to(Pointer.to(x.getGpuData()), Pointer.to(z.getGpuData()), Pointer.to(t.getGpuData()), Pointer.to(v.getGpuData()),Pointer.to(new float[]{t_eps}),
+            		Pointer.to(new int[]{x.dataLength}), Pointer.to(new int[]{x.getOnceSize()}));
+            cuLaunchKernel(compute_v_function, this.CAFFE_GET_BLOCKS(x.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameters, null // Kernel- and extra parameters
+            );
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void compute_dv(Tensor delta,Tensor t,Tensor dx, float t_eps) {
+        try {
+            /**
+             * 设置入参
+             *  float* delta,
+			    float* t,
+			    float* dx,
+			    float t_eps,
+			    int N, int W
+             */
+            kernelParameters = Pointer.to(Pointer.to(delta.getGpuData()), Pointer.to(t.getGpuData()), Pointer.to(dx.getGpuData()),Pointer.to(new float[]{t_eps}),
+            		Pointer.to(new int[]{delta.dataLength}), Pointer.to(new int[]{delta.getOnceSize()}));
+            cuLaunchKernel(compute_dv_function, this.CAFFE_GET_BLOCKS(delta.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameters, null // Kernel- and extra parameters
+            );
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void compute_z_next(Tensor v_pred,Tensor z,float t, float t_next, Tensor z_next) {
+        try {
+            /**
+             * 设置入参
+             *  float* v_pred,
+			    float* z,
+			    float t,
+			    float t_next,
+			    float* output,
+			    int N
+             */
+            kernelParameters = Pointer.to(Pointer.to(v_pred.getGpuData()), Pointer.to(z.getGpuData()),Pointer.to(new float[]{t}), Pointer.to(new float[]{t_next}), Pointer.to(z_next.getGpuData()),
+            		Pointer.to(new int[]{v_pred.dataLength}));
+            cuLaunchKernel(compute_z_next_function, this.CAFFE_GET_BLOCKS(v_pred.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameters, null // Kernel- and extra parameters
+            );
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
     public void cosine_similarity_loss(Tensor x1,Tensor norm1,Tensor x2,Tensor norm2,Tensor loss) {
     	try {
         	/**
@@ -185,6 +272,32 @@ public class ICPlanKernel extends CUDAKernel {
             kernelParameters = Pointer.to(Pointer.to(x1.getGpuData()), Pointer.to(norm1.getGpuData()), Pointer.to(x2.getGpuData()), Pointer.to(norm2.getGpuData()),
             		Pointer.to(loss.getGpuData()),Pointer.to(new int[]{x1.dataLength}), Pointer.to(new int[]{x1.channel}),Pointer.to(new int[]{x1.height * x1.width}));
             cuLaunchKernel(cosine_similarity_loss_function, this.CAFFE_GET_BLOCKS(x1.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameters, null // Kernel- and extra parameters
+            );
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void cosine_similarity_loss_dim1(Tensor x1,Tensor norm1,Tensor x2,Tensor norm2,Tensor loss) {
+    	try {
+        	/**
+             * 设置入参
+             *  float* x1,
+			    float* norm1,
+			    float* x2,
+			    float* norm2,
+			    float* out,
+			    int N,
+			    int C,
+			    int W
+             */
+            kernelParameters = Pointer.to(Pointer.to(x1.getGpuData()), Pointer.to(norm1.getGpuData()), Pointer.to(x2.getGpuData()), Pointer.to(norm2.getGpuData()),
+            		Pointer.to(loss.getGpuData()),Pointer.to(new int[]{loss.dataLength}), Pointer.to(new int[]{x1.channel}),Pointer.to(new int[]{x1.height * x1.width}));
+            cuLaunchKernel(cosine_similarity_loss_dim1_function, this.CAFFE_GET_BLOCKS(loss.dataLength), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameters, null // Kernel- and extra parameters

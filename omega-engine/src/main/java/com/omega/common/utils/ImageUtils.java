@@ -436,9 +436,54 @@ public class ImageUtils {
                     int g = (int) data[ocount + index];
                     int b = (int) data[ocount * 2 + index];
                     if (format) {
+                        r = (int) (data[index] * 255 + 0.5f);
+                        g = (int) (data[ocount + index] * 255 + 0.5f);
+                        b = (int) (data[ocount * 2 + index] * 255 + 0.5f);
+                    }
+                    r = clamp(r, 0, 255);
+                    g = clamp(g, 0, 255);
+                    b = clamp(b, 0, 255);
+                    int orgb = colorToRGB(255, r, g, b);
+                    rgb[i][j] = orgb;
+                }
+            }
+        } else {
+            for (int i = 0; i < height; i++) {
+                for (int j = 0; j < width; j++) {
+                    int index = i * width + j;
+                    int r = (int) data[index];
+                    int g = (int) data[index];
+                    int b = (int) data[index];
+                    if (format) {
+                        r = (int) (data[index] * 255 + 0.5f);
+                        g = (int) (data[index] * 255 + 0.5f);
+                        b = (int) (data[index] * 255 + 0.5f);
+                    }
+                    r = clamp(r, 0, 255);
+                    g = clamp(g, 0, 255);
+                    b = clamp(b, 0, 255);
+                    int orgb = colorToRGB(255, r, g, b);
+                    rgb[i][j] = orgb;
+                }
+            }
+        }
+        return rgb;
+    }
+
+    public static int[][] color2rgb2(float[] data, int channel, int height, int width, boolean format, float[] mean, float[] std) {
+        int[][] rgb = new int[height][width];
+        int ocount = height * width;
+        if (channel > 1) {
+            for (int i = 0; i < height; i++) {
+                for (int j = 0; j < width; j++) {
+                    int index = i * width + j;
+                    int r = (int) data[index];
+                    int g = (int) data[ocount + index];
+                    int b = (int) data[ocount * 2 + index];
+                    if (format) {
                         r = (int) ((data[index] * std[0] + mean[0]) * 255 + 0.5f);
-                        g = (int) ((data[ocount + index] * std[0] + mean[0]) * 255 + 0.5f);
-                        b = (int) ((data[ocount * 2 + index] * std[0] + mean[0]) * 255 + 0.5f);
+                        g = (int) ((data[ocount + index] * std[1] + mean[1]) * 255 + 0.5f);
+                        b = (int) ((data[ocount * 2 + index] * std[2] + mean[2]) * 255 + 0.5f);
                     }
                     r = clamp(r, 0, 255);
                     g = clamp(g, 0, 255);
@@ -456,8 +501,8 @@ public class ImageUtils {
                     int b = (int) data[index];
                     if (format) {
                         r = (int) ((data[index] * std[0] + mean[0]) * 255 + 0.5f);
-                        g = (int) ((data[index] * std[0] + mean[0]) * 255 + 0.5f);
-                        b = (int) ((data[index] * std[0] + mean[0]) * 255 + 0.5f);
+                        g = (int) ((data[index] * std[1] + mean[1]) * 255 + 0.5f);
+                        b = (int) ((data[index] * std[2] + mean[2]) * 255 + 0.5f);
                     }
                     r = clamp(r, 0, 255);
                     g = clamp(g, 0, 255);
@@ -470,7 +515,7 @@ public class ImageUtils {
         return rgb;
     }
 
-    public static int[][] color2rgb2(float[] data, int channel, int height, int width, boolean format, float[] mean, float[] std) {
+    public static int[][] color2rgb3(float[] data, int channel, int height, int width, boolean format, float[] mean, float[] std) {
         int[][] rgb = new int[height][width];
         int ocount = height * width;
         if (channel > 1) {
@@ -514,7 +559,7 @@ public class ImageUtils {
         }
         return rgb;
     }
-
+    
     public static int clamp(int x, int min, int max) {
         if (x > max) {
             x = max;
@@ -1115,6 +1160,9 @@ public class ImageUtils {
         BufferedImage bi = null;
         try {
             bi = ImageIO.read(file);
+            if(bi == null) {
+            	System.err.println(file.getName());
+            }
         } catch (Exception e) {
             System.err.println("error file:" + file.getName());
             e.printStackTrace();

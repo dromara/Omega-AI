@@ -77,11 +77,15 @@ public class DiTSwiGLUFFN extends Layer {
         this.act = new SiLULayer(network);
 
         this.w12 = new FullyLayer(inChannel, hiddenSize * 2, bias, network);
-        RandomUtils.xavier_uniform(w12.weight, 1, outChannel, outChannel);
-        w12.bias.clearGPU();
+        RandomUtils.xavier_uniform(w12.weight, 1, inChannel, hiddenSize * 2);
+        if(w12.bias != null) {
+        	 w12.bias.clearGPU();
+        }
         this.w3 = new FullyLayer(hiddenSize, outChannel, bias, network);
-        RandomUtils.xavier_uniform(w12.weight, 1, outChannel, outChannel);
-        w3.bias.clearGPU();
+        RandomUtils.xavier_uniform(w3.weight, 1, hiddenSize, outChannel);
+        if(w3.bias != null) {
+        	w3.bias.clearGPU();
+        }
     }
 
     @Override
@@ -127,7 +131,7 @@ public class DiTSwiGLUFFN extends Layer {
     	if(shape == null) {
     		shape = new int[] {number, 2, 1, hiddenSize};
     	}
-    	
+
     	Tensor_OP().getByChannel(w12.getOutput(), w1, shape, 0);
     	Tensor_OP().getByChannel(w12.getOutput(), w2, shape, 1);
 
@@ -155,7 +159,7 @@ public class DiTSwiGLUFFN extends Layer {
     	Tensor_OP().mul(w3.diff, w2, wt); 
     	
     	act.back(wt);
-
+    	
     	Tensor_OP().setByChannel(w12.getOutput(), act.diff, shape, 0);
     	
     	//wt = w2Delta

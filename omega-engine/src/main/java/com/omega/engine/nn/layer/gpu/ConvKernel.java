@@ -66,42 +66,50 @@ public class ConvKernel extends ConvBaseKernel {
 
     public static void main(String args[]) {
         int N = 2;
-        int C = 64;
-        int H = 8;
-        int W = 8;
-        int ko = 128;
-        int kh = 1;
-        int kw = 1;
-        int s = 2;
+        int C = 3;
+        int H = 256;
+        int W = 256;
+        int ko = 1;
+        int kh = 16;
+        int kw = 16;
+        int s = 16;
         int p = 0;
         int oHeight = ((H + 2 * p - kh) / s) + 1;
         int oWidth = ((W + 2 * p - kw) / s) + 1;
         float[] x1 = RandomUtils.order(N * C * H * W, 0.1f, 0.1f);
-        float[] k1 = RandomUtils.order(ko * C * kh * kw, 0.1f, 0.1f);
-        float[] d1 = RandomUtils.order(N * ko * oHeight * oWidth, 0.1f, 0.1f);
+//        float[] k1 = RandomUtils.order(ko * C * kh * kw, 0.1f, 0.1f);
+//        float[] d1 = RandomUtils.order(N * ko * oHeight * oWidth, 0.1f, 0.1f);
         Tensor input = new Tensor(N, C, H, W, x1, true);
-        Tensor delta = new Tensor(N, ko, oHeight, oWidth, d1, true);
-        Tensor kernel = new Tensor(ko, C, kh, kw, k1, true);
-        Tensor output = new Tensor(N, ko, oHeight, oWidth, true);
-        Tensor diff = new Tensor(N, C, H, W, true);
-        Tensor diffW = new Tensor(ko, C, kh, kw, true);
+//        Tensor delta = new Tensor(N, ko, oHeight, oWidth, d1, true);
+//        Tensor kernel = new Tensor(ko, C, kh, kw, k1, true);
+//        Tensor output = new Tensor(N, ko, oHeight, oWidth, true);
+//        Tensor diff = new Tensor(N, C, H, W, true);
+//        Tensor diffW = new Tensor(ko, C, kh, kw, true);
+//        CUDAManager cudaManager = new CUDAManager(0);
+//        ConvKernel k = new ConvKernel(C, H, W, ko, kh, kw, s, p, cudaManager);
+//        k.conv(input, kernel, output);
+//        output.syncHost();
+//        System.out.println("output:" + JsonUtils.toJson(output.data));
+//        k.dw(input, delta, diffW);
+//        diffW.syncHost();
+//        System.out.println("diffW:" + JsonUtils.toJson(diffW.data));
+//        k.dx(delta, kernel, diff);
+//        diff.syncHost();
+//        System.out.println("diff:" + JsonUtils.toJson(diff.data));
+        
         CUDAManager cudaManager = new CUDAManager(0);
         ConvKernel k = new ConvKernel(C, H, W, ko, kh, kw, s, p, cudaManager);
-        k.conv(input, kernel, output);
-        output.syncHost();
-        System.out.println("output:" + JsonUtils.toJson(output.data));
-        k.dw(input, delta, diffW);
-        diffW.syncHost();
-        System.out.println("diffW:" + JsonUtils.toJson(diffW.data));
-        k.dx(delta, kernel, diff);
-        diff.syncHost();
-        System.out.println("diff:" + JsonUtils.toJson(diff.data));
+        
+        Tensor output = new Tensor(N, C * kh * kw, oHeight, oWidth, true);
+        
+        k.im2col(input, output);
+        
+        output.showDM("output");
     }
 
     public void init() {
         /**
          * 初始化cuda函数
-
          */
         initFunction();
         if (!is_1x1) {
@@ -128,6 +136,18 @@ public class ConvKernel extends ConvBaseKernel {
             // TODO: handle exception
             e.printStackTrace();
         }
+    }
+    
+    public void im2col(Tensor input, Tensor out) {
+    	 for (int i = 0; i < input.number; i++) {
+    		 im2col(input, out, i);
+    	 }
+    }
+
+    public void col2im(Tensor input, Tensor out) {
+    	for (int i = 0; i < input.number; i++) {
+    		col2im(input, out, i);
+   	 	}
     }
 
     public void conv(Tensor input, Tensor kernel, Tensor output) {
@@ -163,7 +183,7 @@ public class ConvKernel extends ConvBaseKernel {
             }
         }
     }
-
+    
     public void im2col(Tensor input, int index) {
         try {
             /**
@@ -184,6 +204,26 @@ public class ConvKernel extends ConvBaseKernel {
         }
     }
 
+    public void im2col(Tensor input, Tensor output, int index) {
+        try {
+            /**
+             * 设置入参
+             * float* data_im,float* data_col,int n,int height,int width,int kh,int kw,int s,int p,int oh,int ow
+
+             */
+            kernelParameters = Pointer.to(Pointer.to(input.getGpuData().withByteOffset(index * C * H * W * Sizeof.FLOAT)), Pointer.to(output.getGpuData().withByteOffset(index * ih * iw * Sizeof.FLOAT)), Pointer.to(new int[]{numKernels}), Pointer.to(new int[]{H}), Pointer.to(new int[]{W}), Pointer.to(new int[]{kh}), Pointer.to(new int[]{kw}), Pointer.to(new int[]{s}), Pointer.to(new int[]{p}), Pointer.to(new int[]{oHeight}), Pointer.to(new int[]{oWidth}));
+            cuLaunchKernel(im2col_function, this.CAFFE_GET_BLOCKS(numKernels), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameters, null // Kernel- and extra parameters
+            );
+            //	        JCudaDriver.cuCtxSynchronize();
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
     public void col2im(Tensor diff, int index) {
         try {
             /**
@@ -203,6 +243,25 @@ public class ConvKernel extends ConvBaseKernel {
         }
     }
 
+    public void col2im(Tensor input, Tensor out, int index) {
+        try {
+            /**
+             * 设置入参
+             * float* data_col,float* data_im,int n,int height,int width,int channels,int ksize,int pad,int stride,int height_col,int width_col
+
+             */
+            col2imKernelParameters = Pointer.to(Pointer.to(input.getGpuData().withByteOffset(index * ih * iw * Sizeof.FLOAT)), Pointer.to(out.getGpuData().withByteOffset(index * C * H * W * Sizeof.FLOAT)), Pointer.to(new int[]{C * H * W}), Pointer.to(new int[]{H}), Pointer.to(new int[]{W}), Pointer.to(new int[]{C}), Pointer.to(new int[]{kh}), Pointer.to(new int[]{kw}), Pointer.to(new int[]{p}), Pointer.to(new int[]{s}), Pointer.to(new int[]{oHeight}), Pointer.to(new int[]{oWidth}));
+            checkCUDA(cuLaunchKernel(col2im_function, this.CAFFE_GET_BLOCKS(C * H * W), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    col2imKernelParameters, null // Kernel- and extra parameters
+            ));
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
     public void sgemm(Tensor kernel, Tensor output, int index) {
         /**
          * m k n

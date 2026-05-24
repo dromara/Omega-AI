@@ -118,6 +118,17 @@ public class VA_VAE extends Network {
     	return null;
     }
 
+    public Tensor encode_unsample(Tensor input) {
+        /**
+         * 设置输入数据
+         */
+        this.setInputData(input);
+        inputLayer.forward();
+        encoder.forward(input);
+        pre_quant_conv.forward(encoder.getOutput());
+        return pre_quant_conv.getOutput();
+    }
+    
     public Tensor encode(Tensor input) {
         /**
          * 设置输入数据

@@ -1,9 +1,16 @@
 package com.omega.engine.updater;
 
+import java.util.Map;
+
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.normalization.NormalizationLayer;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.nn.network.Transformer;
+import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.gpu.AdamWKernel;
+import com.omega.example.common.ModeLoaderlUtils;
+import com.omega.example.transformer.utils.LagJsonReader;
+
 import jcuda.driver.CUstream;
 import jcuda.runtime.JCuda;
 import jcuda.runtime.cudaStream_t;
@@ -24,7 +31,41 @@ public class AdamW extends Updater {
         this.weight_decay = this.net.weight_decay;
         this.params = network.updaterParams;
     }
+    
+    public static void main(String[] args) {
+    	
+    	int N = 2;
+    	int W = 4;
+    	
+    	Transformer tf = new Transformer();
+    	
+    	String inputPath = "D:\\models\\w.json";
+        Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
+        Tensor w = new Tensor(N, 1, 1, W, true);
+        ModeLoaderlUtils.loadData(w, datas, "w", 2);
+    	
+    	String dwPath = "D:\\models\\dw.json";
+        Map<String, Object> dwDatas = LagJsonReader.readJsonFileSmallWeight(dwPath);
+        Tensor dw = new Tensor(N, 1, 1, W, true);
+        ModeLoaderlUtils.loadData(dw, dwDatas, "dw", 2);
+        
+        w.showDM();
+        dw.showDM();
+        System.err.println("----------");
+        AdamWKernel kernel = new AdamWKernel(8, 0.0f, tf.cudaManager);
+        tf.weight_decay = 0.0f;
+        cudaStream_t streamt = new cudaStream_t();
+        JCuda.cudaStreamCreate(streamt);
+        CUstream stream = new CUstream(streamt);
+        
+        for(int i = 0;i<100000;i++) {
+        	tf.train_time++;
+            kernel.updateW3(dw, w, tf, 0.0002f, stream);
+            w.showDM();
+        }
 
+    }
+    
     @Override
     public void update(Layer layer) {
         // TODO Auto-generated method stub
@@ -43,9 +84,10 @@ public class AdamW extends Updater {
             stream = new CUstream(streamt);
             kernel.setParams(params);
         }
-        kernel.updateW(layer.diffW, layer.weight, layer.network, layer.learnRate, stream);
+
+        kernel.updateW(layer.diffW, layer.weight, layer.network, layer.learnRate);
         if (layer.hasBias) {
-            kernel.updateB(layer.diffB, layer.bias, layer.network, layer.learnRate, stream);
+            kernel.updateB(layer.diffB, layer.bias, layer.network, layer.learnRate);
         }
     }
 
@@ -67,17 +109,18 @@ public class AdamW extends Updater {
             if (layer.beta != null) {
                 kernel = new AdamWKernel(layer.gamma.dataLength, layer.beta.dataLength, weight_decay, net.cudaManager);
             } else {
-                kernel = new AdamWKernel(layer.gamma.dataLength, 0, weight_decay, net.cudaManager);
+                kernel = new AdamWKernel(layer.gamma.dataLength, weight_decay, net.cudaManager);
             }
             streamt = new cudaStream_t();
             JCuda.cudaStreamCreate(streamt);
             stream = new CUstream(streamt);
+            kernel.setParams(params);
         }
-        kernel.setParams(params);
-        kernel.updateGamma(layer.diffGamma, layer.gamma, layer.network, layer.learnRate, stream);
+
+        kernel.updateGamma(layer.diffGamma, layer.gamma, layer.network, layer.learnRate);
         layer.diffGamma.clearGPU(streamt);
         if (layer.beta != null) {
-            kernel.updateBeta(layer.diffBeta, layer.beta, layer.network, layer.learnRate, stream);
+            kernel.updateBeta(layer.diffBeta, layer.beta, layer.network, layer.learnRate);
             layer.diffBeta.clearGPU(streamt);
         }
     }

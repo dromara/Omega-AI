@@ -73,17 +73,20 @@ public class DiT_TXTFinalLayer extends Layer {
     	this.finalNorm = new RMSLayer(1, 1, hidden_size, normParams, BNType.fully_bn, network);
         this.finalLinear = new FullyLayer(hidden_size, oWidth, bias, network);
         this.finalLinear.weight.clearGPU();
-        this.finalLinear.bias.clearGPU();
-        //		this.linear1.weight = new Tensor(1, 1, embedDim, nChannel, RandomUtils.uniform(this.embedDim * nChannel, 0.0f, 0.02f), true);
+        if(this.finalLinear.bias != null) {
+        	this.finalLinear.bias.clearGPU();
+        }
         this.m_active = new SiLULayer(network);
         this.m_linear1 = new FullyLayer(hidden_size, hidden_size, bias, network);
         this.m_linear2 = new FullyLayer(hidden_size, hidden_size, bias, network);
         this.m_linear1.weight.clearGPU();
-        this.m_linear1.bias.clearGPU();
+        if(this.m_linear1.bias != null) {
+        	this.m_linear1.bias.clearGPU();
+        }
         this.m_linear2.weight.clearGPU();
-        this.m_linear2.bias.clearGPU();
-        //		this.linear2.weight = new Tensor(1, 1, nChannel, embedDim, RandomUtils.uniform(this.embedDim * nChannel, 0.0f, 0.02f), true);
-        //		this.linear2.weight = new Tensor(1, 1, nChannel, embedDim, RandomUtils.uniform(this.embedDim * nChannel, 0.0f, (0.02f / (float) Math.sqrt(2 * net.decoderNum))), true);
+        if(this.m_linear2.bias != null) {
+        	this.m_linear2.bias.clearGPU();
+        }
     }
 
     @Override
@@ -129,7 +132,7 @@ public class DiT_TXTFinalLayer extends Layer {
     	m_linear2.forward(m_active.getOutput());
     	
     	finalNorm.forward(input);
-    	
+
     	/**
     	 * modulate
     	 * x = x * (1 + scale) + shift
@@ -137,8 +140,9 @@ public class DiT_TXTFinalLayer extends Layer {
     	Tensor_OP().add(m_linear2.getOutput(), 1, m_linear2.getOutput());
     	Tensor_OP().mul(finalNorm.getOutput(), m_linear2.getOutput(), linearInput, batchSize, time, 1, finalNorm.getOutput().width, 1);
     	Tensor_OP().addAxis(linearInput, m_linear1.getOutput(), linearInput, batchSize, time, 1, finalNorm.getOutput().width, 1);
-    	
+
     	finalLinear.forward(linearInput);
+
     	this.output = finalLinear.getOutput();
 
     }
@@ -158,7 +162,7 @@ public class DiT_TXTFinalLayer extends Layer {
     public void diff(Tensor dtc) {
         // TODO Auto-generated method stub
     	finalLinear.back(this.delta);
-
+//    	finalLinear.diff.showDM("l1");
         Tensor_OP().addAxisBack(dShift, finalLinear.diff, batchSize, time, 1, finalNorm.getOutput().width, 1);
 
     	Tensor_OP().mul_right_back(finalNorm.getOutput(), finalLinear.diff, dScale, batchSize, time, 1, finalNorm.getOutput().width, 1);
@@ -269,12 +273,10 @@ public class DiT_TXTFinalLayer extends Layer {
         this.initBack();
         /**
          * 设置梯度
-
          */
         this.setDelta(delta);
         /**
          * 计算梯度
-
          */
         this.diff(dtc);
         if (this.network.GRADIENT_CHECK) {

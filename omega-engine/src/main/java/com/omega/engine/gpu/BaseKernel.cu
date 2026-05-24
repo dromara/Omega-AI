@@ -121,6 +121,59 @@ __global__ void concat_channel_backward_kernel(
 }
 
 extern "C"
+__global__ void concat_height_forward_kernel(
+    const float* x1, const float* x2,
+    float* out,
+    int B, int C, int H1, int H2, int W
+) {
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if (idx < B * C * H1 * W) {
+        // copy input from x1
+        int b = idx / (C * H1 * W);
+        int c = (idx / H1 / W) % C;
+        int h = (idx / W) % H1;
+        int w = idx % W;
+        int out_idx = b * C * (H1 + H2) * W + c * (H1 + H2) * W + h * W + w;
+        out[out_idx] = x1[idx];
+    }
+    if (idx < B * C * H2 * W) {
+        // copy input from x2
+        // move over from x1
+        int b = idx / (C * H2 * W);
+        int c = (idx / H2 / W) % C;
+        int h = (idx / W) % H2;
+        int w = idx % W;
+        int out_idx = b * C * (H1 + H2) * W + c * (H1 + H2) * W + (H1 + h) * W + w;
+        out[out_idx] = x2[idx];
+    }
+}
+
+extern "C"
+__global__ void concat_height_backward_kernel(
+    const float* dout,
+    float* dx1, float* dx2,
+    int B, int C, int H1, int H2, int W
+) {
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if (idx < B * C * H1 * W) {
+        int b = idx / (C * H1 * W);
+        int c = (idx / H1 / W) % C;
+        int h = (idx / W) % H1;
+        int w = idx % W;
+        int out_idx = b * C * (H1 + H2) * W + c * (H1 + H2) * W + h * W + w;
+        dx1[idx] = dout[out_idx];
+    }
+    if (idx < B * C * H2 * W) {
+        int b = idx / (C * H2 * W);
+        int c = (idx / H2 / W) % C;
+        int h = (idx / W) % H2;
+        int w = idx % W;
+        int out_idx = b * C * (H1 + H2) * W + c * (H1 + H2) * (H1 + h) + h * W + w;
+        dx2[idx] = dout[out_idx];
+    }
+}
+
+extern "C"
 __global__ void replace_channel_forward_kernel(
     float* out,
     const float* x1, const float* x2,

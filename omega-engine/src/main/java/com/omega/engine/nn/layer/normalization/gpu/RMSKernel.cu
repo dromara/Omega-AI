@@ -211,7 +211,7 @@ __global__ void rmsnorm_forward_kernel2(float *__restrict__ out, const float *__
     sum_squares = cg::reduce(warp, sum_squares, cg::plus<float>{});
 
     // Calculate RMS
-    float rms = sqrtf(sum_squares / C + 1e-5f);
+    float rms = sqrtf(sum_squares / C + 1e-6f);
 
     // Final normalization and scaling by weight/bias
     float *o = out + idx * C;
@@ -236,7 +236,7 @@ __global__ void rmsnorm_backward_kernel2(float *__restrict__ dinp, float *__rest
     if (idx >= N)
         return;
 
-    const float eps = 1e-5f;
+    const float eps = 1e-6f;
     const float *dout_bt = dout + idx * C;
     const float *inp_bt = inp + idx * C;
     float *dinp_bt = dinp + idx * C;

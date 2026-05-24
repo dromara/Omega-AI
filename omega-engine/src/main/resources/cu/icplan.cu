@@ -65,6 +65,30 @@ __global__ void cosine_similarity_loss(
 }
 
 extern "C"
+__global__ void cosine_similarity_loss_dim1(
+    float* x1,
+    float* norm1,
+    float* x2,
+    float* norm2,
+    float* out,
+    int N,
+    int C,
+    int W
+) {
+    int idx = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (idx < N) {
+	   int n = idx / W;
+	   int w = idx % W;
+	   float o = 0.0f;
+	   for(int c = 0;c<C;c++){
+	     int x_idx = n * C * W + c * W + w;
+	     o += (x1[x_idx] / norm1[idx]) * (x2[x_idx] / norm2[idx]);
+	   }
+       out[idx] = 1 - o;
+    }
+}
+
+extern "C"
 __global__ void cosine_similarity_loss_back1(
 	float delta,
     float* x1,

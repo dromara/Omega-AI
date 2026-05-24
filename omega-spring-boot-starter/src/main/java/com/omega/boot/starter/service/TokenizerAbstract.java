@@ -2,6 +2,7 @@ package com.omega.boot.starter.service;
 
 import com.omega.example.transformer.utils.SentencePieceTokenizer;
 import com.omega.example.transformer.utils.bpe.BPETokenizer3;
+import com.omega.example.transformer.utils.bpe.BPETokenizerEN;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,7 +25,9 @@ public class TokenizerAbstract {
             case "bpetokenizer3":
                 return getBPETokenizer3(path);
             case "sentencepiecetokenizer":
-            return getSentencePieceTokenizer(path);
+                return getSentencePieceTokenizer(path);
+            case "bpetokenizeren":
+                return getBPETokenizerEN(path);
             default:
                 logger.error("tokenizer_class is not support: {}", tokenizerClass);
                 break;
@@ -34,6 +37,15 @@ public class TokenizerAbstract {
     public BPETokenizer3 getBPETokenizer3(String path) {
         try {
             return new BPETokenizer3(path+ File.separator+vocab, path + File.separator+merges);
+        } catch (Exception e) {
+            logger.error("Error loading tokenizer: {}", e);
+        }
+        return null;
+    }
+
+    public BPETokenizerEN getBPETokenizerEN(String path) {
+        try {
+            return new BPETokenizerEN(path+ File.separator+vocab, path + File.separator+merges, 49406, 49407);
         } catch (Exception e) {
             logger.error("Error loading tokenizer: {}", e);
         }

@@ -11,8 +11,8 @@ import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.dit.DiTCaptionEmbeddingLayer;
+import com.omega.engine.nn.layer.dit.DiTOrgTimeEmbeddingLayer;
 import com.omega.engine.nn.layer.dit.DiTPatchEmbeddingLayer;
-import com.omega.engine.nn.layer.dit.DiTTimeEmbeddingLayer;
 import com.omega.engine.nn.layer.dit.txt.DiT_TXTFinalLayer;
 import com.omega.engine.nn.layer.gpu.RoPEKernel;
 import com.omega.engine.nn.network.CNN;
@@ -42,7 +42,7 @@ public class FluxDiTMainMoudue extends Layer {
     private boolean learnSigma = true;
     
     public DiTPatchEmbeddingLayer patchEmbd;
-    public DiTTimeEmbeddingLayer timeEmbd;
+    public DiTOrgTimeEmbeddingLayer timeEmbd;
     public DiTCaptionEmbeddingLayer labelEmbd;
     public List<FluxDiTBlock> blocks;
     public DiT_TXTFinalLayer finalLayer;
@@ -95,7 +95,7 @@ public class FluxDiTMainMoudue extends Layer {
         
     	hw = patchEmbd.oChannel;
     	
-        timeEmbd = new DiTTimeEmbeddingLayer(timeSteps, 256, hiddenSize, true, network);
+        timeEmbd = new DiTOrgTimeEmbeddingLayer(timeSteps, 256, hiddenSize, true, network);
         
         labelEmbd = new DiTCaptionEmbeddingLayer(textEmbedDim, hiddenSize, maxContextLen, y_drop_prob, true, network);
         
@@ -166,7 +166,8 @@ public class FluxDiTMainMoudue extends Layer {
     		grid_h[i] = w;
        		grid_w[i] = h;
     	}
-
+//    	System.err.println("grid_h:"+JsonUtils.toJson(grid_h));
+//    	System.err.println("grid_w:"+JsonUtils.toJson(grid_w));
     	float[] emb_h = get_1d_sincos_pos_embed_from_grid(embed_dim/2, grid_h);
     	float[] emb_w = get_1d_sincos_pos_embed_from_grid(embed_dim/2, grid_w);
     	
@@ -199,6 +200,7 @@ public class FluxDiTMainMoudue extends Layer {
     		d_o = Tensor.createGPUTensor(d_o, input.number * (maxContextLen + hw), 1, 1, patchEmbd.getOutput().width, true);
     	}else {
     		dtc.clearGPU();
+    		d_o.clearGPU();
     	}
     }
 
@@ -232,7 +234,7 @@ public class FluxDiTMainMoudue extends Layer {
     	baseKernel.concat_channel_forward(cond, x, cat_x, input.number, maxContextLen, hw, 1, patchEmbd.getOutput().width);
     	
     	Tensor bx = cat_x;
-    	
+
     	for(int i = 0;i<depth;i++) {
     		FluxDiTBlock block = blocks.get(i);
     		block.forward(bx, t);
@@ -274,20 +276,23 @@ public class FluxDiTMainMoudue extends Layer {
     	Tensor t = timeEmbd.getOutput();
     	
     	Tensor cond = labelEmbd.getOutput();
-    	
+//    	x.showDM("x");
+//    	cond.showDM("cond");
     	//x = torch.cat([txt, img], dim=1)
     	baseKernel.concat_channel_forward(cond, x, cat_x, input.number, maxContextLen, hw, 1, patchEmbd.getOutput().width);
     	
     	Tensor bx = cat_x;
-
+//    	bx.showDM("bx1");
     	for(int i = 0;i<depth;i++) {
     		FluxDiTBlock block = blocks.get(i);
     		block.forward(bx, t, cos, sin);
     		bx = block.getOutput();
+//        	bx.showDM("bx:"+i);
     	}
+
     	//img_o = x[:, txt.shape[1]:, ...]
     	Tensor_OP().getByChannel(bx, img_x, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
-
+    	
     	finalLayer.forward(img_x, t);
     	
     	/**
@@ -326,7 +331,6 @@ public class FluxDiTMainMoudue extends Layer {
     	finalLayer.back(finalLayer.getOutput(), dtc);
     	
     	Tensor dy = d_o;
-    	dy.clearGPU();
     	
     	Tensor_OP().getByChannel_back(dy, finalLayer.diff, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
     	
@@ -366,18 +370,21 @@ public class FluxDiTMainMoudue extends Layer {
     	Tensor dy = d_o;
     	dy.clearGPU();
 //    	System.err.println(input.number);
-//    	dy.showShape("dy");
+
     	Tensor_OP().getByChannel_back(dy, finalLayer.diff, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
 
      	for(int i = depth - 1;i>=0;i--) {
      		FluxDiTBlock block = blocks.get(i);
     		block.back(dy, dtc, cos, sin);
     		dy = block.diff;
+//        	dy.showDM("dy");
     	}
+//     	dy.showDM("dy");
+//     	dtc.showDM("dtc");
 //     	dy.showDMByOffsetRed(0, 100, "dy");
      	baseKernel.concat_channel_backward(dy, labelEmbd.getOutput(), img_x, input.number, maxContextLen, hw, 1, patchEmbd.getOutput().width);
 //     	System.err.println(labelEmbd.getOutput().isZero());
-//     	labelEmbd.getOutput().showDMByOffsetRed(2000, 10, "l-diff");
+//     	img_x.showDM("img_x");
      	labelEmbd.back(labelEmbd.getOutput());
      	
      	timeEmbd.back(dtc);

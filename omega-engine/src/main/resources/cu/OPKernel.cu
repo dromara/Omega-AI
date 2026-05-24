@@ -158,17 +158,54 @@ __global__ void copy_channel_kernel(int N,  float *X, float *Y, int n,int c,int 
 }
 
 extern "C"
+__global__ void copy_add_channel_kernel(int N,  float *X, float *Y, int n,int c,int h,int w,int start,int cp)
+
+{
+
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+
+    if(i < N){
+
+    	int bc = N / n / h / w;
+
+		int size = bc * h * w;
+
+    	int tn = i / size;
+
+		int tc = (i / h / w) % bc + start;
+
+		int th = i / w % h;
+
+		int tw = i % w;
+
+		int index = tn * c * h * w + tc * h * w + th * w + tw;
+
+    	if(cp == 0){
+
+			Y[i] += X[index];
+
+		}else{
+
+			X[index] += Y[i];
+
+		}
+
+    }
+
+}
+
+extern "C"
 __global__ void get_by_channel_kenel(int N, float *X, float *Y, int C,int H,int W, float *ids)
 {
 
     int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
 
     if(i < N){
-		
+
 		int n = i / H / W;
 		int c = (int) ids[n];
 		int hw = i % (H * W);
-		
+
 		int index = n * C * H * W + c * H * W + hw;
 
     	Y[i] = X[index];
@@ -313,7 +350,7 @@ __global__ void add_axis_kernel(int N, float *X, float *Y, float *R,int axis)
 
     	R[i] = X[i] + Y[yi];
 
-    } 
+    }
 
 }
 
@@ -331,7 +368,7 @@ __global__ void add_axis_kernel2(int N, float *X, float *Y, float *R,int axis)
 
     	R[i] = X[i] + Y[yi];
 
-    } 
+    }
 
 }
 
@@ -345,7 +382,7 @@ __global__ void add_axis_kernel3(int N, float *X, float *Y, float *R, int B, int
 
     	int yi = 0;
     	int len = C * H * W;
-    	
+
     	if(axis == 0){
 			yi = i % len;
 		}else if(axis == 1){
@@ -355,7 +392,7 @@ __global__ void add_axis_kernel3(int N, float *X, float *Y, float *R, int B, int
 
     	R[i] = X[i] + Y[yi];
 
-    } 
+    }
 
 }
 
@@ -377,7 +414,7 @@ __global__ void add_axis_back_kernel(int N, float *dX, float *dY, int B, int C, 
 			}
 		}
     	dX[i] = dy;
-    } 
+    }
 }
 
 extern "C"
@@ -390,7 +427,7 @@ __global__ void mul_axis_kernel(int N, float *X, float *Y, float *R, int B, int 
 
     	int yi = 0;
     	int len = C * H * W;
-    	
+
     	if(axis == 0){
 			yi = i % len;
 		}else if(axis == 1){
@@ -400,7 +437,7 @@ __global__ void mul_axis_kernel(int N, float *X, float *Y, float *R, int B, int 
 
     	R[i] = X[i] * Y[yi];
 
-    } 
+    }
 
 }
 
@@ -417,7 +454,7 @@ __global__ void mul_axis_kernel2(int N, float *X, float *Y, float *R, int axis)
 
     	R[i] = X[i] * Y[yi];
 
-    } 
+    }
 
 }
 
@@ -432,7 +469,7 @@ __global__ void mul_axis_back_kernel(int N, float *X, float *Y, float *R, int WH
     	for(int wh = 0;wh<WH;wh++){
 			R[i] += X[i * WH + wh] * Y[i * WH + wh];
 		}
-    } 
+    }
 }
 
 extern "C"
@@ -444,7 +481,7 @@ __global__ void mul_axis_back_left_kernel(int N, float *Y, float *delta, float *
 
     	int yi = 0;
     	int len = C * H * W;
-    	
+
     	if(axis == 0){
 			yi = i % len;
 		}else if(axis == 1){
@@ -454,7 +491,7 @@ __global__ void mul_axis_back_left_kernel(int N, float *Y, float *delta, float *
 
     	dx[i] = delta[i] * Y[yi];
 
-    } 
+    }
 }
 
 extern "C"
@@ -491,7 +528,7 @@ __global__ void expand_kernel(int N, float *X, float *Y, int axis)
 
     	Y[i] = X[xi];
 
-    } 
+    }
 
 }
 
@@ -506,9 +543,9 @@ __global__ void sum_kernel(int N, float *X, float *Y)
     int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
 
     if(i < 1) {
-		
+
 		Y[0] = 0;
-		
+
 	    for(int index = 0;index<N;index++){
 
 	    	Y[0] += X[index];
@@ -917,7 +954,7 @@ __global__ void sub_axis_kernel(int N, float *X, float *Y, float *R,int axis)
 
     	R[i] = X[i] - Y[yi];
 
-    } 
+    }
 
 }
 
@@ -970,7 +1007,7 @@ __global__ void bool_kernel(int N, float *X, float *Y, float *R,float val)
 
     	}
 
-    } 
+    }
 
 }
 
@@ -982,9 +1019,9 @@ __global__ void mask_kernel(int N, float *X, float *Y, float *R, int onceSize,fl
     int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
 
     if(i < N){
-		
+
 		int idx = i % onceSize;
-		
+
     	if(Y[idx] == 1){
 
     		R[i] = val;
@@ -995,7 +1032,7 @@ __global__ void mask_kernel(int N, float *X, float *Y, float *R, int onceSize,fl
 
     	}
 
-    } 
+    }
 
 }
 
@@ -1104,7 +1141,7 @@ __global__ void div_axis_kernel(int N, float *X, float *Y, float *R,int axis)
 
     	R[i] = X[i] / Y[yi];
 
-    } 
+    }
 
 }
 
@@ -1146,7 +1183,7 @@ __global__ void div_bGrad_kernel(int N, float *D, float *A, float *B, float *Y)
 
     int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
 
-    if(i < N) Y[i] += - 1.0f * D[i] * A[i] / (B[i] * B[i]); 
+    if(i < N) Y[i] += - 1.0f * D[i] * A[i] / (B[i] * B[i]);
 
 }
 
@@ -1164,11 +1201,11 @@ __global__ void div_bGrad_axis_kernel(int N, float *D, float *A, float *B, float
 
     	for(int di = 0;di<axis;di++){
 
-    		Y[i] += (- 1.0f * D[i * axis + di] * A[i * axis + di]) / (B[i] * B[i]); 
+    		Y[i] += (- 1.0f * D[i * axis + di] * A[i * axis + di]) / (B[i] * B[i]);
 
     	}
 
-    } 
+    }
 
 }
 
@@ -1182,7 +1219,7 @@ __global__ void div_scalar_bGrad_kernel(int N, float *D, float A, float *B, floa
 
     int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
 
-    if(i < N) Y[i] += - 1.0f * D[i] * A / (B[i] * B[i]); 
+    if(i < N) Y[i] += - 1.0f * D[i] * A / (B[i] * B[i]);
 
 }
 
@@ -1216,7 +1253,7 @@ __global__ void div_plus_axis_kernel(int N, float *X, float *Y, float *R, int ax
 
     	R[i] += X[i] / Y[yi];
 
-    } 
+    }
 
 }
 
@@ -1568,7 +1605,7 @@ extern "C"
 
 __global__ void transpose_kernel(int N, float *A, float *B,int m,int n)
 
-{	
+{
 
 	int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
 
@@ -1732,7 +1769,6 @@ __global__ void cat_width_kernel2(int N, float *a, float *b, float *y, int AW, i
 
     if (tid < N) {
 		int W = AW + BW;
-		
         for (int i = 0; i < W; i++) {
 			if(i < AW){
 				y[tid * W + i] = a[tid * AW + i];

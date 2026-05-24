@@ -5,8 +5,10 @@ import java.io.RandomAccessFile;
 import java.util.concurrent.CompletableFuture;
 
 import com.omega.common.utils.MathUtils;
+import com.omega.engine.ad.op.TensorOP;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
+import com.omega.engine.gpu.GPUOP;
 import com.omega.engine.nn.network.utils.ModelUtils;
 import com.omega.engine.tensor.Tensor;
 import com.omega.example.dit.models.ICPlanKernel;
@@ -44,6 +46,11 @@ public class LatendDataset extends BaseTokenizer {
     private CompletableFuture<Boolean> cf;
     private BinDataType dataType = BinDataType.float32;
     private int byteUnit = 4;
+
+    private Tensor mean;
+    private Tensor logvar;
+    private Tensor std;
+    private Tensor z;
     
     private BaseKernel kernel;
     
@@ -198,6 +205,66 @@ public class LatendDataset extends BaseTokenizer {
             // TODO: handle exception
             e.printStackTrace();
         }
+    }
+    
+    public void loadData(int[] index, int[] next,Tensor input, Tensor label, int it) {
+        try {
+            //			System.out.println(it);
+        	if(it == 0) {
+        		cf = null;
+        	}
+            if (cf != null) {
+                boolean success = cf.get();//等待数据从文件加载完毕
+                if(success){
+                	cf = null;
+                	/**
+                	 *  input.hostToDevice(); //把当前内存的数据加载到显存上
+				     *  label.hostToDevice(); //把当前内存的数据加载到显存上
+				     *  cf = loadAsyncData(index, input, label); //开启下一轮文件数据的读取
+                	 */
+                	loadData(next, input, label);
+                }
+            } else {
+            	/**
+            	 * 首轮数据加载
+            	 */
+                cf = loadAsyncData(index, input, label);
+                boolean success = cf.get();
+                if(success){
+                	cf = null;
+                	loadData(next, input, label);
+                }
+            }
+//            System.out.println("load cost:"+(System.nanoTime() - start)/1e6+"ms.");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public Tensor sample(TensorOP tensorOP,Tensor en_out) {
+    	
+    	if(z == null || z.number != en_out.number) {
+    		mean = Tensor.createGPUTensor(mean, en_out.number, channel/2, en_out.height, en_out.width, true);
+    		logvar = Tensor.createGPUTensor(logvar, mean.shape(), true);
+    		std = Tensor.createGPUTensor(std, mean.shape(), true);
+    		z = Tensor.createGPUTensor(z, mean.shape(), true);
+    	}
+    	
+    	GPUOP.getInstance().cudaRandn(z);
+
+    	tensorOP.getByChannel(en_out, mean, 0, channel/2);
+    	tensorOP.getByChannel(en_out, logvar, channel/2, channel/2);
+    	
+    	tensorOP.clamp(logvar, -30, 20, logvar);
+    	
+    	tensorOP.mul(logvar, 0.5f, std);
+    	tensorOP.exp(std, std);
+    	
+    	tensorOP.mul(z, std, z);
+    	tensorOP.add(z, mean, z);
+    	
+    	return z;
     }
     
     public float[] readIdxData() throws IOException {

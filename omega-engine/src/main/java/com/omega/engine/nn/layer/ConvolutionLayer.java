@@ -323,7 +323,7 @@ public class ConvolutionLayer extends Layer {
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
-        if (this.diff == null || this.number != this.diff.number) {
+        if (PROPAGATE_DOWN && (this.diff == null || this.number != this.diff.number)) {
             this.diff = new Tensor(number, channel, height, width, true);
         }
         if (this.diffW == null && !freeze) {
@@ -610,12 +610,10 @@ public class ConvolutionLayer extends Layer {
         this.initBack(diff);
         /**
          * 设置梯度
-
          */
         this.setDelta(delta);
         /**
          * 计算梯度
-
          */
         this.diff(diff);
         if (this.network.GRADIENT_CHECK) {

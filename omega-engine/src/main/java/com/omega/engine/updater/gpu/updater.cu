@@ -52,6 +52,47 @@ __global__ void adamw_kernel(float* weight, const float* diffW, float* mw, float
 }
 
 extern "C"
+__global__ void adamw_kernel3(float* weight, const float* diffW, float* mw, float* vw, int n,
+                              float learnRate, float beta1, float beta2, int step, float eps, float weight_decay) {
+   int i = blockIdx.x * blockDim.x + threadIdx.x;
+   if (i >= n) return;  // guard
+   float grad = diffW[i];
+   float m = mw[i];
+   float v = vw[i];
+   // update the first moment (momentum)
+   m = lerp(grad, m, beta1);
+   mw[i] = m;
+   // update the second moment (RMSprop)
+   v = lerp(grad * grad, v, beta2);
+   vw[i] = v;
+   m /= (1 - pow(beta1, step));  // m_hat
+   v /= (1 - pow(beta2, step));  // v_hat
+   weight[i] -= learnRate * (m / (sqrtf(v) + eps) + weight_decay * weight[i]);
+}
+
+extern "C"
+__global__ void adamw_kernel2(float* weight, const float* diffW, float* mw, float* vw, int n,
+                              float lr, float beta1, float beta2, float beta1_correction, float beta2_correction, float eps, float weight_decay) {
+   int i = blockIdx.x * blockDim.x + threadIdx.x;
+   if (i >= n) return;  // guard
+   float grad = diffW[i];
+   float m = mw[i];
+   float v = vw[i];
+   // update the first moment (momentum)
+   m = m * beta1 + grad * (1.0f - beta1);
+   v = v * beta2 + grad * grad * (1.0f - beta2);
+   mw[i] = m;
+   vw[i] = v;
+   
+   float step_size = lr / beta1_correction;
+   float bias_correction2_sqrt = sqrtf(beta2_correction);
+   
+   float denom = (sqrtf(v) / bias_correction2_sqrt) + eps;
+   //out[i] = input[i] + value * (tensor1[i] / tensor2[i])
+   weight[i] = weight[i] - step_size * (m / denom) + weight_decay * weight[i];
+}
+
+extern "C"
 __global__ void adamwr(float *diffW, float *weight,float *mw,float *vw,float beta1,float beta2,float learnRate, float weight_decay, int n, int batch, int t)
 {
     int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;

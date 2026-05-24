@@ -22,7 +22,7 @@ import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 /**
- * DiTAttentionLayer2
+ * DiTAttentionLayer4
  *
  * @author Administrator
  */
@@ -69,7 +69,6 @@ public class DiTAttentionLayer2 extends Layer {
     
     private int[] p_0213 = new int[]{0, 2, 1, 3};
     
-
     public DiTAttentionLayer2(int embedDim, int headNum, int time, boolean bias, boolean qkNorm) {
         this.bias = bias;
         this.time = time;
@@ -148,7 +147,7 @@ public class DiTAttentionLayer2 extends Layer {
         	this.oLinerLayer.bias.clearGPU();
         }
         //		this.oLinerLayer.weight = new Tensor(1, 1, embedDim, embedDim, MatrixUtils.order(embedDim * embedDim, 0.1f, 0.01f), true);
-
+        
         if (attentionKernel == null) {
             attentionKernel = new AttentionKernel(cuda());
         }
@@ -182,8 +181,8 @@ public class DiTAttentionLayer2 extends Layer {
         }
         if (this.qt == null || this.qt.number != this.batchSize || this.qt.height != this.time) {
             // [batch_size，time，head_num，d_k]
-        	this.rq = Tensor.createGPUTensor(this.rq, batchSize, time, headNum, dk, true);
-            this.rk = Tensor.createGPUTensor(this.rk, batchSize, time, headNum, dk, true);
+        	this.rq = Tensor.createGPUTensor(this.rq, batchSize, headNum, time, dk, true);
+            this.rk = Tensor.createGPUTensor(this.rk, batchSize, headNum, time, dk, true);
             this.qt = Tensor.createGPUTensor(this.qt, batchSize, headNum, time, dk, true);
             this.kt = Tensor.createGPUTensor(this.kt, batchSize, headNum, time, dk, true);
             this.vt = Tensor.createGPUTensor(this.vt, batchSize, headNum, time, dk, true);
@@ -208,14 +207,18 @@ public class DiTAttentionLayer2 extends Layer {
             this.getvLinerLayer().getOutput().viewOrg();
             this.getoLinerLayer().getOutput().viewOrg();
         }
+        if(qkNorm && this.qNorm.getOutput() != null) {
+        	this.qNorm.getOutput().viewOrg();
+        	this.kNorm.getOutput().viewOrg();
+        }
     }
     
     public void init_eval(Tensor input) {
         // TODO Auto-generated method stub
         this.number = input.number;
         this.batchSize = this.number/time;
-        this.rq = CUDAMemoryManager.getCache("dit_block_attn_rq", batchSize, time, headNum, dk);
-    	this.rk = CUDAMemoryManager.getCache("dit_block_attn_rk", batchSize, time, headNum, dk);
+        this.rq = CUDAMemoryManager.getCache("dit_block_attn_rq", batchSize, headNum, time, dk);
+    	this.rk = CUDAMemoryManager.getCache("dit_block_attn_rk", batchSize, headNum, time, dk);
     	this.qt = CUDAMemoryManager.getCache("dit_block_attn_qt", batchSize, headNum, time, dk);
     	this.kt = CUDAMemoryManager.getCache("dit_block_attn_kt", batchSize, headNum, time, dk);
     	this.vt = CUDAMemoryManager.getCache("dit_block_attn_vt", batchSize, headNum, time, dk);
@@ -232,6 +235,10 @@ public class DiTAttentionLayer2 extends Layer {
         this.oi = CUDAMemoryManager.getCache("dit_block_attn_oi", batchSize * time, 1, 1, embedDim);
         this.output = CUDAMemoryManager.getCache("dit_block_attn_out", input.number, input.channel, input.height, input.width);
         this.temp_out = CUDAMemoryManager.getCache("dit_block_attn_temp_out", input.number, input.channel, input.height, input.width);
+        if(qkNorm && this.qNorm.getOutput() != null) {
+        	this.qNorm.getOutput().viewOrg();
+        	this.kNorm.getOutput().viewOrg();
+        }
     }
 
     @Override
@@ -264,7 +271,7 @@ public class DiTAttentionLayer2 extends Layer {
     @Override
     public void output() {
         // TODO Auto-generated method stub
-    	
+
         this.getqLinerLayer().forward(input);
         this.getkLinerLayer().forward(input);
         this.getvLinerLayer().forward(input);
@@ -272,6 +279,7 @@ public class DiTAttentionLayer2 extends Layer {
         Tensor query = this.getqLinerLayer().getOutput().view(batchSize, time, headNum, dk);
         Tensor key = this.getkLinerLayer().getOutput().view(batchSize, time, headNum, dk);
         Tensor value = this.getvLinerLayer().getOutput().view(batchSize, time, headNum, dk);
+
         Tensor_OP().permute(query, qt, p_0213);
         Tensor_OP().permute(key, kt, p_0213);
         Tensor_OP().permute(value, vt, p_0213);
@@ -283,7 +291,8 @@ public class DiTAttentionLayer2 extends Layer {
         }else {
         	scaledDotProductAttention(qt, kt, vt);
         }
-   	 	
+   	 	temp.showDM("temp");
+
         Tensor vaccum = temp;
         attentionKernel.unpermute(vaccum, oi, batchSize, time, headNum, dk);
 
@@ -301,23 +310,31 @@ public class DiTAttentionLayer2 extends Layer {
         Tensor query = this.getqLinerLayer().getOutput().view(batchSize, time, headNum, dk);
         Tensor key = this.getkLinerLayer().getOutput().view(batchSize, time, headNum, dk);
         Tensor value = this.getvLinerLayer().getOutput().view(batchSize, time, headNum, dk);
-        /**
-         * apply RoPE
-         */
-        ropeKernel.forward2d(cos, sin, query, rq, time, headNum, dk);
-        ropeKernel.forward2d(cos, sin, key, rk, time, headNum, dk);
         
-        Tensor_OP().permute(rq, qt, p_0213);
-        Tensor_OP().permute(rk, kt, p_0213);
+        Tensor_OP().permute(query, qt, p_0213);
+        Tensor_OP().permute(key, kt, p_0213);
         Tensor_OP().permute(value, vt, p_0213);
 
+        Tensor q = qt;
+        Tensor k = kt;
         if(qkNorm) {
-        	qNorm.forward(qt);
-        	kNorm.forward(kt);
-        	scaledDotProductAttention(qNorm.getOutput(), kNorm.getOutput(), vt);
-        }else {
-        	scaledDotProductAttention(qt, kt, vt);
+        	qNorm.forward(q);
+        	kNorm.forward(k);
+        	q = qNorm.getOutput();
+        	k = kNorm.getOutput();
         }
+        
+        /**
+         * apply RoPE
+         * qt = [B, HN, T, HS]
+         */
+        cos.showDM("cos");
+        sin.showDM("sin");
+        ropeKernel.forward2d(cos, sin, q, rq, time, headNum, dk);
+        ropeKernel.forward2d(cos, sin, k, rk, time, headNum, dk);
+
+        scaledDotProductAttention(rq, rk, vt);
+        
         Tensor vaccum = temp;
         attentionKernel.unpermute(vaccum, oi, batchSize, time, headNum, dk);
 
@@ -335,23 +352,114 @@ public class DiTAttentionLayer2 extends Layer {
         Tensor query = this.getqLinerLayer().getOutput().view(batchSize, time, headNum, dk);
         Tensor key = this.getkLinerLayer().getOutput().view(batchSize, time, headNum, dk);
         Tensor value = this.getvLinerLayer().getOutput().view(batchSize, time, headNum, dk);
+        
+        Tensor_OP().permute(query, qt, p_0213);
+        Tensor_OP().permute(key, kt, p_0213);
+        Tensor_OP().permute(value, vt, p_0213);
+        
+        Tensor q = qt;
+        Tensor k = kt;
+        
+        if(qkNorm) {
+        	qNorm.forward(q);
+        	kNorm.forward(k);
+        	q = qNorm.getOutput();
+        	k = kNorm.getOutput();
+        }
+        
         /**
          * apply RoPE
+         * qt = [B, HN, T, HS]
          */
-        ropeKernel.forward2d(cos, sin, query, rq, time, headNum, dk, igone);
-        ropeKernel.forward2d(cos, sin, key, rk, time, headNum, dk, igone);
-        
-        Tensor_OP().permute(rq, qt, p_0213);
-        Tensor_OP().permute(rk, kt, p_0213);
-        Tensor_OP().permute(value, vt, p_0213);
+        ropeKernel.forward2d(cos, sin, q, rq, time, headNum, dk, igone);
+        ropeKernel.forward2d(cos, sin, k, rk, time, headNum, dk, igone);
 
+        scaledDotProductAttention(rq, rk, vt);
+        
+        Tensor vaccum = temp;
+        attentionKernel.unpermute(vaccum, oi, batchSize, time, headNum, dk);
+
+        this.getoLinerLayer().forward(oi);
+        this.output = this.getoLinerLayer().getOutput();
+
+    }
+    
+    public void output(Tensor cos, Tensor sin, Tensor idskeep, int igone) {
+        // TODO Auto-generated method stub
+        this.getqLinerLayer().forward(input);
+        this.getkLinerLayer().forward(input);
+        this.getvLinerLayer().forward(input);
+
+        Tensor query = this.getqLinerLayer().getOutput().view(batchSize, time, headNum, dk);
+        Tensor key = this.getkLinerLayer().getOutput().view(batchSize, time, headNum, dk);
+        Tensor value = this.getvLinerLayer().getOutput().view(batchSize, time, headNum, dk);
+        Tensor_OP().permute(query, qt, p_0213);
+        Tensor_OP().permute(key, kt, p_0213);
+        Tensor_OP().permute(value, vt, p_0213);
+        
+        Tensor q = qt;
+        Tensor k = kt;
+        
         if(qkNorm) {
-        	qNorm.forward(qt);
-        	kNorm.forward(kt);
-        	scaledDotProductAttention(qNorm.getOutput(), kNorm.getOutput(), vt);
-        }else {
-        	scaledDotProductAttention(qt, kt, vt);
+        	qNorm.forward(q);
+        	kNorm.forward(k);
+        	q = qNorm.getOutput();
+        	k = kNorm.getOutput();
         }
+        
+        /**
+         * apply RoPE
+         * qt = [B, HN, T, HS]
+         */
+        ropeKernel.forward2d(cos, sin, idskeep, q, rq, time, headNum, dk, igone);
+        ropeKernel.forward2d(cos, sin, idskeep, k, rk, time, headNum, dk, igone);
+
+//        rq.showDM("rq");
+//        rq.showDMByOffsetRed(77 * dk, dk, "rq");
+        scaledDotProductAttention(rq, rk, vt);
+        
+        Tensor vaccum = temp;
+        attentionKernel.unpermute(vaccum, oi, batchSize, time, headNum, dk);
+
+        this.getoLinerLayer().forward(oi);
+        this.output = this.getoLinerLayer().getOutput();
+
+    }
+    
+    public void output_txt(Tensor cos, Tensor sin, Tensor idskeep, int txt_len) {
+        // TODO Auto-generated method stub
+        this.getqLinerLayer().forward(input);
+        this.getkLinerLayer().forward(input);
+        this.getvLinerLayer().forward(input);
+
+        Tensor query = this.getqLinerLayer().getOutput().view(batchSize, time, headNum, dk);
+        Tensor key = this.getkLinerLayer().getOutput().view(batchSize, time, headNum, dk);
+        Tensor value = this.getvLinerLayer().getOutput().view(batchSize, time, headNum, dk);
+        Tensor_OP().permute(query, qt, p_0213);
+        Tensor_OP().permute(key, kt, p_0213);
+        Tensor_OP().permute(value, vt, p_0213);
+        
+        Tensor q = qt;
+        Tensor k = kt;
+        
+        if(qkNorm) {
+        	qNorm.forward(q);
+        	kNorm.forward(k);
+        	q = qNorm.getOutput();
+        	k = kNorm.getOutput();
+        }
+        
+        /**
+         * apply RoPE
+         * qt = [B, HN, T, HS]
+         */
+        ropeKernel.forward2d_txt(cos, sin, idskeep, q, rq, time, headNum, dk, txt_len);
+        ropeKernel.forward2d_txt(cos, sin, idskeep, k, rk, time, headNum, dk, txt_len);
+
+//        rq.showDM("rq");
+//        rq.showDMByOffsetRed(77 * dk, dk, "rq");
+        scaledDotProductAttention(rq, rk, vt);
+        
         Tensor vaccum = temp;
         attentionKernel.unpermute(vaccum, oi, batchSize, time, headNum, dk);
 
@@ -364,27 +472,28 @@ public class DiTAttentionLayer2 extends Layer {
         // TODO Auto-generated method stub
         this.getqLinerLayer().forward(input, temp_out);
         Tensor query = temp_out.view(batchSize, time, headNum, dk);
-        ropeKernel.forward2d(cos, sin, query, rq, time, headNum, dk);
+        Tensor_OP().permute(query, qt, p_0213);
         
         temp_out.viewOrg();
         this.getkLinerLayer().forward(input, temp_out);
         Tensor key = temp_out.view(batchSize, time, headNum, dk);
-        ropeKernel.forward2d(cos, sin, key, rk, time, headNum, dk);
+        Tensor_OP().permute(key, kt, p_0213);
         
         temp_out.viewOrg();
         this.getvLinerLayer().forward(input, temp_out);
         Tensor value = temp_out.view(batchSize, time, headNum, dk);
         Tensor_OP().permute(value, vt, p_0213);
         temp_out.viewOrg();
-        
-        Tensor_OP().permute(rq, qt, p_0213);
-        Tensor_OP().permute(rk, kt, p_0213);
 
+        ropeKernel.forward2d(cos, sin, qt, rq, time, headNum, dk);
+        ropeKernel.forward2d(cos, sin, kt, rk, time, headNum, dk);
+        
+        
         if(qkNorm) {
-        	qNorm.forward(qt, qt);
-        	kNorm.forward(kt, kt);
+        	qNorm.forward(rq, rq);
+        	kNorm.forward(rk, rk);
         }
-        scaledDotProductAttention(qt, kt, vt);
+        scaledDotProductAttention(rq, rk, vt);
         Tensor vaccum = temp;
         attentionKernel.unpermute(vaccum, oi, batchSize, time, headNum, dk);
 
@@ -395,51 +504,98 @@ public class DiTAttentionLayer2 extends Layer {
 
     public void output_eval(Tensor cos,Tensor sin, int igone) {
         // TODO Auto-generated method stub
-        this.getqLinerLayer().forward(input, temp_out);
-        Tensor query = temp_out.view(batchSize, time, headNum, dk);
-        ropeKernel.forward2d(cos, sin, query, rq, time, headNum, dk, igone);
-        
-        temp_out.viewOrg();
-        this.getkLinerLayer().forward(input, temp_out);
-        Tensor key = temp_out.view(batchSize, time, headNum, dk);
-        ropeKernel.forward2d(cos, sin, key, rk, time, headNum, dk, igone);
-        
-        temp_out.viewOrg();
-        this.getvLinerLayer().forward(input, temp_out);
-        Tensor value = temp_out.view(batchSize, time, headNum, dk);
-        Tensor_OP().permute(value, vt, p_0213);
-        temp_out.viewOrg();
-        
-        Tensor_OP().permute(rq, qt, p_0213);
-        Tensor_OP().permute(rk, kt, p_0213);
+    	 this.getqLinerLayer().forward(input, temp_out);
+         Tensor query = temp_out.view(batchSize, time, headNum, dk);
+         Tensor_OP().permute(query, qt, p_0213);
+         
+         temp_out.viewOrg();
+         this.getkLinerLayer().forward(input, temp_out);
+         Tensor key = temp_out.view(batchSize, time, headNum, dk);
+         Tensor_OP().permute(key, kt, p_0213);
+         
+         temp_out.viewOrg();
+         this.getvLinerLayer().forward(input, temp_out);
+         Tensor value = temp_out.view(batchSize, time, headNum, dk);
+         Tensor_OP().permute(value, vt, p_0213);
+         temp_out.viewOrg();
 
-        if(qkNorm) {
-        	qNorm.forward(qt, qt);
-        	kNorm.forward(kt, kt);
-        }
-        scaledDotProductAttention(qt, kt, vt);
-        Tensor vaccum = temp;
-        attentionKernel.unpermute(vaccum, oi, batchSize, time, headNum, dk);
+         Tensor q = qt;
+         Tensor k = kt;
+         if(qkNorm) {
+        	 qNorm.forward(qt);
+        	 kNorm.forward(kt);
+        	 q = qNorm.getOutput();
+        	 k = kNorm.getOutput();
+         }
+         
+         ropeKernel.forward2d(cos, sin, q, rq, time, headNum, dk, igone);
+         ropeKernel.forward2d(cos, sin, k, rk, time, headNum, dk, igone);
 
-        this.getoLinerLayer().forward(oi, output);
-        this.output = this.getoLinerLayer().getOutput();
+         scaledDotProductAttention(rq, rk, vt);
+         Tensor vaccum = temp;
+         attentionKernel.unpermute(vaccum, oi, batchSize, time, headNum, dk);
 
+         this.getoLinerLayer().forward(oi, output);
+         this.output = this.getoLinerLayer().getOutput();
+    }
+    
+    public void output_eval(Tensor cos, Tensor sin, Tensor idskeep, int igone) {
+        // TODO Auto-generated method stub
+    	 this.getqLinerLayer().forward(input, temp_out);
+         Tensor query = temp_out.view(batchSize, time, headNum, dk);
+         Tensor_OP().permute(query, qt, p_0213);
+         
+         temp_out.viewOrg();
+         this.getkLinerLayer().forward(input, temp_out);
+         Tensor key = temp_out.view(batchSize, time, headNum, dk);
+         Tensor_OP().permute(key, kt, p_0213);
+         
+         temp_out.viewOrg();
+         this.getvLinerLayer().forward(input, temp_out);
+         Tensor value = temp_out.view(batchSize, time, headNum, dk);
+         Tensor_OP().permute(value, vt, p_0213);
+         temp_out.viewOrg();
+
+         Tensor q = qt;
+         Tensor k = kt;
+         if(qkNorm) {
+        	 qNorm.forward(qt);
+        	 kNorm.forward(kt);
+        	 q = qNorm.getOutput();
+        	 k = kNorm.getOutput();
+         }
+         
+         ropeKernel.forward2d(cos, sin, idskeep, q, rq, time, headNum, dk, igone);
+         ropeKernel.forward2d(cos, sin, idskeep, k, rk, time, headNum, dk, igone);
+
+         scaledDotProductAttention(rq, rk, vt);
+         Tensor vaccum = temp;
+         attentionKernel.unpermute(vaccum, oi, batchSize, time, headNum, dk);
+
+         this.getoLinerLayer().forward(oi, output);
+         this.output = this.getoLinerLayer().getOutput();
     }
     
     public void scaledDotProductAttention(Tensor query, Tensor key, Tensor value) {
+//    	JCuda.cudaDeviceSynchronize();
+//    	long start = System.nanoTime();
         float d_k = (float) (1.0f / Math.sqrt(dk));
         Tensor preatt = temp;
         GPU_OP().bmmEX(CUBLAS_OP_T, CUBLAS_OP_N, time, time, dk, 1.0f, key.getGpuData(), dk, time * dk, query.getGpuData(), dk, time * dk, 0.0f, preatt.getGpuData(), time, time * time, batchSize * headNum);
         Tensor_OP().mul(preatt, d_k, preatt);
-       
         softmaxKernel.softmax(preatt, attn, batchSize * headNum * time);
         Tensor tmp = attn;
 
         Tensor vaccum = temp;
         GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_N, dk, time, time, 1.0f, value.getGpuData(), dk, time * dk, tmp.getGpuData(), time, time * time, 0.0f, vaccum.getGpuData(), dk, time * dk, batchSize * headNum);
+
+//        JCuda.cudaDeviceSynchronize();
+//        System.out.println((System.nanoTime() - start)/1e6+"ms.forward");
     }
 
-    public void scaledDotProductAttentionBackward() {
+    public void scaledDotProductAttentionBackward(Tensor q, Tensor k) {
+//    	JCuda.cudaDeviceSynchronize();
+//    	long start = System.nanoTime();
         Tensor tmp = attn;
 
         Tensor dvaccum = temp;
@@ -458,18 +614,24 @@ public class DiTAttentionLayer2 extends Layer {
 
         // backward into preatt
         softmaxKernel.softmax_backward(attn, dattn, dattn);
+
         //		dattn.showDM();
         float d_k = (float) (1.0f / Math.sqrt(dk));
         Tensor_OP().mul(dattn, d_k, dattn);
         Tensor dpreatt = dattn;
+        
         /**
          * backward into dqt
          */
-        GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_N, dk, time, time, 1.0f, kt.getGpuData(), dk, time * dk, dpreatt.getGpuData(), time, time * time, 0.0f, dqt.getGpuData(), dk, time * dk, batchSize * headNum);
+        GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_N, dk, time, time, 1.0f, k.getGpuData(), dk, time * dk, dpreatt.getGpuData(), time, time * time, 0.0f, dqt.getGpuData(), dk, time * dk, batchSize * headNum);
+//        dqt.showDM("---");
         /**
          * backward into dkt
          */
-        GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_T, dk, time, time, 1.0f, qt.getGpuData(), dk, time * dk, dpreatt.getGpuData(), time, time * time, 0.0f, dkt.getGpuData(), dk, time * dk, batchSize * headNum);
+        GPU_OP().bmmEX(CUBLAS_OP_N, CUBLAS_OP_T, dk, time, time, 1.0f, q.getGpuData(), dk, time * dk, dpreatt.getGpuData(), time, time * time, 0.0f, dkt.getGpuData(), dk, time * dk, batchSize * headNum);
+       
+//        JCuda.cudaDeviceSynchronize();
+//        System.out.println((System.nanoTime() - start)/1e6+"ms.backward");
     }
 
     @Override
@@ -483,7 +645,7 @@ public class DiTAttentionLayer2 extends Layer {
         // TODO Auto-generated method stub
         this.getoLinerLayer().back(delta, oi);
         attentionKernel.unpermute_backward(temp, oi, batchSize, time, headNum, dk);
-        scaledDotProductAttentionBackward();
+        scaledDotProductAttentionBackward(qt, kt);
         qt.view(this.getqLinerLayer().getOutput().shape());
         kt.view(this.getkLinerLayer().getOutput().shape());
         vt.view(this.getvLinerLayer().getOutput().shape());
@@ -512,27 +674,33 @@ public class DiTAttentionLayer2 extends Layer {
     public void diff(Tensor cos, Tensor sin) {
     	 this.getoLinerLayer().back(delta, oi);
          attentionKernel.unpermute_backward(temp, oi, batchSize, time, headNum, dk);
-         scaledDotProductAttentionBackward();
+         scaledDotProductAttentionBackward(rq, rk);
          qt.view(this.getqLinerLayer().getOutput().shape());
          kt.view(this.getkLinerLayer().getOutput().shape());
          vt.view(this.getvLinerLayer().getOutput().shape());
-         if(qkNorm) {
-         	qNorm.back(dqt);
-         	kNorm.back(dkt);
-         	Tensor_OP().permute(qNorm.diff, qt, p_0213);
-            Tensor_OP().permute(kNorm.diff, kt, p_0213);
-         }else {
-         	Tensor_OP().permute(dqt, qt, p_0213);
-            Tensor_OP().permute(dkt, kt, p_0213);
-         }
-         Tensor_OP().permute(dvt, vt, p_0213);
+         
          /**
           * RoPE backward
           */
-         ropeKernel.backward2d(cos, sin, qt, rq, time, headNum, dk);
-         ropeKernel.backward2d(cos, sin, kt, rk, time, headNum, dk);
-         Tensor queryDelta = rq.view(this.getqLinerLayer().getOutput().getOrgShape());
-         Tensor keyDelta = rk.view(this.getkLinerLayer().getOutput().getOrgShape());
+         ropeKernel.backward2d(cos, sin, dqt, rq, time, headNum, dk);
+         ropeKernel.backward2d(cos, sin, dkt, rk, time, headNum, dk);
+
+         Tensor dqt_d = rq;
+         Tensor dkt_d = rk;
+        
+         if(qkNorm) {
+          	qNorm.back(dqt_d);
+          	kNorm.back(dkt_d);
+          	dqt_d = qNorm.diff;
+          	dkt_d = kNorm.diff;
+         }
+         
+      	 Tensor_OP().permute(dqt_d, qt, p_0213);
+         Tensor_OP().permute(dkt_d, kt, p_0213);
+         Tensor_OP().permute(dvt, vt, p_0213);
+
+         Tensor queryDelta = qt.view(this.getqLinerLayer().getOutput().getOrgShape());
+         Tensor keyDelta = kt.view(this.getkLinerLayer().getOutput().getOrgShape());
          Tensor valueDelta = vt.view(this.getvLinerLayer().getOutput().getOrgShape());
          this.getqLinerLayer().getOutput().viewOrg();
          this.getkLinerLayer().getOutput().viewOrg();
@@ -547,29 +715,36 @@ public class DiTAttentionLayer2 extends Layer {
     }
     
     public void diff(Tensor cos, Tensor sin, int igone) {
-   	 this.getoLinerLayer().back(delta, oi);
+    	this.getoLinerLayer().back(delta, oi);
         attentionKernel.unpermute_backward(temp, oi, batchSize, time, headNum, dk);
-        scaledDotProductAttentionBackward();
-        qt.view(this.getqLinerLayer().getOutput().shape());
-        kt.view(this.getkLinerLayer().getOutput().shape());
-        vt.view(this.getvLinerLayer().getOutput().shape());
-        if(qkNorm) {
-        	qNorm.back(dqt);
-        	kNorm.back(dkt);
-        	Tensor_OP().permute(qNorm.diff, qt, p_0213);
-           Tensor_OP().permute(kNorm.diff, kt, p_0213);
-        }else {
-        	Tensor_OP().permute(dqt, qt, p_0213);
-           Tensor_OP().permute(dkt, kt, p_0213);
-        }
-        Tensor_OP().permute(dvt, vt, p_0213);
+        scaledDotProductAttentionBackward(rq, rk);
+        
+//        dqt.showDM("dqt");
         /**
          * RoPE backward
          */
-        ropeKernel.backward2d(cos, sin, qt, rq, time, headNum, dk, igone);
-        ropeKernel.backward2d(cos, sin, kt, rk, time, headNum, dk, igone);
-        Tensor queryDelta = rq.view(this.getqLinerLayer().getOutput().getOrgShape());
-        Tensor keyDelta = rk.view(this.getkLinerLayer().getOutput().getOrgShape());
+        ropeKernel.backward2d(cos, sin, dqt, rq, time, headNum, dk, igone);
+        ropeKernel.backward2d(cos, sin, dkt, rk, time, headNum, dk, igone);
+
+        Tensor dqt_d = rq;
+        Tensor dkt_d = rk;
+       
+        if(qkNorm) {
+         	qNorm.back(dqt_d, dqt);
+         	kNorm.back(dkt_d, dkt);
+         	dqt_d = qNorm.diff;
+         	dkt_d = kNorm.diff;
+        }
+        
+        qt.view(this.getqLinerLayer().getOutput().shape());
+        kt.view(this.getkLinerLayer().getOutput().shape());
+        vt.view(this.getvLinerLayer().getOutput().shape());
+     	Tensor_OP().permute(dqt_d, qt, p_0213);
+        Tensor_OP().permute(dkt_d, kt, p_0213);
+        Tensor_OP().permute(dvt, vt, p_0213);
+
+        Tensor queryDelta = qt.view(this.getqLinerLayer().getOutput().getOrgShape());
+        Tensor keyDelta = kt.view(this.getkLinerLayer().getOutput().getOrgShape());
         Tensor valueDelta = vt.view(this.getvLinerLayer().getOutput().getOrgShape());
         this.getqLinerLayer().getOutput().viewOrg();
         this.getkLinerLayer().getOutput().viewOrg();
@@ -581,7 +756,94 @@ public class DiTAttentionLayer2 extends Layer {
         Tensor_OP().add(this.getqLinerLayer().diff, this.getvLinerLayer().diff, this.getqLinerLayer().diff);
         // dxt
         this.diff = this.getqLinerLayer().diff;
-   }
+    }
+    
+    public void diff(Tensor cos, Tensor sin, Tensor idskeep, int igone) {
+    	this.getoLinerLayer().back(delta, oi);
+        attentionKernel.unpermute_backward(temp, oi, batchSize, time, headNum, dk);
+        scaledDotProductAttentionBackward(rq, rk);
+        
+//        dqt.showDM("dqt");
+        /**
+         * RoPE backward
+         */
+        ropeKernel.backward2d(cos, sin, idskeep, dqt, rq, time, headNum, dk, igone);
+        ropeKernel.backward2d(cos, sin, idskeep, dkt, rk, time, headNum, dk, igone);
+
+        Tensor dqt_d = rq;
+        Tensor dkt_d = rk;
+       
+        if(qkNorm) {
+         	qNorm.back(dqt_d, dqt);
+         	kNorm.back(dkt_d, dkt);
+         	dqt_d = qNorm.diff;
+         	dkt_d = kNorm.diff;
+        }
+        
+        qt.view(this.getqLinerLayer().getOutput().shape());
+        kt.view(this.getkLinerLayer().getOutput().shape());
+        vt.view(this.getvLinerLayer().getOutput().shape());
+     	Tensor_OP().permute(dqt_d, qt, p_0213);
+        Tensor_OP().permute(dkt_d, kt, p_0213);
+        Tensor_OP().permute(dvt, vt, p_0213);
+
+        Tensor queryDelta = qt.view(this.getqLinerLayer().getOutput().getOrgShape());
+        Tensor keyDelta = kt.view(this.getkLinerLayer().getOutput().getOrgShape());
+        Tensor valueDelta = vt.view(this.getvLinerLayer().getOutput().getOrgShape());
+        this.getqLinerLayer().getOutput().viewOrg();
+        this.getkLinerLayer().getOutput().viewOrg();
+        this.getvLinerLayer().getOutput().viewOrg();
+        this.getqLinerLayer().back(queryDelta, this.getqLinerLayer().getOutput());
+        this.getkLinerLayer().back(keyDelta, this.getkLinerLayer().getOutput());
+        this.getvLinerLayer().back(valueDelta, this.getvLinerLayer().getOutput());
+        Tensor_OP().add(this.getqLinerLayer().diff, this.getkLinerLayer().diff, this.getqLinerLayer().diff);
+        Tensor_OP().add(this.getqLinerLayer().diff, this.getvLinerLayer().diff, this.getqLinerLayer().diff);
+        // dxt
+        this.diff = this.getqLinerLayer().diff;
+    }
+    
+    public void diff_txt(Tensor cos, Tensor sin, Tensor idskeep, int txt_len) {
+    	this.getoLinerLayer().back(delta, oi);
+        attentionKernel.unpermute_backward(temp, oi, batchSize, time, headNum, dk);
+        scaledDotProductAttentionBackward(rq, rk);
+
+        /**
+         * RoPE backward
+         */
+        ropeKernel.backward2d_txt(cos, sin, idskeep, dqt, rq, time, headNum, dk, txt_len);
+        ropeKernel.backward2d_txt(cos, sin, idskeep, dkt, rk, time, headNum, dk, txt_len);
+
+        Tensor dqt_d = rq;
+        Tensor dkt_d = rk;
+       
+        if(qkNorm) {
+         	qNorm.back(dqt_d, dqt);
+         	kNorm.back(dkt_d, dkt);
+         	dqt_d = qNorm.diff;
+         	dkt_d = kNorm.diff;
+        }
+        
+        qt.view(this.getqLinerLayer().getOutput().shape());
+        kt.view(this.getkLinerLayer().getOutput().shape());
+        vt.view(this.getvLinerLayer().getOutput().shape());
+     	Tensor_OP().permute(dqt_d, qt, p_0213);
+        Tensor_OP().permute(dkt_d, kt, p_0213);
+        Tensor_OP().permute(dvt, vt, p_0213);
+
+        Tensor queryDelta = qt.view(this.getqLinerLayer().getOutput().getOrgShape());
+        Tensor keyDelta = kt.view(this.getkLinerLayer().getOutput().getOrgShape());
+        Tensor valueDelta = vt.view(this.getvLinerLayer().getOutput().getOrgShape());
+        this.getqLinerLayer().getOutput().viewOrg();
+        this.getkLinerLayer().getOutput().viewOrg();
+        this.getvLinerLayer().getOutput().viewOrg();
+        this.getqLinerLayer().back(queryDelta, this.getqLinerLayer().getOutput());
+        this.getkLinerLayer().back(keyDelta, this.getkLinerLayer().getOutput());
+        this.getvLinerLayer().back(valueDelta, this.getvLinerLayer().getOutput());
+        Tensor_OP().add(this.getqLinerLayer().diff, this.getkLinerLayer().diff, this.getqLinerLayer().diff);
+        Tensor_OP().add(this.getqLinerLayer().diff, this.getvLinerLayer().diff, this.getqLinerLayer().diff);
+        // dxt
+        this.diff = this.getqLinerLayer().diff;
+    }
     
     @Override
     public void forward() {
@@ -677,6 +939,54 @@ public class DiTAttentionLayer2 extends Layer {
     	}  
     }
     
+    public void forward(Tensor input,Tensor cos,Tensor sin, Tensor idskeep, int igone) {
+        // TODO Auto-generated method stub
+    	if(network.RUN_MODEL == RunModel.EVAL) {
+    		/**
+             * 参数初始化
+             */
+            this.init_eval(input);
+            /**
+             * 设置输入
+             */
+            this.setInput(input);
+            /**
+             * 计算输出
+
+             */
+            this.output_eval(cos, sin, idskeep, igone);
+    	}else {
+    		/**
+             * 参数初始化
+             */
+            this.init(input);
+            /**
+             * 设置输入
+             */
+            this.setInput(input);
+            /**
+             * 计算输出
+             */
+            this.output(cos, sin, idskeep, igone);
+    	}  
+    }
+    
+    public void forward_txt(Tensor input,Tensor cos,Tensor sin, Tensor idskeep, int txt_len) {
+        // TODO Auto-generated method stub
+		/**
+         * 参数初始化
+         */
+        this.init(input);
+        /**
+         * 设置输入
+         */
+        this.setInput(input);
+        /**
+         * 计算输出
+         */
+        this.output_txt(cos, sin, idskeep, txt_len);
+    }
+    
     @Override
     public void back(Tensor delta) {
         // TODO Auto-generated method stub
@@ -727,6 +1037,36 @@ public class DiTAttentionLayer2 extends Layer {
             this.gradientCheck();
         }
     }
+    
+    public void back(Tensor delta,Tensor cos,Tensor sin, Tensor idskeep, int igone) {
+        // TODO Auto-generated method stub
+        this.initBack();
+        /**
+         * 设置梯度
+         */
+        this.setDelta(delta);
+        /**
+         * 计算梯度
+         */
+        this.diff(cos, sin, idskeep, igone);
+        if (this.network.GRADIENT_CHECK) {
+            this.gradientCheck();
+        }
+    }
+    
+    public void back_txt(Tensor delta,Tensor cos,Tensor sin, Tensor idskeep, int txt_len) {
+        // TODO Auto-generated method stub
+        this.initBack();
+        /**
+         * 设置梯度
+         */
+        this.setDelta(delta);
+        /**
+         * 计算梯度
+         */
+        this.diff_txt(cos, sin, idskeep, txt_len);
+    }
+    
     
     @Override
     public void update() {
@@ -784,8 +1124,8 @@ public class DiTAttentionLayer2 extends Layer {
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
     	if(qkNorm) {
-	        qNorm.loadModel(inputStream, headNum, time, dk, BNType.fully_bn);
-	        kNorm.loadModel(inputStream, headNum, time, dk, BNType.fully_bn);
+	        qNorm.loadModel(inputStream, 1, 1, dk, BNType.fully_bn);
+	        kNorm.loadModel(inputStream, 1, 1, dk, BNType.fully_bn);
     	}
         getqLinerLayer().loadModel(inputStream);
         getkLinerLayer().loadModel(inputStream);

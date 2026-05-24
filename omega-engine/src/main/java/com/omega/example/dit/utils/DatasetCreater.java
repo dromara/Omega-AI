@@ -14,7 +14,9 @@ import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.layer.active.GeluType;
 import com.omega.engine.nn.network.ClipTextModel;
 import com.omega.engine.nn.network.RunModel;
+import com.omega.engine.nn.network.dit.Dinov2;
 import com.omega.engine.nn.network.utils.ModelUtils;
+import com.omega.engine.nn.network.vae.Flux_VAE;
 import com.omega.engine.nn.network.vae.SD_VAE;
 import com.omega.engine.nn.network.vae.VA_VAE;
 import com.omega.engine.optimizer.MBSGDOptimizer;
@@ -398,19 +400,19 @@ public class DatasetCreater {
     	
     	try {
     		
-    		String outputPath = "D:\\dataset\\amine\\dalle_vavae_latend.bin";
-    		String clipDataPath = "D:\\dataset\\amine\\dalle_vavae_clip.bin";
+    		String outputPath = "/root/gpufree-data/txt2img_2m_2/vavae_latend.bin";
+    		String clipDataPath = "/root/gpufree-data/txt2img_2m_2/vavae_clip.bin";
     		
-        	String labelPath = "D:\\dataset\\labels.json";
-            String imgDirPath = "D:\\dataset\\images_256_256\\";
+        	String labelPath = "/root/gpufree-data/txt2img_2m_2/labels.json";
+            String imgDirPath = "/root/gpufree-data/diffusiondb_processed/";
             boolean horizontalFilp = false;
             int imgSize = 256;
             int maxContextLen = 77;
             int batchSize = 40;
             float[] mean = new float[]{0.5f, 0.5f, 0.5f};
             float[] std = new float[]{0.5f, 0.5f, 0.5f};
-            String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
-            String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
+            String vocabPath = "/omega/models/CLIP-GmP-ViT-L-14/vocab.json";
+            String mergesPath = "/omega/models/CLIP-GmP-ViT-L-14/merges.txt";
             BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
             SDImageDataLoaderEN dataLoader = new SDImageDataLoaderEN(bpe, labelPath, imgDirPath, ".jpg", imgSize, imgSize, maxContextLen, batchSize, horizontalFilp, mean, std);
 
@@ -424,7 +426,7 @@ public class DatasetCreater {
             clip.CUDNN = true;
             clip.time = maxContextLen;
             clip.RUN_MODEL = RunModel.EVAL;
-            String clipWeight = "D:\\models\\CLIP-GmP-ViT-L-14\\CLIP-GmP-ViT-L-14.json";
+            String clipWeight = "/omega/models/CLIP-GmP-ViT-L-14.json";
             ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, "", false);
             
             
@@ -437,7 +439,7 @@ public class DatasetCreater {
             vae.CUDNN = true;
             vae.learnRate = 0.001f;
             vae.RUN_MODEL = RunModel.EVAL;
-            String vaeWeight = "D:\\models\\vavae.json";
+            String vaeWeight = "/omega/models/vavae.json";
             ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
             
             
@@ -454,7 +456,7 @@ public class DatasetCreater {
             File clipFile = new File(clipDataPath);
             FileOutputStream clipWriter = new FileOutputStream(clipFile);
             
-            Tensor condInput = new Tensor(batchSize, 1, 1, textEmbedDim, true);
+            Tensor condInput = null;
             
             for(int it = 0;it<indexs.length;it++) {
             	 long start = System.nanoTime();
@@ -462,7 +464,7 @@ public class DatasetCreater {
             	 Tensor latend = vae.encode(input);
                  JCudaDriver.cuCtxSynchronize();
                  writeTensor(latend, writer);
-                 clip.get_clip_prompt_embeds(label, eosIds, condInput);
+                 condInput = clip.get_full_clip_prompt_embeds(label);
                  writeTensor(condInput, clipWriter);
                  System.out.println(it + "/" + indexs.length + " cost["+(System.nanoTime() - start)/1e6+"ms] finish.");
             }
@@ -555,12 +557,12 @@ public class DatasetCreater {
     
     public static void test_vavae_latend() {
     	
-    	int batchSize = 20;
+    	int batchSize = 10;
     	int channel = 32;
-    	int height = 16;
-    	int width = 16;
+    	int height = 32;
+    	int width = 32;
     	
-    	int imgSize = 256;
+    	int imgSize = 512;
     	float[] mean = new float[]{0.5f, 0.5f, 0.5f};
         float[] std = new float[]{0.5f, 0.5f, 0.5f};
 
@@ -578,12 +580,12 @@ public class DatasetCreater {
          String vaeWeight = "D:\\models\\vavae.json";
          ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
 
-    	String dataPath = "D:\\dataset\\amine\\dalle_vavae_latend.bin";
+    	String dataPath = "D:\\dataset\\amine\\dalle_vavae_latend_512.bin";
     	
         try {
         	RandomAccessFile file = new RandomAccessFile(dataPath, "r");
         	
-        	file.seek(100000 * latend.getOnceSize() * 4);
+        	file.seek(10 * latend.getOnceSize() * 4);
         	
             int number = (int) (file.length() / latend.getOnceSize() / 4);
         	
@@ -601,7 +603,7 @@ public class DatasetCreater {
                 /**
                  * print image
                  */
-                MBSGDOptimizer.showImgs("D:\\test\\va_vae\\", output, "test_"+i, mean, std);
+                MBSGDOptimizer.showImgs("D:\\test\\va_vae2_512\\", output, "test_"+i, mean, std);
                 
             }
             
@@ -649,17 +651,355 @@ public class DatasetCreater {
         label.hostToDevice();
     }
     
+    public static void createLatend_vavae() {
+    	
+    	try {
+    		
+    		String outputPath = "D:\\dataset\\amine\\dalle_vavae_latend.bin";
+    		
+        	String labelPath = "D:\\dataset\\labels.json";
+            String imgDirPath = "D:\\dataset\\images_256_256\\";
+            boolean horizontalFilp = false;
+            int imgSize = 256;
+            int maxContextLen = 77;
+            int batchSize = 40;
+            float[] mean = new float[]{0.5f, 0.5f, 0.5f};
+            float[] std = new float[]{0.5f, 0.5f, 0.5f};
+            String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
+            String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
+            BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+            SDImageDataLoaderEN dataLoader = new SDImageDataLoaderEN(bpe, labelPath, imgDirPath, ".jpg", imgSize, imgSize, maxContextLen, batchSize, horizontalFilp, mean, std);
+
+            int latendDim = 32;
+            int num_res_blocks = 2;
+            int[] ch_mult = new int[]{1, 1, 2, 2, 4};
+            int ch = 128;
+            
+            VA_VAE vae = new VA_VAE(LossType.MSE, UpdaterType.adamw, latendDim, imgSize, ch_mult, ch, num_res_blocks, true);
+            vae.CUDNN = true;
+            vae.learnRate = 0.001f;
+            vae.RUN_MODEL = RunModel.EVAL;
+            String vaeWeight = "D:\\models\\vavae.json";
+            ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
+
+            int[][] indexs = dataLoader.order();
+            
+            Tensor input = new Tensor(batchSize, 3, dataLoader.img_h, dataLoader.img_w, true);
+
+            File file = new File(outputPath);
+            FileOutputStream writer = new FileOutputStream(file);
+
+            for(int it = 0;it<indexs.length;it++) {
+            	 long start = System.nanoTime();
+            	 dataLoader.loadData(indexs[it], input);
+            	 Tensor latend = vae.encode(input);
+                 JCudaDriver.cuCtxSynchronize();
+                 writeTensor(latend, writer);
+                 System.out.println(it + "/" + indexs.length + " cost["+(System.nanoTime() - start)/1e6+"ms] finish.");
+            }
+            
+            System.out.println("create ["+dataLoader.count+"] finish.");
+           
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+
+    }
+    
+    public static void createLatend_vavae_512() {
+    	
+    	try {
+    		
+    		String outputPath = "D:\\dataset\\amine\\dalle_vavae_latend_512.bin";
+    		
+        	String labelPath = "D:\\dataset\\labels.json";
+            String imgDirPath = "D:\\dataset\\images_512_512\\selected_images\\";
+            boolean horizontalFilp = false;
+            int imgSize = 512;
+            int maxContextLen = 77;
+            int batchSize = 10;
+            float[] mean = new float[]{0.5f, 0.5f, 0.5f};
+            float[] std = new float[]{0.5f, 0.5f, 0.5f};
+            String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
+            String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
+            BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+            SDImageDataLoaderEN dataLoader = new SDImageDataLoaderEN(bpe, labelPath, imgDirPath, ".jpg", imgSize, imgSize, maxContextLen, batchSize, horizontalFilp, mean, std);
+
+            int latendDim = 32;
+            int num_res_blocks = 2;
+            int[] ch_mult = new int[]{1, 1, 2, 2, 4};
+            int ch = 128;
+            
+            VA_VAE vae = new VA_VAE(LossType.MSE, UpdaterType.adamw, latendDim, imgSize, ch_mult, ch, num_res_blocks, true);
+            vae.CUDNN = true;
+            vae.learnRate = 0.001f;
+            vae.RUN_MODEL = RunModel.EVAL;
+            String vaeWeight = "D:\\models\\vavae.json";
+            ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
+
+            int[][] indexs = dataLoader.order();
+            
+            Tensor input = new Tensor(batchSize, 3, dataLoader.img_h, dataLoader.img_w, true);
+
+            File file = new File(outputPath);
+            FileOutputStream writer = new FileOutputStream(file);
+
+            for(int it = 0;it<indexs.length;it++) {
+            	 long start = System.nanoTime();
+            	 dataLoader.loadData(indexs[it], input);
+            	 Tensor latend = vae.encode(input);
+                 JCudaDriver.cuCtxSynchronize();
+                 writeTensor(latend, writer);
+                 System.out.println(it + "/" + indexs.length + " cost["+(System.nanoTime() - start)/1e6+"ms] finish.");
+            }
+            
+            System.out.println("create ["+dataLoader.count+"] finish.");
+           
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+
+    }
+    
+    public static void createLatend_flux_vae() {
+    	
+    	try {
+    		
+    		String outputPath = "D:\\dataset\\amine\\dalle_fluxvae_latend.bin";
+    		
+        	String labelPath = "D:\\dataset\\labels.json";
+            String imgDirPath = "D:\\dataset\\images_256_256\\";
+            boolean horizontalFilp = false;
+            int imgSize = 256;
+            int maxContextLen = 77;
+            int batchSize = 40;
+            float[] mean = new float[]{0.5f, 0.5f, 0.5f};
+            float[] std = new float[]{0.5f, 0.5f, 0.5f};
+            String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
+            String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
+            BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+            SDImageDataLoaderEN dataLoader = new SDImageDataLoaderEN(bpe, labelPath, imgDirPath, ".jpg", imgSize, imgSize, maxContextLen, batchSize, horizontalFilp, mean, std);
+
+        	int latendDim = 16;
+            int num_res_blocks = 2;
+            int[] ch_mult = new int[]{1, 2, 4, 4};
+            int ch = 128;
+            Flux_VAE vae = new Flux_VAE(LossType.MSE, UpdaterType.adamw, latendDim, imgSize, ch_mult, ch, num_res_blocks);
+            vae.CUDNN = true;
+            vae.learnRate = 0.001f;
+            vae.RUN_MODEL = RunModel.EVAL;
+            String vaeWeight = "D:\\models\\e2e-flux-vae.json";
+            ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
+
+            int[][] indexs = dataLoader.order();
+            
+            Tensor input = new Tensor(batchSize, 3, dataLoader.img_h, dataLoader.img_w, true);
+
+            File file = new File(outputPath);
+            FileOutputStream writer = new FileOutputStream(file);
+
+            for(int it = 0;it<indexs.length;it++) {
+            	 long start = System.nanoTime();
+            	 dataLoader.loadData(indexs[it], input);
+            	 Tensor latend = vae.encode(input);
+                 JCudaDriver.cuCtxSynchronize();
+                 writeTensor(latend, writer);
+                 System.out.println(it + "/" + indexs.length + " cost["+(System.nanoTime() - start)/1e6+"ms] finish.");
+            }
+            
+            System.out.println("create ["+dataLoader.count+"] finish.");
+           
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+
+    }
+    
+    public static void createLatend_fluxvae_512() {
+    	
+    	try {
+    		
+    		String outputPath = "D:\\dataset\\amine\\dalle_fluxvae_latend_512.bin";
+    		
+        	String labelPath = "D:\\dataset\\labels.json";
+            String imgDirPath = "D:\\dataset\\images_512_512\\selected_images\\";
+            boolean horizontalFilp = false;
+            int imgSize = 512;
+            int maxContextLen = 77;
+            int batchSize = 10;
+            float[] mean = new float[]{0.5f, 0.5f, 0.5f};
+            float[] std = new float[]{0.5f, 0.5f, 0.5f};
+            String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
+            String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
+            BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+            SDImageDataLoaderEN dataLoader = new SDImageDataLoaderEN(bpe, labelPath, imgDirPath, ".jpg", imgSize, imgSize, maxContextLen, batchSize, horizontalFilp, mean, std);
+
+            int latendDim = 16;
+            int num_res_blocks = 2;
+            int[] ch_mult = new int[]{1, 2, 4, 4};
+            int ch = 128;
+            Flux_VAE vae = new Flux_VAE(LossType.MSE, UpdaterType.adamw, latendDim, imgSize, ch_mult, ch, num_res_blocks);
+            vae.CUDNN = true;
+            vae.learnRate = 0.001f;
+            vae.RUN_MODEL = RunModel.EVAL;
+            String vaeWeight = "D:\\models\\e2e-flux-vae.json";
+            ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
+
+            int[][] indexs = dataLoader.order();
+            
+            Tensor input = new Tensor(batchSize, 3, dataLoader.img_h, dataLoader.img_w, true);
+
+            File file = new File(outputPath);
+            FileOutputStream writer = new FileOutputStream(file);
+
+            for(int it = 0;it<indexs.length;it++) {
+            	 long start = System.nanoTime();
+            	 dataLoader.loadData(indexs[it], input);
+            	 Tensor latend = vae.encode(input);
+                 JCudaDriver.cuCtxSynchronize();
+                 writeTensor(latend, writer);
+                 System.out.println(it + "/" + indexs.length + " cost["+(System.nanoTime() - start)/1e6+"ms] finish.");
+            }
+            
+            System.out.println("create ["+dataLoader.count+"] finish.");
+           
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+
+    }
+    
+    public static void test_fluxvae_latend() {
+    	
+    	int batchSize = 10;
+    	int channel = 16;
+    	int height = 32;
+    	int width = 32;
+    	
+    	int imgSize = 256;
+    	float[] mean = new float[]{0.5f, 0.5f, 0.5f};
+        float[] std = new float[]{0.5f, 0.5f, 0.5f};
+
+    	Tensor latend = new Tensor(batchSize, channel, height, width, true);
+    	
+    	int latendDim = 16;
+        int num_res_blocks = 2;
+        int[] ch_mult = new int[]{1, 2, 4, 4};
+        int ch = 128;
+        Flux_VAE vae = new Flux_VAE(LossType.MSE, UpdaterType.adamw, latendDim, imgSize, ch_mult, ch, num_res_blocks);
+        vae.CUDNN = true;
+        vae.learnRate = 0.001f;
+        vae.RUN_MODEL = RunModel.EVAL;
+        String vaeWeight = "D:\\models\\e2e-flux-vae.json";
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
+
+    	String dataPath = "D:\\dataset\\amine\\dalle_fluxvae_latend.bin";
+    	
+        try {
+        	RandomAccessFile file = new RandomAccessFile(dataPath, "r");
+        	
+        	file.seek(10 * latend.getOnceSize() * 4);
+        	
+            int number = (int) (file.length() / latend.getOnceSize() / 4);
+        	
+            System.err.println("count:"+number);
+            
+            for(int i = 0;i<100;i++) {
+
+                ModelUtils.readFloat(file, latend);
+                
+                Tensor output = vae.decode(latend);
+                
+                output.showShape();
+                output.syncHost();
+                output.data = MatrixOperation.clampSelf(output.data, -1, 1);
+                /**
+                 * print image
+                 */
+                MBSGDOptimizer.showImgs("D:\\test\\fluxvae\\", output, "test_"+i, mean, std);
+                
+            }
+            
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    	
+    }
+    
+    public static void createLatend_vavae_unsample() {
+    	
+    	try {
+    		
+    		String outputPath = "D:\\dataset\\amine\\vavae_latend_m_s.bin";
+    		
+        	String labelPath = "D:\\dataset\\labels.json";
+            String imgDirPath = "D:\\dataset\\images_256_256\\";
+            boolean horizontalFilp = false;
+            int imgSize = 256;
+            int maxContextLen = 77;
+            int batchSize = 40;
+            float[] mean = new float[]{0.5f, 0.5f, 0.5f};
+            float[] std = new float[]{0.5f, 0.5f, 0.5f};
+            String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
+            String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
+            BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+            SDImageDataLoaderEN dataLoader = new SDImageDataLoaderEN(bpe, labelPath, imgDirPath, ".jpg", imgSize, imgSize, maxContextLen, batchSize, horizontalFilp, mean, std);
+
+            int latendDim = 32;
+            int num_res_blocks = 2;
+            int[] ch_mult = new int[]{1, 1, 2, 2, 4};
+            int ch = 128;
+            
+            VA_VAE vae = new VA_VAE(LossType.MSE, UpdaterType.adamw, latendDim, imgSize, ch_mult, ch, num_res_blocks, true);
+            vae.CUDNN = true;
+            vae.learnRate = 0.001f;
+            vae.RUN_MODEL = RunModel.EVAL;
+            String vaeWeight = "D:\\models\\vavae.json";
+            ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
+            
+            int[][] indexs = dataLoader.order();
+            
+            Tensor input = new Tensor(batchSize, 3, dataLoader.img_h, dataLoader.img_w, true);
+
+            File file = new File(outputPath);
+            FileOutputStream writer = new FileOutputStream(file);
+
+            for(int it = 0;it<indexs.length;it++) {
+            	 long start = System.nanoTime();
+            	 dataLoader.loadData(indexs[it], input);
+            	 Tensor meanStd = vae.encode_unsample(input);
+                 JCudaDriver.cuCtxSynchronize();
+                 writeTensor(meanStd, writer);
+                 System.out.println(it + "/" + indexs.length + " cost["+(System.nanoTime() - start)/1e6+"ms] finish.");
+            }
+            
+            System.out.println("create ["+dataLoader.count+"] finish.");
+           
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+
+    }
+    
     public static void createClipData() {
     	
-    	int batchSize = 1000;
+    	int batchSize = 2000;
     	int maxContextLen = 77;
     	
-    	
-    	String clipDataPath = "D:\\dataset\\amine\\dalle_full_clip.bin";
+//    	String clipDataPath = "D:\\dataset\\amine\\dalle_full_clip.bin";
 //		String clipMaskDataPath = "D:\\dataset\\amine\\dalle_clip_mask.bin";
     	
 //		String labelPath = "/root/gpufree-data/txt2img_2m/labels.json";
-    	String labelPath = "D:\\dataset\\labels.json";
+//    	String labelPath = "D:\\dataset\\labels.json";
+		String clipDataPath = "/root/gpufree-data/txt2img_2m_2/vavae_clip.bin";
+		
+    	String labelPath = "/root/gpufree-data/txt2img_2m_2/labels.json";
     	
     	Tensor label = new Tensor(batchSize * 77, 1, 1, 1, true);
 //        Tensor eosIds = new Tensor(batchSize, 1, 1, 1, true);
@@ -667,8 +1007,10 @@ public class DatasetCreater {
     	
     	try {
     		
-    		String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
-            String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
+//    		String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
+//            String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
+            String vocabPath = "/omega/models/CLIP-GmP-ViT-L-14/vocab.json";
+            String mergesPath = "/omega/models/CLIP-GmP-ViT-L-14/merges.txt";
             BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
     		
             int maxPositionEmbeddingsSize = 77;
@@ -681,7 +1023,8 @@ public class DatasetCreater {
             clip.CUDNN = true;
             clip.time = maxContextLen;
             clip.RUN_MODEL = RunModel.EVAL;
-            String clipWeight = "D:\\models\\CLIP-GmP-ViT-L-14\\CLIP-GmP-ViT-L-14.json";
+//            String clipWeight = "D:\\models\\CLIP-GmP-ViT-L-14\\CLIP-GmP-ViT-L-14.json";
+            String clipWeight = "/omega/models/CLIP-GmP-ViT-L-14/CLIP-GmP-ViT-L-14.json";
             ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, "", false);
             
     		List<Map<String, Object>> datas = LagJsonReader.readJsonDataSamll(labelPath);
@@ -794,6 +1137,55 @@ public class DatasetCreater {
     }
     
     
+	public static void create_dinov2() throws Exception {
+		
+		String outputPath = "D:\\dataset\\dinov2_z.bin";
+		
+        String labelPath = "D:\\dataset\\labels.json";
+		String imgDirPath = "D:\\dataset\\images_224_224\\";
+        boolean horizontalFilp = false;
+        int imgSize = 224;
+        int maxContextLen = 77;
+        int batchSize = 60;
+        float[] mean = new float[]{0.485f, 0.456f, 0.406f};
+        float[] std = new float[]{0.229f, 0.224f, 0.225f};
+        String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
+        String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
+        BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+        SDImageDataLoaderEN dataLoader = new SDImageDataLoaderEN(bpe, labelPath, imgDirPath, ".jpg", imgSize, imgSize, maxContextLen, batchSize, horizontalFilp, mean, std);
+		
+        int patchSize = 14;
+        int hiddenSize = 768;
+        int headNum = 12;
+        int depth = 12;
+        int mlpRatio = 4;
+        Dinov2 dinov = new Dinov2(LossType.MSE, UpdaterType.adamw, 3, imgSize, imgSize, patchSize, hiddenSize, headNum, depth, mlpRatio);
+        dinov.CUDNN = true;
+        dinov.RUN_MODEL = RunModel.EVAL;
+
+        String model_path = "D:\\models\\dionv2-14-b.model";
+        com.omega.example.transformer.utils.ModelUtils.loadModel(dinov, model_path);
+        
+        int[][] indexs = dataLoader.order();
+        
+        Tensor input = new Tensor(batchSize, 3, dataLoader.img_h, dataLoader.img_w, true);
+
+        File file = new File(outputPath);
+        FileOutputStream writer = new FileOutputStream(file);
+
+        for(int it = 0;it<indexs.length;it++) {
+        	 long start = System.nanoTime();
+        	 dataLoader.loadData(indexs[it], input);
+        	 Tensor latend = dinov.forward_features(input);
+             JCudaDriver.cuCtxSynchronize();
+             writeTensor(latend, writer);
+             System.out.println(it + "/" + indexs.length + " cost["+(System.nanoTime() - start)/1e6+"ms] finish.");
+        }
+        
+        System.out.println("create ["+dataLoader.count+"] finish.");
+        
+    }
+    
 //    public static void createClipData() {
 //    	
 //    	int batchSize = 1000;
@@ -868,15 +1260,29 @@ public class DatasetCreater {
         	
 //        	testLatendData();
         	
+//        	createLatend_vavae_512();
+        	
 //        	test_vavae_latend();
         	
 //        	createLatendDataset3();
         	
-        	createClipData();
+//        	createLatend_vavae();
+        	
+//        	createLatend_vavae_unsample();
+        	
+//        	createClipData();
         	
 //        	createLatendDatasetFullClip();
         	
 //        	createTwoClip();
+        	
+//        	create_dinov2();
+        	
+//        	createLatend_flux_vae();
+        	
+//        	createLatend_fluxvae_512();
+        	
+        	test_fluxvae_latend();
         	
         } catch (Exception e) {
             // TODO: handle exception

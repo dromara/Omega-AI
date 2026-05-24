@@ -28,9 +28,10 @@ public class AdamWKernel extends BaseKernel {
     private CUfunction r_function;
     private CUfunction bn_function;
     private CUfunction adamw_function;
+    private CUfunction adamw_function2;
+    private CUfunction adamw_function3;
     private int CAFFE_CUDA_NUM_THREADS = 1024;
     private Pointer kernelParameters;
-    private Pointer kernelBiasParameters;
     private float weight_decay = 0.0f;
 
     public AdamWKernel(int weightLength, float weight_decay, CUDAManager cudaManager) {
@@ -120,6 +121,12 @@ public class AdamWKernel extends BaseKernel {
             if (adamw_function == null) {
                 adamw_function = getCudaManager().getLocalFunctionByModule("updater.cu", "adamw_kernel");
             }
+            if (adamw_function2 == null) {
+                adamw_function2 = getCudaManager().getLocalFunctionByModule("updater.cu", "adamw_kernel2");
+            }
+            if (adamw_function3 == null) {
+                adamw_function3 = getCudaManager().getLocalFunctionByModule("updater.cu", "adamw_kernel3");
+            }
         } catch (Exception e) {
             // TODO: handle exception
             e.printStackTrace();
@@ -173,9 +180,7 @@ public class AdamWKernel extends BaseKernel {
             /**
              * 设置入参
              * float* weight, const float* diffW, float* mw, float* vw, int n,
-
              float learnRate, float beta1, float beta2, float beta1_correction, float beta2_correction, float eps, float weight_decay
-
              */
             kernelParameters = Pointer.to(Pointer.to(weight.getGpuData()), Pointer.to(diffW.getGpuData()), Pointer.to(mw.getGpuData()), Pointer.to(vw.getGpuData()), Pointer.to(new int[]{diffW.dataLength}), Pointer.to(new float[]{lr}), Pointer.to(new float[]{beta1}), Pointer.to(new float[]{beta2}), Pointer.to(new float[]{(float) (1.0f - Math.pow(beta1, net.train_time))}), Pointer.to(new float[]{(float) (1.0f - Math.pow(beta2, net.train_time))}), Pointer.to(new float[]{1e-8f}), Pointer.to(new float[]{weight_decay}));
             cuLaunchKernel(adamw_function, this.CAFFE_GET_BLOCKS(diffW.dataLength), 1, 1,      // Grid dimension
@@ -210,6 +215,27 @@ public class AdamWKernel extends BaseKernel {
         }
     }
 
+    public void updateW3(Tensor diffW, Tensor weight, Network net, float lr, CUstream stream) {
+        try {
+            /**
+             * 设置入参
+             * float* weight, const float* diffW, float* mw, float* vw, int n,
+
+             float learnRate, float beta1, float beta2, float beta1_correction, float beta2_correction, float eps, float weight_decay
+
+             */
+            kernelParameters = Pointer.to(Pointer.to(weight.getGpuData()), Pointer.to(diffW.getGpuData()), Pointer.to(mw.getGpuData()), Pointer.to(vw.getGpuData()), Pointer.to(new int[]{diffW.dataLength}), Pointer.to(new float[]{lr}), Pointer.to(new float[]{beta1}), Pointer.to(new float[]{beta2}), Pointer.to(new int[]{net.train_time}), Pointer.to(new float[]{1e-8f}), Pointer.to(new float[]{weight_decay}));
+            cuLaunchKernel(adamw_function3, this.CAFFE_GET_BLOCKS(diffW.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, stream,               // Shared memory size and stream
+                    kernelParameters, null // Kernel- and extra parameters
+            );
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
     //	public void updateGamma(Tensor diffW,Tensor weight,Network net,float lr) {
     //
     //		try {
@@ -251,21 +277,21 @@ public class AdamWKernel extends BaseKernel {
     //
     //	}
     public void updateW(Tensor diffW, Tensor weight, Network net, float lr, int batchSize) {
-        try {
+    	try {
+            //			System.out.println(net.train_time);
             /**
              * 设置入参
-             * float *diffW, float *weight,float *mw,float *vw,float beta1,float beta2,float learnRate, int n
+             * float* weight, const float* diffW, float* mw, float* vw, int n,
+
+             float learnRate, float beta1, float beta2, float beta1_correction, float beta2_correction, float eps, float weight_decay
 
              */
-            kernelParameters = Pointer.to(Pointer.to(diffW.getGpuData()), Pointer.to(weight.getGpuData()), Pointer.to(mw.getGpuData()), Pointer.to(vw.getGpuData()), Pointer.to(new float[]{beta1}), Pointer.to(new float[]{beta2}), Pointer.to(new float[]{lr}), Pointer.to(new float[]{weight_decay}), Pointer.to(new int[]{diffW.dataLength}), Pointer.to(new int[]{batchSize}), Pointer.to(new int[]{net.train_time}));
-            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(diffW.dataLength), 1, 1,      // Grid dimension
+            kernelParameters = Pointer.to(Pointer.to(weight.getGpuData()), Pointer.to(diffW.getGpuData()), Pointer.to(mw.getGpuData()), Pointer.to(vw.getGpuData()), Pointer.to(new int[]{diffW.dataLength}), Pointer.to(new float[]{lr}), Pointer.to(new float[]{beta1}), Pointer.to(new float[]{beta2}), Pointer.to(new float[]{(float) (1.0f - Math.pow(beta1, net.train_time))}), Pointer.to(new float[]{(float) (1.0f - Math.pow(beta2, net.train_time))}), Pointer.to(new float[]{1e-8f}), Pointer.to(new float[]{weight_decay}));
+            cuLaunchKernel(adamw_function, this.CAFFE_GET_BLOCKS(diffW.dataLength), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameters, null // Kernel- and extra parameters
             );
-            //			System.out.println("diffW:"+net.train_time);
-            //			diffW.showDM();
-            //	        JCudaDriver.cuCtxSynchronize();
         } catch (Exception e) {
             // TODO: handle exception
             e.printStackTrace();
@@ -394,19 +420,21 @@ public class AdamWKernel extends BaseKernel {
     }
 
     public void updateB(Tensor diffB, Tensor bias, Network net, float lr, int batchSize) {
-        try {
+    	try {
+            //			System.out.println(net.train_time);
             /**
              * 设置入参
-             * float *diffW, float *weight,float *mw,float *vw,float beta1,float beta2,float learnRate, int n
+             * float* weight, const float* diffW, float* mw, float* vw, int n,
+
+             float learnRate, float beta1, float beta2, float beta1_correction, float beta2_correction, float eps, float weight_decay
 
              */
-            kernelBiasParameters = Pointer.to(Pointer.to(diffB.getGpuData()), Pointer.to(bias.getGpuData()), Pointer.to(mb.getGpuData()), Pointer.to(vb.getGpuData()), Pointer.to(new float[]{beta1}), Pointer.to(new float[]{beta2}), Pointer.to(new float[]{lr}), Pointer.to(new float[]{0.0f}), Pointer.to(new int[]{diffB.dataLength}), Pointer.to(new int[]{batchSize}), Pointer.to(new int[]{net.train_time}));
-            cuLaunchKernel(function, this.CAFFE_GET_BLOCKS(diffB.dataLength), 1, 1,      // Grid dimension
+            kernelParameters = Pointer.to(Pointer.to(bias.getGpuData()), Pointer.to(diffB.getGpuData()), Pointer.to(mb.getGpuData()), Pointer.to(vb.getGpuData()), Pointer.to(new int[]{diffB.dataLength}), Pointer.to(new float[]{lr}), Pointer.to(new float[]{beta1}), Pointer.to(new float[]{beta2}), Pointer.to(new float[]{(float) (1.0f - Math.pow(beta1, net.train_time))}), Pointer.to(new float[]{(float) (1.0f - Math.pow(beta2, net.train_time))}), Pointer.to(new float[]{1e-8f}), Pointer.to(new float[]{weight_decay}));
+            cuLaunchKernel(adamw_function, this.CAFFE_GET_BLOCKS(diffB.dataLength), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
-                    kernelBiasParameters, null // Kernel- and extra parameters
+                    kernelParameters, null // Kernel- and extra parameters
             );
-            //	        JCudaDriver.cuCtxSynchronize();
         } catch (Exception e) {
             // TODO: handle exception
             e.printStackTrace();

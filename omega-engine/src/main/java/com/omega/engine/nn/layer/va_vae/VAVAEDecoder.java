@@ -92,6 +92,7 @@ public class VAVAEDecoder extends Layer {
             if (i != 0) {
                 SDVAEUpsample upsample = new SDVAEUpsample(c_out, ih, iw, network);
                 up.add(upsample);
+                c_in = c_out;
                 ih = upsample.oHeight;
                 iw = upsample.oWidth;
             }

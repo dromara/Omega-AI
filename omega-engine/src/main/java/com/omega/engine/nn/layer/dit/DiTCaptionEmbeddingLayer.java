@@ -70,6 +70,7 @@ public class DiTCaptionEmbeddingLayer extends Layer {
     public void initLayers() {
     	int hiddenSize = outChannel;
         linear1 = new FullyLayer(inChannel, hiddenSize, bias, network);
+        linear1.PROPAGATE_DOWN = false;
 //        RandomUtils.xavier_uniform(linear1.weight, 1, inChannel, outChannel);
         linear1.weight.setData(RandomUtils.normal_(inChannel * hiddenSize, 0.0f, 0.02f));
         if(linear1.bias != null) {
@@ -126,11 +127,11 @@ public class DiTCaptionEmbeddingLayer extends Layer {
     		GPUOP.getInstance().cudaRandom(this.mask);//0-1
     		kernel.tokenDrop(input, y_embedding, mask, input, y_embedding.dataLength, uncond_prob);
     	}
-    	
+//    	input.showDM("input");
         linear1.forward(input);
-
+//        linear1.getOutput().showDM("linear1");
         act.forward(linear1.getOutput());
-
+//        act.getOutput().showDM("act");
         linear2.forward(act.getOutput());
 
         this.output = linear2.getOutput();
@@ -280,6 +281,17 @@ public class DiTCaptionEmbeddingLayer extends Layer {
     }
 
 	public Tensor getY_embedding() {
+		return y_embedding;
+	}
+	
+	public void setY_embedding(Tensor y_embedding) {
+		this.y_embedding = y_embedding;
+	}
+	
+	public Tensor init_y_embedding() {
+		if(y_embedding == null) {
+			y_embedding = new Tensor(1, 1, token_num, inChannel, true);
+		}
 		return y_embedding;
 	}
 }

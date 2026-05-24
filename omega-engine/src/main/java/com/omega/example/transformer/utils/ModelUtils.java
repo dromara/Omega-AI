@@ -18,7 +18,19 @@ import com.omega.engine.nn.network.dit.DiT_ORG;
 import com.omega.engine.nn.network.dit.DiT_ORG2;
 import com.omega.engine.nn.network.dit.DiT_ORG_SRA;
 import com.omega.engine.nn.network.dit.DiT_TXT;
+import com.omega.engine.nn.network.dit.Dinov2;
 import com.omega.engine.nn.network.dit.FluxDiT;
+import com.omega.engine.nn.network.dit.FluxDiT2;
+import com.omega.engine.nn.network.dit.FluxDiT3;
+import com.omega.engine.nn.network.dit.FluxDiT_REG;
+import com.omega.engine.nn.network.dit.FluxDiT_REPA;
+import com.omega.engine.nn.network.dit.FluxDiT_SPRINT;
+import com.omega.engine.nn.network.dit.OmegaDiT;
+import com.omega.engine.nn.network.dit.FluxDiT_SPRINT3;
+import com.omega.engine.nn.network.dit.FluxDiT_SPRINT4;
+import com.omega.engine.nn.network.dit.FluxDiT_SPRINT_REG;
+import com.omega.engine.nn.network.dit.JiT;
+import com.omega.engine.nn.network.dit.JiT_REPA;
 import com.omega.engine.nn.network.dit.MMDiT;
 import com.omega.engine.nn.network.dit.MMDiT_RoPE;
 import com.omega.engine.nn.network.dit.PixArtDiT;
@@ -30,6 +42,378 @@ import com.omega.engine.nn.network.vae.WFVAE;
 import com.omega.engine.tensor.Tensor;
 
 public class ModelUtils {
+	
+	public static void saveModel(FluxDiT_SPRINT_REG model, String outpath) {
+        File file = new File(outpath);
+        if (!file.exists()) {
+            try {
+                file.createNewFile();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+        try (RandomAccessFile rFile = new RandomAccessFile(file, "rw")) {
+            System.out.println("start save model...");
+            model.saveModel(rFile);
+            System.out.println("model save success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void loadModel(FluxDiT_SPRINT_REG model, String inputPath) {
+        try (RandomAccessFile File = new RandomAccessFile(inputPath, "r")) {
+            System.out.println("start load model...");
+            model.loadModel(File);
+            System.out.println("model load success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void saveModel(FluxDiT_SPRINT4 model, String outpath) {
+        File file = new File(outpath);
+        if (!file.exists()) {
+            try {
+                file.createNewFile();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+        try (RandomAccessFile rFile = new RandomAccessFile(file, "rw")) {
+            System.out.println("start save model...");
+            model.saveModel(rFile);
+            System.out.println("model save success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void loadModel(FluxDiT_SPRINT4 model, String inputPath) {
+        try (RandomAccessFile File = new RandomAccessFile(inputPath, "r")) {
+            System.out.println("start load model...");
+            model.loadModel(File);
+            System.out.println("model load success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void saveModel(FluxDiT_SPRINT3 model, String outpath) {
+        File file = new File(outpath);
+        if (!file.exists()) {
+            try {
+                file.createNewFile();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+        try (RandomAccessFile rFile = new RandomAccessFile(file, "rw")) {
+            System.out.println("start save model...");
+            model.saveModel(rFile);
+            System.out.println("model save success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void loadModel(FluxDiT_SPRINT3 model, String inputPath) {
+        try (RandomAccessFile File = new RandomAccessFile(inputPath, "r")) {
+            System.out.println("start load model...");
+            model.loadModel(File);
+            System.out.println("model load success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void saveModel(OmegaDiT model, String outpath) {
+        File file = new File(outpath);
+        if (!file.exists()) {
+            try {
+                file.createNewFile();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+        try (RandomAccessFile rFile = new RandomAccessFile(file, "rw")) {
+            System.out.println("start save model...");
+            model.saveModel(rFile);
+            System.out.println("model save success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void loadModel(OmegaDiT model, String inputPath) {
+        try (RandomAccessFile File = new RandomAccessFile(inputPath, "r")) {
+            System.out.println("start load model...");
+            model.loadModel(File);
+            System.out.println("model load success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void saveModel(FluxDiT_SPRINT model, String outpath) {
+        File file = new File(outpath);
+        if (!file.exists()) {
+            try {
+                file.createNewFile();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+        try (RandomAccessFile rFile = new RandomAccessFile(file, "rw")) {
+            System.out.println("start save model...");
+            model.saveModel(rFile);
+            System.out.println("model save success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void loadModel(FluxDiT_SPRINT model, String inputPath) {
+        try (RandomAccessFile File = new RandomAccessFile(inputPath, "r")) {
+            System.out.println("start load model...");
+            model.loadModel(File);
+            System.out.println("model load success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void saveModel(JiT_REPA model, String outpath) {
+        File file = new File(outpath);
+        if (!file.exists()) {
+            try {
+                file.createNewFile();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+        try (RandomAccessFile rFile = new RandomAccessFile(file, "rw")) {
+            System.out.println("start save model...");
+            model.saveModel(rFile);
+            System.out.println("model save success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void loadModel(JiT_REPA model, String inputPath) {
+        try (RandomAccessFile File = new RandomAccessFile(inputPath, "r")) {
+            System.out.println("start load model...");
+            model.loadModel(File);
+            System.out.println("model load success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void saveModel(JiT model, String outpath) {
+        File file = new File(outpath);
+        if (!file.exists()) {
+            try {
+                file.createNewFile();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+        try (RandomAccessFile rFile = new RandomAccessFile(file, "rw")) {
+            System.out.println("start save model...");
+            model.saveModel(rFile);
+            System.out.println("model save success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void loadModel(JiT model, String inputPath) {
+        try (RandomAccessFile File = new RandomAccessFile(inputPath, "r")) {
+            System.out.println("start load model...");
+            model.loadModel(File);
+            System.out.println("model load success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void saveModel(FluxDiT_REG model, String outpath) {
+        File file = new File(outpath);
+        if (!file.exists()) {
+            try {
+                file.createNewFile();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+        try (RandomAccessFile rFile = new RandomAccessFile(file, "rw")) {
+            System.out.println("start save model...");
+            model.saveModel(rFile);
+            System.out.println("model save success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void loadModel(FluxDiT_REG model, String inputPath) {
+        try (RandomAccessFile File = new RandomAccessFile(inputPath, "r")) {
+            System.out.println("start load model...");
+            model.loadModel(File);
+            System.out.println("model load success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void saveModel(FluxDiT_REPA model, String outpath) {
+        File file = new File(outpath);
+        if (!file.exists()) {
+            try {
+                file.createNewFile();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+        try (RandomAccessFile rFile = new RandomAccessFile(file, "rw")) {
+            System.out.println("start save model...");
+            model.saveModel(rFile);
+            System.out.println("model save success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void loadModel(FluxDiT_REPA model, String inputPath) {
+        try (RandomAccessFile File = new RandomAccessFile(inputPath, "r")) {
+            System.out.println("start load model...");
+            model.loadModel(File);
+            System.out.println("model load success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void saveModel(Dinov2 model, String outpath) {
+        File file = new File(outpath);
+        if (!file.exists()) {
+            try {
+                file.createNewFile();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+        try (RandomAccessFile rFile = new RandomAccessFile(file, "rw")) {
+            System.out.println("start save model...");
+            model.saveModel(rFile);
+            System.out.println("model save success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void loadModel(Dinov2 model, String inputPath) {
+        try (RandomAccessFile File = new RandomAccessFile(inputPath, "r")) {
+            System.out.println("start load model...");
+            model.loadModel(File);
+            System.out.println("model load success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void saveModel(FluxDiT3 model, String outpath) {
+        File file = new File(outpath);
+        if (!file.exists()) {
+            try {
+                file.createNewFile();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+        try (RandomAccessFile rFile = new RandomAccessFile(file, "rw")) {
+            System.out.println("start save model...");
+            model.saveModel(rFile);
+            System.out.println("model save success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void loadModel(FluxDiT3 model, String inputPath) {
+        try (RandomAccessFile File = new RandomAccessFile(inputPath, "r")) {
+            System.out.println("start load model...");
+            model.loadModel(File);
+            System.out.println("model load success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void saveModel(FluxDiT2 model, String outpath) {
+        File file = new File(outpath);
+        if (!file.exists()) {
+            try {
+                file.createNewFile();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+        try (RandomAccessFile rFile = new RandomAccessFile(file, "rw")) {
+            System.out.println("start save model...");
+            model.saveModel(rFile);
+            System.out.println("model save success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void loadModel(FluxDiT2 model, String inputPath) {
+        try (RandomAccessFile File = new RandomAccessFile(inputPath, "r")) {
+            System.out.println("start load model...");
+            model.loadModel(File);
+            System.out.println("model load success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
 	
 	public static void saveModel(FluxDiT model, String outpath) {
         File file = new File(outpath);

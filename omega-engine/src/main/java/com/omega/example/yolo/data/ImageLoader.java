@@ -860,9 +860,7 @@ public class ImageLoader {
         OMImage image = null;
         try {
             File file = new File(filePath);
-            System.out.println("=====================>11:" + filePath);
             if (file.exists()) {
-                System.out.println("=====================>22:" + filePath);
                 image = YoloImageUtils.IU().loadOMImage(file);
             }
         } catch (Exception e) {

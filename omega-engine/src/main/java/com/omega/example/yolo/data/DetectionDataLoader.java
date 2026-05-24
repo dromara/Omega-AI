@@ -288,7 +288,7 @@ public class DetectionDataLoader extends BaseDataLoader {
     @Override
     public float[] loadData(int index) {
         // TODO Auto-generated method stub
-        String filePath = imgDirPath + "/" + idxSet[index] + "." + extName;
+        String filePath = imgDirPath + "/" + idxSet[index];
         if (!filePath.contains(".")) {
             filePath += ".jpg";
         }

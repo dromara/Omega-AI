@@ -201,6 +201,7 @@ public class FlashAttentionV2Kernel extends BaseKernel {
             int sram_size = (col_tile_size * 2 * Sizeof.FLOAT) + (row_tile_size * Sizeof.FLOAT) + (Bc * Br * Sizeof.FLOAT);
             int[] grid_dim = new int[]{B, nh, 1};
             int[] block_dim = new int[]{Br, 1, 1};
+
             checkCUDA(cuLaunchKernel(forward_function, grid_dim[0], grid_dim[1], grid_dim[2],      // Grid dimension
                     block_dim[0], block_dim[1], block_dim[2],      // Block dimension
                     sram_size, null,               // Shared memory size and stream

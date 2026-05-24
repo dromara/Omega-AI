@@ -689,6 +689,7 @@
         <option value="llama3">🚀 Omega-AI(llama3)</option>
         <option value="yolov3">✨ Omega-AI(yolov3)</option>
         <option value="yolov7">🔍 Omega-AI(yolov7)</option>
+        <option value="dit">🎨 Omega-AI(DiT)</option>
       </select>
     </div>
     <h1>🤖 大模型智能助手</h1>
@@ -803,6 +804,12 @@
         icon: '🔍',
         type: 'yolov7',
         description: '基于Omega-AI深度学习框架构建的yolov7网络训练的高性能目标检测模型，提供更精准的物体识别和边界框预测'
+      },
+      'dit': {
+        name: 'Omega-AI(DiT)',
+        icon: '🎨',
+        type: 'dit',
+        description: '基于Omega-AI深度学习框架构建的DiT（Diffusion Transformer）网络训练的文本生成图像模型，可根据文字描述生成高质量图片'
       }
     };
     return modelMap[modelValue] || modelMap['llama3'];
@@ -835,7 +842,18 @@
       if (!welcomeMessage) {
         addMessage('您好！我是Omega-AI深度学习框架构建的llama模型网络训练的大模型聊天助手。请问有什么我可以帮助您的吗？', false);
       }
-    } if (modelInfo.type === 'yolov7') {
+    } else if (modelInfo.type === 'dit') {
+      // DiT模型：显示输入框和发送按钮，隐藏上传按钮
+      messageInput.style.display = 'block';
+      sendButton.style.display = 'block';
+      uploadButton.style.display = 'none';
+      messageInput.placeholder = '输入图片描述... (按Ctrl+Enter生成图片)';
+
+      document.getElementById('tishiyu').style.display = 'none';
+
+      // 添加使用说明
+      addMessage('请输入您想要生成的图片描述，例如："一只可爱的猫咪在草地上玩耍"。我将根据您的描述生成相应的图片。', false);
+    } else if (modelInfo.type === 'yolov7') {
       // 视觉模型：显示上传按钮，隐藏输入框和发送按钮
       messageInput.style.display = 'none';
       sendButton.style.display = 'none';
@@ -845,7 +863,7 @@
 
       // 添加使用说明
       addMessage('请上传图片或视频进行目标检测分析，支持JPG、PNG、MP4、AVI常见格式。', false);
-    }else if(modelInfo.type === 'yolov3'){
+    } else if(modelInfo.type === 'yolov3'){
       // 视觉模型：显示上传按钮，隐藏输入框和发送按钮
       messageInput.style.display = 'none';
       sendButton.style.display = 'none';
@@ -890,23 +908,34 @@
     const contentDiv = document.createElement('div');
     contentDiv.className = 'message-content';
 
-    if (fileData) {
-      // 添加文件消息
+    if (fileData && fileType === 'image') {
+      // 添加图片消息
       const fileContainer = document.createElement('div');
-      fileContainer.className = fileType === 'image' ? 'image-message' : 'video-message';
+      fileContainer.className = 'image-message';
 
-      if (fileType === 'image') {
-        const img = document.createElement('img');
-        img.src = fileData;
-        img.alt = isUser ? '上传的图片' : '分析结果';
-        fileContainer.appendChild(img);
-      } else {
-        const video = document.createElement('video');
-        video.src = fileData;
-        video.controls = true;
-        video.alt = isUser ? '上传的视频' : '分析结果';
-        fileContainer.appendChild(video);
+      const img = document.createElement('img');
+      img.src = fileData;
+      img.alt = isUser ? '上传的图片' : '生成的图片';
+      fileContainer.appendChild(img);
+
+      contentDiv.appendChild(fileContainer);
+
+      if (content) {
+        const textDiv = document.createElement('div');
+        textDiv.textContent = content;
+        textDiv.style.marginTop = '8px';
+        contentDiv.appendChild(textDiv);
       }
+    } else if (fileData && fileType === 'video') {
+      // 添加视频消息
+      const fileContainer = document.createElement('div');
+      fileContainer.className = 'video-message';
+
+      const video = document.createElement('video');
+      video.src = fileData;
+      video.controls = true;
+      video.alt = isUser ? '上传的视频' : '分析结果';
+      fileContainer.appendChild(video);
 
       contentDiv.appendChild(fileContainer);
 
@@ -926,22 +955,25 @@
       resultDiv.className = 'detection-result';
 
       if (detectionResult.success) {
-        // resultDiv.innerHTML = `
-        //   <strong>检测结果：</strong><br>
-        //   共检测到 ${detectionResult.objects.length} 个对象<br>
-        //   ${detectionResult.objects.map(obj =>
-        //         `<span class="detection-object">${obj.class} (${(obj.confidence * 100).toFixed(1)}%)</span>`
-        // ).join('')}
-        // `;
-
-        // 添加下载按钮
+        // 根据模型类型显示不同的按钮
         const buttonsDiv = document.createElement('div');
         buttonsDiv.className = 'action-buttons';
-        buttonsDiv.innerHTML = `
-          <button class="action-button download-button" onclick="downloadFile('${detectionResult.fileUrl}')">
-            下载检测结果
-          </button>
-        `;
+
+        if (currentModel === 'dit') {
+          // DiT模型：显示下载图片按钮
+          buttonsDiv.innerHTML = `
+            <button class="action-button download-button" onclick="downloadImage('${detectionResult.fileUrl}')">
+              下载图片
+            </button>
+          `;
+        } else {
+          // YOLO模型：显示下载检测结果按钮
+          buttonsDiv.innerHTML = `
+            <button class="action-button download-button" onclick="downloadFile('${detectionResult.fileUrl}')">
+              下载检测结果
+            </button>
+          `;
+        }
         resultDiv.appendChild(buttonsDiv);
       } else {
         resultDiv.textContent = '未检测到任何对象';
@@ -972,7 +1004,7 @@
       </div>
       <div style="margin-top: 6px; font-size: 0.8rem; color: #90c0ff;">
         <span class="model-icon">${currentModelInfo.icon}</span>
-        ${currentModelInfo.name} 正在分析...
+        ${currentModelInfo.type === 'dit' ? `${currentModelInfo.name} 正在生成图片...` : `${currentModelInfo.name} 正在分析...`}
       </div>
     `;
     typingIndicator.style.display = 'flex';
@@ -987,7 +1019,7 @@
     const message = messageInput.value.trim();
     const modelInfo = getModelInfo(currentModel);
 
-    if (modelInfo.type !== 'llama3') {
+    if (modelInfo.type !== 'llama3' && modelInfo.type !== 'dit') {
       return;
     }
 
@@ -1002,25 +1034,51 @@
     showTypingIndicator();
 
     try {
-      // 发送请求到后端，包含模型选择
-      const response = await fetch('/model/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          message: message,
-          model: currentModel
-        })
-      });
+      if (modelInfo.type === 'llama3') {
+        // 发送请求到LLM聊天接口
+        const response = await fetch('/model/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: message,
+            model: currentModel
+          })
+        });
 
-      const data = await response.text();
+        const data = await response.text();
 
-      // 隐藏正在输入指示器
-      hideTypingIndicator();
+        // 隐藏正在输入指示器
+        hideTypingIndicator();
 
-      // 显示AI回复
-      addMessage(data, false);
+        // 显示AI回复
+        addMessage(data, false);
+      } else if (modelInfo.type === 'dit') {
+        // 发送请求到DiT图片生成接口
+        const response = await fetch('/dit/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: message,
+            model: currentModel
+          })
+        });
+
+        const result = await response.json();
+
+        // 隐藏正在输入指示器
+        hideTypingIndicator();
+
+        if (result.success) {
+          // 显示生成的图片
+          addMessage('图片生成完成', false, result.fileUrl, 'image', result);
+        } else {
+          addMessage('图片生成失败，请重试', false);
+        }
+      }
     } catch (error) {
       hideTypingIndicator();
       addMessage('抱歉，发生了一些错误。请稍后再试。', false);
@@ -1160,6 +1218,16 @@
     const link = document.createElement('a');
     link.href = filePath;
     link.download = `detection-result-${new Date().getTime()}.${filePath.split('.').pop()}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // 下载图片功能（用于DiT模型）
+  window.downloadImage = function(imageUrl) {
+    const link = document.createElement('a');
+    link.href = imageUrl;
+    link.download = `generated-image-${new Date().getTime()}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

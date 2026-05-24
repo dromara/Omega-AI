@@ -17,8 +17,6 @@ import com.omega.engine.nn.layer.dit.DiTSkipBlock;
 import com.omega.engine.nn.layer.gpu.RoPEKernel;
 import com.omega.engine.nn.network.ClipText;
 import com.omega.engine.nn.network.ClipTextModel;
-import com.omega.engine.nn.network.Llama3;
-import com.omega.engine.nn.network.NetworkType;
 import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.nn.network.dit.DiT;
 import com.omega.engine.nn.network.dit.DiT_ORG;
@@ -33,9 +31,6 @@ import com.omega.engine.nn.network.vae.VA_VAE;
 import com.omega.engine.nn.network.vae.VQVAE2;
 import com.omega.engine.optimizer.MBSGDOptimizer;
 import com.omega.engine.optimizer.lr.LearnRateUpdate;
-import com.omega.engine.parallel.dp.DP;
-import com.omega.engine.parallel.params.DiT_TXTParameters;
-import com.omega.engine.parallel.params.Llama3Parameters;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 import com.omega.example.common.ModeLoaderlUtils;
@@ -46,11 +41,8 @@ import com.omega.example.dit.models.ICPlan;
 import com.omega.example.dit.models.IDDPM;
 import com.omega.example.sd.utils.SDImageDataLoader;
 import com.omega.example.sd.utils.SDImageDataLoaderEN;
-import com.omega.example.transformer.dataset.SFTBinDataset;
-import com.omega.example.transformer.dataset.parallel.ParallelDataLoader;
 import com.omega.example.transformer.utils.LagJsonReader;
 import com.omega.example.transformer.utils.ModelUtils;
-import com.omega.example.transformer.utils.bpe.BPETokenizer3;
 import com.omega.example.transformer.utils.bpe.BPETokenizerEN;
 import com.omega.example.transformer.utils.bpe.BinDataType;
 
@@ -1924,7 +1916,7 @@ public class DiTTest {
         String clipDataPath = "D:\\dataset\\amine\\dalle_full_clip.bin";
 //		String clipDataPath = "D:\\dataset\\amine\\vavae_2clip.bin";
 		
-        int batchSize = 8;
+        int batchSize = 32;
         int latendDim = 32;
         int height = 16;
         int width = 16;
@@ -1933,13 +1925,13 @@ public class DiTTest {
         
         LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, maxContext, textEmbedDim, BinDataType.float32);
         
-        int ditHeadNum = 16;
+        int ditHeadNum = 12;
         int latendSize = 16;
-        int depth = 24;
+        int depth = 12;
         int timeSteps = 1000;
         int mlpRatio = 4;
         int patchSize = 1;
-        int hiddenSize = 1024;
+        int hiddenSize = 768;
         
         float y_prob = 0.1f;
         
@@ -1962,48 +1954,7 @@ public class DiTTest {
         ModelUtils.saveModel(dit, save_model_path);
     }
 	
-	public static void flux_dit_b2_iddpm_train() throws Exception {
-		String dataPath = "D:\\dataset\\amine\\dalle_vavae_latend.bin";
-        String clipDataPath = "D:\\dataset\\amine\\dalle_full_clip.bin";
-//		String clipDataPath = "D:\\dataset\\amine\\vavae_2clip.bin";
-		
-        int batchSize = 10;
-        int latendDim = 32;
-        int height = 16;
-        int width = 16;
-        int textEmbedDim = 768;
-        int maxContext = 77;
-        
-        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, maxContext, textEmbedDim, BinDataType.float32);
-        
-        int ditHeadNum = 16;
-        int latendSize = 16;
-        int depth = 24;
-        int timeSteps = 1000;
-        int mlpRatio = 4;
-        int patchSize = 1;
-        int hiddenSize = 1024;
-        
-        float y_prob = 0.1f;
-        
-        FluxDiT dit = new FluxDiT(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, textEmbedDim, maxContext, mlpRatio, false, y_prob);
-        dit.CUDNN = true;
-        dit.learnRate = 0.0004f;
-        
-        ICPlan icplan = new ICPlan(dit.tensorOP);
 
-//        String model_path = "D:\\models\\dit_txt\\flux_dit_xl2_32.model";
-//        ModelUtils.loadModel(dit, model_path);
-        
-        MBSGDOptimizer optimizer = new MBSGDOptimizer(dit, 40, 0.00001f, batchSize, LearnRateUpdate.NONE, false);
-        
-        Tensor mean = new Tensor(latendDim, 1, 1, 1, new float[] {0.23869862f,0.4016211f,-0.15087046f,-0.52679396f,-0.15986611f,-1.6260003f,-0.5108059f,0.036283042f,0.3879915f,0.5334558f,-0.96909237f,1.4872372f,0.071545064f,0.7708449f,0.16623285f,0.7733368f,-0.9222466f,1.2859207f,-0.30753133f,-0.70088845f,0.5247328f,0.09425582f,-1.1671793f,0.53027356f,2.7668183f,1.4706479f,0.09313846f,-0.25821307f,-0.81280077f,-0.56423014f,0.49580055f,-0.35338005f}, true);
-        Tensor std = new Tensor(latendDim, 1, 1, 1, new float[] {4.1767454f,4.245004f,3.4222624f,3.6970704f,3.6395364f,3.3921142f,3.0486407f,3.6789029f,3.922576f,3.760961f,3.7205217f,3.70206f,3.7118554f,3.6425886f,3.223105f,3.3205664f,4.135744f,3.6481087f,3.6758296f,3.0634696f,3.3749795f,2.9729145f,3.8634508f,4.518134f,2.7782023f,3.4923503f,4.7507596f,3.2647762f,3.3624852f,3.7219477f,4.659944f,4.2925563f}, true);
-
-        optimizer.train_Flux_ICPlan2(dataLoader, icplan, "D://models//dit_txt//", mean, std, 1f, 4);
-        String save_model_path = "/omega/models/dit_xl2.model";
-        ModelUtils.saveModel(dit, save_model_path);
-    }
 	
 	public static void dit_txt_xl_iddpm_train() throws Exception {
 		String dataPath = "/root/gpufree-data/txt2img_1m/vavae_1m_latend.bin";
@@ -2381,7 +2332,7 @@ public class DiTTest {
         
         ICPlan icplan = new ICPlan(network.tensorOP);
         
-        String model_path = "D:\\test\\dit_vavae\\dit_4\\dit_b2_8.model";
+        String model_path = "D:\\test\\dit_vavae\\dit_4\\dit_b2_2.model";
         ModelUtils.loadModel(network, model_path);
         
         Tensor label = new Tensor(batchSize * dataLoader.maxContextLen, 1, 1, 1, true);
@@ -2458,7 +2409,7 @@ public class DiTTest {
             
             System.out.println("finish create.");
             
-            sample = icplan.forward_with_cfg(network, noise2, t, condInput_ynull, cos, sin, latend, eps, 10.5f);
+            sample = icplan.forward_with_cfg(network, noise2, t, condInput_ynull, cos, sin, latend, eps, 25.0f);
             
             icplan.latend_un_norm(sample, latendMean, latendStd);
 
@@ -2648,7 +2599,7 @@ public class DiTTest {
         boolean horizontalFilp = true;
         int imgSize = 256;
         int maxContextLen = 77;
-        int batchSize = 10;
+        int batchSize = 8;
         float[] mean = new float[]{0.5f, 0.5f, 0.5f};
         float[] std = new float[]{0.5f, 0.5f, 0.5f};
         String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
@@ -2695,7 +2646,7 @@ public class DiTTest {
         
         ICPlan icplan = new ICPlan(network.tensorOP);
         
-        String model_path = "D:\\models\\dit_txt\\flux_dit_xl2_32.model";
+        String model_path = "D:\\models\\dit_txt\\flux_dit_xl2_18_3000.model";
         ModelUtils.loadModel(network, model_path);
         
         Tensor label = new Tensor(batchSize * dataLoader.maxContextLen, 1, 1, 1, true);
@@ -2726,11 +2677,11 @@ public class DiTTest {
             labels[2] = "a highly detailed anime landscape,big tree on the water, epic sky,golden grass,detailed";
             labels[3] = "a woman";
             labels[4] = "fruit cream cake";
-            labels[5] = "bright red phlox flowers bloom in a garden";
+            labels[5] = "a dog";
 	        labels[6] = "the cambridge shoulder bag";
             labels[7] = "A yellow mushroom grows in the forest";
-            labels[8] = "a dog";
-            labels[9] = "A lovely corgi is taking a walk under the sea";
+//            labels[8] = "a dog";
+//            labels[9] = "A lovely corgi is taking a walk under the sea";
             dataLoader.loadLabel_offset(label, 0, labels[0]);
             dataLoader.loadLabel_offset(label, 1, labels[1]);
             dataLoader.loadLabel_offset(label, 2, labels[2]);
@@ -2739,8 +2690,8 @@ public class DiTTest {
             dataLoader.loadLabel_offset(label, 5, labels[5]);
             dataLoader.loadLabel_offset(label, 6, labels[6]);
             dataLoader.loadLabel_offset(label, 7, labels[7]);
-            dataLoader.loadLabel_offset(label, 8, labels[8]);
-            dataLoader.loadLabel_offset(label, 9, labels[9]);
+//            dataLoader.loadLabel_offset(label, 8, labels[8]);
+//            dataLoader.loadLabel_offset(label, 9, labels[9]);
             condInput = clip.get_full_clip_prompt_embeds(label);
             
             if(condInput_ynull == null) {
@@ -2768,7 +2719,7 @@ public class DiTTest {
             
             result.data = MatrixOperation.clampSelf(result.syncHost(), -1, 1);
 
-            showImgs("D:\\test\\dit_vavae\\dit_3\\" + i, result, mean, std);
+            showImgs("D:\\test\\dit_vavae\\mmdit_3\\" + i, result, mean, std);
             
             System.out.println("finish create.");
             
@@ -2782,7 +2733,7 @@ public class DiTTest {
             
             result.data = MatrixOperation.clampSelf(result.syncHost(), -1, 1);
 
-            showImgs("D:\\test\\dit_vavae\\dit_3\\" + i + "_T", result, mean, std);
+            showImgs("D:\\test\\dit_vavae\\mmdit_3\\" + i + "_T", result, mean, std);
             
             System.out.println("finish create.");
         }
@@ -3007,7 +2958,7 @@ public class DiTTest {
         
         ICPlan icplan = new ICPlan(network.tensorOP);
         
-        String model_path = "D:\\test\\dit_vavae\\dit_xl2\\dit_xl2_18.model";
+        String model_path = "D:\\test\\dit_vavae\\dit_xl2\\dit_xl2_2.model";
         ModelUtils.loadModel(network, model_path);
         
         Tensor label = new Tensor(batchSize * dataLoader.maxContextLen, 1, 1, 1, true);
@@ -3092,7 +3043,7 @@ public class DiTTest {
             
             System.out.println("finish create.");
             
-            sample = icplan.forward_with_cfg(network, noise2, t, condInput_ynull, cos, sin, latend, eps, 8.0f);
+            sample = icplan.forward_with_cfg(network, noise2, t, condInput_ynull, cos, sin, latend, eps, 20.0f);
             
             icplan.latend_un_norm(sample, latendMean, latendStd);
 
@@ -3627,11 +3578,9 @@ public class DiTTest {
 	        	
 //	        	dit_txt_xl_iddpm_train();
 	        	
-	        	flux_dit_b2_iddpm_train();
-	        	
 //	        	test_sana_cfg();
 	        	
-//	        	test_flux_cfg();
+	        	test_flux_cfg();
 	        	
 	        } catch (Exception e) {
 	            // TODO: handle exception

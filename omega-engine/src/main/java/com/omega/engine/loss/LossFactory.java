@@ -33,6 +33,9 @@ public class LossFactory {
             case MSE:
                 lossFN = new MSELoss(network);
                 break;
+            case MSE_right:
+                lossFN = new MSELoss_right(network);
+                break;
             case MSE_SUM:
                 lossFN = new MSESumLoss(network);
                 break;
@@ -84,6 +87,9 @@ public class LossFactory {
             case MSE:
                 lossFN = new MSELoss(network);
                 break;
+            case MSE_right:
+                lossFN = new MSELoss_right(network);
+                break;
             case BCE:
                 lossFN = new BCELoss(network);
                 break;
@@ -121,6 +127,9 @@ public class LossFactory {
             switch (type) {
                 case MSE:
                     losses[i] = new MSELoss(net);
+                    break;
+                case MSE_right:
+                	losses[i] = new MSELoss_right(net);
                     break;
                 case BCE:
                     losses[i] = new BCELoss(net);
@@ -168,6 +177,9 @@ public class LossFactory {
             switch (type) {
                 case MSE:
                     losses[i] = new MSELoss(net);
+                    break;
+                case MSE_right:
+                	losses[i] = new MSELoss_right(net);
                     break;
                 case BCE:
                     losses[i] = new BCELoss(net);

@@ -53,10 +53,10 @@ __global__ void rope_2d_norm(float* x, float* out,float* cos, float* sin, int N,
     int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
     if (i >= N/2) return;
     int index = i * 2;
-    int n = index / T / headNum / headSize;
-    int t = index / headNum / headSize % T;
-    int hn = index % (headNum * headSize) / headSize;
-    int hs = index % (headNum * headSize) % headSize;
+    int n = index / T / headSize;
+    int once = index - (n * T * headSize);
+    int t = once / headSize;
+    int hs = once % headSize;
     float cv = x[index];
 	float cn = x[index+1];
     out[index] = cos[t * headSize + hs] * cv - sin[t * headSize + hs] * cn;
@@ -69,16 +69,52 @@ __global__ void rope_2d_back(float* delta, float* diff,float* cos, float* sin, i
     int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
     if (i >= N/2) return;
     int index = i * 2;
-    int n = index / T / headNum / headSize;
-    int t = index / headNum / headSize % T;
-    int hn = index % (headNum * headSize) / headSize;
-    int hs = index % (headNum * headSize) % headSize;
+    int n = index / T / headSize;
+    int once = index - (n * T * headSize);
+    int t = once / headSize;
+    int hs = once % headSize;
     
     const float d0 = delta[index + 0];
     const float d1 = delta[index + 1];
     
     diff[index] = cos[t * headSize + hs] * d0 + sin[t * headSize + hs + 1] * d1;
     diff[index+1] = cos[t * headSize + hs + 1] * d1 - sin[t * headSize + hs] * d0;
+}
+
+extern "C"
+__global__ void rope_2d_norm_idskeep(float* x, float* out, float *idskeep, float* cos, float* sin, int N, int T, int headNum,int headSize)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (i >= N/2) return;
+    int index = i * 2;
+    int n = index / T / headSize;
+    int once = index - (n * T * headSize);
+    int t = once / headSize;
+    int hs = once % headSize;
+    float cv = x[index];
+	float cn = x[index+1];
+	int b = n / headNum;
+	int t_idx = (int) idskeep[b * T + t];
+    out[index] = cos[t_idx * headSize + hs] * cv - sin[t_idx * headSize + hs] * cn;
+    out[index+1] = cos[t_idx * headSize + hs + 1] * cn + sin[t_idx * headSize + hs + 1] * cv;
+}
+
+extern "C"
+__global__ void rope_2d_back_idskeep(float* delta, float* diff, float *idskeep,float* cos, float* sin, int N, int T, int headNum,int headSize)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (i >= N/2) return;
+    int index = i * 2;
+    int n = index / T / headSize;
+    int once = index - (n * T * headSize);
+    int t = once / headSize;
+    int hs = once % headSize;
+    const float d0 = delta[index + 0];
+    const float d1 = delta[index + 1];
+	int b = n / headNum;
+	int t_idx = (int) idskeep[b * T + t];
+    diff[index] = cos[t_idx * headSize + hs] * d0 + sin[t_idx * headSize + hs + 1] * d1;
+    diff[index+1] = cos[t_idx * headSize + hs + 1] * d1 - sin[t_idx * headSize + hs] * d0;
 }
 
 extern "C"
@@ -236,10 +272,10 @@ __global__ void rope_2d_norm_igone(float* x, float* out,float* cos, float* sin, 
     int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
     if (i >= N/2) return;
     int index = i * 2;
-    int n = index / T / headNum / headSize;
-    int t = index / headNum / headSize % T;
-    int hn = index % (headNum * headSize) / headSize;
-    int hs = index % (headNum * headSize) % headSize;
+    int n = index / T / headSize;
+    int once = index % (T * headSize);
+    int t = once / headSize;
+    int hs = once % headSize;
     float cv = x[index];
 	float cn = x[index+1];
     if(t >= igoneIdx){
@@ -258,11 +294,10 @@ __global__ void rope_2d_back_igone(float* delta, float* diff,float* cos, float* 
     int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
     if (i >= N/2) return;
     int index = i * 2;
-    int n = index / T / headNum / headSize;
-    int t = index / headNum / headSize % T;
-    int hn = index % (headNum * headSize) / headSize;
-    int hs = index % (headNum * headSize) % headSize;
-    
+    int n = index / T / headSize;
+    int once = index % (T * headSize);
+    int t = once / headSize;
+    int hs = once % headSize;
     const float d0 = delta[index + 0];
     const float d1 = delta[index + 1];
     if(t >= igoneIdx){
@@ -273,4 +308,232 @@ __global__ void rope_2d_back_igone(float* delta, float* diff,float* cos, float* 
 		diff[index] = d0;
     	diff[index+1] = d1;
 	}
+}
+
+extern "C"
+__global__ void rope_2d_norm_idskeep_igone(float* x, float* out,float* cos, float* sin, float *idskeep, int N, int T, int headNum, int headSize, int igoneIdx)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (i >= N/2) return;
+    int index = i * 2;
+    int n = index / T / headSize;
+    int once = index % (T * headSize);
+    int t = once / headSize;
+    int hs = once % headSize;
+    float cv = x[index];
+	float cn = x[index+1];
+    if(t >= igoneIdx){
+		int b = n / headNum;
+		int rt = t - igoneIdx;
+		int t_idx = (int) idskeep[b * (T - igoneIdx) + rt];
+		out[index] = cos[t_idx * headSize + hs] * cv - sin[t_idx * headSize + hs] * cn;
+    	out[index+1] = cos[t_idx * headSize + hs + 1] * cn + sin[t_idx * headSize + hs + 1] * cv;
+	}else{
+		out[index] = cv;
+    	out[index+1] = cn;
+	}
+}
+
+extern "C"
+__global__ void rope_2d_back_idskeep_igone(float* delta, float* diff,float* cos, float* sin, float *idskeep, int N, int T, int headNum,int headSize, int igoneIdx)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (i >= N/2) return;
+    int index = i * 2;
+    int n = index / T / headSize;
+    int once = index % (T * headSize);
+    int t = once / headSize;
+    int hs = once % headSize;
+    const float d0 = delta[index + 0];
+    const float d1 = delta[index + 1];
+    if(t >= igoneIdx){
+		int b = n / headNum;
+		int rt = t - igoneIdx;
+		int t_idx = (int) idskeep[b * (T - igoneIdx) + rt];
+	    diff[index] = cos[t_idx * headSize + hs] * d0 + sin[t_idx * headSize + hs + 1] * d1;
+	    diff[index+1] = cos[t_idx * headSize + hs + 1] * d1 - sin[t_idx * headSize + hs] * d0;
+    }else{
+		diff[index] = d0;
+    	diff[index+1] = d1;
+	}
+}
+
+extern "C"
+__global__ void rope_2d_norm_idskeep_txt(float* x, float* out,float* cos, float* sin, float *idskeep, int N, int T, int headNum, int headSize, int txt_len)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (i >= N/2) return;
+    int index = i * 2;
+    int n = index / T / headSize;
+    int once = index % (T * headSize);
+    int t = once / headSize;
+    int hs = once % headSize;
+    float cv = x[index];
+	float cn = x[index+1];
+    if(t >= txt_len){
+		int b = n / headNum;
+		int rt = t - txt_len;
+		int t_idx = (int) idskeep[b * (T - txt_len) + rt] + txt_len;
+		out[index] = cos[t_idx * headSize + hs] * cv - sin[t_idx * headSize + hs] * cn;
+    	out[index+1] = cos[t_idx * headSize + hs + 1] * cn + sin[t_idx * headSize + hs + 1] * cv;
+	}else{
+		out[index] = cos[t * headSize + hs] * cv - sin[t * headSize + hs] * cn;
+    	out[index+1] = cos[t * headSize + hs + 1] * cn + sin[t * headSize + hs + 1] * cv;
+	}
+}
+
+extern "C"
+__global__ void rope_2d_back_idskeep_txt(float* delta, float* diff,float* cos, float* sin, float *idskeep, int N, int T, int headNum,int headSize, int txt_len)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (i >= N/2) return;
+    int index = i * 2;
+    int n = index / T / headSize;
+    int once = index % (T * headSize);
+    int t = once / headSize;
+    int hs = once % headSize;
+    const float d0 = delta[index + 0];
+    const float d1 = delta[index + 1];
+    if(t >= txt_len){
+		int b = n / headNum;
+		int rt = t - txt_len;
+		int t_idx = (int) idskeep[b * (T - txt_len) + rt] + txt_len;
+	    diff[index] = cos[t_idx * headSize + hs] * d0 + sin[t_idx * headSize + hs + 1] * d1;
+	    diff[index+1] = cos[t_idx * headSize + hs + 1] * d1 - sin[t_idx * headSize + hs] * d0;
+    }else{
+		diff[index] = cos[t * headSize + hs] * d0 + sin[t * headSize + hs + 1] * d1;
+	    diff[index+1] = cos[t * headSize + hs + 1] * d1 - sin[t * headSize + hs] * d0;
+	}
+}
+
+extern "C"
+__global__ void rope_2d_norm_t(float* x, float* out,float* cos, float* sin, int N, int T, int headNum, int headSize)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (i >= N/2) return;
+    int index = i * 2;
+    int n = index / T / headNum / headSize;
+    int once = index - (n * T * headNum * headSize);
+    int t = once / headNum / headSize;
+    int hs = once % (headNum * headSize) % headSize;
+    float cv = x[index];
+	float cn = x[index+1];
+    out[index] = cos[t * headSize + hs] * cv - sin[t * headSize + hs] * cn;
+    out[index+1] = cos[t * headSize + hs + 1] * cn + sin[t * headSize + hs + 1] * cv;
+}
+
+extern "C"
+__global__ void rope_2d_back_t(float* delta, float* diff,float* cos, float* sin, int N, int T, int headNum, int headSize)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (i >= N/2) return;
+    int index = i * 2;
+    int n = index / T / headNum / headSize;
+    int once = index - (n * T * headNum * headSize);
+    int t = once / headNum / headSize;
+    int hs = once % (headNum * headSize) % headSize;
+    const float d0 = delta[index + 0];
+    const float d1 = delta[index + 1];
+    diff[index] = cos[t * headSize + hs] * d0 + sin[t * headSize + hs + 1] * d1;
+	diff[index+1] = cos[t * headSize + hs + 1] * d1 - sin[t * headSize + hs] * d0;
+}
+
+extern "C"
+__global__ void rope_2d_norm_t_idskeep(float* x, float* out,float* cos, float* sin, float *idskeep, int N, int T, int headNum, int headSize)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (i >= N/2) return;
+    int index = i * 2;
+    int n = index / T / headNum / headSize;
+    int once = index % (T * headNum * headSize);
+    int t = once / headNum / headSize;
+    int hs = once % (headNum * headSize) % headSize;
+    float cv = x[index];
+	float cn = x[index+1];
+	int t_idx = (int) idskeep[n * T + t];
+	out[index] = cos[t_idx * headSize + hs] * cv - sin[t_idx * headSize + hs] * cn;
+	out[index+1] = cos[t_idx * headSize + hs + 1] * cn + sin[t_idx * headSize + hs + 1] * cv;
+}
+
+extern "C"
+__global__ void rope_2d_back_t_idskeep(float* delta, float* diff,float* cos, float* sin, float *idskeep, int N, int T, int headNum, int headSize)
+{
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (i >= N/2) return;
+    int index = i * 2;
+    int n = index / T / headNum / headSize;
+    int once = index % (T * headNum * headSize);
+    int t = once / headNum / headSize;
+    int hs = once % (headNum * headSize) % headSize;
+    const float d0 = delta[index + 0];
+    const float d1 = delta[index + 1];
+	int t_idx = (int) idskeep[n * T + t];
+    diff[index] = cos[t_idx * headSize + hs] * d0 + sin[t_idx * headSize + hs + 1] * d1;
+    diff[index+1] = cos[t_idx * headSize + hs + 1] * d1 - sin[t_idx * headSize + hs] * d0;
+}
+
+extern "C"
+__global__ void apply_rotary_emb(const float *x, float *out, float *pos, int N, int headNum, int T, int headSize) {
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (i >= N/2) return;
+	int hSize = headSize / 2;
+    int n = i / T / hSize;
+    int once = i - (n * T * hSize);
+    int t = once / hSize;
+    int hs = once % hSize * 2;
+    int index = i * 2;
+    float cv = x[index];
+	float cn = x[index+1];
+    out[index] = pos[t * headSize + hs] * cv - pos[t * headSize + hs + 1] * cn;
+    out[index+1] = pos[t * headSize + hs + 1] * cv + pos[t * headSize + hs] * cn;
+}
+
+extern "C"
+__global__ void apply_rotary_emb_back(const float *delta, float *dx, float *pos, int N, int headNum, int T, int headSize) {
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (i >= N/2) return;
+	int hSize = headSize / 2;
+    int n = i / T / hSize;
+    int once = i - (n * T * hSize);
+    int t = once / hSize;
+    int hs = once % hSize * 2;
+    int index = i * 2;
+    const float d0 = delta[index + 0];
+    const float d1 = delta[index + 1];
+    dx[index] = pos[t * headSize + hs] * d0 + pos[t * headSize + hs + 1] * d1;
+    dx[index+1] = pos[t * headSize + hs] * d1 - pos[t * headSize + hs + 1] * d0;
+}
+
+extern "C"
+__global__ void apply_rotary_emb_idskeep(const float *x, float *out, float *pos, float *idskeep, int N, int headNum, int T, int headSize) {
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (i >= N/2) return;
+	int hSize = headSize / 2;
+    int n = i / T / hSize;
+    int once = i - (n * T * hSize);
+    int t = once / hSize;
+    int hs = once % hSize * 2;
+    int index = i * 2;
+    float cv = x[index];
+	float cn = x[index+1];
+	int t_idx = idskeep[t];
+    out[index] = pos[t_idx * headSize + hs] * cv - pos[t_idx * headSize + hs + 1] * cn;
+    out[index+1] = pos[t_idx * headSize + hs + 1] * cv + pos[t_idx * headSize + hs] * cn;
+}
+
+extern "C"
+__global__ void apply_rotary_emb_back_idskeep(const float *delta, float *dx, float *pos, float *idskeep, int N, int headNum, int T, int headSize) {
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (i >= N/2) return;
+	int hSize = headSize / 2;
+    int n = i / T / hSize;
+    int once = i - (n * T * hSize);
+    int t = once / hSize;
+    int hs = once % hSize * 2;
+    int index = i * 2;
+    const float d0 = delta[index + 0];
+    const float d1 = delta[index + 1];
+    int t_idx = idskeep[t];
+    dx[index] = pos[t_idx * headSize + hs] * d0 + pos[t_idx * headSize + hs + 1] * d1;
+    dx[index+1] = pos[t_idx * headSize + hs] * d1 - pos[t_idx * headSize + hs + 1] * d0;
 }

@@ -50,9 +50,9 @@ public class DiTTimeEmbeddingLayer extends Layer {
             CUDAModules.initContext();
             int N = 2;
             int T = 1000;
-            int d_model = 4;
-            int dim = d_model * 4;
-            float[] data = new float[]{40, 200};
+            int d_model = 256;
+            int dim = 384;
+            float[] data = new float[]{0.1f, 0.8f};
             Tensor input = new Tensor(N, 1, 1, 1, data, true);
             float[] data2 = MatrixUtils.order(N * dim, 0.01f, 0.01f);
             Tensor delta = new Tensor(N, 1, 1, dim, data2, true);
@@ -78,10 +78,11 @@ public class DiTTimeEmbeddingLayer extends Layer {
     public void initLayers() {
         emb = new EmbeddingIDLayer(T, d_model, true, network);
         emb.weight = emb.createTimeEMBCosSin(T, d_model);
-        //		emb.weight.showDM();
+        		emb.weight.showDM("weight");
 //        emb.weight = emb.getTimeEMB2(T, d_model);
 //        emb.initFactor(T, d_model);
         linear1 = new FullyLayer(d_model, dim, bias, network);
+        linear1.PROPAGATE_DOWN = false;
         linear1.weight.setData(RandomUtils.normal_(d_model * dim, 0.0f, 0.02f));
 //        linear1.weight.showDM("l1");
         if(linear1.bias != null) {
@@ -120,8 +121,9 @@ public class DiTTimeEmbeddingLayer extends Layer {
     @Override
     public void output() {
         // TODO Auto-generated method stub
+    	input.showDM("T");
     	emb.forward(input);
-//    	emb.getOutput().showDM("emb");
+    	emb.getOutput().showDM("emb");
         linear1.forward(emb.getOutput());
         //		linear1.getOutput().showDM();
         act.forward(linear1.getOutput());

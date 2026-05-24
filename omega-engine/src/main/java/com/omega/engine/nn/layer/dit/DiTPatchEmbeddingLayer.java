@@ -36,7 +36,6 @@ public class DiTPatchEmbeddingLayer extends Layer {
         this.width = imageSize;
         this.embedDim = embedDim;
         initLayers(channel, imageSize, imageSize, patchSize, bias);
-
     }
 
     public static void main(String[] args) {
@@ -77,6 +76,7 @@ public class DiTPatchEmbeddingLayer extends Layer {
 
     public void initLayers(int inChannel, int height, int width, int patchSize, boolean bias) {
         this.patchEmbedding = new ConvolutionLayer(inChannel, embedDim, height, width, patchSize, patchSize, 0, patchSize, bias, network);
+        patchEmbedding.PROPAGATE_DOWN = false;
         RandomUtils.xavier_uniform(patchEmbedding.weight, 1, inChannel * patchSize * patchSize, embedDim * patchSize * patchSize);
 //        this.patchEmbedding.weight.setData(RandomUtils.xavierUniform(this.patchEmbedding.weight.dataLength, inChannel * patchSize * patchSize, embedDim * patchSize * patchSize, 1));
         if(this.patchEmbedding.bias != null) {

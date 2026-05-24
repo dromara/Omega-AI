@@ -130,9 +130,13 @@ public class SegImageLoader extends RecursiveAction {
 
     private void load() {
         for (int i = getStart(); i <= getEnd(); i++) {
-            String filePath = getPath() + "/" + getNames()[getIndexs()[i]];
+        	int idx = getIndexs()[i];
+//        	if(idx >= getNames().length) {
+//        		idx = idx - 1;
+//        	}
+            String filePath = getPath() + "/" + getNames()[idx];
             if (!getNames()[getIndexs()[i]].contains(".")) {
-                filePath = getPath() + "/" + getNames()[getIndexs()[i]] + "." + extName;
+                filePath = getPath() + "/" + getNames()[idx] + "." + extName;
             }
             if (gray) {
                 float[] data = YoloImageUtils.loadImgDataToGrayArray(filePath, normalization);
@@ -144,7 +148,7 @@ public class SegImageLoader extends RecursiveAction {
                 } else {
                     data = YoloImageUtils.loadImgDataToArray(filePath, normalization);
                 }
-                //				System.out.println(filePath+data);
+//                				System.out.println(filePath+data);
                 System.arraycopy(data, 0, getInput().data, i * getInput().channel * getInput().height * getInput().width, getInput().channel * getInput().height * getInput().width);
             }
         }

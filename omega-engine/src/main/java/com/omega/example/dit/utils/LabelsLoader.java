@@ -85,7 +85,7 @@ public class LabelsLoader extends RecursiveAction {
     private void load() {
         for (int i = getStart(); i <= getEnd(); i++) {
         	int idx = indexs[i];
-            String text = datas.get(idx).get("en").toString();
+            String text = datas.get(idx).get("label").toString();
             int[] ids = tokenizer.encodeInt(text, maxContextLen);
             for (int j = 0; j < maxContextLen; j++) {
                 if (j < ids.length) {

@@ -83,6 +83,7 @@ public class RMSLayer extends NormalizationLayer {
     
     public RMSLayer(int channel, int height, int width, boolean hasParams, BNType bnType, Network network) {
     	this.network = network;
+        network.paramLayers.add(this);
 		this.setUpdater(UpdaterFactory.create(this.network));
         this.channel = channel;
         this.height = height;
@@ -92,6 +93,9 @@ public class RMSLayer extends NormalizationLayer {
         this.oWidth = this.width;
         this.bnType = bnType;
         this.hasParams = hasParams;
+        if(!hasParams) {
+        	this.freeze = true;
+        }
         this.meanNum = width;
     }
 
@@ -159,7 +163,7 @@ public class RMSLayer extends NormalizationLayer {
             this.diffGamma = new Tensor(1, 1, 1, meanNum, true);
         }
         if (this.output == null || this.number != this.output.number) {
-            this.output = Tensor.createGPUTensor(this.output, number, oChannel, oHeight, oWidth, true);
+            this.output = Tensor.createGPUTensor(this.output, input.shape(), true);
         }
     }
     
@@ -448,9 +452,10 @@ public class RMSLayer extends NormalizationLayer {
     }
 
     public void saveModel(RandomAccessFile outputStream) throws IOException {
-    	if(hasParams) {
-    		ModelUtils.saveParams(outputStream, gamma);
-    	}
+//    	if(hasParams) {
+//    		ModelUtils.saveParams(outputStream, gamma);
+//    	}
+    	ModelUtils.saveParams(outputStream, gamma);
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
@@ -459,16 +464,20 @@ public class RMSLayer extends NormalizationLayer {
     }
 
     public void loadModel(RandomAccessFile inputStream, int channel, int height, int width, BNType bnType) throws IOException {
-    	if(hasParams) {
-	        init(channel, height, width, bnType);
-	        ModelUtils.loadParams(inputStream, gamma);
-    	}
+//    	if(hasParams) {
+//	        init(channel, height, width, bnType);
+//	        ModelUtils.loadParams(inputStream, gamma);
+//    	}
+    	init(channel, height, width, bnType);
+        ModelUtils.loadParams(inputStream, gamma);
     }
 
     
     public void putParamters() {
-        init();
-        this.network.addPamamter(gamma);
+    	if(hasParams) {
+	        init();
+	        this.network.addPamamter(gamma);
+    	}
     }
 
     public void putParamterGrads() {

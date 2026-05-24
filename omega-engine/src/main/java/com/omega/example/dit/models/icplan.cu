@@ -43,6 +43,63 @@ __global__ void compute_ut(
 }
 
 extern "C"
+__global__ void compute_v(
+    float* x,
+    float* z,
+    float* t,
+    float* output,
+    float t_eps,
+    int N, int W
+) {
+    int idx = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (idx < N) {
+       int n = idx / W;
+       float tf = t[n];
+       float alpha_t = tf;
+       float sigma_t = 1 - tf;
+       if(sigma_t < t_eps){
+		  sigma_t = t_eps;
+	   }
+	   output[idx] = (x[idx] - z[idx]) / sigma_t;
+    }
+}
+
+extern "C"
+__global__ void compute_dv(
+    float* delta,
+    float* t,
+    float* dx,
+    float t_eps,
+    int N, int W
+) {
+    int idx = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (idx < N) {
+       int n = idx / W;
+       float tf = t[n];
+       float sigma_t = 1 - tf;
+       if(sigma_t < t_eps){
+		  sigma_t = t_eps;
+	   }
+	   dx[idx] = delta[idx] / sigma_t;
+    }
+}
+
+extern "C"
+__global__ void compute_z_next(
+	float* v_pred,
+    float* z,
+    float t,
+    float t_next,
+    float* output,
+    int N
+) {
+    int idx = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (idx < N) {
+	   output[idx] = z[idx] + (t_next - t) * v_pred[idx];
+    }
+}
+
+extern "C"
 __global__ void cosine_similarity_loss(
     float* x1,
     float* norm1,
@@ -61,6 +118,30 @@ __global__ void cosine_similarity_loss(
 	   int x_idx = n * C * W + c * W + w;
 	   int n_idx = n * W + w;
        out[idx] = 1 - (x1[x_idx] / norm1[n_idx]) * (x2[x_idx] / norm2[n_idx]);
+    }
+}
+
+extern "C"
+__global__ void cosine_similarity_loss_dim1(
+    float* x1,
+    float* norm1,
+    float* x2,
+    float* norm2,
+    float* out,
+    int N,
+    int C,
+    int W
+) {
+    int idx = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (idx < N) {
+	   int n = idx / W;
+	   int w = idx % W;
+	   float o = 0.0f;
+	   for(int c = 0;c<C;c++){
+	     int x_idx = n * C * W + c * W + w;
+	     o += (x1[x_idx] / norm1[idx]) * (x2[x_idx] / norm2[idx]);
+	   }
+       out[idx] = 1 - o;
     }
 }
 

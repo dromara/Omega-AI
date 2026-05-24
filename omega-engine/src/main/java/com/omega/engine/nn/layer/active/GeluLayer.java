@@ -60,7 +60,7 @@ public class GeluLayer extends ActiveFunctionLayer {
         if (geluType == GeluType.FAST) {
             kernel.fast_forward(input, output);
         }else if(geluType == GeluType.TANH) {
-        	kernel.forward(input, output);
+        	kernel.forward_tanh_torch(input, output);
         }else {
             kernel.forward_torch(input, output);
         }
@@ -78,7 +78,7 @@ public class GeluLayer extends ActiveFunctionLayer {
         if (geluType == GeluType.FAST) {
             kernel.fast_backward(input, delta, diff);
         }else if(geluType == GeluType.TANH) {
-        	kernel.backward(input, delta, diff);
+        	kernel.backward_tanh_torch(input, delta, diff);
         }else {
             kernel.backward_torch(input, delta, diff);
         }
