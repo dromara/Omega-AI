@@ -35,18 +35,54 @@ import com.omega.engine.nn.network.dit.JiT_REPA;
 import com.omega.engine.nn.network.dit.MMDiT;
 import com.omega.engine.nn.network.dit.MMDiT_RoPE;
 import com.omega.engine.nn.network.dit.OmegaDiT;
+import com.omega.engine.nn.network.dit.OmegaDiT2;
 import com.omega.engine.nn.network.dit.OmegaDiTFullLabel;
 import com.omega.engine.nn.network.dit.PixArtDiT;
 import com.omega.engine.nn.network.dit.SanaDiT;
 import com.omega.engine.nn.network.vae.LTXVideo_VAE;
+import com.omega.engine.nn.network.vae.LTXVideo_VAE_Decoder;
+import com.omega.engine.nn.network.vae.LTXVideo_VAE_Encoder;
 import com.omega.engine.nn.network.vae.TinyVQVAE;
 import com.omega.engine.nn.network.vae.TinyVQVAE2;
 import com.omega.engine.nn.network.vae.VQVAE2;
 import com.omega.engine.nn.network.vae.WFVAE;
 import com.omega.engine.nn.network.video.OmegaVideo;
+import com.omega.engine.nn.network.video.OmegaVideo2;
+import com.omega.engine.nn.network.video.OmegaVideoI2V;
 import com.omega.engine.tensor.Tensor;
 
 public class ModelUtils {
+	
+	public static void saveModel(OmegaVideoI2V model, String outpath) {
+        File file = new File(outpath);
+        if (!file.exists()) {
+            try {
+                file.createNewFile();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+        try (RandomAccessFile rFile = new RandomAccessFile(file, "rw")) {
+            System.out.println("start save model...");
+            model.saveModel(rFile);
+            System.out.println("model save success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void loadModel(OmegaVideoI2V model, String inputPath) {
+        try (RandomAccessFile File = new RandomAccessFile(inputPath, "r")) {
+            System.out.println("start load model...");
+            model.loadModel(File);
+            System.out.println("model load success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
 	
 	public static void saveModel(OmegaVideo model, String outpath) {
         File file = new File(outpath);
@@ -69,6 +105,37 @@ public class ModelUtils {
     }
 	
 	public static void loadModel(OmegaVideo model, String inputPath) {
+        try (RandomAccessFile File = new RandomAccessFile(inputPath, "r")) {
+            System.out.println("start load model...");
+            model.loadModel(File);
+            System.out.println("model load success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void saveModel(OmegaVideo2 model, String outpath) {
+        File file = new File(outpath);
+        if (!file.exists()) {
+            try {
+                file.createNewFile();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+        try (RandomAccessFile rFile = new RandomAccessFile(file, "rw")) {
+            System.out.println("start save model...");
+            model.saveModel(rFile);
+            System.out.println("model save success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void loadModel(OmegaVideo2 model, String inputPath) {
         try (RandomAccessFile File = new RandomAccessFile(inputPath, "r")) {
             System.out.println("start load model...");
             model.loadModel(File);
@@ -108,6 +175,51 @@ public class ModelUtils {
             // TODO: handle exception
             e.printStackTrace();
         }
+    }
+	
+	public static void loadModel(LTXVideo_VAE_Encoder encoder, LTXVideo_VAE_Decoder decoder, String inputPath) {
+        try (RandomAccessFile File = new RandomAccessFile(inputPath, "r")) {
+            System.out.println("start load model...");
+            encoder.loadModel(File);
+            decoder.loadModel(File);
+            System.out.println("model load success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static RandomAccessFile loadModel(LTXVideo_VAE_Encoder encoder, String inputPath) {
+        try {
+        	RandomAccessFile File = new RandomAccessFile(inputPath, "r");
+            System.out.println("start load model...");
+            encoder.loadModel(File);
+            System.out.println("model load success...");
+            return File;
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+        return null;
+    }
+	
+	public static void loadModel(LTXVideo_VAE_Decoder decoder, RandomAccessFile File) {
+         try {
+        	System.out.println("start load model...");
+			decoder.loadModel(File);
+			
+			System.out.println("model load success...");
+		 } catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		 }finally {
+			 try {
+				File.close();
+			 } catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			 }
+		}
     }
 	
 	public static void saveModel(OmegaDiTFullLabel model, String outpath) {
@@ -287,6 +399,37 @@ public class ModelUtils {
     }
 	
 	public static void loadModel(FluxDiT_SPRINT3 model, String inputPath) {
+        try (RandomAccessFile File = new RandomAccessFile(inputPath, "r")) {
+            System.out.println("start load model...");
+            model.loadModel(File);
+            System.out.println("model load success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void saveModel(OmegaDiT2 model, String outpath) {
+        File file = new File(outpath);
+        if (!file.exists()) {
+            try {
+                file.createNewFile();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+        try (RandomAccessFile rFile = new RandomAccessFile(file, "rw")) {
+            System.out.println("start save model...");
+            model.saveModel(rFile);
+            System.out.println("model save success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void loadModel(OmegaDiT2 model, String inputPath) {
         try (RandomAccessFile File = new RandomAccessFile(inputPath, "r")) {
             System.out.println("start load model...");
             model.loadModel(File);

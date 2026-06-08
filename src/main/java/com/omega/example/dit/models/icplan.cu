@@ -207,7 +207,7 @@ __global__ void latend_norm(
 ) {
     int idx = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
     if (idx < N) {
-	   int c = idx / W % C;
+	   int c = idx % (W * C) / W;
 	   x1[idx] = (x1[idx] - mean[c]) / std[c];
     }
 }
@@ -223,7 +223,7 @@ __global__ void latend_un_norm(
 ) {
     int idx = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
     if (idx < N) {
-	   int c = idx / W % C;
+	   int c = idx % (W * C) / W;
 	   x1[idx] = x1[idx] * std[c] + mean[c];
     }
 }

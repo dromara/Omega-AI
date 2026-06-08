@@ -3,7 +3,6 @@ package com.omega.example.opensora.utils;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -21,10 +20,12 @@ import com.omega.engine.nn.network.vae.LTXVideo_VAE;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
 import com.omega.example.common.ModeLoaderlUtils;
+import com.omega.example.dit.dataset.LatendDataset;
 import com.omega.example.dit.utils.DatasetCreater;
 import com.omega.example.transformer.utils.LagJsonReader;
 import com.omega.example.transformer.utils.ModelUtils;
 import com.omega.example.transformer.utils.bpe.BPETokenizerEN;
+import com.omega.example.transformer.utils.bpe.BinDataType;
 
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.text.csv.CsvData;
@@ -33,6 +34,7 @@ import cn.hutool.core.text.csv.CsvRow;
 import cn.hutool.core.text.csv.CsvUtil;
 import cn.hutool.core.text.csv.CsvWriter;
 import jcuda.driver.JCudaDriver;
+import jcuda.runtime.JCuda;
 
 public class VideoTest {
 	
@@ -44,6 +46,63 @@ public class VideoTest {
         }
     }
 
+	public static void latend_vae() throws Exception {
+		
+		String dataPath = "D:\\dataset\\video\\1w_latend.bin";
+        String clipDataPath = "D:\\dataset\\video\\1w_clip.bin";
+
+        int batchSize = 2;
+        int vae_latendDim = 128;
+        int vae_num_frames = 3;
+        int vae_height = 11;
+        int vae_width = 20;
+        int textEmbedDim = 768;
+        int maxContext = 77;
+        
+        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, vae_latendDim * vae_num_frames, vae_height, vae_width, maxContext, textEmbedDim, BinDataType.float32);
+        
+        int[][] indexs = dataLoader.shuffle();
+
+        Tensor latend = new Tensor(batchSize, vae_num_frames * vae_latendDim, dataLoader.height, dataLoader.width, true);
+        Tensor condInput = new Tensor(batchSize * dataLoader.clipMaxTime, 1, 1, dataLoader.clipEmbd, true);
+
+		int num_frames = 17;
+		int height = 352;
+		int width = 640;
+		int patch_size_t = 1;
+		int patch_size = 4;
+		int[] block_out_channels = new int[] {128, 256, 512, 512};
+		int[] layers_per_block = new int[] {4, 3, 3, 3, 4};
+		boolean[] spatio_temporal_scaling = new boolean[] {true, true, true, false};
+		
+		LTXVideo_VAE vae = new LTXVideo_VAE(LossType.MSE, UpdaterType.adamw, num_frames, height, width, patch_size_t, patch_size, block_out_channels, layers_per_block, spatio_temporal_scaling);
+		vae.CUDNN = true;
+		
+		String vae_model_path = "D:\\models\\ltx_vae\\ltx_vae.model";
+        ModelUtils.loadModel(vae, vae_model_path);
+		
+	    Tensor out = new Tensor(batchSize * num_frames, 3, height, width, true);
+	    
+        /**
+         * 遍历整个训练集
+         */
+        for (int it = 0; it < 10; it++) {
+//        	latend.view(batchSize, vae_latendDim * vae_num_frames, vae_height, vae_width);
+			dataLoader.loadData(indexs[it], latend, condInput, it);
+//			latend.showDM("latend");
+		    Tensor decoder = vae.decode(latend);
+		    vae.tensorOP.permute(decoder, out, new int[] {batchSize, 3, num_frames, height, width}, new int[] {batchSize, num_frames, 3, height, width}, new int[] {0, 2, 1, 3, 4});
+		    out.syncHost();
+		    //		    out.showDMByOffsetRed((2 * 3 + 3) * out.height * out.width, out.height * out.width, "out");
+//		    		    out.showDM("out");
+//		    
+//		    JCuda.cudaDeviceSynchronize();
+		    
+		    tensor2video(out, batchSize, num_frames, 3, height, width, "D:\\test\\video\\_"+it+"_");
+			
+        }
+		
+	}
 	
 	public static void vae() {
 		
@@ -170,7 +229,7 @@ public class VideoTest {
 			String save_model_path = "D:\\models\\ltx_vae\\ltx_vae.model";
 	        ModelUtils.loadModel(vae, save_model_path);
 	        
-	        int N = 1;
+	        int N = 2;
 	        int C = 3;
 
 //			String inputPath = "D:\\models\\ltx_vae\\video.json";
@@ -183,28 +242,106 @@ public class VideoTest {
 //		    Tensor sample = new Tensor(N, 128 * 3, 11, 20, true);
 //		    ModeLoaderlUtils.loadData(sample, sampleDatas, "sample", 5);
 //		    sample.view(1, 128, 33, 20);
+		    
+		    
+//			String latendPath = "D:\\models\\ltx_vae\\latent_test.json";
+//		    Map<String, Object> latendDatas = LagJsonReader.readJsonFileSmallWeight(latendPath);
+//		    Tensor latend = new Tensor(N, 128 * 3, 11, 20, true);
+//		    ModeLoaderlUtils.loadData(latend, latendDatas, "latent", 5);
+//		    latend.view(1, 128 * 3, 11, 20);
+
 //		    sample.showDM("sample");
 //		    Tensor z = vae.encode(input, sample);
 //		    z.showDM("z");
 //		    System.err.println("----------------");
-	        String videoPath = "D:\\test\\ar\\vc-465ca0c9-024d-5677-bf7a-9414540fb5f1.mp4";
-	        Tensor input = VideoReaderExample.loadVideo2Tesnro(videoPath, num_frames, height, width);
+	        String videoPath = "D:\\test\\ar\\vc-922a4f51-fe75-5d3a-9afc-e670df2d4638.mp4";
+	        String videoPath2 = "D:\\test\\ar\\celebv_JDQcnQpxOj8_13.mp4";
+	        Tensor input = new Tensor(N, C * num_frames, height, width, true);
+	        VideoReaderExample.loadVideo2Tensor(videoPath, num_frames, height, width, input, 0);
+	        VideoReaderExample.loadVideo2Tensor(videoPath2, num_frames, height, width, input, 1);
 	        
-		    Tensor z = vae.encode(input);
-//		    z.showDM("z");
-		    z.view(N, 128 * 3, 11, 20);
-		    
-//			String zPath = "D:\\models\\ltx_vae\\z.json";
-//		    Map<String, Object> zDatas = LagJsonReader.readJsonFileSmallWeight(zPath);
-//		    Tensor torch_z = new Tensor(N, 128 * 3, 11, 20, true);
-//		    ModeLoaderlUtils.loadData(torch_z, zDatas, "z", 5);
-//		    torch_z.showDM("torch_z");
-		    Tensor decoder = vae.decode(z);
-		    Tensor out = new Tensor(N * num_frames, C, height, width, true);
-		    vae.tensorOP.permute(decoder, out, new int[] {N, C, num_frames, height, width}, new int[] {N, num_frames, C, height, width}, new int[] {0, 2, 1, 3, 4});
-		    out.showDMByOffsetRed((2 * 3 + 3) * out.height * out.width, out.height * out.width, "out");
-		    //		    out.showDM("out");
-		    tensor2video(out, N, num_frames, C, height, width, "D:\\models\\ltx_vae\\");
+//	        Tensor input = VideoReaderExample.loadVideo2Tensor(videoPath, num_frames, height, width);
+//	        
+	        input.hostToDevice();
+	        
+	        for(int it = 0;it<3;it++) {
+
+			    Tensor z = vae.encode(input);
+////			    z.showDM("z");
+			    z.view(N, 128 * 3, 11, 20);
+			    
+//				String zPath = "D:\\models\\ltx_vae\\z.json";
+//			    Map<String, Object> zDatas = LagJsonReader.readJsonFileSmallWeight(zPath);
+//			    Tensor torch_z = new Tensor(N, 128 * 3, 11, 20, true);
+//			    ModeLoaderlUtils.loadData(torch_z, zDatas, "z", 5);
+//			    torch_z.showDM("torch_z");
+			    Tensor decoder = vae.decode(z);
+			    Tensor out = new Tensor(N * num_frames, C, height, width, true);
+			    vae.tensorOP.permute(decoder, out, new int[] {N, C, num_frames, height, width}, new int[] {N, num_frames, C, height, width}, new int[] {0, 2, 1, 3, 4});
+			    out.syncHost();
+			    //		    out.showDMByOffsetRed((2 * 3 + 3) * out.height * out.width, out.height * out.width, "out");
+			    //		    out.showDM("out");
+			    tensor2video(out, N, num_frames, C, height, width, "D:\\test\\ar\\"+it+"_");
+			    z.viewOrg();
+	        }
+	        
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+		
+	}
+	
+	public static void img_vae() {
+		
+		try {
+			
+			int num_frames = 1;
+			int height = 352;
+			int width = 640;
+			int patch_size_t = 1;
+			int patch_size = 4;
+			int[] block_out_channels = new int[] {128, 256, 512, 512};
+			int[] layers_per_block = new int[] {4, 3, 3, 3, 4};
+			boolean[] spatio_temporal_scaling = new boolean[] {true, true, true, false};
+			
+			LTXVideo_VAE vae = new LTXVideo_VAE(LossType.MSE, UpdaterType.adamw, num_frames, height, width, patch_size_t, patch_size, block_out_channels, layers_per_block, spatio_temporal_scaling);
+			vae.CUDNN = true;
+
+			String save_model_path = "D:\\models\\ltx_vae\\ltx_vae.model";
+	        ModelUtils.loadModel(vae, save_model_path);
+	        
+	        int N = 2;
+	        int C = 3;
+
+	        String videoPath = "D:\\test\\ar\\1.mp4";
+	        String videoPath2 = "D:\\test\\ar\\2.mp4";
+	        Tensor input = new Tensor(N, C * 17, height, width, true);
+	        
+	        Tensor img_input = new Tensor(N, C, height, width, true);
+	        
+	        VideoReaderExample.loadVideo2Tensor(videoPath, 17, height, width, input, 0);
+	        VideoReaderExample.loadVideo2Tensor(videoPath2, 17, height, width, input, 1);
+	        
+	        input.hostToDevice();
+	        
+	        vae.tensorOP.getByChannel(input, img_input, new int[] {N * C, 17, height, width},  0, 1);
+	        
+	        for(int it = 0;it<3;it++) {
+
+			    Tensor z = vae.encode(img_input);
+			    z.showShape("z");
+			    z.view(N, 128 * 1, 11, 20);
+
+			    Tensor decoder = vae.decode(z);
+			    Tensor out = new Tensor(N * num_frames, C, height, width, true);
+			    vae.tensorOP.permute(decoder, out, new int[] {N, C, num_frames, height, width}, new int[] {N, num_frames, C, height, width}, new int[] {0, 2, 1, 3, 4});
+			    out.syncHost();
+
+			    tensor2video(out, N, num_frames, C, height, width, "D:\\test\\ar\\"+it+"_");
+			    z.viewOrg();
+	        }
+	        
 		} catch (Exception e) {
 			// TODO: handle exception
 			e.printStackTrace();
@@ -224,7 +361,7 @@ public class VideoTest {
         		BufferedImage bufferedImage = utils.convertRGBImage(rgb);
         		frames.add(bufferedImage);
         	}
-        	VideoReaderExample.writeFramesToVideo(frames, outputPath + b + "_2.mp4");
+        	VideoReaderExample.writeFramesToVideo(frames, outputPath + b + ".mp4");
         }
 	}
 	
@@ -340,7 +477,7 @@ public class VideoTest {
 
 	        Tensor input = new Tensor(N, C * num_frames, height, width, true);
 	        
-	        for(int b = 0;b<25000;b++){
+	        for(int b = 0;b<2500;b++){
 	        	long start = System.nanoTime();
 	        	for(int n = 0;n<N;n++) {
 	        		Map<String, String> once = datas.get(b * N + n);
@@ -349,11 +486,11 @@ public class VideoTest {
 	        	}
 	        	input.hostToDevice();
 	        	Tensor latend = vae.encode(input);
-	        	latend.view(N, 128 * 3, 11, 20);
-		        
-	            JCudaDriver.cuCtxSynchronize();
+	        	latend.showShape("latend");
+//	        	latend.view(N, 128 * 3, 11, 20);
+//	            JCudaDriver.cuCtxSynchronize();
 	            DatasetCreater.writeTensor(latend, writer);
-                System.out.println(b + "/" + 25000 + " cost["+(System.nanoTime() - start)/1e6+"ms] finish.");
+                System.out.println(b + "/" + 2500 + " cost["+(System.nanoTime() - start)/1e6+"ms] finish.");
 	        }
 	        
 		} catch (Exception e) {
@@ -426,12 +563,190 @@ public class VideoTest {
 		
 	}
 	
+	public static void createVideoLatendByJson() {
+		
+		try {
+			
+			String labelPath = "D:\\dataset\\video\\label_file.json";
+			String videoPath = "D:\\dataset\\video\\source_videos\\";
+			String outputPath = "D:\\dataset\\video\\1W_latend.bin";
+			
+			List<Map<String, Object>> datas = LagJsonReader.readJsonDataSamll(labelPath);
+			
+	        int num_frames = 17;
+			int height = 352;
+			int width = 640;
+			int patch_size_t = 1;
+			int patch_size = 4;
+			int[] block_out_channels = new int[] {128, 256, 512, 512};
+			int[] layers_per_block = new int[] {4, 3, 3, 3, 4};
+			boolean[] spatio_temporal_scaling = new boolean[] {true, true, true, false};
+			
+			LTXVideo_VAE vae = new LTXVideo_VAE(LossType.MSE, UpdaterType.adamw, num_frames, height, width, patch_size_t, patch_size, block_out_channels, layers_per_block, spatio_temporal_scaling);
+			vae.CUDNN = true;
+			vae.RUN_MODEL = RunModel.EVAL;
+			
+			String save_model_path = "D:\\models\\ltx_vae\\ltx_vae.model";
+	        ModelUtils.loadModel(vae, save_model_path);
+	        
+	        int N = 4;
+	        int C = 3;
+
+		    File file = new File(outputPath);
+            FileOutputStream writer = new FileOutputStream(file);
+
+	        Tensor input = new Tensor(N, C * num_frames, height, width, true);
+	        
+	        for(int b = 0;b<2500;b++){
+	        	long start = System.nanoTime();
+	        	for(int n = 0;n<N;n++) {
+	        		Map<String, Object> once = datas.get(b * N + n);
+	        		String id = (String) once.get("id");
+	        		String filename = videoPath + id + ".mp4";
+	        		System.err.println(filename);
+	        		VideoReaderExample.loadVideo2Tensor(filename, num_frames, height, width, input, n);
+	        	}
+	        	input.hostToDevice();
+	        	Tensor latend = vae.encode(input);
+	        	latend.showShape("latend");
+//	        	latend.view(N, 128 * 3, 11, 20);
+//	            JCudaDriver.cuCtxSynchronize();
+	            DatasetCreater.writeTensor(latend, writer);
+                System.out.println(b + "/" + 2500 + " cost["+(System.nanoTime() - start)/1e6+"ms] finish.");
+	        }
+	        
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+		
+	}
+	
+	public static void createVideoImgLatendByJson() {
+		
+		try {
+			
+			String labelPath = "D:\\dataset\\video\\label_file.json";
+			String videoPath = "D:\\dataset\\video\\source_videos\\";
+			String outputPath = "D:\\dataset\\video\\1W_img_latend.bin";
+			
+			List<Map<String, Object>> datas = LagJsonReader.readJsonDataSamll(labelPath);
+			
+	        int num_frames = 17;
+			int height = 352;
+			int width = 640;
+			int patch_size_t = 1;
+			int patch_size = 4;
+			int[] block_out_channels = new int[] {128, 256, 512, 512};
+			int[] layers_per_block = new int[] {4, 3, 3, 3, 4};
+			boolean[] spatio_temporal_scaling = new boolean[] {true, true, true, false};
+			
+			LTXVideo_VAE vae = new LTXVideo_VAE(LossType.MSE, UpdaterType.adamw, 1, height, width, patch_size_t, patch_size, block_out_channels, layers_per_block, spatio_temporal_scaling);
+			vae.CUDNN = true;
+			vae.RUN_MODEL = RunModel.EVAL;
+			
+			String save_model_path = "D:\\models\\ltx_vae\\ltx_vae.model";
+	        ModelUtils.loadModel(vae, save_model_path);
+	        
+	        int N = 4;
+	        int C = 3;
+
+		    File file = new File(outputPath);
+            FileOutputStream writer = new FileOutputStream(file);
+
+	        Tensor input = new Tensor(N, C * num_frames, height, width, true);
+	        
+	        Tensor img_input = new Tensor(N, C, height, width, true);
+	        
+	        for(int b = 0;b<2500;b++){
+	        	long start = System.nanoTime();
+	        	for(int n = 0;n<N;n++) {
+	        		Map<String, Object> once = datas.get(b * N + n);
+	        		String id = (String) once.get("id");
+	        		String filename = videoPath + id + ".mp4";
+	        		System.err.println(filename);
+	        		VideoReaderExample.loadVideo2Tensor(filename, num_frames, height, width, input, n);
+	        	}
+	        	input.hostToDevice();
+
+		        vae.tensorOP.getByChannel(input, img_input, new int[] {N * C, num_frames, height, width},  0, 1);
+		        
+	        	Tensor latend = vae.encode(img_input);
+	        	latend.showShape("latend");
+//	        	latend.view(N, 128 * 3, 11, 20);
+//	            JCudaDriver.cuCtxSynchronize();
+	            DatasetCreater.writeTensor(latend, writer);
+                System.out.println(b + "/" + 2500 + " cost["+(System.nanoTime() - start)/1e6+"ms] finish.");
+	        }
+	        
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+		
+	}
+	
+	public static void createVideoClipByJson() {
+		
+		try {
+			
+			String labelPath = "D:\\dataset\\video\\label_file.json";
+			String clipDataPath = "D:\\dataset\\video\\1w_clip.bin";
+			
+			List<Map<String, Object>> datas = LagJsonReader.readJsonDataSamll(labelPath);
+
+	        String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
+	        String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
+            BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+    		
+            int maxPositionEmbeddingsSize = 77;
+            int vocabSize = 49408;
+            int headNum = 12;
+            int n_layers = 12;
+            int textEmbedDim = 768;
+            int intermediateSize = 3072;
+            ClipTextModel clip = new ClipTextModel(LossType.MSE, UpdaterType.adamw, headNum, maxPositionEmbeddingsSize, vocabSize, textEmbedDim, maxPositionEmbeddingsSize, intermediateSize, n_layers);
+            clip.CUDNN = true;
+            clip.time = maxPositionEmbeddingsSize;
+            clip.RUN_MODEL = RunModel.EVAL;
+            String clipWeight = "D:\\models\\CLIP-GmP-ViT-L-14\\CLIP-GmP-ViT-L-14.json";
+            ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, "", false);
+            
+            File clipFile = new File(clipDataPath);
+            FileOutputStream clipWriter = new FileOutputStream(clipFile);
+            
+            int N = 1000;
+            
+            int[][] indexs = MathUtils.orderInts(10000, N);
+
+            Tensor label = new Tensor(N * 77, 1, 1, 1, true);
+            for(int b = 0;b<indexs.length;b++){
+	        	DatasetCreater.loadLabels(bpe, datas, "en", indexs[b], label, maxPositionEmbeddingsSize, N);
+//	        	label.showDM("label");
+				Tensor condInput = clip.get_full_clip_prompt_embeds(label);
+				JCudaDriver.cuCtxSynchronize();
+				DatasetCreater.writeTensor(condInput, clipWriter);
+				System.out.println(b + "/" + indexs.length + " finish.");
+	        }
+	        
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+		
+	}
+	
 	public static void main(String[] args) {
 		try {
 //			vae();
+//			img_vae();
+//			latend_vae();
 //			create10WDataset();
 //			createVideoLatend();
-			createVideoClip();
+//			createVideoClip();
+//			createVideoLatendByJson();
+			createVideoImgLatendByJson();
+//			createVideoClipByJson();
 		} catch (Exception e) {
 	        // TODO: handle exception
 	        e.printStackTrace();

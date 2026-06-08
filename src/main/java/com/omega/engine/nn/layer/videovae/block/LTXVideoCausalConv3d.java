@@ -3,7 +3,6 @@ package com.omega.engine.nn.layer.videovae.block;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
-import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.active.ActiveType;
 import com.omega.engine.gpu.PaddingKernel;
@@ -427,17 +426,14 @@ public class LTXVideoCausalConv3d extends Layer {
         this.output = output;
         /**
          * 参数初始化
-
          */
         this.init(input);
         /**
          * 设置输入
-
          */
         this.setInput(input);
         /**
          * 计算输出
-
          */
         this.output();
     }

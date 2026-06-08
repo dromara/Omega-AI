@@ -4,10 +4,10 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 
 import com.omega.common.utils.MatrixUtils;
+import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.ParamsInit;
-import com.omega.engine.nn.layer.active.ActiveFunctionLayer;
 import com.omega.engine.nn.layer.active.SiLULayer;
 import com.omega.engine.nn.layer.gpu.BasicBlockKernel;
 import com.omega.engine.nn.layer.normalization.BNType;
@@ -32,11 +32,11 @@ public class LTXVideoResnetBlock3d extends Layer {
     private BasicBlockKernel kernel;
     
     public RMSLayer norm1;
-    private ActiveFunctionLayer a1;
+    private SiLULayer a1;
     public LTXVideoCausalConv3d conv1;
     
     public RMSLayer norm2;
-    private ActiveFunctionLayer a2;
+    private SiLULayer a2;
     public LTXVideoCausalConv3d conv2;
     
     public LNLayer norm3;
@@ -46,6 +46,10 @@ public class LTXVideoResnetBlock3d extends Layer {
     
     private Tensor normInput1;
     private Tensor normInput2;
+    
+    private Tensor cache_conv1;
+    private Tensor cache_conv2;
+    private Tensor cache_shortcut;
     
     public LTXVideoResnetBlock3d(int channel, int oChannel, int depth, int height, int width, boolean is_causal, Network network) {
         this.network = network;
@@ -93,17 +97,27 @@ public class LTXVideoResnetBlock3d extends Layer {
     @Override
     public void init() {
         this.number = this.network.number;
-        if(normInput1 == null || this.normInput1.number != this.number) {
-        	int hw = height * width;
-        	this.normInput1 = Tensor.createGPUTensor(normInput1, number, depth, hw, channel, true);
-        	this.normInput2 = Tensor.createGPUTensor(normInput2, number, depth, hw, oChannel, true);
-        }else {
-        	normInput1.viewOrg();
-        	normInput2.viewOrg();
-        }
+//        if(normInput1 == null || this.normInput1.number != this.number) {
+//        	int hw = height * width;
+//        	this.normInput1 = Tensor.createGPUTensor(normInput1, number, depth, hw, channel, true);
+//        	this.normInput2 = Tensor.createGPUTensor(normInput2, number, depth, hw, oChannel, true);
+//        }else {
+//        	normInput1.viewOrg();
+//        	normInput2.viewOrg();
+//        }
         if (this.output == null || this.output.number != this.network.number) {
             this.output = Tensor.createGPUTensor(this.output, number, oChannel * oDepth, oHeight, oWidth, true);
         }
+        int hw = height * width;
+//        String key = number + ":" + depth + ":" + hw;
+    	this.normInput1 = CUDAMemoryManager.getCache("resnet_normInput1", number, depth, hw, channel);
+    	this.normInput2 = CUDAMemoryManager.getCache("resnet_normInput2", number, depth, hw, oChannel);
+    	this.cache_conv1 = CUDAMemoryManager.getCache("resnet_cache_conv1", number, oChannel * conv1.oDepth, conv1.oHeight, conv1.oWidth);
+    	this.cache_conv2 = CUDAMemoryManager.getCache("resnet_cache_conv2", number, oChannel * conv2.oDepth, conv2.oHeight, conv2.oWidth);
+    	if(shortcut) {
+    		this.cache_shortcut = CUDAMemoryManager.getCache("resnet_cache_shortcut", number, oChannel * conv_shortcut.oDepth, conv_shortcut.oHeight, conv_shortcut.oWidth);
+    	}
+//    	this.output = CUDAMemoryManager.getCache("resnet_output", number, oChannel * oDepth, oHeight, oWidth);
     }
 
     @Override
@@ -127,16 +141,16 @@ public class LTXVideoResnetBlock3d extends Layer {
         
 //        normInput1.showDMByOffsetRed((3 * depth + 2) * normInput1.height * normInput1.width, normInput1.height * normInput1.width, "norm1");
 
-        a1.forward(normInput1);
-        conv1.forward(a1.getOutput());
+        a1.forward(normInput1, normInput1);
+        conv1.forward(a1.getOutput(), cache_conv1);
 //        conv1.getOutput().showDMByOffsetRed((3 * conv1.oDepth + 2) * conv1.getOutput().height * conv1.getOutput().width, conv1.getOutput().height * conv1.getOutput().width, "conv1.getOutput()");
         
         Tensor_OP().permute(conv1.getOutput(), normInput2, new int[] {number, oChannel, depth, height, width}, new int[] {number, depth, height, width, oChannel}, new int[] {0, 2, 3, 4, 1});
         norm2.forward(normInput2);
         Tensor_OP().permute(norm2.getOutput(), normInput2, new int[] {number, depth, height, width, oChannel}, new int[] {number, oChannel, depth, height, width}, new int[] {0, 4, 1, 2, 3});
         normInput2.view(number, oChannel * depth, height, width);
-        a2.forward(normInput2);
-        conv2.forward(a2.getOutput());
+        a2.forward(normInput2, normInput2);
+        conv2.forward(a2.getOutput(), cache_conv2);
         
         if (shortcut) {
         	normInput1.viewOrg();
@@ -144,7 +158,7 @@ public class LTXVideoResnetBlock3d extends Layer {
             norm3.forward(normInput1);
             Tensor_OP().permute(norm3.getOutput(), normInput1, new int[] {number, depth, height, width, channel}, new int[] {number, channel, depth, height, width}, new int[] {0, 4, 1, 2, 3});
             normInput1.view(number, channel * depth, height, width);
-            conv_shortcut.forward(normInput1);
+            conv_shortcut.forward(normInput1, cache_shortcut);
             kernel.add(conv_shortcut.getOutput(), conv2.getOutput(), output);
         } else {
             kernel.add(input, conv2.getOutput(), output);

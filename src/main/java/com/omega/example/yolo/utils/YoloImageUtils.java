@@ -920,6 +920,19 @@ public class YoloImageUtils {
         }
         return null;
     }
+    
+    public static void loadImgDataToTensor(String filePath, Tensor x, boolean norm, float[] mean, float[] std, int idx) {
+        try {
+            File file = new File(filePath);
+            if (file.exists()) {
+                float[] data = IU().getImageData(file, norm, norm, mean, std);
+                System.arraycopy(data, 0, x.data, idx * data.length, data.length);
+            }
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
 
     public static float[] loadImgDataToGrayArray(String filePath, boolean norm) {
         try {

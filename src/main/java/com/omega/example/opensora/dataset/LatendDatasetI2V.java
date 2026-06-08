@@ -1,4 +1,4 @@
-package com.omega.example.dit.dataset;
+package com.omega.example.opensora.dataset;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -18,10 +18,13 @@ import com.omega.example.transformer.utils.tokenizers.Tokenizer;
 
 import jcuda.runtime.JCuda;
 
-public class LatendDataset extends BaseTokenizer {
+public class LatendDatasetI2V extends BaseTokenizer {
 	
 	private String clipDataPath;
 	
+	private String imgDataPath;
+	
+	public int numFrames;
 	public int channel;
 	public int height;
 	public int width;
@@ -38,10 +41,12 @@ public class LatendDataset extends BaseTokenizer {
     private int batchSize = 1;
     private String dataPath;
     private RandomAccessFile file;
+    private RandomAccessFile imgFile;
     private RandomAccessFile clipFile;
     private int index = 0;
     private boolean isBin = false;
     private float[] cache = null;
+    private float[] img_cache = null;
     private float[] clip_cache = null;
     private CompletableFuture<Boolean> cf;
     private BinDataType dataType = BinDataType.float32;
@@ -56,19 +61,21 @@ public class LatendDataset extends BaseTokenizer {
     
 	private ICPlanKernel icplan;
 
-    public LatendDataset(String dataPath, String clipDataPath, int batchSize, int channel, int height, int width, int clipMaxTime, int clipEmbd, BinDataType dataType) {
+    public LatendDatasetI2V(String dataPath, String imgDataPath, String clipDataPath, int batchSize, int channel, int numFrames, int height, int width, int clipMaxTime, int clipEmbd, BinDataType dataType) {
         this.dataType = dataType;
         if (dataType == BinDataType.unint16) {
             byteUnit = 2;
         }
         this.dataPath = dataPath;
+        this.imgDataPath = imgDataPath;
         this.clipDataPath = clipDataPath;
+        this.numFrames = numFrames;
         this.channel = channel;
         this.height = height;
         this.width = width;
         this.clipEmbd = clipEmbd;
         this.clipMaxTime = clipMaxTime;
-        this.max_len = channel * height * width;
+        this.max_len = channel * numFrames * height * width;
         this.batchSize = batchSize;
         loadBinCount();
         this.count_it = this.number / batchSize;
@@ -83,9 +90,11 @@ public class LatendDataset extends BaseTokenizer {
     public int loadBinCount() {
         try {
             file = new RandomAccessFile(dataPath, "r");
+            imgFile = new RandomAccessFile(imgDataPath, "r");
             clipFile = new RandomAccessFile(clipDataPath, "r");
             number = (int) (file.length() / max_len / byteUnit);
             cache = new float[max_len];
+            img_cache = new float[channel * height * width];
             clip_cache = new float[clipMaxTime * clipEmbd];
         } catch (Exception e) {
             // TODO: handle exception
@@ -98,6 +107,7 @@ public class LatendDataset extends BaseTokenizer {
         try {
         	index = 0;
             file.seek(0);
+            imgFile.seek(0);
             clipFile.seek(0);
             System.out.println("dataset is ready.");
         } catch (Exception e) {
@@ -111,9 +121,8 @@ public class LatendDataset extends BaseTokenizer {
             if ((index + 1) * max_len * byteUnit <= file.length()) {
                 //				System.out.println(index);
                 if (dataType == BinDataType.float32) {
-//                    ModelUtils.readFloat(file, cache);
-//                    ModelUtils.readFloat(clipFile, clip_cache);
                 	 ModelUtils.readFloatArray(file, cache);
+                	 ModelUtils.readFloatArray(imgFile, img_cache);
                      ModelUtils.readFloatArray(clipFile, clip_cache);
                 }
                 file.seek(file.getFilePointer());
@@ -134,13 +143,16 @@ public class LatendDataset extends BaseTokenizer {
         try {
 
         	long fi = idx * max_len * byteUnit;
+        	long ifi = idx * (channel * height * width) * byteUnit;
         	long cfi = idx * clipMaxTime * clipEmbd * byteUnit;
 //            	System.err.println(fi);
         	if(fi < file.length()) {
         		file.seek(fi);
+        		imgFile.seek(ifi);
                 clipFile.seek(cfi);
                 if (dataType == BinDataType.float32) {
                     ModelUtils.readFloatArray(file, cache);
+               	 	ModelUtils.readFloatArray(imgFile, img_cache);
                     ModelUtils.readFloatArray(clipFile, clip_cache);
                 }
         	}else {
@@ -183,6 +195,13 @@ public class LatendDataset extends BaseTokenizer {
         cf = loadAsyncData(index, input, label);
     }
     
+    public void loadData(int[] index, Tensor input, Tensor img_input, Tensor label) {
+    	input.hostToDevice();
+    	img_input.hostToDevice();
+        label.hostToDevice();
+        cf = loadAsyncData(index, input, img_input, label);
+    }
+    
     public void loadData(int[] index,Tensor input, Tensor label, int it) {
         try {
             //			System.out.println(it);
@@ -207,7 +226,7 @@ public class LatendDataset extends BaseTokenizer {
         }
     }
     
-    public void loadData(int[] index, int[] next,Tensor input, Tensor label, int it) {
+    public void loadData(int[] index, int[] next, Tensor input, Tensor img_input, Tensor label, int it) {
         try {
             //			System.out.println(it);
         	if(it == 0) {
@@ -222,17 +241,17 @@ public class LatendDataset extends BaseTokenizer {
 				     *  label.hostToDevice(); //把当前内存的数据加载到显存上
 				     *  cf = loadAsyncData(index, input, label); //开启下一轮文件数据的读取
                 	 */
-                	loadData(next, input, label);
+                	loadData(next, input, img_input, label);
                 }
             } else {
             	/**
             	 * 首轮数据加载
             	 */
-                cf = loadAsyncData(index, input, label);
+                cf = loadAsyncData(index, input, img_input, label);
                 boolean success = cf.get();
                 if(success){
                 	cf = null;
-                	loadData(next, input, label);
+                	loadData(next, input, img_input, label);
                 }
             }
 //            System.out.println("load cost:"+(System.nanoTime() - start)/1e6+"ms.");
@@ -306,6 +325,29 @@ public class LatendDataset extends BaseTokenizer {
                     float[] onceToken = readIdxData(idx);
                     float[] clipToken = clip_cache;
                     System.arraycopy(onceToken, 0, input.data, b * onceToken.length, onceToken.length);
+                    System.arraycopy(clipToken, 0, label.data, b * clipToken.length, clipToken.length);
+                }
+//                System.out.println("load cost:"+(System.nanoTime() - start)/1e6+"ms.");
+            } catch (Exception e) {
+                // TODO: handle exception
+                e.printStackTrace();
+            }
+            return true;
+        });
+        return cf;
+    }
+    
+    public CompletableFuture<Boolean> loadAsyncData(int[] index, Tensor input,Tensor img_input, Tensor label) {
+        CompletableFuture<Boolean> cf = CompletableFuture.supplyAsync(() -> {
+            try {
+//            	long start = System.nanoTime();
+                for (int b = 0; b < batchSize; b++) {
+                	int idx = index[b];
+                    float[] onceToken = readIdxData(idx);
+                    float[] clipToken = clip_cache;
+                    float[] imgToken = img_cache;
+                    System.arraycopy(onceToken, 0, input.data, b * onceToken.length, onceToken.length);
+                    System.arraycopy(imgToken, 0, img_input.data, b * imgToken.length, imgToken.length);
                     System.arraycopy(clipToken, 0, label.data, b * clipToken.length, clipToken.length);
                 }
 //                System.out.println("load cost:"+(System.nanoTime() - start)/1e6+"ms.");

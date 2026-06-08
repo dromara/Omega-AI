@@ -182,7 +182,7 @@ public class OmegaDiTTest {
 		String dataPath = "D:\\dataset\\amine\\dalle_fluxvae_latend.bin";
         String clipDataPath = "D:\\dataset\\amine\\dalle_full_clip.bin";
 		
-        int batchSize = 30;
+        int batchSize = 24;
         int latendDim = 16;
         int height = 32;
         int width = 32;
@@ -229,12 +229,12 @@ public class OmegaDiTTest {
         
         OmegaDiT dit = new OmegaDiT(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, textEmbedDim, maxContext, mlpRatio, dinov_hiddenSize, token_drop, path_drop_prob, y_prob);
         dit.CUDNN = true;
-        dit.learnRate = 1e-7f;
+        dit.learnRate = 2e-4f;
         
         ICPlan icplan = new ICPlan(dit.tensorOP);
 
-        String model_path = "D:\\models\\dit_txt_flux\\flux_sprint_b1_20.model";
-        ModelUtils.loadModel(dit, model_path);
+//        String model_path = "D:\\models\\dit_txt_flux\\flux_sprint_b1_20.model";
+//        ModelUtils.loadModel(dit, model_path);
         
         MBSGDOptimizer optimizer = new MBSGDOptimizer(dit, 60, 0.00001f, batchSize, LearnRateUpdate.NONE, false);
         
@@ -1730,7 +1730,7 @@ public class OmegaDiTTest {
 		 
 	        try {
 	           
-	        	omega_sprint_b1_iddpm_train();  // 256 train
+//	        	omega_sprint_b1_iddpm_train();  // 256 train
 	        	
 //	        	omega_sprint_b1_iddpm_train_512(); // 512 fine turn
 	        	
@@ -1738,7 +1738,7 @@ public class OmegaDiTTest {
 	        	
 //	        	test_omega_sprint_path_drop_cfg_512(); // simple 512
 	        	
-//	        	omega_sprint_b1_iddpm_train_fluxvae();
+	        	omega_sprint_b1_iddpm_train_fluxvae();
 	        	
 //	        	test_omega_sprint_path_drop_cfg_fluxvae();
 	        	

@@ -4,34 +4,35 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Map;
 
+import com.omega.engine.gpu.BaseKernel;
+import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.active.SiLULayer;
-import com.omega.engine.nn.layer.dit.org.DiTSwiGLUFFN;
 import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.RMSLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
-import com.omega.example.common.ModeLoaderlUtils;
 
 /**
  * VideoDiTBlock
  * @author Administrator
  */
-public class VideoDiTBlock extends Layer {
+public class VideoDiTConvBlockI2V extends Layer {
 	
 	private int batchSize;
+	
+	private int F;
+	private int H;
+	private int W;
 	
     private int embedDim = 0;
     private int headNum;
     private int time;
     private int cEmbedDim = 0;
 
-    private int maxContext;
-    
-    private int mlpHiddenDim = 1;
     private boolean bias = false;
     private boolean qkNorm = false;
     
@@ -43,11 +44,13 @@ public class VideoDiTBlock extends Layer {
 
     public RMSLayer norm3;
 
-    public DiTSwiGLUFFN mlp;
+    public GLUMBConv mlp;
     
     private Tensor attnInput;
     private Tensor crossAttnInput;
     private Tensor mlpInput;
+    
+//    private Tensor img_mlp_x;
     
     public Tensor shift_msa;
     public Tensor scale_msa;
@@ -56,9 +59,13 @@ public class VideoDiTBlock extends Layer {
     public Tensor scale_mlp;
     public Tensor gate_mlp;
     
+    private Tensor img_mlp_delta;
+    
     private int[] shape;
     
-    public VideoDiTBlock(int embedDim, int cEmbedDim, int time, int mlpHiddenDim, int headNum, int maxContext, boolean bias, boolean qkNorm, Network network) {
+    private BaseKernel baseKernel;
+    
+    public VideoDiTConvBlockI2V(int embedDim, int cEmbedDim, int time, int headNum, int F, int H, int W, boolean bias, boolean qkNorm, Network network) {
         this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
@@ -67,16 +74,17 @@ public class VideoDiTBlock extends Layer {
         this.cEmbedDim = cEmbedDim;
         this.headNum = headNum;
         this.time = time;
-        this.mlpHiddenDim = mlpHiddenDim;
         this.bias = bias;
         this.channel = 1;
         this.height = 1;
         this.width = embedDim;
+        this.F = F;
+        this.H = H;
+        this.W = W;
         this.oChannel = 1;
         this.oHeight = 1;
         this.oWidth = embedDim;
         this.qkNorm = qkNorm;
-        this.maxContext = maxContext;
         this.initLayers();
     }
 
@@ -94,9 +102,12 @@ public class VideoDiTBlock extends Layer {
 
         this.attn = new VideoDiTAttentionLayer(embedDim, headNum, time, bias, qkNorm, network);
         this.norm3 = new RMSLayer(1, 1, embedDim, true, BNType.fully_bn, network);
+
+        this.mlp = new GLUMBConv(embedDim, F, H, W, embedDim, 4, network);
         
-        int swiNum = (int)(2.0f/3.0f * mlpHiddenDim);
-        this.mlp = new DiTSwiGLUFFN(embedDim, swiNum, embedDim, bias, network);
+        if(baseKernel == null) {
+        	baseKernel = new BaseKernel(cuda());
+        }
     }
 
     @Override
@@ -125,8 +136,11 @@ public class VideoDiTBlock extends Layer {
         	crossAttnInput = Tensor.createGPUTensor(crossAttnInput, input.number, input.channel, input.height, input.width, true);
         }
         if(mlpInput == null || mlpInput.number != number) {
-        	mlpInput = Tensor.createGPUTensor(mlpInput, input.number, input.channel, input.height, input.width, true);
+        	mlpInput = Tensor.createGPUTensor(mlpInput, batchSize, F * H * W, 1, embedDim, true);
         }
+//        if(img_mlp_x == null || img_mlp_x.number != batchSize) {
+//        	img_mlp_x = Tensor.createGPUTensor(img_mlp_x, batchSize, F * H * W, 1, embedDim, true);
+//        }
         if(output == null || output.number != number) {
         	output = Tensor.createGPUTensor(output, input.number, oChannel, oHeight, oWidth, true);
         }
@@ -153,9 +167,11 @@ public class VideoDiTBlock extends Layer {
         	crossAttnInput = Tensor.createGPUTensor(crossAttnInput, input.number, input.channel, input.height, input.width, true);
         }
         if(mlpInput == null || mlpInput.number != number) {
-        	mlpInput = Tensor.createGPUTensor(mlpInput, input.number, input.channel, input.height, input.width, true);
+        	mlpInput = Tensor.createGPUTensor(mlpInput, batchSize, F * H * W, 1, embedDim, true);
         }
-        
+//        if(img_mlp_x == null || img_mlp_x.number != batchSize) {
+//        	img_mlp_x = Tensor.createGPUTensor(img_mlp_x, batchSize, F * H * W, 1, embedDim, true);
+//        }
         if(output == null || output.number != number) {
         	output = Tensor.createGPUTensor(output, input.number, oChannel, oHeight, oWidth, true);
         }
@@ -164,7 +180,9 @@ public class VideoDiTBlock extends Layer {
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
-
+        if(img_mlp_delta == null || img_mlp_delta.number != batchSize) {
+        	this.img_mlp_delta = CUDAMemoryManager.getCache("img_mlp_delta", batchSize, F * H * W, 1, embedDim);
+        }
     }
 
     @Override
@@ -189,7 +207,6 @@ public class VideoDiTBlock extends Layer {
     }
     
     public void output(Tensor tc, Tensor[] cos, Tensor[] sin) {
-
     	/**
     	 * shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = self.adaLN_modulation(c).chunk(6, dim=1)
     	 */
@@ -208,11 +225,10 @@ public class VideoDiTBlock extends Layer {
     	 *  x1 = x + gate_msa.unsqueeze(1) * self.attn(modulate(self.norm1(x), shift_msa, scale_msa))
     	 */
     	norm1.forward(input);
-//    	norm1.getOutput().showDMByOffsetRed(0, 100, "norm");
+
     	modulate(norm1.getOutput(), shift_msa, scale_msa, attnInput);
-    	attn.forward(attnInput, cos, sin, maxContext);
-//    	attn.getOutput().showDMByOffsetRed(0, 100, "attn");
-//    	attn.getOutput().showDM("attn");
+    	attn.forward(attnInput, cos, sin, 0);
+
     	Tensor_OP().mul(attn.getOutput(), gate_msa, crossAttnInput, batchSize, time, 1, crossAttnInput.width, 1);
     	Tensor_OP().add(input, crossAttnInput, crossAttnInput);
 
@@ -221,9 +237,11 @@ public class VideoDiTBlock extends Layer {
     	 */
     	norm3.forward(crossAttnInput);
     	modulate(norm3.getOutput(), shift_mlp, scale_mlp, mlpInput);
-
+    	
+//    	Tensor_OP().getByChannel(mlpInput, img_mlp_x, new int[] {batchSize, time, 1, embedDim}, 0, F*H*W);
+    	
     	mlp.forward(mlpInput);
-
+    	
     	Tensor_OP().mul(mlp.getOutput(), gate_mlp, output, batchSize, time, 1, output.width, 1);
     	Tensor_OP().add(crossAttnInput, output, output);
 
@@ -252,8 +270,11 @@ public class VideoDiTBlock extends Layer {
     	/**
     	 * x3 = x2 + gate_mlp.unsqueeze(1) * self.mlp(modulate(self.norm3(x2), shift_mlp, scale_mlp))
     	 */
-    	Tensor_OP().mul_left_back(gate_mlp, delta, output,  batchSize, time, 1, output.width, 1);
-    	mlp.back(output);
+    	Tensor_OP().mul_left_back(gate_mlp, delta, img_mlp_delta, batchSize, time, 1, output.width, 1);
+
+//    	Tensor_OP().getByChannel(output, img_mlp_delta, new int[] {batchSize, time, 1, embedDim}, 0, F*H*W);
+    	mlp.back(img_mlp_delta);
+
 //    	mlp.diff.showDM("mlp");
     	Tensor_OP().mul_right_back(mlp.getOutput(), delta, gate_mlp, batchSize, time, 1, output.width, 1);
     	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), gate_mlp, shape, 5);
@@ -277,7 +298,7 @@ public class VideoDiTBlock extends Layer {
 
 //    	output.showDM("attn_delta");
     	
-    	attn.back(output, cos, sin, maxContext);
+    	attn.back(output, cos, sin, 0);
 
     	Tensor_OP().mul_right_back(attn.getOutput(), norm3.diff, gate_msa, batchSize, time, 1, output.width, 1);
     	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), gate_msa, shape, 2);
@@ -474,33 +495,13 @@ public class VideoDiTBlock extends Layer {
     	mlp.accGrad(scale);
     }
     
-    public static void loadWeight(Map<String, Object> weightMap, VideoDiTBlock block, boolean showLayers) {
+    public static void loadWeight(Map<String, Object> weightMap, VideoDiTConvBlockI2V block, boolean showLayers) {
         if (showLayers) {
             for (String key : weightMap.keySet()) {
                 System.out.println(key);
             }
         }
         
-        block.norm1.gamma = ModeLoaderlUtils.loadData(block.norm1.gamma, weightMap, 1, "norm1.weight");
-        block.norm3.gamma = ModeLoaderlUtils.loadData(block.norm3.gamma, weightMap, 1, "norm2.weight");
-        
-        ModeLoaderlUtils.loadData(block.attn.qLinerLayer.weight, weightMap, "attn.q.weight");
-        ModeLoaderlUtils.loadData(block.attn.qLinerLayer.bias, weightMap, "attn.q.bias");
-        ModeLoaderlUtils.loadData(block.attn.kLinerLayer.weight, weightMap, "attn.k.weight");
-        ModeLoaderlUtils.loadData(block.attn.kLinerLayer.bias, weightMap, "attn.k.bias");
-        ModeLoaderlUtils.loadData(block.attn.vLinerLayer.weight, weightMap, "attn.v.weight");
-        ModeLoaderlUtils.loadData(block.attn.vLinerLayer.bias, weightMap, "attn.v.bias");
-        ModeLoaderlUtils.loadData(block.attn.oLinerLayer.weight, weightMap, "attn.proj.weight");
-        ModeLoaderlUtils.loadData(block.attn.oLinerLayer.bias, weightMap, "attn.proj.bias");
-
-        ModeLoaderlUtils.loadData(block.mlp.w12.weight, weightMap, "mlp.w12.weight");
-        ModeLoaderlUtils.loadData(block.mlp.w12.bias, weightMap, "mlp.w12.bias");
-        ModeLoaderlUtils.loadData(block.mlp.w3.weight, weightMap, "mlp.w3.weight");
-        ModeLoaderlUtils.loadData(block.mlp.w3.bias, weightMap, "mlp.w3.bias");
-        
-        ModeLoaderlUtils.loadData(block.adaLN_modulation.weight, weightMap, "adaLN_modulation.1.weight");
-        ModeLoaderlUtils.loadData(block.adaLN_modulation.bias, weightMap, "adaLN_modulation.1.bias");
-
     }
     
     public static void main(String[] args) {

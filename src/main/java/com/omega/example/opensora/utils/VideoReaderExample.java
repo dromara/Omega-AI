@@ -16,7 +16,7 @@ import com.omega.engine.tensor.Tensor;
  */
 public class VideoReaderExample {
 	
-	public static Tensor loadVideo2Tesnro(String videoPath, int maxFrames, int targetHeight, int targetWidth) {
+	public static Tensor loadVideo2Tensor(String videoPath, int maxFrames, int targetHeight, int targetWidth) {
 		
 		VideoReader reader = new VideoReader(videoPath, 10);
 		
@@ -72,6 +72,7 @@ public class VideoReaderExample {
 		return null;
 	}
 	
+	
 	public static void loadVideo2Tensor(String videoPath, int maxFrames, int targetHeight, int targetWidth, Tensor input, int index) {
 		
 		VideoReader reader = new VideoReader(videoPath, 10);
@@ -112,7 +113,7 @@ public class VideoReaderExample {
             	for(int f = 0;f<maxFrames;f++) {
             		float[] rgb = frameRGB.get(f);
             		for(int s = 0;s<targetHeight*targetWidth;s++) {
-            			input.data[index * 3 * os + c * os + f * targetHeight * targetWidth + s] = rgb[c * targetHeight * targetWidth + s];
+            			input.data[index * 3 * maxFrames * targetHeight * targetWidth + c * os + f * targetHeight * targetWidth + s] = rgb[c * targetHeight * targetWidth + s];
             		}
             	}
             }
@@ -124,6 +125,61 @@ public class VideoReaderExample {
 
 	}
 	
+	public static void loadVImg2Tensor(String imgPath, int maxFrames, int targetHeight, int targetWidth, Tensor input, int index) {
+		
+		BufferedImage bi = null;
+	    try {
+	    	 File file = new File(imgPath);
+             if (file.exists()) {
+            	 bi = ImageIO.read(file);
+    	         if(bi == null) {
+    	         	System.err.println(file.getName());
+    	         }
+             }
+	    } catch (Exception e) {
+	         e.printStackTrace();
+	    }
+
+		float[] mean = new float[] {0.5f, 0.5f, 0.5f};
+		float[] std = new float[] {0.5f, 0.5f, 0.5f};
+		
+		try {
+
+            List<BufferedImage> frames = new ArrayList<BufferedImage>();
+            frames.add(bi);
+            
+            // 方式2: 自定义宽高输出 (例如 320x240)
+//            System.out.println("\n开始 Resize (CenterCrop " + targetWidth + "x" + targetHeight + ")...");
+            List<BufferedImage> resizedFrames = VideoReader.resizeCenterCrop(frames, targetWidth, targetHeight);
+            
+            List<float[]> frameRGB = new ArrayList<float[]>();
+            
+            for(int f = 0;f<maxFrames;f++) {
+            	int real_f = f;
+            	if(f >= resizedFrames.size()) {
+            		real_f = resizedFrames.size() - 1;
+            	}
+            	float[] rgb = ImageUtils.getImageData(resizedFrames.get(real_f), true, true, mean, std);
+            	frameRGB.add(rgb);
+            }
+            int os = maxFrames * targetHeight * targetWidth;
+            for(int c = 0;c<3;c++) {
+            	for(int f = 0;f<maxFrames;f++) {
+            		float[] rgb = frameRGB.get(f);
+            		for(int s = 0;s<targetHeight*targetWidth;s++) {
+            			input.data[index * 3 * maxFrames * targetHeight * targetWidth + c * os + f * targetHeight * targetWidth + s] = rgb[c * targetHeight * targetWidth + s];
+            		}
+            	}
+            }
+
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+
+	}
+	
+	 
     public static void main(String[] args) {
         // 视频文件路径 - 请替换为实际的视频路径
         String videoPath = "D:\\dataset\\wfvae\\4105473_scene-0_cut-border.mp4";

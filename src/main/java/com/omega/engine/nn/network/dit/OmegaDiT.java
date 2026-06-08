@@ -15,6 +15,7 @@ import com.omega.engine.nn.network.NetworkType;
 import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
+import com.omega.example.dit.models.ICPlan;
 
 import jcuda.Sizeof;
 import jcuda.runtime.JCuda;
@@ -179,6 +180,37 @@ public class OmegaDiT extends Network {
         this.main.uncond = true;
         this.main.forward(input_null, t, null_context, cos, sin);
         uncond_eps = this.main.getOutput();
+        
+        /**
+         * out = uncond_eps + cfg_scale * (eps - uncond_eps)
+         */
+        tensorOP.sub(eps, uncond_eps, eps);
+        tensorOP.mul(eps, cfg_scale, eps);
+        tensorOP.add(uncond_eps, eps, eps);
+        return eps;
+    }
+    
+    public Tensor forward_with_path_drop_cfg(ICPlan icplan, Tensor input, Tensor t, Tensor context, Tensor null_context, Tensor cos, Tensor sin, Tensor eps, float cfg_scale) {
+        /**
+         * 设置输入数据
+         */
+        if(input_null == null || input_null.number != input.number) {
+    		input_null = Tensor.createGPUTensor(input_null, input.number, input.channel, input.height, input.width, true);
+    	}
+        input.copyGPU(input_null);
+        this.main.uncond = false;
+        this.main.forward(input, t, context, cos, sin);
+        this.main.getOutput().copyGPU(eps);
+        this.main.uncond = true;
+        this.main.forward(input_null, t, null_context, cos, sin);
+        uncond_eps = this.main.getOutput();
+        
+        /**
+         *  v_cond = (out_cond - z) / (1.0 - t).clamp_min(self.t_eps)
+         *  v_uncond = (out_uncond - z) / (1.0 - t).clamp_min(self.t_eps)
+         */
+        icplan.compute_v(eps, t, input, eps, 5e-2f);
+        icplan.compute_v(uncond_eps, t, input, uncond_eps, 5e-2f);
         
         /**
          * out = uncond_eps + cfg_scale * (eps - uncond_eps)

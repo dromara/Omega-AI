@@ -10,13 +10,10 @@ import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
-import com.omega.engine.nn.layer.dit.DiTCaptionEmbeddingLayer;
 import com.omega.engine.nn.layer.dit.DiTOrgTimeEmbeddingLayer;
-import com.omega.engine.nn.layer.dit.flux.FluxDiTBlock;
 import com.omega.engine.nn.layer.dit.kernel.TokenDropKernel;
 import com.omega.engine.nn.layer.dit.sprint.FusionLayer2;
-import com.omega.engine.nn.layer.dit.sprint.OmegaDiTMainMoudue_Sprint;
-import com.omega.engine.nn.layer.dit.video.block.VideoDiTBlock;
+import com.omega.engine.nn.layer.dit.video.block.VideoDiTConvBlockI2V;
 import com.omega.engine.nn.layer.dit.video.rope.RoPE3DKernel;
 import com.omega.engine.nn.network.CNN;
 import com.omega.engine.nn.network.Network;
@@ -30,7 +27,7 @@ import com.omega.example.transformer.utils.LagJsonReader;
  * DiT_Block
  * @author Administrator
  */
-public class OmegaVideoDiTMain extends Layer {
+public class OmegaVideoDiTMainI2V extends Layer {
 	
 	public int inChannel;
 	public int num_frames;
@@ -44,31 +41,20 @@ public class OmegaVideoDiTMain extends Layer {
     private int num_g = 0;
     private int timeSteps;
     private int headNum;
-    private int textEmbedDim;
-    private int maxContextLen;
-    private int mlpRatio = 4;
     
     public OmegaVideoPatchEmbed patchEmbd;
     public DiTOrgTimeEmbeddingLayer timeEmbd;
-    public DiTCaptionEmbeddingLayer labelEmbd;
-    public List<VideoDiTBlock> encoders;
-    public List<VideoDiTBlock> mids;
+    public List<VideoDiTConvBlockI2V> encoders;
+    public List<VideoDiTConvBlockI2V> mids;
     public FusionLayer2 fusion;
-    public List<VideoDiTBlock> decoders;
+    public List<VideoDiTConvBlockI2V> decoders;
     public OmegaVideoFinalLayer finalLayer;
     
     private int thw;
     
-    private Tensor cat_x;
-    private Tensor img_x;
-    
-    private Tensor d_o;
-    
     private Tensor dtc;
     private Tensor dencoder;
     private Tensor drop_delta;
-    
-    private float y_drop_prob = 0.0f;
     
     private float token_drop_ratio = 0.75f;
     private int token_t = 0;
@@ -84,16 +70,13 @@ public class OmegaVideoDiTMain extends Layer {
     private BaseKernel baseKernel;
     private TokenDropKernel tokenDropKernel;
     
-//    private List<Integer> ids;
-    
     public boolean uncond = false;
     
-    public OmegaVideoDiTMain(int inChannel, int num_frames, int height, int width, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int textEmbedDim, int maxContextLen, int mlpRatio, float y_drop_prob, float token_drop_ratio, float path_drop_prob, Network network) {
+    public OmegaVideoDiTMainI2V(int inChannel, int num_frames, int height, int width, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, float token_drop_ratio, float path_drop_prob, Network network) {
 		this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
         }
-        this.y_drop_prob = y_drop_prob;
     	this.inChannel = inChannel;
     	this.num_frames = num_frames;
 		this.width = width;
@@ -104,9 +87,6 @@ public class OmegaVideoDiTMain extends Layer {
 		this.depth = depth;
 		this.num_g = this.depth - num_f - num_h;
 		this.timeSteps = timeSteps;
-		this.textEmbedDim = textEmbedDim;
-		this.maxContextLen = maxContextLen;
-		this.mlpRatio = mlpRatio;
 		this.token_drop_ratio = token_drop_ratio;
 		this.path_drop_prob = path_drop_prob;
 		this.headNum = headNum;
@@ -125,26 +105,24 @@ public class OmegaVideoDiTMain extends Layer {
 
         timeEmbd = new DiTOrgTimeEmbeddingLayer(timeSteps, 256, hiddenSize, true, network);
 
-        labelEmbd = new DiTCaptionEmbeddingLayer(textEmbedDim, hiddenSize, maxContextLen, y_drop_prob, true, network);
-        
-        encoders = new ArrayList<VideoDiTBlock>();
-        mids = new ArrayList<VideoDiTBlock>();
-        decoders = new ArrayList<VideoDiTBlock>();
+        encoders = new ArrayList<VideoDiTConvBlockI2V>();
+        mids = new ArrayList<VideoDiTConvBlockI2V>();
+        decoders = new ArrayList<VideoDiTConvBlockI2V>();
         
         for(int i = 0;i<num_f;i++) {
-        	VideoDiTBlock block = new VideoDiTBlock(hiddenSize, hiddenSize, thw + maxContextLen, mlpRatio * hiddenSize, headNum, maxContextLen, true, false, network);
+        	VideoDiTConvBlockI2V block = new VideoDiTConvBlockI2V(hiddenSize, hiddenSize, thw, headNum, num_frames, height, width, true, false, network);
         	encoders.add(block);
         }
         
         for(int i = 0;i<num_g;i++) {
-        	VideoDiTBlock block = new VideoDiTBlock(hiddenSize, hiddenSize, token_t + maxContextLen, mlpRatio * hiddenSize, headNum, maxContextLen, true, false, network);
+        	VideoDiTConvBlockI2V block = new VideoDiTConvBlockI2V(hiddenSize, hiddenSize, token_t, headNum, num_frames, height, width, true, false, network);
         	mids.add(block);
         }
 
-        fusion = new FusionLayer2(hiddenSize, thw, token_t, maxContextLen, path_drop_prob, network);
+        fusion = new FusionLayer2(hiddenSize, thw, token_t, 0, path_drop_prob, network);
         
         for(int i = 0;i<num_h;i++) {
-        	VideoDiTBlock block = new VideoDiTBlock(hiddenSize, hiddenSize, thw + maxContextLen, mlpRatio * hiddenSize, headNum, maxContextLen, true, false, network);
+        	VideoDiTConvBlockI2V block = new VideoDiTConvBlockI2V(hiddenSize, hiddenSize, thw, headNum, num_frames, height, width, true, false, network);
         	decoders.add(block);
         }
         
@@ -221,14 +199,12 @@ public class OmegaVideoDiTMain extends Layer {
         // TODO Auto-generated method stub
         this.number = input.number;
         if(this.output == null || this.output.number != number) {
-        	cat_x = Tensor.createGPUTensor(cat_x, number * (thw + maxContextLen), 1, 1, patchEmbd.oWidth, true);
-        	img_x = Tensor.createGPUTensor(img_x, number * thw, 1, 1, patchEmbd.oWidth, true);
         	output = Tensor.createGPUTensor(output, number, oChannel * num_frames, oHeight, oWidth, true);
         }
         
         if(token_t < thw && (idsKeep == null || idsKeep.number != number)) {
         	idsKeep = Tensor.createGPUTensor(idsKeep, number, 1, 1, token_t, true);
-        	td_x = Tensor.createGPUTensor(td_x, number * (maxContextLen + token_t), 1, 1, hiddenSize, true);
+        	td_x = Tensor.createGPUTensor(td_x, number * (0 + token_t), 1, 1, hiddenSize, true);
         }
         
         if(patchEmbd.getOutput() != null){
@@ -241,15 +217,10 @@ public class OmegaVideoDiTMain extends Layer {
     public void initBack() {
         // TODO Auto-generated method stub
     	if(dtc == null || dtc.number != timeEmbd.getOutput().number) {
-    		d_o = Tensor.createGPUTensor(d_o, input.number * (maxContextLen + thw), 1, 1, patchEmbd.getOutput().width, true);
     		dtc = Tensor.createGPUTensor(dtc, timeEmbd.getOutput().shape(), true);
-    		dencoder = Tensor.createGPUTensor(dencoder, number * (maxContextLen + thw), 1, 1, hiddenSize, true);
-//    		drop_delta = Tensor.createGPUTensor(drop_delta, number * (maxContextLen + thw), 1, 1, hiddenSize, true);
+    		dencoder = Tensor.createGPUTensor(dencoder, number * thw, 1, 1, hiddenSize, true);
     	}else {
     		dtc.clearGPU();
-    		d_o.clearGPU();
-//    		dencoder.clearGPU();
-//    		drop_delta.clearGPU();
     	}
     }
 
@@ -264,33 +235,27 @@ public class OmegaVideoDiTMain extends Layer {
 
     }
     
-    public void output(Tensor tc, Tensor label, Tensor[] cos, Tensor[] sin) {
+    public void output(Tensor tc, Tensor[] cos, Tensor[] sin) {
     	
     	patchEmbd.forward(input);
 
     	timeEmbd.forward(tc);
     	
-    	labelEmbd.forward(label);
-    	
     	Tensor x = patchEmbd.getOutput().view(patchEmbd.getOutput().number * patchEmbd.getOutput().channel, 1, 1, patchEmbd.getOutput().width);
 
     	Tensor t = timeEmbd.getOutput();
     	
-    	Tensor cond = labelEmbd.getOutput();
-
-     	baseKernel.concat_channel_forward(cond, x, cat_x, input.number, maxContextLen, thw, 1, patchEmbd.getOutput().width);
-     	
     	/**
     	 * encoder
     	 */
-    	Tensor e_x = cat_x;
+    	Tensor e_x = x;
     	for(int i = 0;i<num_f;i++) {
-    		VideoDiTBlock block = encoders.get(i);
+    		VideoDiTConvBlockI2V block = encoders.get(i);
     		block.forward(e_x, t, cos, sin);
     		e_x = block.getOutput();
 //    		e_x.showDMByOffsetRed(150 * 1152, 1152, "e_x:"+i);
     	}
-//    	e_x.showDM("e_x");
+
 		/**
 		 * sprint
 		 */
@@ -298,7 +263,7 @@ public class OmegaVideoDiTMain extends Layer {
 		if(!uncond) {
 			if(idsKeep != null && network.RUN_MODEL == RunModel.TRAIN) {
 				tokenDropKernel.idsKeep(idsKeep, number, (thw - 1), token_t);
-				tokenDropKernel.imgTokenDrop(e_x, idsKeep, td_x, token_t, thw, maxContextLen, hiddenSize);
+				tokenDropKernel.imgTokenDrop(e_x, idsKeep, td_x, token_t, thw, 0, hiddenSize);
 				h_x = td_x;
 			}
 			
@@ -306,7 +271,7 @@ public class OmegaVideoDiTMain extends Layer {
 			 * mids
 			 */
 			for(int i = 0;i<num_g;i++) {
-				VideoDiTBlock block = mids.get(i);
+				VideoDiTConvBlockI2V block = mids.get(i);
 				block.forward(h_x, t, cos, sin);
 	    		h_x = block.getOutput();
 	    	}
@@ -330,14 +295,13 @@ public class OmegaVideoDiTMain extends Layer {
 		 */
 		Tensor d_x = fusion.getOutput();
     	for(int i = 0;i<num_h;i++) {
-    		VideoDiTBlock block = decoders.get(i);
+    		VideoDiTConvBlockI2V block = decoders.get(i);
     		block.forward(d_x, t, cos, sin);
     		d_x = block.getOutput();
     	}
-    	
-    	Tensor_OP().getByChannel(d_x, img_x, new int[] {input.number, maxContextLen + thw, 1, patchEmbd.getOutput().width}, maxContextLen, thw);
+
 //    	img_x.showShape("img_x");
-    	finalLayer.forward(img_x, t);
+    	finalLayer.forward(d_x, t);
 //    	finalLayer.getOutput().showShape("finalLayer");
     	/**
     	 * unpatchify
@@ -375,16 +339,13 @@ public class OmegaVideoDiTMain extends Layer {
     	
     	finalLayer.back(finalLayer.getOutput(), dtc);
     	
-    	Tensor dy = d_o;
-    	dy.clearGPU();
-
-    	Tensor_OP().getByChannel_back(dy, finalLayer.diff, new int[] {input.number, maxContextLen + thw, 1, patchEmbd.getOutput().width}, maxContextLen, thw);
+    	Tensor dy = finalLayer.diff;
 
     	/**
     	 * decoder backward
     	 */
     	for(int i = num_h - 1;i>=0;i--) {
-    		VideoDiTBlock block = decoders.get(i);
+    		VideoDiTConvBlockI2V block = decoders.get(i);
     		block.back(dy, dtc, cos, sin);
     		dy = block.diff;
     	}
@@ -405,7 +366,7 @@ public class OmegaVideoDiTMain extends Layer {
 		 */
 		Tensor dh = fusion.diff;
 		for(int i = num_g - 1;i>=0;i--) {
-			VideoDiTBlock block = mids.get(i);
+			VideoDiTConvBlockI2V block = mids.get(i);
 			block.back(dh, dtc, cos, sin);
     		dh = block.diff;
     	}
@@ -415,7 +376,7 @@ public class OmegaVideoDiTMain extends Layer {
 		 */
 		Tensor de = dh;
 		if(idsKeep != null) {
-			tokenDropKernel.imgTokenDropBack(drop_delta, idsKeep, dh, token_t, thw, maxContextLen, hiddenSize);
+			tokenDropKernel.imgTokenDropBack(drop_delta, idsKeep, dh, token_t, thw, 0, hiddenSize);
 			de = drop_delta;
 		}
 		
@@ -428,18 +389,14 @@ public class OmegaVideoDiTMain extends Layer {
 		 * encoder backward
 		 */
     	for(int i = num_f - 1;i>=0;i--) {
-    		VideoDiTBlock block = encoders.get(i);
+    		VideoDiTConvBlockI2V block = encoders.get(i);
     		block.back(de, dtc, cos, sin);
     		de = block.diff;
     	}
 
-    	baseKernel.concat_channel_backward(de, labelEmbd.getOutput(), img_x, input.number, maxContextLen, thw, 1, patchEmbd.getOutput().width);
-
-     	labelEmbd.back(labelEmbd.getOutput());
-     	
      	timeEmbd.back(dtc);
-//     	img_x.showDMByOffsetRed(150 * 1152, 1152, "img_x");
-     	patchEmbd.back(img_x);
+//     	de.showDMByOffsetRed(150 * 1152, 1152, "img_x");
+     	patchEmbd.back(de);
      	
     }
     
@@ -499,7 +456,7 @@ public class OmegaVideoDiTMain extends Layer {
      * @param tc time cond
      * @param text
      */
-    public void forward(Tensor input,Tensor tc,Tensor text, Tensor[] cos, Tensor[] sin) {
+    public void forward(Tensor input,Tensor tc, Tensor[] cos, Tensor[] sin) {
         // TODO Auto-generated method stub
         /**
          * 设置输入
@@ -512,7 +469,7 @@ public class OmegaVideoDiTMain extends Layer {
         /**
          * 计算输出
          */
-        this.output(tc, text, cos, sin);
+        this.output(tc, cos, sin);
     }
     
     @Override
@@ -551,8 +508,6 @@ public class OmegaVideoDiTMain extends Layer {
     	patchEmbd.update();
 
     	timeEmbd.update();
-    	
-    	labelEmbd.update();
     	
     	for(int i = 0;i<num_f;i++) {
     		encoders.get(i).update();
@@ -603,8 +558,6 @@ public class OmegaVideoDiTMain extends Layer {
 
     	timeEmbd.saveModel(outputStream);
 
-    	labelEmbd.saveModel(outputStream);
-    	
     	for(int i = 0;i<num_f;i++) {
     		encoders.get(i).saveModel(outputStream);
     	}
@@ -626,8 +579,6 @@ public class OmegaVideoDiTMain extends Layer {
     	patchEmbd.loadModel(inputStream);
 
     	timeEmbd.loadModel(inputStream);
-    	
-    	labelEmbd.loadModel(inputStream);
     	
     	for(int i = 0;i<num_f;i++) {
     		encoders.get(i).loadModel(inputStream);
@@ -653,8 +604,6 @@ public class OmegaVideoDiTMain extends Layer {
 
     	timeEmbd.accGrad(scale);
 
-    	labelEmbd.accGrad(scale);
-    	
     	for(int i = 0;i<num_f;i++) {
     		encoders.get(i).accGrad(scale);
     	}
@@ -672,114 +621,110 @@ public class OmegaVideoDiTMain extends Layer {
     	finalLayer.accGrad(scale);
     }
     
-    public static void loadWeight(Map<String, Object> weightMap, OmegaVideoDiTMain block, boolean showLayers) {
+    public static void loadWeight(Map<String, Object> weightMap, OmegaVideoDiTMainI2V block, boolean showLayers) {
         if (showLayers) {
             for (String key : weightMap.keySet()) {
                 System.out.println(key);
             }
         }
         
-        ModeLoaderlUtils.loadData(block.patchEmbd.patchEmbedding.weight, weightMap, "x_embedder.proj.weight", 4);
-        ModeLoaderlUtils.loadData(block.patchEmbd.patchEmbedding.bias, weightMap, "x_embedder.proj.bias");
-        
-        ModeLoaderlUtils.loadData(block.timeEmbd.linear1.weight, weightMap, "t_embedder.mlp.0.weight");
-        ModeLoaderlUtils.loadData(block.timeEmbd.linear1.bias, weightMap, "t_embedder.mlp.0.bias");
-        ModeLoaderlUtils.loadData(block.timeEmbd.linear2.weight, weightMap, "t_embedder.mlp.2.weight");
-        ModeLoaderlUtils.loadData(block.timeEmbd.linear2.bias, weightMap, "t_embedder.mlp.2.bias");
-
-        ModeLoaderlUtils.loadData(block.labelEmbd.init_y_embedding(), weightMap, "y_embedder.y_embedding");
-        
-        ModeLoaderlUtils.loadData(block.labelEmbd.linear1.weight, weightMap, "y_embedder.y_proj.fc1.weight");
-        ModeLoaderlUtils.loadData(block.labelEmbd.linear1.bias, weightMap, "y_embedder.y_proj.fc1.bias");
-        ModeLoaderlUtils.loadData(block.labelEmbd.linear2.weight, weightMap, "y_embedder.y_proj.fc2.weight");
-        ModeLoaderlUtils.loadData(block.labelEmbd.linear2.bias, weightMap, "y_embedder.y_proj.fc2.bias");
-        
-        for(int i = 0;i<2;i++) {
-        	VideoDiTBlock b = block.encoders.get(i);
-        	
-        	b.norm1.gamma = ModeLoaderlUtils.loadData(b.norm1.gamma, weightMap, 1, "blocks."+i+".norm1.weight"); 
-        	b.norm3.gamma = ModeLoaderlUtils.loadData(b.norm3.gamma, weightMap, 1, "blocks."+i+".norm2.weight");  
-        	
-        	ModeLoaderlUtils.loadData(b.attn.qLinerLayer.weight, weightMap, "blocks."+i+".attn.q.weight");
-            ModeLoaderlUtils.loadData(b.attn.qLinerLayer.bias, weightMap, "blocks."+i+".attn.q.bias");
-        	ModeLoaderlUtils.loadData(b.attn.kLinerLayer.weight, weightMap, "blocks."+i+".attn.k.weight");
-            ModeLoaderlUtils.loadData(b.attn.kLinerLayer.bias, weightMap, "blocks."+i+".attn.k.bias");
-        	ModeLoaderlUtils.loadData(b.attn.vLinerLayer.weight, weightMap, "blocks."+i+".attn.v.weight");
-            ModeLoaderlUtils.loadData(b.attn.vLinerLayer.bias, weightMap, "blocks."+i+".attn.v.bias");
-        	ModeLoaderlUtils.loadData(b.attn.oLinerLayer.weight, weightMap, "blocks."+i+".attn.proj.weight");
-            ModeLoaderlUtils.loadData(b.attn.oLinerLayer.bias, weightMap, "blocks."+i+".attn.proj.bias");
-            
-        	ModeLoaderlUtils.loadData(b.mlp.w12.weight, weightMap, "blocks."+i+".mlp.w12.weight");
-        	ModeLoaderlUtils.loadData(b.mlp.w12.bias, weightMap, "blocks."+i+".mlp.w12.bias");
-        	ModeLoaderlUtils.loadData(b.mlp.w3.weight, weightMap, "blocks."+i+".mlp.w3.weight");
-        	ModeLoaderlUtils.loadData(b.mlp.w3.bias, weightMap, "blocks."+i+".mlp.w3.bias");
-        	
-        	ModeLoaderlUtils.loadData(b.adaLN_modulation.weight, weightMap, "blocks."+i+".adaLN_modulation.1.weight");
-        	ModeLoaderlUtils.loadData(b.adaLN_modulation.bias, weightMap, "blocks."+i+".adaLN_modulation.1.bias");
-        }
-        
-        for(int i = 0;i<2;i++) {
-        	int idx = i + 2;
-        	VideoDiTBlock b = block.mids.get(i);
-        	
-        	b.norm1.gamma = ModeLoaderlUtils.loadData(b.norm1.gamma, weightMap, 1, "blocks."+idx+".norm1.weight"); 
-        	b.norm3.gamma = ModeLoaderlUtils.loadData(b.norm3.gamma, weightMap, 1, "blocks."+idx+".norm2.weight");  
-        	
-        	ModeLoaderlUtils.loadData(b.attn.qLinerLayer.weight, weightMap, "blocks."+idx+".attn.q.weight");
-            ModeLoaderlUtils.loadData(b.attn.qLinerLayer.bias, weightMap, "blocks."+idx+".attn.q.bias");
-        	ModeLoaderlUtils.loadData(b.attn.kLinerLayer.weight, weightMap, "blocks."+idx+".attn.k.weight");
-            ModeLoaderlUtils.loadData(b.attn.kLinerLayer.bias, weightMap, "blocks."+idx+".attn.k.bias");
-        	ModeLoaderlUtils.loadData(b.attn.vLinerLayer.weight, weightMap, "blocks."+idx+".attn.v.weight");
-            ModeLoaderlUtils.loadData(b.attn.vLinerLayer.bias, weightMap, "blocks."+idx+".attn.v.bias");
-        	ModeLoaderlUtils.loadData(b.attn.oLinerLayer.weight, weightMap, "blocks."+idx+".attn.proj.weight");
-            ModeLoaderlUtils.loadData(b.attn.oLinerLayer.bias, weightMap, "blocks."+idx+".attn.proj.bias");
-            
-        	ModeLoaderlUtils.loadData(b.mlp.w12.weight, weightMap, "blocks."+idx+".mlp.w12.weight");
-        	ModeLoaderlUtils.loadData(b.mlp.w12.bias, weightMap, "blocks."+idx+".mlp.w12.bias");
-        	ModeLoaderlUtils.loadData(b.mlp.w3.weight, weightMap, "blocks."+idx+".mlp.w3.weight");
-        	ModeLoaderlUtils.loadData(b.mlp.w3.bias, weightMap, "blocks."+idx+".mlp.w3.bias");
-        	
-        	ModeLoaderlUtils.loadData(b.adaLN_modulation.weight, weightMap, "blocks."+idx+".adaLN_modulation.1.weight");
-        	ModeLoaderlUtils.loadData(b.adaLN_modulation.bias, weightMap, "blocks."+idx+".adaLN_modulation.1.bias");
-        }
-        
-        block.fusion.weight = ModeLoaderlUtils.loadData(block.fusion.weight, weightMap, 3, "mask_token"); 
-        ModeLoaderlUtils.loadData(block.fusion.fusion_proj.weight, weightMap, "fusion_proj.weight");
-        ModeLoaderlUtils.loadData(block.fusion.fusion_proj.bias, weightMap, "fusion_proj.bias");
-        
-        for(int i = 0;i<2;i++) {
-        	int idx = i + 4;
-        	VideoDiTBlock b = block.decoders.get(i);
-        	
-        	b.norm1.gamma = ModeLoaderlUtils.loadData(b.norm1.gamma, weightMap, 1, "blocks."+idx+".norm1.weight"); 
-        	b.norm3.gamma = ModeLoaderlUtils.loadData(b.norm3.gamma, weightMap, 1, "blocks."+idx+".norm2.weight");  
-        	
-        	ModeLoaderlUtils.loadData(b.attn.qLinerLayer.weight, weightMap, "blocks."+idx+".attn.q.weight");
-            ModeLoaderlUtils.loadData(b.attn.qLinerLayer.bias, weightMap, "blocks."+idx+".attn.q.bias");
-        	ModeLoaderlUtils.loadData(b.attn.kLinerLayer.weight, weightMap, "blocks."+idx+".attn.k.weight");
-            ModeLoaderlUtils.loadData(b.attn.kLinerLayer.bias, weightMap, "blocks."+idx+".attn.k.bias");
-        	ModeLoaderlUtils.loadData(b.attn.vLinerLayer.weight, weightMap, "blocks."+idx+".attn.v.weight");
-            ModeLoaderlUtils.loadData(b.attn.vLinerLayer.bias, weightMap, "blocks."+idx+".attn.v.bias");
-        	ModeLoaderlUtils.loadData(b.attn.oLinerLayer.weight, weightMap, "blocks."+idx+".attn.proj.weight");
-            ModeLoaderlUtils.loadData(b.attn.oLinerLayer.bias, weightMap, "blocks."+idx+".attn.proj.bias");
-            
-        	ModeLoaderlUtils.loadData(b.mlp.w12.weight, weightMap, "blocks."+idx+".mlp.w12.weight");
-        	ModeLoaderlUtils.loadData(b.mlp.w12.bias, weightMap, "blocks."+idx+".mlp.w12.bias");
-        	ModeLoaderlUtils.loadData(b.mlp.w3.weight, weightMap, "blocks."+idx+".mlp.w3.weight");
-        	ModeLoaderlUtils.loadData(b.mlp.w3.bias, weightMap, "blocks."+idx+".mlp.w3.bias");
-        	
-        	ModeLoaderlUtils.loadData(b.adaLN_modulation.weight, weightMap, "blocks."+idx+".adaLN_modulation.1.weight");
-        	ModeLoaderlUtils.loadData(b.adaLN_modulation.bias, weightMap, "blocks."+idx+".adaLN_modulation.1.bias");
-        }
-        
-        block.finalLayer.finalNorm.gamma = ModeLoaderlUtils.loadData(block.finalLayer.finalNorm.gamma, weightMap, 1, "final_layer.norm_final.weight"); 
-        ModeLoaderlUtils.loadData(block.finalLayer.finalLinear.weight, weightMap, "final_layer.linear.weight");
-        ModeLoaderlUtils.loadData(block.finalLayer.finalLinear.bias, weightMap, "final_layer.linear.bias");
-        ModeLoaderlUtils.loadData(block.finalLayer.m_linear1.weight, weightMap, "final_layer.adaLN_modulation_linear1.weight");
-        ModeLoaderlUtils.loadData(block.finalLayer.m_linear1.bias, weightMap, "final_layer.adaLN_modulation_linear1.bias");
-        ModeLoaderlUtils.loadData(block.finalLayer.m_linear2.weight, weightMap, "final_layer.adaLN_modulation_linear2.weight");
-        ModeLoaderlUtils.loadData(block.finalLayer.m_linear2.bias, weightMap, "final_layer.adaLN_modulation_linear2.bias");
-        
+      ModeLoaderlUtils.loadData(block.patchEmbd.patchEmbedding.weight, weightMap, "x_embedder.proj.weight", 4);
+      ModeLoaderlUtils.loadData(block.patchEmbd.patchEmbedding.bias, weightMap, "x_embedder.proj.bias");
+      
+      ModeLoaderlUtils.loadData(block.timeEmbd.linear1.weight, weightMap, "t_embedder.mlp.0.weight");
+      ModeLoaderlUtils.loadData(block.timeEmbd.linear1.bias, weightMap, "t_embedder.mlp.0.bias");
+      ModeLoaderlUtils.loadData(block.timeEmbd.linear2.weight, weightMap, "t_embedder.mlp.2.weight");
+      ModeLoaderlUtils.loadData(block.timeEmbd.linear2.bias, weightMap, "t_embedder.mlp.2.bias");
+      
+      for(int i = 0;i<2;i++) {
+    	VideoDiTConvBlockI2V b = block.encoders.get(i);
+      	
+      	b.norm1.gamma = ModeLoaderlUtils.loadData(b.norm1.gamma, weightMap, 1, "blocks."+i+".norm1.weight"); 
+      	b.norm3.gamma = ModeLoaderlUtils.loadData(b.norm3.gamma, weightMap, 1, "blocks."+i+".norm2.weight");  
+      	
+      	ModeLoaderlUtils.loadData(b.attn.qLinerLayer.weight, weightMap, "blocks."+i+".attn.q.weight");
+        ModeLoaderlUtils.loadData(b.attn.qLinerLayer.bias, weightMap, "blocks."+i+".attn.q.bias");
+      	ModeLoaderlUtils.loadData(b.attn.kLinerLayer.weight, weightMap, "blocks."+i+".attn.k.weight");
+        ModeLoaderlUtils.loadData(b.attn.kLinerLayer.bias, weightMap, "blocks."+i+".attn.k.bias");
+      	ModeLoaderlUtils.loadData(b.attn.vLinerLayer.weight, weightMap, "blocks."+i+".attn.v.weight");
+        ModeLoaderlUtils.loadData(b.attn.vLinerLayer.bias, weightMap, "blocks."+i+".attn.v.bias");
+      	ModeLoaderlUtils.loadData(b.attn.oLinerLayer.weight, weightMap, "blocks."+i+".attn.proj.weight");
+        ModeLoaderlUtils.loadData(b.attn.oLinerLayer.bias, weightMap, "blocks."+i+".attn.proj.bias");
+          
+      	ModeLoaderlUtils.loadData(b.mlp.inverted_conv.weight, weightMap, "blocks."+i+".mlp_img.inverted_conv.conv.weight", 4);
+      	ModeLoaderlUtils.loadData(b.mlp.inverted_conv.bias, weightMap, "blocks."+i+".mlp_img.inverted_conv.conv.bias");
+      	ModeLoaderlUtils.loadData(b.mlp.depth_conv.weight, weightMap, "blocks."+i+".mlp_img.depth_conv.conv.weight", 4);
+      	ModeLoaderlUtils.loadData(b.mlp.depth_conv.bias, weightMap, "blocks."+i+".mlp_img.depth_conv.conv.bias");
+      	ModeLoaderlUtils.loadData(b.mlp.point_conv.weight, weightMap, "blocks."+i+".mlp_img.point_conv.conv.weight", 4);
+      	
+      	ModeLoaderlUtils.loadData(b.adaLN_modulation.weight, weightMap, "blocks."+i+".adaLN_modulation.1.weight");
+      	ModeLoaderlUtils.loadData(b.adaLN_modulation.bias, weightMap, "blocks."+i+".adaLN_modulation.1.bias");
+      }
+      
+      for(int i = 0;i<2;i++) {
+      	int idx = i + 2;
+      	VideoDiTConvBlockI2V b = block.mids.get(i);
+      	
+      	b.norm1.gamma = ModeLoaderlUtils.loadData(b.norm1.gamma, weightMap, 1, "blocks."+idx+".norm1.weight"); 
+      	b.norm3.gamma = ModeLoaderlUtils.loadData(b.norm3.gamma, weightMap, 1, "blocks."+idx+".norm2.weight");  
+      	
+      	ModeLoaderlUtils.loadData(b.attn.qLinerLayer.weight, weightMap, "blocks."+idx+".attn.q.weight");
+        ModeLoaderlUtils.loadData(b.attn.qLinerLayer.bias, weightMap, "blocks."+idx+".attn.q.bias");
+      	ModeLoaderlUtils.loadData(b.attn.kLinerLayer.weight, weightMap, "blocks."+idx+".attn.k.weight");
+        ModeLoaderlUtils.loadData(b.attn.kLinerLayer.bias, weightMap, "blocks."+idx+".attn.k.bias");
+      	ModeLoaderlUtils.loadData(b.attn.vLinerLayer.weight, weightMap, "blocks."+idx+".attn.v.weight");
+        ModeLoaderlUtils.loadData(b.attn.vLinerLayer.bias, weightMap, "blocks."+idx+".attn.v.bias");
+      	ModeLoaderlUtils.loadData(b.attn.oLinerLayer.weight, weightMap, "blocks."+idx+".attn.proj.weight");
+        ModeLoaderlUtils.loadData(b.attn.oLinerLayer.bias, weightMap, "blocks."+idx+".attn.proj.bias");
+          
+      	ModeLoaderlUtils.loadData(b.mlp.inverted_conv.weight, weightMap, "blocks."+idx+".mlp_img.inverted_conv.conv.weight", 4);
+      	ModeLoaderlUtils.loadData(b.mlp.inverted_conv.bias, weightMap, "blocks."+idx+".mlp_img.inverted_conv.conv.bias");
+      	ModeLoaderlUtils.loadData(b.mlp.depth_conv.weight, weightMap, "blocks."+idx+".mlp_img.depth_conv.conv.weight", 4);
+      	ModeLoaderlUtils.loadData(b.mlp.depth_conv.bias, weightMap, "blocks."+idx+".mlp_img.depth_conv.conv.bias");
+      	ModeLoaderlUtils.loadData(b.mlp.point_conv.weight, weightMap, "blocks."+idx+".mlp_img.point_conv.conv.weight", 4);
+      	
+      	ModeLoaderlUtils.loadData(b.adaLN_modulation.weight, weightMap, "blocks."+idx+".adaLN_modulation.1.weight");
+      	ModeLoaderlUtils.loadData(b.adaLN_modulation.bias, weightMap, "blocks."+idx+".adaLN_modulation.1.bias");
+      }
+      
+      block.fusion.weight = ModeLoaderlUtils.loadData(block.fusion.weight, weightMap, 3, "mask_token"); 
+      ModeLoaderlUtils.loadData(block.fusion.fusion_proj.weight, weightMap, "fusion_proj.weight");
+      ModeLoaderlUtils.loadData(block.fusion.fusion_proj.bias, weightMap, "fusion_proj.bias");
+      
+      for(int i = 0;i<2;i++) {
+      	int idx = i + 4;
+      	VideoDiTConvBlockI2V b = block.decoders.get(i);
+      	
+      	b.norm1.gamma = ModeLoaderlUtils.loadData(b.norm1.gamma, weightMap, 1, "blocks."+idx+".norm1.weight"); 
+      	b.norm3.gamma = ModeLoaderlUtils.loadData(b.norm3.gamma, weightMap, 1, "blocks."+idx+".norm2.weight");  
+      	
+      	ModeLoaderlUtils.loadData(b.attn.qLinerLayer.weight, weightMap, "blocks."+idx+".attn.q.weight");
+        ModeLoaderlUtils.loadData(b.attn.qLinerLayer.bias, weightMap, "blocks."+idx+".attn.q.bias");
+      	ModeLoaderlUtils.loadData(b.attn.kLinerLayer.weight, weightMap, "blocks."+idx+".attn.k.weight");
+        ModeLoaderlUtils.loadData(b.attn.kLinerLayer.bias, weightMap, "blocks."+idx+".attn.k.bias");
+      	ModeLoaderlUtils.loadData(b.attn.vLinerLayer.weight, weightMap, "blocks."+idx+".attn.v.weight");
+        ModeLoaderlUtils.loadData(b.attn.vLinerLayer.bias, weightMap, "blocks."+idx+".attn.v.bias");
+      	ModeLoaderlUtils.loadData(b.attn.oLinerLayer.weight, weightMap, "blocks."+idx+".attn.proj.weight");
+        ModeLoaderlUtils.loadData(b.attn.oLinerLayer.bias, weightMap, "blocks."+idx+".attn.proj.bias");
+          
+      	ModeLoaderlUtils.loadData(b.mlp.inverted_conv.weight, weightMap, "blocks."+idx+".mlp_img.inverted_conv.conv.weight", 4);
+      	ModeLoaderlUtils.loadData(b.mlp.inverted_conv.bias, weightMap, "blocks."+idx+".mlp_img.inverted_conv.conv.bias");
+      	ModeLoaderlUtils.loadData(b.mlp.depth_conv.weight, weightMap, "blocks."+idx+".mlp_img.depth_conv.conv.weight", 4);
+      	ModeLoaderlUtils.loadData(b.mlp.depth_conv.bias, weightMap, "blocks."+idx+".mlp_img.depth_conv.conv.bias");
+      	ModeLoaderlUtils.loadData(b.mlp.point_conv.weight, weightMap, "blocks."+idx+".mlp_img.point_conv.conv.weight", 4);
+      	
+      	ModeLoaderlUtils.loadData(b.adaLN_modulation.weight, weightMap, "blocks."+idx+".adaLN_modulation.1.weight");
+      	ModeLoaderlUtils.loadData(b.adaLN_modulation.bias, weightMap, "blocks."+idx+".adaLN_modulation.1.bias");
+      }
+      
+      block.finalLayer.finalNorm.gamma = ModeLoaderlUtils.loadData(block.finalLayer.finalNorm.gamma, weightMap, 1, "final_layer.norm_final.weight"); 
+      ModeLoaderlUtils.loadData(block.finalLayer.finalLinear.weight, weightMap, "final_layer.linear.weight");
+      ModeLoaderlUtils.loadData(block.finalLayer.finalLinear.bias, weightMap, "final_layer.linear.bias");
+      ModeLoaderlUtils.loadData(block.finalLayer.m_linear1.weight, weightMap, "final_layer.adaLN_modulation_linear1.weight");
+      ModeLoaderlUtils.loadData(block.finalLayer.m_linear1.bias, weightMap, "final_layer.adaLN_modulation_linear1.bias");
+      ModeLoaderlUtils.loadData(block.finalLayer.m_linear2.weight, weightMap, "final_layer.adaLN_modulation_linear2.weight");
+      ModeLoaderlUtils.loadData(block.finalLayer.m_linear2.bias, weightMap, "final_layer.adaLN_modulation_linear2.bias");
+      
     }
     
     public static void main(String[] args) {
@@ -789,9 +734,6 @@ public class OmegaVideoDiTMain extends Layer {
     	int H = 11;
     	int W = 20;
     	
-    	int TT = 77;
-    	int TEM = 768;
-    	
     	int patchSize = 1;
     	int hiddenSize = 1152;
     	int headNum = 16;
@@ -800,48 +742,38 @@ public class OmegaVideoDiTMain extends Layer {
     	CNN nn = new CNN(null);
         nn.CUDNN = true;
         nn.number = N;
-//        nn.RUN_MODEL = RunModel.EVAL;
+        nn.RUN_MODEL = RunModel.EVAL;
     	
-        OmegaVideoDiTMain jb = new OmegaVideoDiTMain(C, num_frames, H, W, patchSize, hiddenSize, headNum, depth, 1000, TEM, TT, 4, 0.1f, 0.0f, 0.05f, nn);
+        OmegaVideoDiTMainI2V jb = new OmegaVideoDiTMainI2V(C, num_frames, H, W, patchSize, hiddenSize, headNum, depth, 1000, 0.0f, 0.05f, nn);
     	
-        String weight = "D:\\models\\ltx_vae\\sit.json";
+        String weight = "D:\\models\\ltx_vae\\dit_weight.json";
         loadWeight(LagJsonReader.readJsonFileBigWeightIterator(weight), jb, true);
         
-	    String inputPath = "D:\\models\\ltx_vae\\input_x.json";
+	    String inputPath = "D:\\models\\ltx_vae\\dit_x.json";
 	    Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
 	    Tensor input = new Tensor(N, C * num_frames, H, W, true);
-	    ModeLoaderlUtils.loadData(input, datas, "input", 5);
-    	
-	    String cyPath = "D:\\models\\ltx_vae\\input_x.json";
-	    Map<String, Object> cydatas = LagJsonReader.readJsonFileSmallWeight(cyPath);
-	    Tensor cy = new Tensor(N, TT, 1, TEM, true);
-	    ModeLoaderlUtils.loadData(cy, cydatas, "txt", 3);
+	    ModeLoaderlUtils.loadData(input, datas, "x", 5);
         
-	    Tensor t = new Tensor(N, 1, 1, 1, new float[] {0.1f, 0.8f}, true);
+	    Tensor t = new Tensor(N, 1, 1, 1, new float[] {0.1f, 0.4f}, true);
 	    
         Tensor[][] cs = RoPE3DKernel.init3DRoPE(num_frames, H, W, hiddenSize, headNum, 1.0f, 1.4375f, 2.5f);
         Tensor[] cos = cs[0];
         Tensor[] sin = cs[1];
-        
-        cy.view(N * TT, 1, 1, TEM);
-//        input.showDM("input");
-        
-	    String deltaPath = "D:\\models\\ltx_vae\\delta.json";
+
+	    String deltaPath = "D:\\models\\ltx_vae\\dit_delta.json";
 	    Map<String, Object> deltaDatas = LagJsonReader.readJsonFileSmallWeight(deltaPath);
 	    Tensor delta = new Tensor(N, C * num_frames, H, W, true);
 	    ModeLoaderlUtils.loadData(delta, deltaDatas, "delta", 5);
         
-        for(int i = 0;i<1;i++) {
+        for(int i = 0;i<3;i++) {
         	 
-            jb.forward(input, t, cy, cos, sin);
+            jb.forward(input, t, cos, sin);
     	    
     	    jb.getOutput().showDM("output");
-    	    delta.showDM("delta");
-    	    jb.back(delta, cos, sin);
+//    	    delta.showDM("delta");
+//    	    jb.back(delta, cos, sin);
     	    
         }
-       
-	    
     }
     
 	public void setIdsKeep(Tensor idsKeep) {

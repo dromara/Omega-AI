@@ -1,4 +1,4 @@
-package com.omega.engine.nn.network.video;
+package com.omega.engine.nn.network.dit;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -9,27 +9,27 @@ import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.layer.InputLayer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.SoftmaxWithCrossEntropyLayer;
-import com.omega.engine.nn.layer.dit.video.OmegaVideoDiTMain;
+import com.omega.engine.nn.layer.dit.sprint.OmegaDiTMainMoudue_Sprint2;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.NetworkType;
 import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterType;
+import com.omega.example.dit.models.ICPlan;
 
 import jcuda.Sizeof;
 import jcuda.runtime.JCuda;
 
 /**
- * Omega video Duffsion Transformer
+ * Omega Duffsion Transformer
  *
  * @author Administrator
  */
-public class OmegaVideo extends Network {
+public class OmegaDiT2 extends Network {
 	
     public int inChannel;
-    public int num_frames;
-    public int height;
     public int width;
+    public int height;
     public int patchSize;
     public int textEmbedDim;
     public int maxContextLen;
@@ -38,14 +38,13 @@ public class OmegaVideo extends Network {
     private int timeSteps;
     public int headNum;
     private int mlpRatio = 4;
-    
     private float y_drop_prob = 0.0f;
     
     public float token_drop_ratio = 0.75f;
     private float path_drop_prob = 0.0f;
     
     private InputLayer inputLayer;
-    public OmegaVideoDiTMain main;
+    public OmegaDiTMainMoudue_Sprint2 main;
     
     private Tensor input_null;
     private Tensor eps;
@@ -53,12 +52,11 @@ public class OmegaVideo extends Network {
     private Tensor head;
     private Tensor tail;
     
-    public OmegaVideo(LossType lossType, UpdaterType updater, int inChannel, int num_frames, int height, int width, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int textEmbedDim, int maxContextLen, int mlpRatio, float token_drop_ratio, float path_drop_prob, float y_drop_prob) {
+    public OmegaDiT2(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int textEmbedDim, int maxContextLen, int mlpRatio, float token_drop_ratio, float path_drop_prob, float y_drop_prob) {
         this.lossFunction = LossFactory.create(lossType, this);
 //        this.weight_decay = 0.1f;
         this.updater = updater;
         this.inChannel = inChannel;
-        this.num_frames = num_frames;
         this.width = width;
         this.height = height;
         this.patchSize = patchSize;
@@ -72,7 +70,7 @@ public class OmegaVideo extends Network {
         this.token_drop_ratio = token_drop_ratio;
         this.path_drop_prob = path_drop_prob;
         this.y_drop_prob = y_drop_prob;
-        this.time = num_frames * (width / patchSize) * (height / patchSize);
+        this.time = (width / patchSize) * (height / patchSize);
         initLayers();
     }
 
@@ -80,7 +78,7 @@ public class OmegaVideo extends Network {
     	
         this.inputLayer = new InputLayer(inChannel, height, width);
         
-        main = new OmegaVideoDiTMain(inChannel, num_frames, height, width, patchSize, hiddenSize, headNum, depth, timeSteps, textEmbedDim, maxContextLen, mlpRatio, y_drop_prob, token_drop_ratio, path_drop_prob, this);
+        main = new OmegaDiTMainMoudue_Sprint2(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, textEmbedDim, maxContextLen, mlpRatio, y_drop_prob, token_drop_ratio, path_drop_prob, this);
         
         this.addLayer(inputLayer);
         this.addLayer(main);
@@ -127,7 +125,7 @@ public class OmegaVideo extends Network {
         return null;
     }
     
-    public Tensor forward(Tensor input, Tensor t, Tensor context, Tensor[] cos, Tensor[] sin) {
+    public Tensor forward(Tensor input, Tensor t, Tensor context, Tensor cos, Tensor sin) {
         /**
          * 设置输入数据
          */
@@ -135,8 +133,17 @@ public class OmegaVideo extends Network {
         this.main.forward(input, t, context, cos, sin);
         return this.main.getOutput();
     }
-   
-    public Tensor forward_with_cfg(Tensor input, Tensor t, Tensor context, Tensor[] cos, Tensor[] sin, Tensor eps, float cfg_scale) {
+    
+    public Tensor forward(Tensor input, Tensor t, Tensor context, Tensor cos, Tensor sin, Tensor idskeep) {
+        /**
+         * 设置输入数据
+         */
+        this.setInputData(input);
+        this.main.forward(input, t, context, cos, sin, idskeep);
+        return this.main.getOutput();
+    }
+    
+    public Tensor forward_with_cfg(Tensor input, Tensor t, Tensor context, Tensor cos, Tensor sin, Tensor eps, float cfg_scale) {
         /**
          * 设置输入数据
          */
@@ -156,7 +163,7 @@ public class OmegaVideo extends Network {
         return eps;
     }
     
-    public Tensor forward_with_path_drop_cfg(Tensor input, Tensor t, Tensor context, Tensor null_context, Tensor[] cos, Tensor[] sin, Tensor eps, float cfg_scale) {
+    public Tensor forward_with_path_drop_cfg(Tensor input, Tensor t, Tensor context, Tensor null_context, Tensor cos, Tensor sin, Tensor eps, float cfg_scale) {
         /**
          * 设置输入数据
          */
@@ -167,23 +174,51 @@ public class OmegaVideo extends Network {
         this.main.uncond = false;
         this.main.forward(input, t, context, cos, sin);
         this.main.getOutput().copyGPU(eps);
-        if(cfg_scale != 1.0f){
-            this.main.uncond = true;
-            this.main.forward(input_null, t, null_context, cos, sin);
-            uncond_eps = this.main.getOutput();
-
-            /**
-             * out = uncond_eps + cfg_scale * (eps - uncond_eps)
-             */
-            tensorOP.sub(eps, uncond_eps, eps);
-            tensorOP.mul(eps, cfg_scale, eps);
-            tensorOP.add(uncond_eps, eps, eps);
-        }
+        this.main.uncond = true;
+        this.main.forward(input_null, t, null_context, cos, sin);
+        uncond_eps = this.main.getOutput();
         
+        /**
+         * out = uncond_eps + cfg_scale * (eps - uncond_eps)
+         */
+        tensorOP.sub(eps, uncond_eps, eps);
+        tensorOP.mul(eps, cfg_scale, eps);
+        tensorOP.add(uncond_eps, eps, eps);
         return eps;
     }
     
-    public Tensor forward_with_cfg(Tensor input, Tensor t, Tensor context, Tensor[] cos, Tensor[] sin, Tensor out, float cfg_scale, int channel) {
+    public Tensor forward_with_path_drop_cfg(ICPlan icplan, Tensor input, Tensor t, Tensor context, Tensor null_context, Tensor cos, Tensor sin, Tensor eps, float cfg_scale) {
+        /**
+         * 设置输入数据
+         */
+        if(input_null == null || input_null.number != input.number) {
+    		input_null = Tensor.createGPUTensor(input_null, input.number, input.channel, input.height, input.width, true);
+    	}
+        input.copyGPU(input_null);
+        this.main.uncond = false;
+        this.main.forward(input, t, context, cos, sin);
+        this.main.getOutput().copyGPU(eps);
+        this.main.uncond = true;
+        this.main.forward(input_null, t, null_context, cos, sin);
+        uncond_eps = this.main.getOutput();
+        
+        /**
+         *  v_cond = (out_cond - z) / (1.0 - t).clamp_min(self.t_eps)
+         *  v_uncond = (out_uncond - z) / (1.0 - t).clamp_min(self.t_eps)
+         */
+        icplan.compute_v(eps, t, input, eps, 5e-2f);
+        icplan.compute_v(uncond_eps, t, input, uncond_eps, 5e-2f);
+        
+        /**
+         * out = uncond_eps + cfg_scale * (eps - uncond_eps)
+         */
+        tensorOP.sub(eps, uncond_eps, eps);
+        tensorOP.mul(eps, cfg_scale, eps);
+        tensorOP.add(uncond_eps, eps, eps);
+        return eps;
+    }
+    
+    public Tensor forward_with_cfg(Tensor input, Tensor t, Tensor context, Tensor cos, Tensor sin, Tensor out, float cfg_scale, int channel) {
         /**
          * 设置输入数据
          */
@@ -232,7 +267,7 @@ public class OmegaVideo extends Network {
         //		this.unet.diff.showDMByOffset(0, 100, "unet.diff");
     }
     
-    public void back(Tensor lossDiff,Tensor[] cos, Tensor[] sin) {
+    public void back(Tensor lossDiff,Tensor cos, Tensor sin) {
         // TODO Auto-generated method stub
         //		lossDiff.showDMByNumber(0);
         initBack();
@@ -247,6 +282,21 @@ public class OmegaVideo extends Network {
         //		this.unet.diff.showDMByOffset(0, 100, "unet.diff");
     }
     
+    public void back(Tensor lossDiff,Tensor cos, Tensor sin, Tensor idskeep) {
+        // TODO Auto-generated method stub
+        //		lossDiff.showDMByNumber(0);
+        initBack();
+        /**
+         * 设置误差
+         * 将误差值输入到最后一层
+         */
+        //		lossDiff.showDMByOffset(0, 100, "lossDiff");
+        this.setLossDiff(lossDiff);
+        //		lossDiff.showDM("lossDiff");
+        this.main.back(lossDiff, cos, sin, idskeep);
+        //		this.unet.diff.showDMByOffset(0, 100, "unet.diff");
+    }
+
     @Override
     public Tensor loss(Tensor output, Tensor label) {
         // TODO Auto-generated method stub

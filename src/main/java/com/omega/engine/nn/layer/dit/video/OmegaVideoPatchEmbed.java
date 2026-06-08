@@ -79,13 +79,13 @@ public class OmegaVideoPatchEmbed extends Layer {
             int pChannel = this.getPatchEmbedding().oHeight * this.getPatchEmbedding().oWidth;
             input_t = Tensor.createGPUTensor(input_t, this.number * F, channel, height, width, true);
             output = Tensor.createGPUTensor(output, this.number, F * pChannel, 1, embedDim, true);
-            shape = new int[] {number, F, this.getPatchEmbedding().oChannel, pChannel};
-            t_shape = new int[] {number, F, pChannel , this.getPatchEmbedding().oChannel};
+            shape = new int[] {number, F, embedDim, pChannel};
+            t_shape = new int[] {number, F, pChannel , embedDim};
         }
     }
 
     public void initLayers(int inChannel, int F, int height, int width, int patchSize, boolean bias) {
-        this.patchEmbedding = new ConvolutionLayer(inChannel, embedDim, height, width, patchSize, patchSize, 0, patchSize, bias, network);
+        this.patchEmbedding = new ConvolutionLayer(inChannel, embedDim, width, height, patchSize, patchSize, 0, patchSize, bias, network);
         patchEmbedding.PROPAGATE_DOWN = false;
         RandomUtils.xavier_uniform(patchEmbedding.weight, 1, inChannel * patchSize * patchSize, embedDim * patchSize * patchSize);
 //        this.patchEmbedding.weight.setData(RandomUtils.xavierUniform(this.patchEmbedding.weight.dataLength, inChannel * patchSize * patchSize, embedDim * patchSize * patchSize, 1));
@@ -118,7 +118,9 @@ public class OmegaVideoPatchEmbed extends Layer {
         	x = rearrange(x, "(B T) S C -> B (T S) C", B=B, T=T, S=S) # [B, 3 * 11 * 20, 1152] = [B, 660, 1152]
     	 */
     	Tensor_OP().permute(input, input_t, new int[] {number, channel, F, height, width}, new int[] {number, F, channel , height, width}, new int[] {0, 2, 1, 3, 4});
-        getPatchEmbedding().forward(input_t);
+//    	input_t.showDM("input_t");
+    	getPatchEmbedding().forward(input_t);
+//        getPatchEmbedding().getOutput().showDM("dm");
         Tensor_OP().permute(getPatchEmbedding().getOutput(), output, shape, t_shape, new int[]{0, 1, 3, 2});
     }
 
@@ -167,17 +169,14 @@ public class OmegaVideoPatchEmbed extends Layer {
         // TODO Auto-generated method stub
         /**
          * 参数初始化
-
          */
         this.init(input);
         /**
          * 设置输入
-
          */
         this.setInput(input);
         /**
          * 计算输出
-
          */
         this.output();
     }

@@ -111,21 +111,21 @@ public class LTXVideoUpBlock3d extends Layer {
     	if(shortcut) {
     		conv_in.forward(x);
     		x = conv_in.getOutput();
-        	x.showDMByOffsetRed((3 * conv_in.oDepth + 2) * x.height * x.width, x.height * x.width, "shortcut");
+//        	x.showDMByOffsetRed((3 * conv_in.oDepth + 2) * x.height * x.width, x.height * x.width, "shortcut");
     	}
-    	System.err.println(spatio_temporal_scale);
+//    	System.err.println(spatio_temporal_scale);
     	if(spatio_temporal_scale) {
     		upsampler.forward(x);
     		x = upsampler.getOutput();
-    		x.showDMByOffsetRed((3 * upsampler.oDepth + 2) * x.height * x.width, x.height * x.width, "upsampler");
+//    		x.showDMByOffsetRed((3 * upsampler.oDepth + 2) * x.height * x.width, x.height * x.width, "upsampler");
     	}
     	
     	for(int i = 0;i<num_layers;i++) {
     		LTXVideoResnetBlock3d block = resnets.get(i);
     		block.forward(x);
     		x = block.getOutput();
-    		x.showShape("x");
-    		x.showDMByOffsetRed((3 * block.oDepth + 2) * x.height * x.width, x.height * x.width, "resnet");
+//    		x.showShape("x");
+//    		x.showDMByOffsetRed((3 * block.oDepth + 2) * x.height * x.width, x.height * x.width, "resnet");
     	}
 
     	this.output = x;

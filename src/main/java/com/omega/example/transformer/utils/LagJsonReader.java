@@ -71,10 +71,10 @@ public class LagJsonReader {
             reader.beginObject();
             while (reader.hasNext()) {
                 String name = reader.nextName();
-                System.err.println(name);
+//                System.err.println(name);
                 Object value = readValue(reader);
                 mapList.put(name, value);
-                System.out.println(name+"==>finish.");
+//                System.out.println(name+"==>finish.");
             }
             reader.endObject();
             return mapList;

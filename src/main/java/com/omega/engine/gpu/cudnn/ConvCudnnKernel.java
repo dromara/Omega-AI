@@ -140,7 +140,26 @@ public class ConvCudnnKernel extends ConvBaseKernel {
             getWorkSpace();
         }
     }
-
+    
+    public int[] outputShape() {
+    	this.N = 1;
+    	int convDims = 2;
+        int[] padA = {padding, padding};
+        int[] weight = {ko, C/groups, kh, kw};
+        int[] upscaleA = {1, 1};
+        int[] tensorOuputDimA = {N, C, H, W};
+//        			System.out.println(JsonUtils.toJson(tensorOuputDimA));
+        JCudnn.cudnnSetTensor4dDescriptor(xDesc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, N, C, H, W);
+        JCudnn.cudnnSetFilterNdDescriptor(kernelDesc, CUDNN_DATA_FLOAT, CUDNN_TENSOR_NCHW, 4, weight);
+        int[] filterStrideA = {stride, stride};
+        JCudnn.cudnnSetConvolutionNdDescriptor(convDesc, convDims, padA, filterStrideA, upscaleA, CUDNN_CROSS_CORRELATION, CUDNN_DATA_FLOAT);
+        if(groups > 1) {
+        	JCudnn.cudnnSetConvolutionGroupCount(convDesc, groups);
+        }
+        handle(JCudnn.cudnnGetConvolutionNdForwardOutputDim(convDesc, xDesc, kernelDesc, 4, tensorOuputDimA));
+        return tensorOuputDimA;
+    }
+    
     public void conv(Tensor input, Tensor kernel, Tensor output) {
         this.init(input.number);
         handle(JCudnn.cudnnConvolutionForward(CudnnHandleManager.getHandle(), alpha_P, xDesc, input.getGpuData(), kernelDesc, kernel.getGpuData(), convDesc, fw_algo, this.network.workspace, this.network.workspaceSize, beta_P, yDesc, output.getGpuData()));

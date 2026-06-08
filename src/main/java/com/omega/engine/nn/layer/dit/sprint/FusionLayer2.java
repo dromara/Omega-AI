@@ -144,7 +144,7 @@ public class FusionLayer2 extends Layer {
     
     public void output(Tensor encoder) {
     	pdp = RandomUtils.randomFloat();
-//    	pdp = 0.0001f;
+//    	pdp = 0.00001f;
     	if(network.RUN_MODEL == RunModel.TRAIN && path_drop_prob > 0 && pdp < path_drop_prob) {
     		pmKernel.set_mask_igone(weight, input, FT + TT, 0, embedDim);
     	}

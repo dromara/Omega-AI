@@ -9,7 +9,7 @@ import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.layer.InputLayer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.SoftmaxWithCrossEntropyLayer;
-import com.omega.engine.nn.layer.dit.video.OmegaVideoDiTMain;
+import com.omega.engine.nn.layer.dit.video.OmegaVideoDiTMain2;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.NetworkType;
 import com.omega.engine.nn.network.RunModel;
@@ -24,7 +24,7 @@ import jcuda.runtime.JCuda;
  *
  * @author Administrator
  */
-public class OmegaVideo extends Network {
+public class OmegaVideo2 extends Network {
 	
     public int inChannel;
     public int num_frames;
@@ -45,7 +45,7 @@ public class OmegaVideo extends Network {
     private float path_drop_prob = 0.0f;
     
     private InputLayer inputLayer;
-    public OmegaVideoDiTMain main;
+    public OmegaVideoDiTMain2 main;
     
     private Tensor input_null;
     private Tensor eps;
@@ -53,7 +53,7 @@ public class OmegaVideo extends Network {
     private Tensor head;
     private Tensor tail;
     
-    public OmegaVideo(LossType lossType, UpdaterType updater, int inChannel, int num_frames, int height, int width, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int textEmbedDim, int maxContextLen, int mlpRatio, float token_drop_ratio, float path_drop_prob, float y_drop_prob) {
+    public OmegaVideo2(LossType lossType, UpdaterType updater, int inChannel, int num_frames, int height, int width, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int textEmbedDim, int maxContextLen, int mlpRatio, float token_drop_ratio, float path_drop_prob, float y_drop_prob) {
         this.lossFunction = LossFactory.create(lossType, this);
 //        this.weight_decay = 0.1f;
         this.updater = updater;
@@ -80,7 +80,7 @@ public class OmegaVideo extends Network {
     	
         this.inputLayer = new InputLayer(inChannel, height, width);
         
-        main = new OmegaVideoDiTMain(inChannel, num_frames, height, width, patchSize, hiddenSize, headNum, depth, timeSteps, textEmbedDim, maxContextLen, mlpRatio, y_drop_prob, token_drop_ratio, path_drop_prob, this);
+        main = new OmegaVideoDiTMain2(inChannel, num_frames, height, width, patchSize, hiddenSize, headNum, depth, timeSteps, textEmbedDim, maxContextLen, mlpRatio, y_drop_prob, token_drop_ratio, path_drop_prob, this);
         
         this.addLayer(inputLayer);
         this.addLayer(main);

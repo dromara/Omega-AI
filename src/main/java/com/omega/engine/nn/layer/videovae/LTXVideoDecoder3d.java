@@ -132,17 +132,17 @@ public class LTXVideoDecoder3d extends Layer {
         // TODO Auto-generated method stub
     	conv_in.forward(input);
 
-    	conv_in.getOutput().showDMByOffsetRed((3 * 3 + 2) * conv_in.getOutput().height * conv_in.getOutput().width, conv_in.getOutput().height * conv_in.getOutput().width, "conv_in.getOutput()");
+//    	conv_in.getOutput().showDMByOffsetRed((3 * 3 + 2) * conv_in.getOutput().height * conv_in.getOutput().width, conv_in.getOutput().height * conv_in.getOutput().width, "conv_in.getOutput()");
     	
     	mid_block.forward(conv_in.getOutput());
     	
     	Tensor x = mid_block.getOutput();
-    	x.showDMByOffsetRed((3 * mid_block.oDepth + 2) * x.height * x.width, x.height * x.width, "mid_block");
+//    	x.showDMByOffsetRed((3 * mid_block.oDepth + 2) * x.height * x.width, x.height * x.width, "mid_block");
     	for(int i = 0;i<up_blocks.size();i++) {
     		LTXVideoUpBlock3d up = up_blocks.get(i);
     		up.forward(x);
     		x = up.getOutput();
-        	x.showDMByOffsetRed((3 * up.oDepth + 2) * x.height * x.width, x.height * x.width, i+"");
+//        	x.showDMByOffsetRed((3 * up.oDepth + 2) * x.height * x.width, x.height * x.width, i+"");
     	}
     	
     	int inDepth = up_blocks.get(up_blocks.size() - 1).oDepth;
@@ -159,7 +159,7 @@ public class LTXVideoDecoder3d extends Layer {
         int[] o_shape = new int[] {number, oChannel, conv_out.oDepth, patch_size_t, conv_out.oHeight, patch_size, conv_out.oWidth, patch_size};
         Tensor_OP().permute(conv_out.getOutput(), output, x_shape, o_shape, new int[] {0, 1, 5, 2, 6, 4, 7, 3});
 //        output.showShape("output");
-        output.showDMByOffsetRed((2 * 17 + 2) * output.height * output.width, output.height * output.width, "output");
+//        output.showDMByOffsetRed((2 * 17 + 2) * output.height * output.width, output.height * output.width, "output");
     }
 
     @Override

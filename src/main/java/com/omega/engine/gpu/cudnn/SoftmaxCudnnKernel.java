@@ -2,6 +2,8 @@ package com.omega.engine.gpu.cudnn;
 
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
+import com.omega.engine.gpu.CUDAMemoryManager;
+import com.omega.engine.gpu.CUDNNDescriptorManager;
 import com.omega.engine.nn.network.CNN;
 import com.omega.engine.tensor.Tensor;
 
@@ -24,18 +26,22 @@ public class SoftmaxCudnnKernel extends BaseKernel {
     private cudnnTensorDescriptor xDesc;
     private cudnnTensorDescriptor diffDesc;
     private cudnnTensorDescriptor yDesc;
-
+    
+    private String key;
+    
+    public SoftmaxCudnnKernel(String key, int C, int H, int W, CUDAManager cudaManager) {
+        super(cudaManager);
+        this.key = key;
+        this.C = C;
+        this.H = H;
+        this.W = W;
+    }
+    
     public SoftmaxCudnnKernel(int C, int H, int W, CUDAManager cudaManager) {
         super(cudaManager);
         this.C = C;
         this.H = H;
         this.W = W;
-        xDesc = new cudnnTensorDescriptor();
-        diffDesc = new cudnnTensorDescriptor();
-        yDesc = new cudnnTensorDescriptor();
-        handle(JCudnn.cudnnCreateTensorDescriptor(xDesc));
-        handle(JCudnn.cudnnCreateTensorDescriptor(diffDesc));
-        handle(JCudnn.cudnnCreateTensorDescriptor(yDesc));
     }
 
     /**
@@ -59,12 +65,22 @@ public class SoftmaxCudnnKernel extends BaseKernel {
     }
 
     public void init(int number) {
+//    	if(xDesc == null) {
+//            xDesc = new cudnnTensorDescriptor();
+//            diffDesc = new cudnnTensorDescriptor();
+//            yDesc = new cudnnTensorDescriptor();
+//            handle(JCudnn.cudnnCreateTensorDescriptor(xDesc));
+//            handle(JCudnn.cudnnCreateTensorDescriptor(diffDesc));
+//            handle(JCudnn.cudnnCreateTensorDescriptor(yDesc));
+//    	}
         if (this.N != number) {
             this.N = number;
-//            			System.out.println(this.N+":"+C+":"+H+":"+W);
-            handle(JCudnn.cudnnSetTensor4dDescriptor(xDesc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, N, C, H, W));
-            handle(JCudnn.cudnnSetTensor4dDescriptor(yDesc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, N, C, H, W));
-            handle(JCudnn.cudnnSetTensor4dDescriptor(diffDesc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, N, C, H, W));
+            xDesc = CUDNNDescriptorManager.cache_4D(key+"_xDesc_", N, C, H, W);
+            yDesc = CUDNNDescriptorManager.cache_4D(key+"_yDesc_", N, C, H, W);
+            diffDesc = CUDNNDescriptorManager.cache_4D(key+"_diffDesc_", N, C, H, W);
+//            handle(JCudnn.cudnnSetTensor4dDescriptor(xDesc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, N, C, H, W));
+//            handle(JCudnn.cudnnSetTensor4dDescriptor(yDesc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, N, C, H, W));
+//            handle(JCudnn.cudnnSetTensor4dDescriptor(diffDesc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, N, C, H, W));
         }
     }
 
@@ -84,7 +100,7 @@ public class SoftmaxCudnnKernel extends BaseKernel {
     }
 
     public void softmax_backward(Tensor output, Tensor delta, Tensor diff) {
-        handle(JCudnn.cudnnSoftmaxBackward(CudnnHandleManager.getHandle(), CUDNN_SOFTMAX_ACCURATE, CUDNN_SOFTMAX_MODE_CHANNEL, alpha_P, xDesc, output.getGpuData(), diffDesc, delta.getGpuData(), beta_P, yDesc, diff.getGpuData()));
+        handle(JCudnn.cudnnSoftmaxBackward(CudnnHandleManager.getHandle(), CUDNN_SOFTMAX_ACCURATE, CUDNN_SOFTMAX_MODE_CHANNEL, alpha_P, yDesc, output.getGpuData(), diffDesc, delta.getGpuData(), beta_P, xDesc, diff.getGpuData()));
     }
     
     public static void main(String[] arg) {
