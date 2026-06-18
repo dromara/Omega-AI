@@ -23,6 +23,7 @@ import com.omega.engine.nn.network.vae.LTXVideo_VAE_Encoder;
 import com.omega.engine.nn.network.video.OmegaVideo;
 import com.omega.engine.nn.network.video.OmegaVideo2;
 import com.omega.engine.nn.network.video.OmegaVideoI2V;
+import com.omega.engine.nn.network.video.OmegaVideoI2V2;
 import com.omega.engine.optimizer.MBSGDOptimizer;
 import com.omega.engine.optimizer.lr.LearnRateUpdate;
 import com.omega.engine.tensor.Tensor;
@@ -596,7 +597,16 @@ public class VideoDiTTest {
 //        vae_decoder.tensorOP.mul(img_latend, scaling_factor, img_latend);
         
         vae_encoder.tensorOP.getByChannel_back(latend, img_latend, new int[] {batchSize * latendDim, vae_numFrames, vae_height, vae_width}, 0, 1);
+        
+        Tensor img_full_latend = new Tensor(batchSize, latendDim * numFrames, vae_height, vae_width, true);
+        
+        vae_encoder.tensorOP.expand_as(img_latend, img_full_latend, batchSize * latendDim, numFrames, 1, vae_height * vae_width, 1);
 
+        
+        img_latend.showDM("img_latend");
+
+        img_full_latend.showDM("img_full_latend");
+        
         Tensor video = new Tensor(batchSize * num_frames, 3, height, width, true);
         
 //        vae_decoder.tensorOP.div(latend, scaling_factor, latend);
@@ -822,6 +832,53 @@ public class VideoDiTTest {
         
 	}
 	
+	public static void video_dit_train_i2v2() throws Exception {
+		
+		String dataPath = "D:\\dataset\\video\\1w_latend.bin";
+		String imgDataPath = "D:\\dataset\\video\\1W_img_latend.bin";
+		String clipDataPath = "D:\\dataset\\video\\1w_clip.bin";
+        String meanStdPath = "D:\\dataset\\video\\1w_mean_std.bin";
+        
+        int batchSize = 5;
+        int latendDim = 128;
+        int numFrames = 3;
+        int height = 11;
+        int width = 20;
+        int textEmbedDim = 768;
+        int maxContext = 77;
+        
+        LatendDatasetI2V dataLoader = new LatendDatasetI2V(dataPath, imgDataPath, clipDataPath, batchSize, latendDim, numFrames, height, width, maxContext, textEmbedDim, BinDataType.float32);
+		
+        int ditHeadNum = 16;
+        int depth = 16;
+        int timeSteps = 1000;
+        int patchSize = 1;
+        int hiddenSize = 1152;
+
+        float token_drop = 0.0f;
+        float path_drop_prob = 0.05f;
+        
+        OmegaVideoI2V2 dit = new OmegaVideoI2V2(LossType.MSE, UpdaterType.adamw, latendDim, numFrames, height, width, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, token_drop, path_drop_prob);
+    	dit.CUDNN = true;
+        dit.learnRate = 2e-4f;
+         
+//        String model_path = "D:\\dataset\\video\\models\\video_dit_b_2.model";
+//        ModelUtils.loadModel(dit, model_path);
+        
+        Tensor mean = new Tensor(latendDim, 1, 1, 1, true);
+        Tensor std = new Tensor(latendDim, 1, 1, 1, true);
+        
+        loadMS(meanStdPath, mean, std);
+
+        ICPlan icplan = new ICPlan(dit.tensorOP);
+        
+        MBSGDOptimizer optimizer = new MBSGDOptimizer(dit, 60, 0.00001f, batchSize, LearnRateUpdate.NONE, false);
+        optimizer.train_video_dit_ICPlan2(dataLoader, icplan, "D:\\dataset\\video\\models\\video_dit_b_", mean, std, 2);
+        
+        String save_model_path = "D:\\dataset\\video\\models\\video_dit_b.model";
+        ModelUtils.saveModel(dit, save_model_path);
+	}
+	
 	public static void loadMS(String meanStdPath, Tensor mean, Tensor std) {
         try (RandomAccessFile File = new RandomAccessFile(meanStdPath, "r")) {
         	com.omega.engine.nn.network.utils.ModelUtils.loadParams(File, mean);
@@ -831,6 +888,129 @@ public class VideoDiTTest {
             // TODO: handle exception
             e.printStackTrace();
         }
+	}
+	
+	public static void video_dit_test_i2v2() throws Exception {
+		int num_frames = 17;
+		int height = 352;
+		int width = 640;
+		int patch_size_t = 1;
+		int patch_size = 4;
+        int vae_numFrames = 3;
+        int vae_height = 11;
+        int vae_width = 20;
+		int[] block_out_channels = new int[] {128, 256, 512, 512};
+		int[] layers_per_block = new int[] {4, 3, 3, 3, 4};
+		boolean[] spatio_temporal_scaling = new boolean[] {true, true, true, false};
+		
+		LTXVideo_VAE_Encoder vae_encoder = new LTXVideo_VAE_Encoder(LossType.MSE, UpdaterType.adamw, 1, height, width, patch_size_t, patch_size, block_out_channels, layers_per_block, spatio_temporal_scaling);
+		LTXVideo_VAE_Decoder vae_decoder = new LTXVideo_VAE_Decoder(LossType.MSE, UpdaterType.adamw, vae_numFrames, vae_height, vae_width, patch_size_t, patch_size, block_out_channels, layers_per_block, spatio_temporal_scaling);
+		vae_encoder.CUDNN = true;
+		vae_decoder.CUDNN = true;
+		String save_model_path = "D:\\models\\ltx_vae\\ltx_vae.model";
+        ModelUtils.loadModel(vae_encoder, vae_decoder, save_model_path);
+        
+        int latendDim = 128;
+        int ditHeadNum = 16;
+        int depth = 16;
+        int timeSteps = 1000;
+        int patchSize = 1;
+        int hiddenSize = 1152;
+
+        float token_drop = 0.0f;
+        float path_drop_prob = 0.05f;
+
+        OmegaVideoI2V2 dit = new OmegaVideoI2V2(LossType.MSE, UpdaterType.adamw, latendDim, vae_numFrames, vae_height, vae_width, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, token_drop, path_drop_prob);
+    	dit.CUDNN = true;
+        dit.learnRate = 2e-4f;
+        
+        ICPlan icplan = new ICPlan(dit.tensorOP);
+        
+        String model_path = "D:\\dataset\\video\\models\\video_dit_b_12.model";
+        ModelUtils.loadModel(dit, model_path);
+        
+        Tensor mean = new Tensor(latendDim, 1, 1, 1, true);
+        Tensor std = new Tensor(latendDim, 1, 1, 1, true);
+        String meanStdPath = "D:\\dataset\\video\\1w_mean_std.bin";
+        loadMS(meanStdPath, mean, std);
+        
+        int batchSize = 2;
+        
+        int thw = vae_numFrames * vae_height * vae_width;
+        
+        Tensor t = new Tensor(batchSize, 1, 1, 1, true);
+        
+        Tensor noise = new Tensor(batchSize, dit.inChannel * dit.num_frames, dit.height, dit.width, true);
+        Tensor latend = new Tensor(batchSize, dit.inChannel * dit.num_frames, dit.height, dit.width, true);
+        Tensor eps = new Tensor(batchSize, dit.inChannel * dit.num_frames, dit.height, dit.width, true);
+        
+        Tensor noise2 = new Tensor(batchSize, dit.inChannel * dit.num_frames, dit.height, dit.width, true);
+        
+        Tensor video = new Tensor(batchSize * num_frames, 3, height, width, true);
+        
+        Tensor[][] cs = RoPE3DKernel.init3DRoPE(vae_numFrames, vae_height, vae_width, hiddenSize, ditHeadNum, 1f, 1.4375f, 2.5f);
+        Tensor[] cos = cs[0];
+        Tensor[] sin = cs[1];
+
+        dit.RUN_MODEL = RunModel.EVAL;
+
+        String[] imgPaths = new String[] {
+        		"C:\\Users\\Administrator\\Desktop\\test_video\\ScreenShot_2026-05-21_165922_765.png",
+        		"C:\\Users\\Administrator\\Desktop\\test_video\\ScreenShot_2026-05-26_184055_227.png"
+        };
+        
+        Tensor img_input = new Tensor(batchSize, 3, height, width, true);
+        
+        VideoReaderExample.loadVImg2Tensor(imgPaths[0], 1, height, width, img_input, 0);
+        VideoReaderExample.loadVImg2Tensor(imgPaths[1], 1, height, width, img_input, 1);
+        
+        img_input.hostToDevice();
+        
+        int[] shape = new int[] {batchSize, latendDim, vae_numFrames, vae_height, vae_width};
+        
+        Tensor img_full_latend = new Tensor(batchSize, dit.inChannel * dit.num_frames, dit.height, dit.width, true);
+        
+        Tensor img_latend = vae_encoder.encode(img_input);
+        
+        icplan.latend_norm(img_latend, mean, std, 1 * vae_height * vae_width);    
+        
+        dit.tensorOP.expand_as(img_latend, img_full_latend, batchSize * dit.inChannel, vae_numFrames, 1, vae_height * vae_width, 1);
+        
+        for(int i = 0;i<10;i++) {
+        	
+        	System.out.println("start create test videos.");
+
+            GPUOP.getInstance().cudaRandn(noise);
+            noise.copyGPU(noise2);
+            
+            Tensor sample = icplan.forward_with_path_drop_cfg(dit, shape, noise, img_full_latend, t, cos, sin, latend, eps, 1.0f);
+
+            icplan.latend_un_norm(sample, mean, std, thw);
+
+            Tensor result = vae_decoder.decode(sample);
+//          result.showShape("result");
+            vae_decoder.tensorOP.permute(result, video, new int[] {batchSize, 3, num_frames, height, width}, new int[] {batchSize, num_frames, 3, height, width}, new int[] {0, 2, 1, 3, 4});
+
+            video.data = MatrixOperation.clampSelf(video.syncHost(), -1, 1);
+
+            tensor2video(video, batchSize, num_frames, 3, height, width, "D:\\test\\video\\"+i);
+            
+            System.out.println("finish create.");
+            
+            sample = icplan.forward_with_path_drop_cfg(dit, shape, noise2, img_full_latend, t, cos, sin, latend, eps, 2.0f);
+            
+            icplan.latend_un_norm(sample, mean, std, thw);
+
+            result = vae_decoder.decode(sample);
+            vae_decoder.tensorOP.permute(result, video, new int[] {batchSize, 3, num_frames, height, width}, new int[] {batchSize, num_frames, 3, height, width}, new int[] {0, 2, 1, 3, 4});
+
+            video.data = MatrixOperation.clampSelf(video.syncHost(), -1, 1);
+
+            tensor2video(video, batchSize, num_frames, 3, height, width, "D:\\test\\video\\t_"+i);
+            
+            System.out.println("finish create.");
+        }
+        
 	}
 	
 	public static void tensor2video(Tensor org, int N, int F, int C, int H, int W, String outputPath) throws Exception {
@@ -861,10 +1041,15 @@ public class VideoDiTTest {
 			
 //			video_dit_train2();
 			
-			video_dit_test2();
+//			video_dit_test2();
 			
 //			video_dit_train_i2v();
 //			video_dit_test_i2v();
+			
+			video_dit_train_i2v2();
+			
+//			video_dit_test_i2v2();
+			
 //			test_img();
 			
 //			test_vae_img();

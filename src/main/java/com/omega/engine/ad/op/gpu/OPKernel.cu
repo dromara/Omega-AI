@@ -565,6 +565,37 @@ __global__ void expand_kernel(int N, float *X, float *Y, int axis)
 
 }
 
+extern "C"
+__global__ void expand_as_kernel(int N, float *X, float *Y, int B, int C, int H, int W, int axis)
+
+{
+
+    int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+	
+	int offset = W;
+	
+	if(axis == 0){
+		offset = C * H * W;
+	}else if(axis == 1){
+		offset = H * W;
+	}
+	
+    if(i < N){
+
+    	int b = i / offset;
+    	if(axis == 1){
+			b = i / offset / C;
+		}else if(axis == 2){
+			b = i / offset / C / H;
+		}
+		
+		int xi = b * offset + (i % offset);
+		
+    	Y[i] = X[xi];
+
+    } 
+
+}
 
 
 extern "C"

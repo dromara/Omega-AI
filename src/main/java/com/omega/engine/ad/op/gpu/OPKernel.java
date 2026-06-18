@@ -98,6 +98,7 @@ public class OPKernel extends BaseKernel implements Serializable {
     private CUfunction sqrt_gpu_function;
     private CUfunction bool_gpu_function;
     private CUfunction expand_function;
+    private CUfunction expand_as_function;
     private CUfunction broadcast_row_plus_gpu_function;
     private CUfunction onehot_function;
     private CUfunction mean_function;
@@ -191,6 +192,7 @@ public class OPKernel extends BaseKernel implements Serializable {
         sqrt_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "sqrt_kernel");
         bool_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "bool_kernel");
         expand_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "expand_kernel");
+        expand_as_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "expand_as_kernel");
         permute_add_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "permute_add_kernel");
         onehot_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "one_hot_kernel");
         mean_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "mean_kernel");
@@ -2024,6 +2026,25 @@ public class OPKernel extends BaseKernel implements Serializable {
              */
             Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{b.getDataLength()}), Pointer.to(a.getGpuData()), Pointer.to(b.getGpuData()), Pointer.to(new int[]{num}));
             checkCUDA(cuLaunchKernel(expand_function, CAFFE_GET_BLOCKS(b.getDataLength()), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameter, null // Kernel- and extra parameters
+            ));
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void expand_as_gpu(Tensor a, Tensor b, int B, int C, int H, int W, int axis) {
+        // TODO Auto-generated method stub
+        try {
+            /**
+             * int N, float *X, float *Y,int axis
+
+             */
+            Pointer kernelParameter = Pointer.to(Pointer.to(new int[]{b.getDataLength()}), Pointer.to(a.getGpuData()), Pointer.to(b.getGpuData()), Pointer.to(new int[]{B}), Pointer.to(new int[]{C}), Pointer.to(new int[]{H}), Pointer.to(new int[]{W}), Pointer.to(new int[]{axis}));
+            checkCUDA(cuLaunchKernel(expand_as_function, CAFFE_GET_BLOCKS(b.getDataLength()), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameter, null // Kernel- and extra parameters

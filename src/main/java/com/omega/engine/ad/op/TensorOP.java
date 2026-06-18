@@ -649,6 +649,14 @@ public class TensorOP {
             //			c.data = MatrixOperation.add(a.data, b.data);
         }
     }
+    
+    public void expand_as(Tensor a, Tensor b, int B, int C, int H, int W, int axis) {
+        if (a.isHasGPU()) {
+            op.expand_as_gpu(a, b, B, C, H, W, axis);
+        } else {
+            //			c.data = MatrixOperation.add(a.data, b.data);
+        }
+    }
 
     public void cat_batch(Tensor a, Tensor b, Tensor c) {
         if (a.isHasGPU()) {
