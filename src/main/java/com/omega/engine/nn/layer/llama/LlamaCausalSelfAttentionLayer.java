@@ -422,7 +422,6 @@ public class LlamaCausalSelfAttentionLayer extends LlamaAttentionLayer {
             repeatKVKernel.backward(kt, rk, nRep);
             /**
              * RoPE backward
-
              */
             ropeKernel.backward(cos, sin, qt, rq);
             ropeKernel.backward(cos, sin, rk, rk);

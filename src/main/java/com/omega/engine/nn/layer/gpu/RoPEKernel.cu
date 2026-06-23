@@ -407,7 +407,7 @@ __global__ void rope_2d_back_idskeep_txt(float* delta, float* diff,float* cos, f
 }
 
 extern "C"
-__global__ void rope_2d_norm_t(float* x, float* out,float* cos, float* sin, int N, int T, int headNum, int headSize)
+__global__ void rope_2d_norm_t(float* x, float* out, float* cos, float* sin, int N, int T, int headNum, int headSize)
 {
     int i = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
     if (i >= N/2) return;

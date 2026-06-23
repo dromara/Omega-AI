@@ -83,9 +83,24 @@ public class RoPEKernel extends BaseKernel {
     }
 
     public static void main(String[] args) {
+
+    	int dim = 768;
+    	int headNum = 12;
+    	int time = 77;
     	
-    	float[] freqs_cis = precompute_freqs_cis_2d(64, 16, 16, 10000, 16);
-    	System.err.println(JsonUtils.toJson(freqs_cis));
+        int headSize = dim / headNum;
+        float[] freqs = freqs(0, headSize, 2);
+        float[] t = MatrixUtils.order(time, 0, 1);
+//        System.err.println(JsonUtils.toJson(t));
+        float[] o = outer(t, freqs);
+//        System.err.println(JsonUtils.toJson(o));
+        float[] cos = MatrixOperation.cos(o);
+        float[] sin = MatrixOperation.sin(o);
+    	
+        System.err.println(JsonUtils.toJson(cos));
+        System.err.println(JsonUtils.toJson(sin));
+//    	float[] freqs_cis = precompute_freqs_cis_2d(64, 16, 16, 10000, 16);
+//    	System.err.println(JsonUtils.toJson(freqs_cis));
 //        try {
 //            int N = 3;
 //            int T = 5;
@@ -505,18 +520,17 @@ public class RoPEKernel extends BaseKernel {
             int nrow = input.number * input.channel;
             int ncol = input.height * input.width;
             /**
-             * const float* x, float* dst,float* c_cos,float* c_sin, int ncols
-             * const float* x, float* dst,float* c_cos,float* c_sin, int ncols, int T,int headSize
-
+             * const float* x, float* dst, float* c_cos, float* c_sin, int ncols
+             * const float* x, float* dst, float* c_cos, float* c_sin, int ncols, int T, int headSize
              */
             forwardParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(cos.getGpuData()), Pointer.to(sin.getGpuData()), Pointer.to(new int[]{ncol}), Pointer.to(new int[]{input.channel}), Pointer.to(new int[]{input.width}));
             int[] block_dims = new int[]{1, 256, 1};
             int num_blocks_x = (ncol + 2 * 256 - 1) / (2 * 256);
             int[] block_nums = new int[]{nrow, num_blocks_x, 1};
             checkCUDA(cuLaunchKernel(forward_function, block_nums[0], block_nums[1], block_nums[2],      // Grid dimension
-                    block_dims[0], block_dims[1], block_dims[2],      // Block dimension
-                    0, null,               // Shared memory size and stream
-                    forwardParameters, null // Kernel- and extra parameters
+                block_dims[0], block_dims[1], block_dims[2],      // Block dimension
+                0, null,               // Shared memory size and stream
+                forwardParameters, null // Kernel- and extra parameters
             ));
         } catch (Exception e) {
             // TODO: handle exception

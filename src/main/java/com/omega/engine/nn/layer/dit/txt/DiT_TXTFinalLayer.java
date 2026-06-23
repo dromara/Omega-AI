@@ -54,7 +54,7 @@ public class DiT_TXTFinalLayer extends Layer {
         this.initLayers();
     }
 
-    public DiT_TXTFinalLayer(int patch_size, int hidden_size,int out_channels, int time, boolean bias, boolean normParams, Network network) {
+    public DiT_TXTFinalLayer(int patch_size, int hidden_size, int out_channels, int time, boolean bias, boolean normParams, Network network) {
         this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
