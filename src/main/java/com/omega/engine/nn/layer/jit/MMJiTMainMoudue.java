@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
@@ -100,7 +99,11 @@ public class MMJiTMainMoudue extends Layer {
         }
         this.oChannel = inChannel;
         finalNorm = new RMSLayer(1, 1, hiddenSize, true, BNType.fully_bn, network);
-        finalLayer = new FullyLayer(hiddenSize, patchSize * patchSize * inChannel, true, network);
+        finalLayer = new FullyLayer(hiddenSize, patchSize * patchSize * oChannel, true, network);
+        this.finalLayer.weight.clearGPU();
+        if(this.finalLayer.bias != null) {
+        	this.finalLayer.bias.clearGPU();
+        }
         
         if(baseKernel == null) {
         	baseKernel = new BaseKernel(cuda());
@@ -114,56 +117,37 @@ public class MMJiTMainMoudue extends Layer {
         this.number = this.input.number;
     }
     
-    public static float[] outer(float[] a, float[] b) {
-        float[] o = new float[a.length * b.length];
-        for (int i = 0; i < a.length; i++) {
-            for (int j = 0; j < b.length; j++) {
-                o[i * b.length + j] = a[i] * b[j];
+    public static float[] sincos2d(int embedDim, int grid) {
+        int quarter = embedDim / 4;
+        int n = grid * grid;
+
+        float[] omega = new float[quarter];
+
+        for (int i = 0; i < quarter; i++) {
+            float power = (float) i / quarter;
+            omega[i] = (float) (1.0 / Math.pow(10000.0, power));
+        }
+
+        float[] result = new float[n * embedDim];
+
+        for (int row = 0; row < grid; row++) {
+            for (int col = 0; col < grid; col++) {
+                int idx = row * grid + col;
+                int base = idx * embedDim;
+
+                for (int d = 0; d < quarter; d++) {
+                    float outX = col * omega[d];
+                    float outY = row * omega[d];
+
+                    result[base + d] = (float) Math.sin(outX);
+                    result[base + quarter + d] = (float) Math.cos(outX);
+                    result[base + 2 * quarter + d] = (float) Math.sin(outY);
+                    result[base + 3 * quarter + d] = (float) Math.cos(outY);
+                }
             }
         }
-        return o;
-    }
-    
-    public static float[] cat(float[] a, float[] b,int dims) {
-        float[] o = new float[a.length + b.length];
-        for (int i = 0; i < a.length; i++) {
-        	int n = i / dims;
-        	int w = i % dims;
-            o[n * 2 * dims + 0 * dims + w] = a[i];
-            o[n * 2 * dims + 1 * dims + w] = b[i];
-        }
-        return o;
-    }
-    
-    public static float[] get_1d_sincos_pos_embed_from_grid(int embed_dim, float[] pos){
-    	float[] omega = new float[embed_dim/2];
-    	for(int i = 0;i<embed_dim/2;i++) {
-    		float v = i * 1.0f / (embed_dim / 2.0f);
-    		omega[i] = (float) (1.0f / Math.pow(10000, v));
-    	}
-    	float[] o = outer(pos, omega);
-    	float[] cos = MatrixOperation.cos(o);
-        float[] sin = MatrixOperation.sin(o);
-        return cat(sin, cos, embed_dim/2);
-    }
-    
-    public static float[] get_2d_cossin_pos_embed(int embed_dim,int grid_size) {
-    	float[] grid_h = new float[grid_size * grid_size];
-    	float[] grid_w = new float[grid_size * grid_size];
-    	for(int i = 0;i<grid_size * grid_size;i++) {
-    		int w = i % grid_size;
-    		int h = i / grid_size;
-    		grid_h[i] = w;
-       		grid_w[i] = h;
-    	}
-//    	System.err.println("grid_h:"+JsonUtils.toJson(grid_h));
-//    	System.err.println("grid_w:"+JsonUtils.toJson(grid_w));
-    	float[] emb_h = get_1d_sincos_pos_embed_from_grid(embed_dim/2, grid_h);
-    	float[] emb_w = get_1d_sincos_pos_embed_from_grid(embed_dim/2, grid_w);
-    	
-    	float[] emb = cat(emb_h, emb_w, embed_dim/2);
-//    	System.err.println("emb:"+JsonUtils.toJson(emb));
-    	return emb;
+
+        return result;
     }
     
     public void init(Tensor input) {
@@ -173,7 +157,7 @@ public class MMJiTMainMoudue extends Layer {
         	output = Tensor.createGPUTensor(output, number, oChannel, oHeight, oWidth, true);
         }
         if(posEmbd == null) {
-        	posEmbd = new Tensor(1, patchEmbd.oChannel, 1, hiddenSize, get_2d_cossin_pos_embed(hiddenSize, width/patchSize), true);
+        	posEmbd = new Tensor(1, patchEmbd.oChannel, 1, hiddenSize, sincos2d(hiddenSize, width/patchSize), true);
         }
         if(patchEmbd.getOutput() != null){
         	patchEmbd.getOutput().viewOrg();
@@ -183,7 +167,9 @@ public class MMJiTMainMoudue extends Layer {
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
-
+    	if(tmp_cond == null || tmp_cond.number != number) {
+    		tmp_cond = Tensor.createGPUTensor(output, number * maxContextLen, 1, 1, hiddenSize, true);
+    	}
     }
 
     @Override
@@ -227,7 +213,7 @@ public class MMJiTMainMoudue extends Layer {
     		bx = block.getOutput();
     		bc = block.context_block.getOutput();
     	}
-    	
+
     	finalNorm.forward(bx);
     	finalLayer.forward(finalNorm.getOutput());
     	
@@ -401,6 +387,7 @@ public class MMJiTMainMoudue extends Layer {
     		blocks.get(i).update();
     	}
     	
+    	finalNorm.update();
     	finalLayer.update();
     }
 
@@ -444,6 +431,7 @@ public class MMJiTMainMoudue extends Layer {
     		blocks.get(i).saveModel(outputStream);
     	}
     	
+    	finalNorm.saveModel(outputStream);
     	finalLayer.saveModel(outputStream);
     }
 
@@ -460,6 +448,7 @@ public class MMJiTMainMoudue extends Layer {
     		blocks.get(i).loadModel(inputStream);
     	}
     	
+    	finalNorm.loadModel(inputStream);
     	finalLayer.loadModel(inputStream);
     }
 
@@ -547,6 +536,10 @@ public class MMJiTMainMoudue extends Layer {
     }
     
     public static void main(String[] args) {
+    	
+//    	float[] posemb = sincos2d(768, 16);
+//    	System.err.println(JsonUtils.toJson(posemb));
+//    	System.err.println(posemb[769]);
 //    	int N = 2;
 //    	int C = 32;
 //    	int H = 16;

@@ -20,6 +20,7 @@ import com.omega.engine.nn.network.dit.FluxDiT_SPRINT3;
 import com.omega.engine.nn.network.dit.JiT;
 import com.omega.engine.nn.network.dit.JiT_REPA;
 import com.omega.engine.nn.network.dit.MMDiT_RoPE;
+import com.omega.engine.nn.network.dit.MMJiT;
 import com.omega.engine.nn.network.dit.OmegaDiT;
 import com.omega.engine.nn.network.dit.OmegaDiT2;
 import com.omega.engine.nn.network.dit.OmegaDiTFullLabel;
@@ -719,6 +720,22 @@ public class ICPlan {
 
 		}
 		return out;
+	}
+	
+	public Tensor forward_with_path_drop_cfg(MMJiT jit, Tensor x, Tensor t, Tensor context, Tensor null_context, Tensor cos1d, Tensor sin1d, Tensor cos2d, Tensor sin2d, Tensor eps, float cfg_scale) {
+		ininT(0, 1, count+1);
+		Tensor v = null;
+		for(int i = 0;i<count;i++) {
+			float t0 = T[i];
+			float t1 = T[i + 1];
+			float dt = t1 - t0;
+			MatrixUtils.val(t.data, t0);
+			t.hostToDevice();
+			v = jit.forward_with_cfg(this, x, t, context, null_context, cos1d, sin1d, cos2d, sin2d, eps, cfg_scale);
+			jit.tensorOP.mul(v, dt, v);
+			jit.tensorOP.add(x, v, x);
+		}
+		return x;
 	}
 	
 	public Tensor forward_with_cfg(JiT jit, Tensor noise, Tensor context, Tensor cos, Tensor sin, float cfg_scale) {

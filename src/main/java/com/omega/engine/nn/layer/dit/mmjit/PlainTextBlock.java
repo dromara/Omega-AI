@@ -118,7 +118,7 @@ public class PlainTextBlock extends Layer {
     	mlp.back(delta);
     	norm2.back(mlp.diff);
     	Tensor_OP().add(norm2.diff, delta, norm2.diff);
-    	attn.back(norm2.diff);
+    	attn.back(norm2.diff, cos, sin);
     	norm1.back(attn.diff);
     	this.diff = norm1.diff;
     }

@@ -14987,13 +14987,15 @@ public class MBSGDOptimizer extends Optimizer {
             Tensor target = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
             Tensor v_pred = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
             
-            Tensor dx = new Tensor(batchSize, 3, trainingData.img_h, trainingData.img_w, true);
+//            Tensor dx = new Tensor(batchSize, 3, trainingData.img_h, trainingData.img_w, true);
             
-            Tensor[] cs1d = RoPEKernel.getCosAndSin(network.maxContextLen, network.hiddenSize, network.headNum);
+            int theta = 10000;
+
+            Tensor[] cs1d = RoPEKernel.create1DRope(network.maxContextLen, network.headDims, 0, theta);
             Tensor cos1d = cs1d[0];
             Tensor sin1d = cs1d[1];
-            
-            Tensor[] cs2d = RoPEKernel.getCosAndSin2D(network.time, network.hiddenSize, network.headNum);
+
+            Tensor[] cs2d = RoPEKernel.create2DRope(network.headNum, network.time, network.headDims, network.grid, theta);
             Tensor cos2d = cs2d[0];
             Tensor sin2d = cs2d[1];
 
@@ -15021,14 +15023,12 @@ public class MBSGDOptimizer extends Optimizer {
                         break;
                     }
                     
-                    icplan.sample_t(t, 0.8f, 0.8f);
+                    icplan.sample_t(t, -0.8f, 0.8f);
                   
                     GPUOP.getInstance().cudaRandn(noise);
-
+                    network.tensorOP.mul(noise, 2.0f, noise);
+                    
                     trainingData.loadData(indexs[it], x, condInput);
-//                    x.showDM("x");
-                    network.tensorOP.mul(x, 2, x);
-                    network.tensorOP.sub(x, 1, x);
                     JCudaDriver.cuCtxSynchronize();
                     
                     /**
@@ -15057,12 +15057,12 @@ public class MBSGDOptimizer extends Optimizer {
                     /**
                      * dx_pred = delta / (1 - t).clamp_min(self.t_eps)
                      */
-                    icplan.compute_dv(lossDiff, t, dx, 5e-2f);
+                    icplan.compute_dv(lossDiff, t, lossDiff, 5e-2f);
                     
                     /**
                      * back
                      */
-                    network.back(dx, cos1d, sin1d, cos2d, sin2d);
+                    network.back(lossDiff, cos1d, sin1d, cos2d, sin2d);
 
                     /**
                      * update

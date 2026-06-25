@@ -530,7 +530,7 @@ public class AttentionLayer extends Layer {
         }
     }
     
-    public void back(Tensor delta,Tensor cos,Tensor sin) {
+    public void back(Tensor delta, Tensor cos, Tensor sin) {
         // TODO Auto-generated method stub
         this.initBack();
         /**

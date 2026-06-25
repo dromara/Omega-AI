@@ -38,6 +38,8 @@ public class MMJiT extends Network {
     private int txt_depth;
     private int depth;
     public int headNum;
+    public int headDims;
+    public int grid;
     
     private float y_drop_prob = 0.0f;
     
@@ -58,6 +60,8 @@ public class MMJiT extends Network {
         this.bottleneck_dim = bottleneck_dim;
         this.headNum = headNum;
         this.hiddenSize = hiddenSize;
+        this.headDims = hiddenSize / headNum;
+        this.grid = width / patchSize;
         this.depth = depth;
         this.textEmbedDim = textEmbedDim;
         this.maxContextLen = maxContextLen;
@@ -140,28 +144,32 @@ public class MMJiT extends Network {
         /**
          * 设置输入数据
          */
-        if(input_null == null || input_null.number != input.number) {
-    		input_null = Tensor.createGPUTensor(input_null, input.number, input.channel, input.height, input.width, true);
-    	}
-        input.copyGPU(input_null);
         this.main.forward(input, context, cos1d, sin1d, cos2d, sin2d);
         this.main.getOutput().copyGPU(eps);
-        this.main.forward(input_null, null_context, cos1d, sin1d, cos2d, sin2d);
-        uncond_eps = this.main.getOutput();
-        
-        /**
-         *  v_cond = (out_cond - z) / (1.0 - t).clamp_min(self.t_eps)
-         *  v_uncond = (out_uncond - z) / (1.0 - t).clamp_min(self.t_eps)
-         */
         icplan.compute_v(eps, t, input, eps, 5e-2f);
-        icplan.compute_v(uncond_eps, t, input, uncond_eps, 5e-2f);
         
-        /**
-         * out = uncond_eps + cfg_scale * (eps - uncond_eps)
-         */
-        tensorOP.sub(eps, uncond_eps, eps);
-        tensorOP.mul(eps, cfg_scale, eps);
-        tensorOP.add(uncond_eps, eps, eps);
+        if(cfg_scale > 1.0) {
+            if(input_null == null || input_null.number != input.number) {
+        		input_null = Tensor.createGPUTensor(input_null, input.number, input.channel, input.height, input.width, true);
+        	}
+            input.copyGPU(input_null);
+            this.main.forward(input_null, null_context, cos1d, sin1d, cos2d, sin2d);
+            uncond_eps = this.main.getOutput();
+            
+            /**
+             *  v_cond = (out_cond - z) / (1.0 - t).clamp_min(self.t_eps)
+             *  v_uncond = (out_uncond - z) / (1.0 - t).clamp_min(self.t_eps)
+             */
+            icplan.compute_v(uncond_eps, t, input, uncond_eps, 5e-2f);
+            
+            /**
+             * out = uncond_eps + cfg_scale * (eps - uncond_eps)
+             */
+            tensorOP.sub(eps, uncond_eps, eps);
+            tensorOP.mul(eps, cfg_scale, eps);
+            tensorOP.add(uncond_eps, eps, eps);
+        }
+        
         return eps;
     }
     
