@@ -104,8 +104,8 @@ public class JiTJoinBlockHead extends Layer {
         }
         
         if(!pre_only) {
-            int swiNum = (int)(2.0f/3.0f * embedDim);
-            this.mlp = new DiTSwiGLUFFN(embedDim, swiNum, embedDim, bias, network);
+            int swiNum = (int) (2.6667 * embedDim);
+            this.mlp = new DiTSwiGLUFFN(embedDim, swiNum, embedDim, false, network);
         }
     }
 
@@ -176,28 +176,10 @@ public class JiTJoinBlockHead extends Layer {
 
     }
     
-    public void pre_attention_back(Tensor xDiff) {
-    	Tensor dq =  this.getqLinerLayer().getOutput().view(batchSize * time, 1, 1, width);
-    	Tensor dk =  this.getkLinerLayer().getOutput().view(batchSize * time, 1, 1, width);
-    	Tensor dv =  this.getvLinerLayer().getOutput().view(batchSize * time, 1, 1, width);
-    	
-    	qLinerLayer.back(dq);
-    	kLinerLayer.back(dk);
-    	vLinerLayer.back(dv);
-    	
-    	Tensor dattnInput = qLinerLayer.diff;
-    	Tensor_OP().add(dattnInput, kLinerLayer.diff, dattnInput);
-    	Tensor_OP().add(dattnInput, vLinerLayer.diff, dattnInput);
-  
-    	norm1.back(dattnInput);
-    	
-    	this.diff = norm1.diff;
-    }
-    
-    public void pre_attention_back(Tensor xDiff, Tensor drq, Tensor drk) {
-    	Tensor dq =  drq.view(batchSize * time, 1, 1, width);
-    	Tensor dk =  drk.view(batchSize * time, 1, 1, width);
-    	Tensor dv =  this.getvLinerLayer().getOutput().view(batchSize * time, 1, 1, width);
+    public void pre_attention_back(Tensor xDiff, Tensor dq, Tensor dk, Tensor dv) {
+    	dq =  dq.view(batchSize * time, 1, 1, width);
+    	dk =  dk.view(batchSize * time, 1, 1, width);
+    	dv =  dv.view(batchSize * time, 1, 1, width);
     	
     	qLinerLayer.back(dq);
     	kLinerLayer.back(dk);

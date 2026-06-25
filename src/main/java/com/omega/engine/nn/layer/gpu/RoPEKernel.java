@@ -48,6 +48,9 @@ public class RoPEKernel extends BaseKernel {
     private CUfunction forward_2d_t_idskeep_function;
     private CUfunction apply_rotary_emb_function;
     private CUfunction apply_rotary_emb_idskeep_function;
+    
+    private CUfunction rope_2d_rotate_half_function;
+    
     /**
      * 反向传播方法
      */
@@ -69,6 +72,8 @@ public class RoPEKernel extends BaseKernel {
     private CUfunction backward_2d_idskeep_igone_function;
     private CUfunction forward_2d_idskeep_txt_function;
     private CUfunction backward_2d_idskeep_txt_function;
+    
+    private CUfunction rope_2d_back_rotate_half_function;
     
     private int CAFFE_CUDA_NUM_THREADS = 1024;
     /**
@@ -276,6 +281,7 @@ public class RoPEKernel extends BaseKernel {
     public static Tensor[] getCosAndSin2D(int time, int dim, int headNum) {
         int headSize = dim / headNum;
         int grid_size = (int) Math.sqrt(time);
+
         float[][] emb = get_2d_cossin_pos_embed(headSize, grid_size);
         Tensor cos_t = new Tensor(1, 1, time, headSize, emb[0], true);
         Tensor sin_t = new Tensor(1, 1, time, headSize, emb[1], true);
@@ -314,6 +320,130 @@ public class RoPEKernel extends BaseKernel {
     	emb[1] = cat(emb_h[1], emb_w[1], embed_dim/2);
 //    	System.err.println("emb:"+JsonUtils.toJson(emb));
     	return emb;
+    }
+    
+
+    public static Tensor[] create1DRope(int n, int d, int start, float theta) {
+        int half = d / 2;
+
+        // inv = 1.0 / (theta ** (arange(0, d, 2) / d))
+        float[] inv = new float[half];
+
+        for (int i = 0; i < half; i++) {
+            int dim = i * 2;
+            inv[i] = (float) (1.0 / Math.pow(theta, (double) dim / d));
+        }
+
+        // angles = einsum("n,f->nf", pos, inv)
+        // angles shape before cat: [n][d / 2]
+        float[][] baseAngles = new float[n][half];
+
+        for (int posIdx = 0; posIdx < n; posIdx++) {
+            float pos = start + posIdx;
+
+            for (int f = 0; f < half; f++) {
+                baseAngles[posIdx][f] = pos * inv[f];
+            }
+        }
+
+        // angles = torch.cat([angles, angles], dim=-1)
+        // cos/sin shape: [1][1][n][d]
+        float[] cos = new float[n * d];
+        float[] sin = new float[n * d];
+
+        for (int posIdx = 0; posIdx < n; posIdx++) {
+            for (int f = 0; f < half; f++) {
+                float angle = baseAngles[posIdx][f];
+
+                float c = (float) Math.cos(angle);
+                float s = (float) Math.sin(angle);
+
+                cos[posIdx * d + f] = c;
+                sin[posIdx * d + f] = s;
+
+                cos[posIdx * d + half + f] = c;
+                sin[posIdx * d + half + f] = s;
+            }
+        }
+
+        Tensor cos_t = new Tensor(1, 1, n, d, cos, true);
+        Tensor sin_t = new Tensor(1, 1, n, d, sin, true);
+        
+        return new Tensor[]{cos_t, sin_t}; 
+    }
+    
+    public static Tensor[] create2DRope(int h, int n, int d, int grid, double theta) {
+
+        int ropeDim = d / 2;
+
+        // inv = 1.0 / (theta ** (arange(0, ropeDim, 2) / ropeDim))
+        int freqDim = ropeDim / 2;
+        double[] inv = new double[freqDim];
+
+        for (int i = 0; i < freqDim; i++) {
+            int idx = i * 2;
+            inv[i] = 1.0 / Math.pow(theta, (double) idx / ropeDim);
+        }
+
+        // freqs = einsum("n,f->nf", t, inv)
+        double[][] freqs = new double[grid][freqDim];
+
+        for (int i = 0; i < grid; i++) {
+            for (int f = 0; f < freqDim; f++) {
+                freqs[i][f] = i * inv[f];
+            }
+        }
+
+//        System.out.println("freqs:");
+//        for (double[] row : freqs) {
+//            System.out.println(Arrays.toString(row));
+//        }
+
+        // angles shape: [grid][grid][d]
+        double[][][] anglesGrid = new double[grid][grid][d];
+
+        for (int row = 0; row < grid; row++) {
+            for (int col = 0; col < grid; col++) {
+                // concat([f_h, f_w], dim=-1)
+                for (int f = 0; f < freqDim; f++) {
+                    anglesGrid[row][col][f] = freqs[row][f];                 // height
+                    anglesGrid[row][col][freqDim + f] = freqs[col][f];       // width
+                }
+
+                // concat([angles, angles], dim=-1)
+                for (int k = 0; k < ropeDim; k++) {
+                    anglesGrid[row][col][ropeDim + k] = anglesGrid[row][col][k];
+                }
+            }
+        }
+
+        // reshape(grid, grid, d) -> reshape(n, d)
+        double[][] angles = new double[n][d];
+
+        int index = 0;
+        for (int row = 0; row < grid; row++) {
+            for (int col = 0; col < grid; col++) {
+                System.arraycopy(anglesGrid[row][col], 0, angles[index], 0, d);
+                index++;
+            }
+        }
+
+        // cos = angles.cos()[None, None]
+        // sin = angles.sin()[None, None]
+        float[] cos = new float[n * d];
+        float[] sin = new float[n * d];
+
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < d; j++) {
+                cos[i * d + j] = (float) Math.cos(angles[i][j]);
+                sin[i * d + j] = (float) Math.sin(angles[i][j]);
+            }
+        }
+
+        Tensor cos_t = new Tensor(1, 1, n, d, cos, true);
+        Tensor sin_t = new Tensor(1, 1, n, d, sin, true);
+        
+        return new Tensor[]{cos_t, sin_t}; 
     }
     
     public static Tensor precompute_freqs_cis_2d_tensor(int dim, int height, int width, float theta, float scale) {
@@ -494,6 +624,15 @@ public class RoPEKernel extends BaseKernel {
             if (apply_rotary_emb_back_idskeep_function == null) {
             	apply_rotary_emb_back_idskeep_function = getCudaManager().getLocalFunctionByModule("RoPEKernel.cu", "apply_rotary_emb_back_idskeep");
             }
+            
+            if(rope_2d_rotate_half_function == null) {
+            	rope_2d_rotate_half_function = getCudaManager().getLocalFunctionByModule("RoPEKernel.cu", "rope_2d_rotate_half");
+            }
+            
+            if(rope_2d_back_rotate_half_function == null) {
+            	rope_2d_back_rotate_half_function = getCudaManager().getLocalFunctionByModule("RoPEKernel.cu", "rope_2d_back_rotate_half");
+            }
+            
         } catch (Exception e) {
             // TODO: handle exception
             e.printStackTrace();
@@ -1031,6 +1170,44 @@ public class RoPEKernel extends BaseKernel {
         		CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                 0, null,               // Shared memory size and stream
                 backwardParameters, null // Kernel- and extra parameters
+            ));
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void rope_2d_rotate_half(Tensor cos, Tensor sin, Tensor input, Tensor output,int T,int HN,int HS) {
+        try {
+           
+            /**
+             * float* x, float* out,float* cos,float* sin, int N, int T, int headNum,int headSize
+             */
+            forwardParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(cos.getGpuData()), Pointer.to(sin.getGpuData()), Pointer.to(new int[]{input.dataLength}), Pointer.to(new int[]{T}), Pointer.to(new int[]{HN}), Pointer.to(new int[]{HS}));
+
+            checkCUDA(cuLaunchKernel(rope_2d_rotate_half_function, this.CAFFE_GET_BLOCKS(input.dataLength/2), 1, 1,      // Grid dimension
+            		CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    forwardParameters, null // Kernel- and extra parameters
+            ));
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void rope_2d_back_rotate_half(Tensor cos, Tensor sin, Tensor delta, Tensor diff,int T,int HN,int HS) {
+        try {
+           
+            /**
+             * float* delta, float* diff,float* cos, float* sin, int N, int T, int headNum,int headSize
+             */
+        	backwardParameters = Pointer.to(Pointer.to(delta.getGpuData()), Pointer.to(diff.getGpuData()), Pointer.to(cos.getGpuData()), Pointer.to(sin.getGpuData()), Pointer.to(new int[]{delta.dataLength}), Pointer.to(new int[]{T}), Pointer.to(new int[]{HN}), Pointer.to(new int[]{HS}));
+
+            checkCUDA(cuLaunchKernel(rope_2d_back_rotate_half_function, this.CAFFE_GET_BLOCKS(delta.dataLength/2), 1, 1,      // Grid dimension
+            		CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    backwardParameters, null // Kernel- and extra parameters
             ));
         } catch (Exception e) {
             // TODO: handle exception

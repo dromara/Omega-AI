@@ -32,6 +32,9 @@ public class BaseKernel {
     private CUfunction unMul_function;
     private CUfunction unMul_grad_function;
 
+    private CUfunction cat_4d_dynamic_dim_function;
+    private CUfunction cat_4d_dynamic_dim_backward_function;
+    
     public BaseKernel(CUDAManager cudaManager) {
         this.cudaManager = cudaManager;
         copy_gpu_function = cudaManager.getLocalFunctionByModule("BaseKernel.cu", "copy_kernel");
@@ -48,6 +51,8 @@ public class BaseKernel {
         addMul_function = cudaManager.getLocalFunctionByModule("BaseKernel.cu", "add_mul_kernel");
         unMul_function = cudaManager.getLocalFunctionByModule("BaseKernel.cu", "un_mul_kernel");
         unMul_grad_function = cudaManager.getLocalFunctionByModule("BaseKernel.cu", "un_mul_grad_kernel");
+        cat_4d_dynamic_dim_function = cudaManager.getLocalFunctionByModule("BaseKernel.cu", "cat_4d_dynamic_dim");
+        cat_4d_dynamic_dim_backward_function = cudaManager.getLocalFunctionByModule("BaseKernel.cu", "cat_4d_dynamic_dim_backward");
     }
 
     public void concat_channel_forward(Tensor x1, Tensor x2, Tensor output, int B, int C1, int C2, int H, int W) {
@@ -437,6 +442,60 @@ public class BaseKernel {
         }
     }
 
+    public void cat_4d_dynamic_dim(Tensor x1, Tensor x2, Tensor output, int x1_B, int x1_C, int x1_H, int x1_W, int x2_B, int x2_C, int x2_H, int x2_W, int dim) {
+        try {
+            if (cat_4d_dynamic_dim_function == null) {
+            	cat_4d_dynamic_dim_function = getCudaManager().getLocalFunctionByModule("BaseKernel.cu", "cat_4d_dynamic_dim");
+            }
+            /**
+             *  const float* x,
+			    const float* y,
+			    float* out,
+			    int Bx, int Hx, int Nx, int Dx,
+			    int By, int Hy, int Ny, int Dy,
+			    int dim
+             */
+            Pointer kernelParameter = Pointer.to(Pointer.to(x1.getGpuData()), Pointer.to(x2.getGpuData()), Pointer.to(output.getGpuData()),
+            		Pointer.to(new int[]{x1_B}), Pointer.to(new int[]{x1_C}), Pointer.to(new int[]{x1_H}), Pointer.to(new int[]{x1_W}),
+            		Pointer.to(new int[]{x2_B}), Pointer.to(new int[]{x2_C}), Pointer.to(new int[]{x2_H}), Pointer.to(new int[]{x2_W}), Pointer.to(new int[]{dim}));
+            checkCUDA(cuLaunchKernel(cat_4d_dynamic_dim_function, CAFFE_GET_BLOCKS(output.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameter, null // Kernel- and extra parameters
+            ));
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void cat_4d_dynamic_dim_backward(Tensor delta, Tensor dx1, Tensor dx2, int x1_B, int x1_C, int x1_H, int x1_W, int x2_B, int x2_C, int x2_H, int x2_W, int dim) {
+        try {
+            if (cat_4d_dynamic_dim_backward_function == null) {
+            	cat_4d_dynamic_dim_backward_function = getCudaManager().getLocalFunctionByModule("BaseKernel.cu", "cat_4d_dynamic_dim_backward");
+            }
+            /**
+             *  const float* x,
+			    const float* y,
+			    float* out,
+			    int Bx, int Hx, int Nx, int Dx,
+			    int By, int Hy, int Ny, int Dy,
+			    int dim
+             */
+            Pointer kernelParameter = Pointer.to(Pointer.to(delta.getGpuData()), Pointer.to(dx1.getGpuData()), Pointer.to(dx2.getGpuData()),
+            		Pointer.to(new int[]{x1_B}), Pointer.to(new int[]{x1_C}), Pointer.to(new int[]{x1_H}), Pointer.to(new int[]{x1_W}),
+            		Pointer.to(new int[]{x2_B}), Pointer.to(new int[]{x2_C}), Pointer.to(new int[]{x2_H}), Pointer.to(new int[]{x2_W}), Pointer.to(new int[]{dim}));
+            checkCUDA(cuLaunchKernel(cat_4d_dynamic_dim_backward_function, CAFFE_GET_BLOCKS(delta.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameter, null // Kernel- and extra parameters
+            ));
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
     public int CAFFE_GET_BLOCKS(int N) {
         return (N + CAFFE_CUDA_NUM_THREADS - 1) / CAFFE_CUDA_NUM_THREADS;
     }

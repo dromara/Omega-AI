@@ -537,3 +537,91 @@ __global__ void apply_rotary_emb_back_idskeep(const float *delta, float *dx, flo
     dx[index] = pos[t_idx * headSize + hs] * d0 + pos[t_idx * headSize + hs + 1] * d1;
     dx[index+1] = pos[t_idx * headSize + hs] * d1 - pos[t_idx * headSize + hs + 1] * d0;
 }
+
+
+extern "C"
+__global__ void rope_2d_rotate_half(
+    const float* x,
+    float* out,
+    const float* cos,
+    const float* sin,
+    int N,
+    int T,
+    int headNum,
+    int headSize
+) {
+    int half = headSize / 2;
+
+    int i = (blockIdx.x + blockIdx.y * gridDim.x) * blockDim.x + threadIdx.x;
+    if (i >= N / 2) return;
+
+    // 每个 head 的前半部分元素数量是 half
+    int row = i / half;
+    int hs = i % half;
+
+    int base = row * headSize;
+
+    int idx1 = base + hs;
+    int idx2 = base + half + hs;
+
+    // 假设布局等价于 [..., T, headSize]
+    int t = row % T;
+
+    float x1 = x[idx1];
+    float x2 = x[idx2];
+
+    float cos1 = cos[t * headSize + hs];
+    float sin1 = sin[t * headSize + hs];
+
+    float cos2 = cos[t * headSize + half + hs];
+    float sin2 = sin[t * headSize + half + hs];
+
+    // out = x * cos + rotate_half(x) * sin
+    //
+    // rotate_half:
+    // first half  -> -x2
+    // second half ->  x1
+    out[idx1] = x1 * cos1 - x2 * sin1;
+    out[idx2] = x2 * cos2 + x1 * sin2;
+}
+
+extern "C"
+__global__ void rope_2d_back_rotate_half(
+    const float* delta,
+    float* diff,
+    const float* cos,
+    const float* sin,
+    int N,
+    int T,
+    int headNum,
+    int headSize
+) {
+    int half = headSize / 2;
+
+    int i = (blockIdx.x + blockIdx.y * gridDim.x) * blockDim.x + threadIdx.x;
+    if (i >= N / 2) return;
+
+    // 每个线程处理同一个 head 里的前半维 hs 和后半维 half + hs
+    int row = i / half;
+    int hs = i % half;
+
+    int base = row * headSize;
+
+    int idx1 = base + hs;
+    int idx2 = base + half + hs;
+
+    // 假设 x/delta/diff 布局为 [?, T, headSize] 展平
+    int t = row % T;
+
+    const float d1 = delta[idx1];
+    const float d2 = delta[idx2];
+
+    const float cos1 = cos[t * headSize + hs];
+    const float sin1 = sin[t * headSize + hs];
+
+    const float cos2 = cos[t * headSize + half + hs];
+    const float sin2 = sin[t * headSize + half + hs];
+
+    diff[idx1] = cos1 * d1 + sin2 * d2;
+    diff[idx2] = cos2 * d2 - sin1 * d1;
+}

@@ -5,7 +5,6 @@ import java.io.RandomAccessFile;
 
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
-import com.omega.engine.nn.layer.dit.modules.DiTAttentionLayer2;
 import com.omega.engine.nn.layer.dit.org.DiTSwiGLUFFN;
 import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.RMSLayer;
@@ -23,7 +22,7 @@ public class PlainTextBlock extends Layer {
     public RMSLayer norm1;
     public RMSLayer norm2;
 	
-	public DiTAttentionLayer2 attn;
+	public AttentionLayer attn;
     
     public DiTSwiGLUFFN mlp;
     
@@ -59,7 +58,7 @@ public class PlainTextBlock extends Layer {
     public void initLayers() {
     	norm1 = new RMSLayer(1, 1, embedDim, true, BNType.fully_bn, network);
     	norm2 = new RMSLayer(1, 1, embedDim, true, BNType.fully_bn, network);
-    	this.attn = new DiTAttentionLayer2(embedDim, headNum, time, bias, qkNorm, network);
+    	this.attn = new AttentionLayer(embedDim, headNum, time, bias, qkNorm, network);
         int swiNum = (int)(2.0f/3.0f * embedDim);
         this.mlp = new DiTSwiGLUFFN(embedDim, swiNum, embedDim, bias, network);
     }
@@ -94,7 +93,7 @@ public class PlainTextBlock extends Layer {
     public void output(Tensor cos, Tensor sin) {
         // TODO Auto-generated method stub
     	this.norm1.forward(input);
-    	this.attn.forward(norm1.getOutput(), cos, sin, 0);
+    	this.attn.forward(norm1.getOutput(), cos, sin);
     	Tensor_OP().add(attn.getOutput(), input, attn.getOutput());
     	this.norm2.forward(attn.getOutput());
     	this.mlp.forward(norm2.getOutput());

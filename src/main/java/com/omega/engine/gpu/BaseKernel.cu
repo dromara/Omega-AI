@@ -271,3 +271,149 @@ __global__ void un_mul_grad_kernel(
        diff[idx] = - delta[idx] / a[n] * b[n];
     }
 }
+
+extern "C"
+__global__ void cat_4d_dynamic_dim(
+    const float* x,
+    const float* y,
+    float* out,
+    int Bx, int Hx, int Nx, int Dx,
+    int By, int Hy, int Ny, int Dy,
+    int dim
+) {
+    int outB = (dim == 0) ? Bx + By : Bx;
+    int outH = (dim == 1) ? Hx + Hy : Hx;
+    int outN = (dim == 2) ? Nx + Ny : Nx;
+    int outD = (dim == 3) ? Dx + Dy : Dx;
+
+    int total = outB * outH * outN * outD;
+
+    int idx = (blockIdx.x + blockIdx.y * gridDim.x) * blockDim.x + threadIdx.x;
+    if (idx >= total) return;
+
+    int d = idx % outD;
+    int tmp = idx / outD;
+
+    int n = tmp % outN;
+    tmp /= outN;
+
+    int h = tmp % outH;
+    int b = tmp / outH;
+
+    bool fromX = true;
+
+    int xb = b;
+    int xh = h;
+    int xn = n;
+    int xd = d;
+
+    int yb = b;
+    int yh = h;
+    int yn = n;
+    int yd = d;
+
+    if (dim == 0) {
+        if (b < Bx) {
+            fromX = true;
+        } else {
+            fromX = false;
+            yb = b - Bx;
+        }
+    } else if (dim == 1) {
+        if (h < Hx) {
+            fromX = true;
+        } else {
+            fromX = false;
+            yh = h - Hx;
+        }
+    } else if (dim == 2) {
+        if (n < Nx) {
+            fromX = true;
+        } else {
+            fromX = false;
+            yn = n - Nx;
+        }
+    } else { // dim == 3
+        if (d < Dx) {
+            fromX = true;
+        } else {
+            fromX = false;
+            yd = d - Dx;
+        }
+    }
+
+    if (fromX) {
+        int xIdx = ((xb * Hx + xh) * Nx + xn) * Dx + xd;
+        out[idx] = x[xIdx];
+    } else {
+        int yIdx = ((yb * Hy + yh) * Ny + yn) * Dy + yd;
+        out[idx] = y[yIdx];
+    }
+}
+
+extern "C"
+__global__ void cat_4d_dynamic_dim_backward(
+    const float* delta, // grad of cat output
+    float* dx,
+    float* dy,
+    int Bx, int Hx, int Nx, int Dx,
+    int By, int Hy, int Ny, int Dy,
+    int dim
+) {
+    int outB = (dim == 0) ? Bx + By : Bx;
+    int outH = (dim == 1) ? Hx + Hy : Hx;
+    int outN = (dim == 2) ? Nx + Ny : Nx;
+    int outD = (dim == 3) ? Dx + Dy : Dx;
+
+    int total = outB * outH * outN * outD;
+
+    int idx = (blockIdx.x + blockIdx.y * gridDim.x) * blockDim.x + threadIdx.x;
+    if (idx >= total) return;
+
+    int d = idx % outD;
+    int tmp = idx / outD;
+
+    int n = tmp % outN;
+    tmp /= outN;
+
+    int h = tmp % outH;
+    int b = tmp / outH;
+
+    if (dim == 0) {
+        if (b < Bx) {
+            int xIdx = ((b * Hx + h) * Nx + n) * Dx + d;
+            dx[xIdx] = delta[idx];
+        } else {
+            int yb = b - Bx;
+            int yIdx = ((yb * Hy + h) * Ny + n) * Dy + d;
+            dy[yIdx] = delta[idx];
+        }
+    } else if (dim == 1) {
+        if (h < Hx) {
+            int xIdx = ((b * Hx + h) * Nx + n) * Dx + d;
+            dx[xIdx] = delta[idx];
+        } else {
+            int yh = h - Hx;
+            int yIdx = ((b * Hy + yh) * Ny + n) * Dy + d;
+            dy[yIdx] = delta[idx];
+        }
+    } else if (dim == 2) {
+        if (n < Nx) {
+            int xIdx = ((b * Hx + h) * Nx + n) * Dx + d;
+            dx[xIdx] = delta[idx];
+        } else {
+            int yn = n - Nx;
+            int yIdx = ((b * Hy + h) * Ny + yn) * Dy + d;
+            dy[yIdx] = delta[idx];
+        }
+    } else { // dim == 3
+        if (d < Dx) {
+            int xIdx = ((b * Hx + h) * Nx + n) * Dx + d;
+            dx[xIdx] = delta[idx];
+        } else {
+            int yd = d - Dx;
+            int yIdx = ((b * Hy + h) * Ny + n) * Dy + yd;
+            dy[yIdx] = delta[idx];
+        }
+    }
+}
