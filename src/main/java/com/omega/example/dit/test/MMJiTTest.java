@@ -51,18 +51,18 @@ public class MMJiTTest {
         
         float y_prob = 0.1f;
         
-        MMJiT jit = new MMJiT(LossType.MSE_right, UpdaterType.adamw, channel, imgSize, imgSize, patchSize, bottleneck_dim, hiddenSize, headNum, txt_depth, depth, textEmbedDim, maxContextLen, y_prob);
+        MMJiT jit = new MMJiT(LossType.MSE, UpdaterType.adamw, channel, imgSize, imgSize, patchSize, bottleneck_dim, hiddenSize, headNum, txt_depth, depth, textEmbedDim, maxContextLen, y_prob);
         jit.CUDNN = true;
-        jit.learnRate = 2e-4f;
+        jit.learnRate = 0.0004f;
         
         ICPlan icplan = new ICPlan(jit.tensorOP);
 
 //        String model_path = "D://models//jit//jit_b16_20.model";
 //        ModelUtils.loadModel(jit, model_path);
        
-        MBSGDOptimizer optimizer = new MBSGDOptimizer(jit, 100, 0.00001f, batchSize, LearnRateUpdate.NONE, false);
+        MBSGDOptimizer optimizer = new MBSGDOptimizer(jit, 20, 0.00001f, batchSize, LearnRateUpdate.NONE, false);
         
-        optimizer.train_MMJiT_ICPlan(dataLoader, icplan, "D://models//jit//", 4);
+        optimizer.train_MMJiT_ICPlan(dataLoader, icplan, "D://models//jit//", 1);
         String save_model_path = "D://models//jit//jit_b16.model";
         ModelUtils.saveModel(jit, save_model_path);
     }
@@ -85,7 +85,7 @@ public class MMJiTTest {
         int channel = 3;
         int maxContextLen = 77;
         int textEmbedDim = 768;
-        int batchSize = 10;
+        int batchSize = 4;
         float[] mean = new float[]{0.0f, 0.0f, 0.0f};
         float[] std = new float[]{1f, 1f, 1f};
         ImageClipDataLoader dataLoader = new ImageClipDataLoader(labelPath, imgDirPath, clipDataPath, ".jpg", imgSize, imgSize, maxContextLen, textEmbedDim, batchSize, horizontalFilp, mean, std);
@@ -196,6 +196,7 @@ public class MMJiTTest {
             	System.out.println("start create test images.");
 
                 GPUOP.getInstance().cudaRandn(noise);
+                network.tensorOP.mul(noise, 2.0f, noise);
                 noise.copyGPU(noise2);
                 
                 Tensor sample = icplan.forward_with_path_drop_cfg(network, noise, t, condInput, condInput_ynull, cos1d, sin1d, cos2d, sin2d, eps, 1.0f);
@@ -243,12 +244,50 @@ public class MMJiTTest {
         }
     }
     
+    public static void test_img() throws Exception {
+        String clipDataPath = "D:\\dataset\\amine\\dalle_full_clip.bin";
+        String labelPath = "D:\\dataset\\labels.json";
+		String imgDirPath = "D:\\dataset\\images_256_256\\";
+        boolean horizontalFilp = true;
+        int imgSize = 256;
+        int channel = 3;
+        int maxContextLen = 77;
+        int textEmbedDim = 768;
+        int batchSize = 4;
+        float[] mean = new float[]{0.0f, 0.0f, 0.0f};
+        float[] std = new float[]{1f, 1f, 1f};
+        ImageClipDataLoader dataLoader = new ImageClipDataLoader(labelPath, imgDirPath, clipDataPath, ".jpg", imgSize, imgSize, maxContextLen, textEmbedDim, batchSize, horizontalFilp, mean, std);
+    
+        Tensor imgs = new Tensor(batchSize, channel, imgSize, imgSize, true);
+        
+        Tensor condInput = new Tensor(batchSize * maxContextLen, 1, 1, textEmbedDim, true);
+        
+        int[][] indexs = dataLoader.shuffle();
+        
+        for(int it = 0;it<10;it++) {
+        	
+        	int[] next = indexs[0];
+            if(it < indexs.length - 1) {
+            	next = indexs[it+1];
+            }
+        	
+        	dataLoader.loadData(indexs[it], next, imgs, condInput, it);
+        	
+        	imgs.data = MatrixOperation.clampSelf(imgs.syncHost(), -1, 1);
+
+            showImgs("D:\\test\\mmjit\\256\\"+it+"_" + it, imgs, mean, std);
+        	
+        }
+
+    }
 	
 	public static void main(String[] args) {
 		 
 		try {
 		   
-			mmjit_b16_iddpm_train();
+			test_img();
+			
+//			mmjit_b16_iddpm_train();
 			
 //			jit_repa_b16_iddpm_train();
 			

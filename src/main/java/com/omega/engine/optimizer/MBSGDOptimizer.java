@@ -14987,8 +14987,6 @@ public class MBSGDOptimizer extends Optimizer {
             Tensor target = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
             Tensor v_pred = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
             
-//            Tensor dx = new Tensor(batchSize, 3, trainingData.img_h, trainingData.img_w, true);
-            
             int theta = 10000;
 
             Tensor[] cs1d = RoPEKernel.create1DRope(network.maxContextLen, network.headDims, 0, theta);
@@ -15028,7 +15026,11 @@ public class MBSGDOptimizer extends Optimizer {
                     GPUOP.getInstance().cudaRandn(noise);
                     network.tensorOP.mul(noise, 2.0f, noise);
                     
-                    trainingData.loadData(indexs[it], x, condInput);
+                	int[] next = indexs[0];
+                    if(it < indexs.length - 1) {
+                    	next = indexs[it+1];
+                    }
+                    trainingData.loadData(indexs[it], next, x, condInput, it);
                     JCudaDriver.cuCtxSynchronize();
                     
                     /**

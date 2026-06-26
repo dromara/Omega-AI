@@ -175,7 +175,42 @@ public class ImageClipDataLoader extends BaseDataLoader {
             e.printStackTrace();
         }
     }
-
+    
+    public void loadData(int[] index, int[] next,Tensor input, Tensor label, int it) {
+        try {
+            //			System.out.println(it);
+        	if(it == 0) {
+        		cf = null;
+        	}
+            if (cf != null) {
+                boolean success = cf.get();//等待数据从文件加载完毕
+                if(success){
+                	cf = null;
+                	/**
+                	 *  input.hostToDevice(); //把当前内存的数据加载到显存上
+				     *  label.hostToDevice(); //把当前内存的数据加载到显存上
+				     *  cf = loadAsyncData(index, input, label); //开启下一轮文件数据的读取
+                	 */
+                	loadDataToGPU(next, input, label);
+                }
+            } else {
+            	/**
+            	 * 首轮数据加载
+            	 */
+                cf = loadAsyncData(index, input, label);
+                boolean success = cf.get();
+                if(success){
+                	cf = null;
+                	loadDataToGPU(next, input, label);
+                }
+            }
+//            System.out.println("load cost:"+(System.nanoTime() - start)/1e6+"ms.");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
     public void loadDataToGPU(int[] index,Tensor input, Tensor label) {
     	input.hostToDevice();
         label.hostToDevice();

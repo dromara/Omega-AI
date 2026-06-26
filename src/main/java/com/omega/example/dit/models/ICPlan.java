@@ -1132,7 +1132,7 @@ public class ICPlan {
 		kernel.compute_xt(x, noise, t, z);
 	}
 	
-	public void compute_v(Tensor x, Tensor t,Tensor z, Tensor v, float t_eps) {
+	public void compute_v(Tensor x, Tensor t, Tensor z, Tensor v, float t_eps) {
 		kernel.compute_v(x, z, t, v, t_eps);
 	}
 	

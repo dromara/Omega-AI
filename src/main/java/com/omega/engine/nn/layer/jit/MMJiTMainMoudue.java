@@ -6,18 +6,27 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import com.omega.common.utils.JsonUtils;
+import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.gpu.BaseKernel;
+import com.omega.engine.loss.MSELoss;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
-import com.omega.engine.nn.layer.dit.DiTCaptionEmbeddingLayer;
+import com.omega.engine.nn.layer.dit.mmjit.JiTCaptionEmbeddingLayer;
 import com.omega.engine.nn.layer.dit.mmjit.MMJiTBlock;
 import com.omega.engine.nn.layer.dit.mmjit.PlainTextBlock;
+import com.omega.engine.nn.layer.gpu.RoPEKernel;
 import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.RMSLayer;
+import com.omega.engine.nn.network.CNN;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
+import com.omega.example.common.ModeLoaderlUtils;
+import com.omega.example.dit.models.ICPlan;
+import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
  * MMJiTMainMoudue
@@ -38,7 +47,7 @@ public class MMJiTMainMoudue extends Layer {
     private int maxContextLen;
 
     public BottleneckPatchEmbed patchEmbd;
-    public DiTCaptionEmbeddingLayer labelEmbd;
+    public JiTCaptionEmbeddingLayer labelEmbd;
     public List<PlainTextBlock> txt_blocks;
     public List<MMJiTBlock> blocks;
     public RMSLayer finalNorm;
@@ -82,8 +91,8 @@ public class MMJiTMainMoudue extends Layer {
     	
     	patchEmbd = new BottleneckPatchEmbed(inChannel, width, bottleneck_dim, hiddenSize, patchSize, true, network);
         
-        labelEmbd = new DiTCaptionEmbeddingLayer(textEmbedDim, hiddenSize, maxContextLen, y_drop_prob, true, network);
-        
+    	labelEmbd = new JiTCaptionEmbeddingLayer(textEmbedDim, hiddenSize, maxContextLen, y_drop_prob, false, network);
+
         txt_blocks = new ArrayList<PlainTextBlock>();
         
         blocks = new ArrayList<MMJiTBlock>();
@@ -477,113 +486,206 @@ public class MMJiTMainMoudue extends Layer {
             }
         }
      
-//        ModeLoaderlUtils.loadData(block.patchEmbd.patchEmbedding.weight, weightMap, "x_embedder.proj.weight");
-//        ModeLoaderlUtils.loadData(block.patchEmbd.patchEmbedding.bias, weightMap, "x_embedder.proj.bias");
-//        
-//        ModeLoaderlUtils.loadData(block.timeEmbd.linear1.weight, weightMap, "t_embedder.mlp.0.weight");
-//        ModeLoaderlUtils.loadData(block.timeEmbd.linear1.bias, weightMap, "t_embedder.mlp.0.bias");
-//        ModeLoaderlUtils.loadData(block.timeEmbd.linear2.weight, weightMap, "t_embedder.mlp.2.weight");
-//        ModeLoaderlUtils.loadData(block.timeEmbd.linear2.bias, weightMap, "t_embedder.mlp.2.bias");
-//        
-//        ModeLoaderlUtils.loadData(block.labelEmbd.linear1.weight, weightMap, "y_embedder.y_proj.fc1.weight");
-//        ModeLoaderlUtils.loadData(block.labelEmbd.linear1.bias, weightMap, "y_embedder.y_proj.fc1.bias");
-//        ModeLoaderlUtils.loadData(block.labelEmbd.linear2.weight, weightMap, "y_embedder.y_proj.fc2.weight");
-//        ModeLoaderlUtils.loadData(block.labelEmbd.linear2.bias, weightMap, "y_embedder.y_proj.fc2.bias");
-//        
-//        for(int i = 0;i<block.depth;i++) {
-//        	
-//        	DiT_TXTBlock jb = block.blocks.get(i);
-//        	
-////        	jb.norm1.gamma = ModeLoaderlUtils.loadData(jb.norm1.gamma, weightMap, 1, "blocks."+i+".norm1.weight"); 
-////        	jb.norm2.gamma = ModeLoaderlUtils.loadData(jb.norm2.gamma, weightMap, 1, "blocks."+i+".norm2.weight"); 
-////        	jb.norm3.gamma = ModeLoaderlUtils.loadData(jb.norm3.gamma, weightMap, 1, "blocks."+i+".norm3.weight"); 
-//        	
-//        	ModeLoaderlUtils.loadData(jb.attn.qLinerLayer.weight, weightMap, "blocks."+i+".attn.q.weight");
-//            ModeLoaderlUtils.loadData(jb.attn.qLinerLayer.bias, weightMap, "blocks."+i+".attn.q.bias");
-//        	ModeLoaderlUtils.loadData(jb.attn.kLinerLayer.weight, weightMap, "blocks."+i+".attn.k.weight");
-//            ModeLoaderlUtils.loadData(jb.attn.kLinerLayer.bias, weightMap, "blocks."+i+".attn.k.bias");
-//        	ModeLoaderlUtils.loadData(jb.attn.vLinerLayer.weight, weightMap, "blocks."+i+".attn.v.weight");
-//            ModeLoaderlUtils.loadData(jb.attn.vLinerLayer.bias, weightMap, "blocks."+i+".attn.v.bias");
-//        	ModeLoaderlUtils.loadData(jb.attn.oLinerLayer.weight, weightMap, "blocks."+i+".attn.proj.weight");
-//            ModeLoaderlUtils.loadData(jb.attn.oLinerLayer.bias, weightMap, "blocks."+i+".attn.proj.bias");
-//        
-//        	ModeLoaderlUtils.loadData(jb.cross_attn.qLinerLayer.weight, weightMap, "blocks."+i+".cross_attn.q.weight");
-//            ModeLoaderlUtils.loadData(jb.cross_attn.qLinerLayer.bias, weightMap, "blocks."+i+".cross_attn.q.bias");
-//        	ModeLoaderlUtils.loadData(jb.cross_attn.kLinerLayer.weight, weightMap, "blocks."+i+".cross_attn.k.weight");
-//            ModeLoaderlUtils.loadData(jb.cross_attn.kLinerLayer.bias, weightMap, "blocks."+i+".cross_attn.k.bias");
-//        	ModeLoaderlUtils.loadData(jb.cross_attn.vLinerLayer.weight, weightMap, "blocks."+i+".cross_attn.v.weight");
-//            ModeLoaderlUtils.loadData(jb.cross_attn.vLinerLayer.bias, weightMap, "blocks."+i+".cross_attn.v.bias");
-//        	ModeLoaderlUtils.loadData(jb.cross_attn.oLinerLayer.weight, weightMap, "blocks."+i+".cross_attn.proj.weight");
-//            ModeLoaderlUtils.loadData(jb.cross_attn.oLinerLayer.bias, weightMap, "blocks."+i+".cross_attn.proj.bias");
-//            
-//            ModeLoaderlUtils.loadData(jb.mlp.w12.weight, weightMap, "blocks."+i+".mlp.w12.weight");
-//            ModeLoaderlUtils.loadData(jb.mlp.w12.bias, weightMap, "blocks."+i+".mlp.w12.bias");
-//            ModeLoaderlUtils.loadData(jb.mlp.w3.weight, weightMap, "blocks."+i+".mlp.w3.weight");
-//            ModeLoaderlUtils.loadData(jb.mlp.w3.bias, weightMap, "blocks."+i+".mlp.w3.bias");
-//            
-//            ModeLoaderlUtils.loadData(jb.adaLN_modulation.weight, weightMap, "blocks."+i+".adaLN_modulation.1.weight");
-//            ModeLoaderlUtils.loadData(jb.adaLN_modulation.bias, weightMap, "blocks."+i+".adaLN_modulation.1.bias");
-//        }
-//        
-////        block.finalLayer.finalNorm.gamma = ModeLoaderlUtils.loadData(block.finalLayer.finalNorm.gamma, weightMap, 1, "final_layer.norm_final.weight"); 
-//        ModeLoaderlUtils.loadData(block.finalLayer.finalLinear.weight, weightMap, "final_layer.linear.weight");
-//        ModeLoaderlUtils.loadData(block.finalLayer.finalLinear.bias, weightMap, "final_layer.linear.bias");
-//        ModeLoaderlUtils.loadData(block.finalLayer.m_linear1.weight, weightMap, "final_layer.adaLN_modulation_l1.weight");
-//        ModeLoaderlUtils.loadData(block.finalLayer.m_linear1.bias, weightMap, "final_layer.adaLN_modulation_l1.bias");
-//        ModeLoaderlUtils.loadData(block.finalLayer.m_linear2.weight, weightMap, "final_layer.adaLN_modulation_l2.weight");
-//        ModeLoaderlUtils.loadData(block.finalLayer.m_linear2.bias, weightMap, "final_layer.adaLN_modulation_l2.bias");
+	    ModeLoaderlUtils.loadData(block.patchEmbd.proj1.weight, weightMap, "img_embed.proj1.weight");
+	    ModeLoaderlUtils.loadData(block.patchEmbd.proj2.weight, weightMap, "img_embed.proj2.weight", 4);
+	    ModeLoaderlUtils.loadData(block.patchEmbd.proj2.bias, weightMap, "img_embed.proj2.bias");
         
+	    ModeLoaderlUtils.loadData(block.labelEmbd.linear1.weight, weightMap, "txt_embed.weight");
+//	    block.labelEmbd.setY_embedding(new Tensor(1, 1, 30, 768, true));
+//	    ModeLoaderlUtils.loadData(block.labelEmbd.getY_embedding(), weightMap, "mask_token", 4);
+	    
+	    for(int i = 0;i<block.txt_depth;i++) {
+	    	PlainTextBlock bl = block.txt_blocks.get(i);
+	    	
+	    	bl.norm1.gamma = ModeLoaderlUtils.loadData(bl.norm1.gamma, weightMap, 1, "txt_blocks."+i+".norm1.weight"); 
+	    	bl.norm2.gamma = ModeLoaderlUtils.loadData(bl.norm2.gamma, weightMap, 1, "txt_blocks."+i+".norm2.weight");
+	    	
+	    	ModeLoaderlUtils.loadData(bl.attn.qLinerLayer.weight, weightMap, "txt_blocks."+i+".q.weight");
+	    	ModeLoaderlUtils.loadData(bl.attn.qLinerLayer.bias, weightMap, "txt_blocks."+i+".q.bias");
+	    	ModeLoaderlUtils.loadData(bl.attn.kLinerLayer.weight, weightMap, "txt_blocks."+i+".k.weight");
+	    	ModeLoaderlUtils.loadData(bl.attn.kLinerLayer.bias, weightMap, "txt_blocks."+i+".k.bias");
+	    	ModeLoaderlUtils.loadData(bl.attn.vLinerLayer.weight, weightMap, "txt_blocks."+i+".v.weight");
+	    	ModeLoaderlUtils.loadData(bl.attn.vLinerLayer.bias, weightMap, "txt_blocks."+i+".v.bias");
+	    	ModeLoaderlUtils.loadData(bl.attn.oLinerLayer.weight, weightMap, "txt_blocks."+i+".proj.weight");
+	    	ModeLoaderlUtils.loadData(bl.attn.oLinerLayer.bias, weightMap, "txt_blocks."+i+".proj.bias");
+	    	
+	    	ModeLoaderlUtils.loadData(bl.mlp.w12.weight, weightMap, "txt_blocks."+i+".mlp.w12.weight");
+	    	ModeLoaderlUtils.loadData(bl.mlp.w3.weight, weightMap, "txt_blocks."+i+".mlp.w3.weight");
+	    }
+	    
+	    for(int i = 0;i<block.depth;i++) {
+	    	MMJiTBlock bl = block.blocks.get(i);
+	    	
+	    	bl.x_block.norm1.gamma = ModeLoaderlUtils.loadData(bl.x_block.norm1.gamma, weightMap, 1, "blocks."+i+".img_norm1.weight"); 
+	    	bl.x_block.norm2.gamma = ModeLoaderlUtils.loadData(bl.x_block.norm2.gamma, weightMap, 1, "blocks."+i+".img_norm2.weight"); 
+	    	bl.context_block.norm1.gamma = ModeLoaderlUtils.loadData(bl.context_block.norm1.gamma, weightMap, 1, "blocks."+i+".txt_norm1.weight"); 
+	    	bl.context_block.norm2.gamma = ModeLoaderlUtils.loadData(bl.context_block.norm2.gamma, weightMap, 1, "blocks."+i+".txt_norm2.weight"); 
+	    	
+	    	ModeLoaderlUtils.loadData(bl.x_block.qLinerLayer.weight, weightMap, "blocks."+i+".img_q.weight");
+	    	ModeLoaderlUtils.loadData(bl.x_block.qLinerLayer.bias, weightMap, "blocks."+i+".img_q.bias");
+	    	ModeLoaderlUtils.loadData(bl.x_block.kLinerLayer.weight, weightMap, "blocks."+i+".img_k.weight");
+	    	ModeLoaderlUtils.loadData(bl.x_block.kLinerLayer.bias, weightMap, "blocks."+i+".img_k.bias");
+	    	ModeLoaderlUtils.loadData(bl.x_block.vLinerLayer.weight, weightMap, "blocks."+i+".img_v.weight");
+	    	ModeLoaderlUtils.loadData(bl.x_block.vLinerLayer.bias, weightMap, "blocks."+i+".img_v.bias");
+	    	ModeLoaderlUtils.loadData(bl.context_block.qLinerLayer.weight, weightMap, "blocks."+i+".txt_q.weight");
+	    	ModeLoaderlUtils.loadData(bl.context_block.qLinerLayer.bias, weightMap, "blocks."+i+".txt_q.bias");
+	    	ModeLoaderlUtils.loadData(bl.context_block.kLinerLayer.weight, weightMap, "blocks."+i+".txt_k.weight");
+	    	ModeLoaderlUtils.loadData(bl.context_block.kLinerLayer.bias, weightMap, "blocks."+i+".txt_k.bias");
+	    	ModeLoaderlUtils.loadData(bl.context_block.vLinerLayer.weight, weightMap, "blocks."+i+".txt_v.weight");
+	    	ModeLoaderlUtils.loadData(bl.context_block.vLinerLayer.bias, weightMap, "blocks."+i+".txt_v.bias");
+	    	
+	    	ModeLoaderlUtils.loadData(bl.x_block.oLinerLayer.weight, weightMap, "blocks."+i+".img_proj.weight");
+	    	ModeLoaderlUtils.loadData(bl.x_block.oLinerLayer.bias, weightMap, "blocks."+i+".img_proj.bias");
+	    	ModeLoaderlUtils.loadData(bl.context_block.oLinerLayer.weight, weightMap, "blocks."+i+".txt_proj.weight");
+	    	ModeLoaderlUtils.loadData(bl.context_block.oLinerLayer.bias, weightMap, "blocks."+i+".txt_proj.bias");
+	    	
+	    	ModeLoaderlUtils.loadData(bl.x_block.mlp.w12.weight, weightMap, "blocks."+i+".img_mlp.w12.weight");
+	    	ModeLoaderlUtils.loadData(bl.x_block.mlp.w3.weight, weightMap, "blocks."+i+".img_mlp.w3.weight");
+	    	ModeLoaderlUtils.loadData(bl.context_block.mlp.w12.weight, weightMap, "blocks."+i+".txt_mlp.w12.weight");
+	    	ModeLoaderlUtils.loadData(bl.context_block.mlp.w3.weight, weightMap, "blocks."+i+".txt_mlp.w3.weight");
+	    }
+	    
+	    block.finalNorm.gamma = ModeLoaderlUtils.loadData(block.finalNorm.gamma, weightMap, 1, "final_norm.weight"); 
+    	ModeLoaderlUtils.loadData(block.finalLayer.weight, weightMap, "final.weight");
+    	ModeLoaderlUtils.loadData(block.finalLayer.bias, weightMap, "final.bias");
     }
     
     public static void main(String[] args) {
     	
-//    	float[] posemb = sincos2d(768, 16);
-//    	System.err.println(JsonUtils.toJson(posemb));
-//    	System.err.println(posemb[769]);
-//    	int N = 2;
-//    	int C = 32;
-//    	int H = 16;
-//    	int W = 16;
-//    	
-//    	int TT = 1;
-//    	int TEM = 768;
-//    	
-//    	int patchSize = 2;
-//    	int hiddenSize = 384;
-//    	int headNum = 6;
-//    	int depth = 6;
-//    	
-//    	CNN nn = new CNN(null);
-//        nn.CUDNN = true;
-//        nn.number = N;
-//    	
-//        JiTMainMoudue jb = new JiTMainMoudue(C, W, H, patchSize, hiddenSize, headNum, depth, 1000, TEM, TT, 4, false, 0.0f, nn);
-//    	
-//        String weight = "D:\\models\\dit_s2.json";
-//        loadWeight(LagJsonReader.readJsonFileBigWeightIterator(weight), jb, true);
-//        
-//	    String inputPath = "D:\\models\\c__temp_dit_x.json";
+    	int N = 2;
+    	int C = 3;
+    	int H = 256;
+    	int W = 256;
+    	
+    	int TT = 30;
+    	int TEM = 768;
+    	
+    	int bottleneck_dim = 128;
+    	int patchSize = 16;
+    	int hiddenSize = 768;
+    	int headNum = 12;
+    	int depth = 3;
+    	int text_preamble_depth = 2;
+    	
+    	CNN nn = new CNN(null);
+        nn.CUDNN = true;
+        nn.number = N;
+        
+        MSELoss lossfn = new MSELoss(nn);
+
+        MMJiTMainMoudue jb = new MMJiTMainMoudue(C, W, H, patchSize, bottleneck_dim, hiddenSize, headNum, text_preamble_depth, depth, TEM, TT, 0.01f, nn);
+    	
+        String weight = "D:\\models\\mmjit.json";
+        loadWeight(LagJsonReader.readJsonFileBigWeightIterator(weight), jb, true);
+        
+        int theta = 10000;
+
+        Tensor[] cs1d = RoPEKernel.create1DRope(TT, 64, 0, theta);
+        Tensor cos1d = cs1d[0];
+        Tensor sin1d = cs1d[1];
+        int time = (W / patchSize) * (W / patchSize);
+        Tensor[] cs2d = RoPEKernel.create2DRope(headNum, time, 64, W / patchSize, theta);
+        Tensor cos2d = cs2d[0];
+        Tensor sin2d = cs2d[1];
+
+//        String inputPath = "D:\\models\\mmjit_x.json";
 //	    Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
 //	    Tensor input = new Tensor(N, C, H, W, true);
-//	    ModeLoaderlUtils.loadData(input, datas, "x");
-//    	
-//	    String cyPath = "D:\\models\\c__temp_dit_cy.json";
-//	    Map<String, Object> cydatas = LagJsonReader.readJsonFileSmallWeight(cyPath);
-//	    Tensor cy = new Tensor(N, 1, 1, TEM, true);
-//	    ModeLoaderlUtils.loadData(cy, cydatas, "cy", 2);
+//        ModeLoaderlUtils.loadData(input, datas, "x", 4);
+        
+        String noisePath = "D:\\models\\mmjit_noise.json";
+	    Map<String, Object> noiseDatas = LagJsonReader.readJsonFileSmallWeight(noisePath);
+	    Tensor noise = new Tensor(N, C, H, W, true);
+        ModeLoaderlUtils.loadData(noise, noiseDatas, "noise", 4);
+    	
+	    String cyPath = "D:\\models\\mmjit_txt.json";
+	    Map<String, Object> cydatas = LagJsonReader.readJsonFileSmallWeight(cyPath);
+	    Tensor txt = new Tensor(N, TT, 1, TEM, true);
+	    ModeLoaderlUtils.loadData(txt, cydatas, "txt", 3);
+	    txt.view(N * TT, 1, 1, TEM);
 //	    
-//	    Tensor t = new Tensor(N, 1, 1, 1, new float[] {0.1f, 0.8f}, true);
-//	    int time = (W / patchSize) * (H / patchSize);
-//	    Tensor[] cs = RoPEKernel.getCosAndSin2D(time, hiddenSize, headNum);
-//        Tensor cos = cs[0];
-//        Tensor sin = cs[1];
+//	    String dinputPath = "D:\\models\\mmjit_delta.json";
+//	    Map<String, Object> d_datas = LagJsonReader.readJsonFileSmallWeight(dinputPath);
+//	    Tensor delta = new Tensor(N, C, H, W, true);
+//	    ModeLoaderlUtils.loadData(delta, d_datas, "delta", 4);
 //	    
-//	    jb.forward(input, t, cy, cos, sin);
-//	    
-//	    jb.getOutput().showDM();
-//	    
-//	    jb.back(input, cos, sin);
-	    
+//        txt.view(N * TT, 1, 1, TEM);
+//        
+//        Tensor t = new Tensor(N, 1, 1, 1, true);
+//        Tensor rnd = new Tensor(N, 1, 1, 1, new float[] {0.2f, 0.8f}, true);
+//        RandomUtils.gaussianRandomLogitNormal(t, rnd, -0.8f, 0.8f);
+        
+        ICPlan icplan = new ICPlan(nn.tensorOP);
+        
+//        /**
+//         * latend add noise
+//         */
+//        Tensor x_t = new Tensor(N, C, H, W, true);
+//        Tensor target = new Tensor(N, C, H, W, true);
+//        Tensor v_pred = new Tensor(N, C, H, W, true);
+//        
+//        icplan.compute_z(input, t, noise, x_t);
+//        icplan.compute_v(input, t, x_t, target, 5e-2f);
+//        t.showDM("t");
+//        x_t.showDM("x_t");
+//        for(int i = 0;i<2;i++) {
+//            jb.forward(x_t, txt, cos1d, sin1d, cos2d, sin2d);
+//            
+//            jb.getOutput().showDM("out");
+//            
+//            jb.getOutput().showDMByOffset(1 * 256 * 256 + 101 * 256, 256, "out_");
+//            
+//            icplan.compute_v(jb.getOutput(), t, x_t, v_pred, 5e-2f);
+//            
+//            /**
+//             * loss
+//             */
+//            Tensor loss = lossfn.loss(v_pred, target);
+//            float mse_loss = MatrixOperation.sum(loss.syncHost()) / N;
+//            System.err.println(mse_loss);
+//            /**
+//             * loss diff
+//             */
+//            Tensor lossDiff = lossfn.diff(v_pred, target);
+//            
+//            /**
+//             * dx_pred = delta / (1 - t).clamp_min(self.t_eps)
+//             */
+//            icplan.compute_dv(lossDiff, t, lossDiff, 5e-2f);
+//            
+//            /**
+//             * back
+//             */
+//            jb.back(lossDiff, cos1d, sin1d, cos2d, sin2d);
+//            
+//        }
+        
+        int count = 100;
+        
+        Tensor x0 = new Tensor(N, C, H, W, true);
+        Tensor t = new Tensor(N, 1, 1, 1, true);
+        
+        Tensor v = new Tensor(N, C, H, W, true);
+        jb.Tensor_OP().mul(noise, 2, x0);
+        float[] T = MatrixUtils.linspace(0, 1, count+1);
+        System.err.println(JsonUtils.toJson(T));
+
+        x0.showDM("x0");
+        txt.showDM("txt");
+        nn.RUN_MODEL = RunModel.EVAL;
+		for(int i = 0;i<count;i++) {
+			float t0 = T[i];
+			float t1 = T[i + 1];
+			float dt = t1 - t0;
+			MatrixUtils.val(t.data, t0);
+			t.hostToDevice();
+			jb.forward(x0, txt, cos1d, sin1d, cos2d, sin2d);
+		    Tensor pred_x0 = jb.getOutput();
+		    icplan.compute_v(pred_x0, t, x0, v, 5e-2f);
+		    jb.Tensor_OP().mul(v, dt, v);
+		    jb.Tensor_OP().add(x0, v, x0);
+		}
+        x0.showDM("out");
     }
 }
 

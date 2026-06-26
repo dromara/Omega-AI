@@ -59,7 +59,7 @@ public class PlainTextBlock extends Layer {
     	norm1 = new RMSLayer(1, 1, embedDim, true, BNType.fully_bn, network);
     	norm2 = new RMSLayer(1, 1, embedDim, true, BNType.fully_bn, network);
     	this.attn = new AttentionLayer(embedDim, headNum, time, bias, qkNorm, network);
-        int swiNum = (int)(2.0f/3.0f * embedDim);
+        int swiNum = (int) (2.6667 * embedDim);
         this.mlp = new DiTSwiGLUFFN(embedDim, swiNum, embedDim, bias, network);
     }
 

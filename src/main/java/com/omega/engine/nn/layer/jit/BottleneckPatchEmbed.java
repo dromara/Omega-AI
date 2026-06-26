@@ -113,6 +113,7 @@ public class BottleneckPatchEmbed extends Layer {
     	proj1.back(proj2.diff);
     	this.diff =  proj1.diff;
 //    	diff.showDM("diff");
+//    	diff.showDMByOffset(1 * 256 * 256 + 101 * 256, 256, "diff");
     }
 
     @Override
