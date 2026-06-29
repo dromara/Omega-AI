@@ -98,12 +98,12 @@ public class MMJiTMainMoudue extends Layer {
         blocks = new ArrayList<MMJiTBlock>();
          
         for(int i = 0;i<txt_depth;i++) {
-        	PlainTextBlock block = new PlainTextBlock(hiddenSize, maxContextLen, headNum, true, false, network);
+        	PlainTextBlock block = new PlainTextBlock(hiddenSize, maxContextLen, headNum, true, true, network);
         	txt_blocks.add(block);
         }
         
         for(int i = 0;i<depth;i++) {
-        	MMJiTBlock block = new MMJiTBlock(hiddenSize, headNum, patchEmbd.oChannel, maxContextLen, true, false, true, network);
+        	MMJiTBlock block = new MMJiTBlock(hiddenSize, headNum, patchEmbd.oChannel, maxContextLen, true, true, true, network);
 	        blocks.add(block);
         }
         this.oChannel = inChannel;

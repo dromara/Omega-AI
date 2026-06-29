@@ -104,9 +104,9 @@ public class MMJiTBlock extends Layer {
     
     public void initLayers() {
         
-    	x_block = new JiTJoinBlockHead(embedDim, imgTime, bias, qkNorm, false, normParams, network);
+    	x_block = new JiTJoinBlockHead(embedDim, imgTime, bias, qkNorm, normParams, network);
     	
-    	context_block = new JiTJoinBlockHead(embedDim, textTime, bias, qkNorm, false, normParams, network);
+    	context_block = new JiTJoinBlockHead(embedDim, textTime, bias, qkNorm, normParams, network);
     	
         if (attentionKernel == null) {
             attentionKernel = new AttentionKernel(cuda());
@@ -203,8 +203,16 @@ public class MMJiTBlock extends Layer {
     	Tensor_OP().permute(x_block.q(), x_qt, x_shape, x_t_shape, new int[]{0, 2, 1, 3});
     	Tensor_OP().permute(x_block.k(), x_kt, x_shape, x_t_shape, new int[]{0, 2, 1, 3});
     	Tensor_OP().permute(x_block.v(), x_vt, x_shape, x_t_shape, new int[]{0, 2, 1, 3});
-        ropeKernel.rope_2d_rotate_half(cos2d, sin2d, x_qt, x_rq, imgTime, headNum, dk);
-        ropeKernel.rope_2d_rotate_half(cos2d, sin2d, x_kt, x_rk, imgTime, headNum, dk);
+    	Tensor xqt = x_qt;
+    	Tensor xkt = x_kt;
+    	if(qkNorm) {
+    		x_block.qNorm.forward(xqt);
+    		x_block.kNorm.forward(xkt);
+    		xqt = x_block.qNorm.getOutput();
+    		xkt = x_block.kNorm.getOutput();
+    	}
+        ropeKernel.rope_2d_rotate_half(cos2d, sin2d, xqt, x_rq, imgTime, headNum, dk);
+        ropeKernel.rope_2d_rotate_half(cos2d, sin2d, xkt, x_rk, imgTime, headNum, dk);
 
     	context_block.pre_attention(context);
     	int[] cond_shape = new int[] {batchSize, textTime, headNum, dk};
@@ -212,8 +220,16 @@ public class MMJiTBlock extends Layer {
     	Tensor_OP().permute(context_block.q(), cond_qt, cond_shape, cond_t_shape, new int[]{0, 2, 1, 3});
     	Tensor_OP().permute(context_block.k(), cond_kt, cond_shape, cond_t_shape, new int[]{0, 2, 1, 3});
     	Tensor_OP().permute(context_block.v(), cond_vt, cond_shape, cond_t_shape, new int[]{0, 2, 1, 3});
-    	ropeKernel.rope_2d_rotate_half(cos1d, sin1d, cond_qt, cond_rq, textTime, headNum, dk);
-        ropeKernel.rope_2d_rotate_half(cos1d, sin1d, cond_kt, cond_rk, textTime, headNum, dk);
+    	Tensor cqt = cond_qt;
+    	Tensor ckt = cond_kt;
+    	if(qkNorm) {
+    		context_block.qNorm.forward(cqt);
+    		context_block.kNorm.forward(ckt);
+    		cqt = context_block.qNorm.getOutput();
+    		ckt = context_block.kNorm.getOutput();
+    	}
+    	ropeKernel.rope_2d_rotate_half(cos1d, sin1d, cqt, cond_rq, textTime, headNum, dk);
+        ropeKernel.rope_2d_rotate_half(cos1d, sin1d, ckt, cond_rk, textTime, headNum, dk);
         
     	attentionKernel.cat_4d_dynamic_dim(cond_rq, x_rq, q, batchSize, headNum, textTime, dk, batchSize, headNum, imgTime, dk, 2);
     	attentionKernel.cat_4d_dynamic_dim(cond_rk, x_rk, k, batchSize, headNum, textTime, dk, batchSize, headNum, imgTime, dk, 2);
@@ -319,10 +335,18 @@ public class MMJiTBlock extends Layer {
          */
     	ropeKernel.rope_2d_back_rotate_half(cos1d, sin1d, cond_rq, cond_qt, textTime, headNum, dk);
         ropeKernel.rope_2d_back_rotate_half(cos1d, sin1d,cond_rk,  cond_kt, textTime, headNum, dk);
+        Tensor cqt = cond_qt;
+        Tensor ckt = cond_kt;
+        if(qkNorm) {
+        	context_block.qNorm.back(cqt);
+          	context_block.kNorm.back(ckt);
+          	cqt = context_block.qNorm.diff;
+          	ckt = context_block.kNorm.diff;
+        }
         int[] cond_shape = new int[] {batchSize, textTime, headNum, dk};
     	int[] cond_t_shape = new int[] {batchSize, headNum, textTime, dk};
-    	Tensor_OP().permute(cond_qt, context_block.q(), cond_t_shape, cond_shape, new int[]{0, 2, 1, 3});
-    	Tensor_OP().permute(cond_kt, context_block.k(), cond_t_shape, cond_shape, new int[]{0, 2, 1, 3});
+    	Tensor_OP().permute(cqt, context_block.q(), cond_t_shape, cond_shape, new int[]{0, 2, 1, 3});
+    	Tensor_OP().permute(ckt, context_block.k(), cond_t_shape, cond_shape, new int[]{0, 2, 1, 3});
     	Tensor_OP().permute(cond_vt, context_block.v(), cond_t_shape, cond_shape, new int[]{0, 2, 1, 3});
         context_block.pre_attention_back(cx_diff, context_block.q(), context_block.k(), context_block.v());
         
@@ -331,10 +355,18 @@ public class MMJiTBlock extends Layer {
          */
     	ropeKernel.rope_2d_back_rotate_half(cos2d, sin2d, x_rq, x_qt, imgTime, headNum, dk);
         ropeKernel.rope_2d_back_rotate_half(cos2d, sin2d, x_rk,  x_kt, imgTime, headNum, dk);
+        Tensor xqt = x_kt;
+        Tensor xkt = cond_kt;
+        if(qkNorm) {
+        	x_block.qNorm.back(xqt);
+        	x_block.kNorm.back(xkt);
+          	xqt = x_block.qNorm.diff;
+          	xkt = x_block.kNorm.diff;
+        }
     	int[] x_shape = new int[] {batchSize, imgTime, headNum, dk};
     	int[] x_t_shape = new int[] {batchSize, headNum, imgTime, dk};
-    	Tensor_OP().permute(x_qt, x_block.q(), x_t_shape, x_shape, new int[]{0, 2, 1, 3});
-    	Tensor_OP().permute(x_kt, x_block.k(), x_t_shape, x_shape, new int[]{0, 2, 1, 3});
+    	Tensor_OP().permute(xqt, x_block.q(), x_t_shape, x_shape, new int[]{0, 2, 1, 3});
+    	Tensor_OP().permute(xkt, x_block.k(), x_t_shape, x_shape, new int[]{0, 2, 1, 3});
     	Tensor_OP().permute(x_vt, x_block.v(), x_t_shape, x_shape, new int[]{0, 2, 1, 3});
     	x_block.pre_attention_back(x_diff, x_block.q(), x_block.k(), x_block.v());
         

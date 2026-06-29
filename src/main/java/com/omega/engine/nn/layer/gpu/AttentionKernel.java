@@ -1,5 +1,7 @@
 package com.omega.engine.nn.layer.gpu;
 
+import static jcuda.driver.JCudaDriver.cuLaunchKernel;
+
 import com.omega.common.utils.MatrixUtils;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.gpu.CUDAManager;
@@ -12,8 +14,6 @@ import jcuda.Sizeof;
 import jcuda.driver.CUfunction;
 import jcuda.runtime.JCuda;
 import jcuda.runtime.cudaError;
-
-import static jcuda.driver.JCudaDriver.cuLaunchKernel;
 
 public class AttentionKernel extends BaseKernel {
 	
@@ -33,10 +33,7 @@ public class AttentionKernel extends BaseKernel {
     private CUfunction add_mask_function;
     private int CAFFE_CUDA_NUM_THREADS = 1024;
     private int BLOCK = 512;
-    private Pointer permuteKernelParameters;
-    private Pointer unpermuteKernelBackParameters;
-    private Pointer permute_backwardKernelParameters;
-    private Pointer unpermute_backwardKernelBackParameters;
+
     private Pointer softmaxForwardParameters;
     private Pointer softmaxBackwardParameters;
     private Pointer scaleParameters;

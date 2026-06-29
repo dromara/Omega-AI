@@ -17,6 +17,20 @@ __global__ void token_drop(const size_t size, const float *x, float *param, floa
 }
 
 extern "C"
+__global__ void token_drop_back(const size_t size, const float *delta, float *dparam, float *mask, const int len, float prob)
+{
+
+    for (size_t pos = blockIdx.x * blockDim.x + threadIdx.x; pos < (size); pos += blockDim.x * gridDim.x) {
+    	int b = pos / len;
+    	int w = pos % len;
+    	if(mask[b] < prob){
+			dparam[w] += delta[pos];
+		}
+  	}
+
+}
+
+extern "C"
 __global__ void token_drop_class(const size_t size, const float *x, float param, float *mask, float *out, const int len, float prob)
 {
 

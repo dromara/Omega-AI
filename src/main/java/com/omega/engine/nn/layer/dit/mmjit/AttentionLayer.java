@@ -274,13 +274,9 @@ public class AttentionLayer extends Layer {
         Tensor query = this.getqLinerLayer().getOutput().view(batchSize, time, headNum, dk);
         Tensor key = this.getkLinerLayer().getOutput().view(batchSize, time, headNum, dk);
         Tensor value = this.getvLinerLayer().getOutput().view(batchSize, time, headNum, dk);
-        
-        Tensor_OP().permute(query, qt, p_0213);
-        Tensor_OP().permute(key, kt, p_0213);
-        Tensor_OP().permute(value, vt, p_0213);
 
-        Tensor q = qt;
-        Tensor k = kt;
+        Tensor q = query;
+        Tensor k = key;
         if(qkNorm) {
         	qNorm.forward(q);
         	kNorm.forward(k);
@@ -288,12 +284,16 @@ public class AttentionLayer extends Layer {
         	k = kNorm.getOutput();
         }
         
+        Tensor_OP().permute(q, qt, p_0213);
+        Tensor_OP().permute(k, kt, p_0213);
+        Tensor_OP().permute(value, vt, p_0213);
+
         /**
          * apply RoPE
          * qt = [B, HN, T, HS]
          */
-        ropeKernel.rope_2d_rotate_half(cos, sin, q, rq, time, headNum, dk);
-        ropeKernel.rope_2d_rotate_half(cos, sin, k, rk, time, headNum, dk);
+        ropeKernel.rope_2d_rotate_half(cos, sin, qt, rq, time, headNum, dk);
+        ropeKernel.rope_2d_rotate_half(cos, sin, kt, rk, time, headNum, dk);
 
         scaledDotProductAttention(rq, rk, vt);
         
@@ -309,11 +309,19 @@ public class AttentionLayer extends Layer {
         // TODO Auto-generated method stub
         this.getqLinerLayer().forward(input, temp_out);
         Tensor query = temp_out.view(batchSize, time, headNum, dk);
+        if(qkNorm) {
+        	qNorm.forward(query);
+        	query = qNorm.getOutput();
+        }
         Tensor_OP().permute(query, qt, p_0213);
         
         temp_out.viewOrg();
         this.getkLinerLayer().forward(input, temp_out);
         Tensor key = temp_out.view(batchSize, time, headNum, dk);
+        if(qkNorm) {
+        	kNorm.forward(key);
+        	key = kNorm.getOutput();
+        }
         Tensor_OP().permute(key, kt, p_0213);
         
         temp_out.viewOrg();
@@ -322,17 +330,8 @@ public class AttentionLayer extends Layer {
         Tensor_OP().permute(value, vt, p_0213);
         temp_out.viewOrg();
 
-        Tensor q = qt;
-        Tensor k = kt;
-        if(qkNorm) {
-        	qNorm.forward(q);
-        	kNorm.forward(k);
-        	q = qNorm.getOutput();
-        	k = kNorm.getOutput();
-        }
-
-        ropeKernel.rope_2d_rotate_half(cos, sin, q, rq, time, headNum, dk);
-        ropeKernel.rope_2d_rotate_half(cos, sin, k, rk, time, headNum, dk);
+        ropeKernel.rope_2d_rotate_half(cos, sin, qt, rq, time, headNum, dk);
+        ropeKernel.rope_2d_rotate_half(cos, sin, kt, rk, time, headNum, dk);
         
         scaledDotProductAttention(rq, rk, vt);
         Tensor vaccum = temp;
@@ -420,23 +419,21 @@ public class AttentionLayer extends Layer {
      	 ropeKernel.rope_2d_back_rotate_half(cos, sin, dqt, rq, time, headNum, dk);
          ropeKernel.rope_2d_back_rotate_half(cos, sin, dkt, rk, time, headNum, dk);
 
-         Tensor dqt_d = rq;
-         Tensor dkt_d = rk;
-        
-         if(qkNorm) {
-          	qNorm.back(dqt_d);
-          	kNorm.back(dkt_d);
-          	dqt_d = qNorm.diff;
-          	dkt_d = kNorm.diff;
-         }
-         
-      	 Tensor_OP().permute(dqt_d, qt, p_0213);
-         Tensor_OP().permute(dkt_d, kt, p_0213);
+      	 Tensor_OP().permute(rq, qt, p_0213);
+         Tensor_OP().permute(rk, kt, p_0213);
          Tensor_OP().permute(dvt, vt, p_0213);
 
          Tensor queryDelta = qt.view(this.getqLinerLayer().getOutput().getOrgShape());
          Tensor keyDelta = kt.view(this.getkLinerLayer().getOutput().getOrgShape());
          Tensor valueDelta = vt.view(this.getvLinerLayer().getOutput().getOrgShape());
+         
+         if(qkNorm) {
+           	qNorm.back(queryDelta);
+           	kNorm.back(keyDelta);
+           	queryDelta = qNorm.diff;
+           	keyDelta = kNorm.diff;
+         }
+
          this.getqLinerLayer().getOutput().viewOrg();
          this.getkLinerLayer().getOutput().viewOrg();
          this.getvLinerLayer().getOutput().viewOrg();
@@ -464,17 +461,14 @@ public class AttentionLayer extends Layer {
         // TODO Auto-generated method stub
         /**
          * 参数初始化
-
          */
         this.init(input);
         /**
          * 设置输入
-
          */
         this.setInput(input);
         /**
          * 计算输出
-
          */
         this.output();
     }
@@ -517,12 +511,10 @@ public class AttentionLayer extends Layer {
         this.initBack();
         /**
          * 设置梯度
-
          */
         this.setDelta(delta);
         /**
          * 计算梯度
-
          */
         this.diff();
         if (this.network.GRADIENT_CHECK) {

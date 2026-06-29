@@ -3,7 +3,6 @@ package com.omega.engine.nn.layer.dit.mmjit;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
-import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.GPUOP;
 import com.omega.engine.nn.layer.FullyLayer;
@@ -25,21 +24,21 @@ public class JiTCaptionEmbeddingLayer extends Layer {
 	private int token_num = 77;
 	
     public FullyLayer linear1;
-
+    
     private boolean bias = true;
     private int inChannel;
     private int outChannel;
     private float uncond_prob = 0.0f;
     
     private TokenDropKernel kernel;
-    
-    private Tensor y_embedding;
+
     private Tensor mask;
     
 
     public JiTCaptionEmbeddingLayer(int inChannel, int outChannel, int token_num, boolean bias, Network network) {
         this.network = network;
         this.bias = bias;
+        this.hasBias = false;
         this.token_num = token_num;
         this.inChannel = inChannel;
         this.outChannel = outChannel;
@@ -53,6 +52,7 @@ public class JiTCaptionEmbeddingLayer extends Layer {
     public JiTCaptionEmbeddingLayer(int inChannel, int outChannel, int token_num, float uncond_prob, boolean bias, Network network) {
         this.network = network;
         this.bias = bias;
+        this.hasBias = false;
         this.token_num = token_num;
         this.uncond_prob = uncond_prob;
         this.inChannel = inChannel;
@@ -92,15 +92,17 @@ public class JiTCaptionEmbeddingLayer extends Layer {
         	mask = Tensor.createGPUTensor(mask, batchSize, 1, 1, 1, true);
         }
         if(network.RUN_MODEL == RunModel.TRAIN && uncond_prob > 0 && getY_embedding() == null) {
-        	float[] data = RandomUtils.gaussianRandom(token_num * inChannel, 0.0f, 1.0f);
-        	data = MatrixOperation.division(data, (float) Math.pow(inChannel, 0.5));
-        	y_embedding = new Tensor(1, 1, token_num, inChannel, data, true);
+        	float[] data = RandomUtils.gaussianRandom(inChannel, 0.0f, 0.02f);
+        	weight = new Tensor(1, 1, 1, inChannel, data, true);
         }
     }
 
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
+    	if(uncond_prob > 0 && diffW == null) {
+    		diffW = new Tensor(1, 1, 1, inChannel, true);
+    	}
     }
 
     @Override
@@ -114,7 +116,7 @@ public class JiTCaptionEmbeddingLayer extends Layer {
     	
     	if(network.RUN_MODEL == RunModel.TRAIN && uncond_prob > 0) {
     		GPUOP.getInstance().cudaRandom(this.mask);//0-1
-    		kernel.tokenDrop(input, y_embedding, mask, input, y_embedding.dataLength, uncond_prob);
+    		kernel.tokenDrop(input, weight, mask, input, weight.dataLength, uncond_prob);
     	}
     	
         linear1.forward(input);
@@ -131,6 +133,9 @@ public class JiTCaptionEmbeddingLayer extends Layer {
     public void diff() {
         // TODO Auto-generated method stub
         linear1.back(delta);
+        if(network.RUN_MODEL == RunModel.TRAIN && uncond_prob > 0) {
+        	kernel.tokenDropBack(linear1.diff, diffW, mask, diffW.dataLength, uncond_prob);
+        }
     }
 
     @Override
@@ -211,6 +216,19 @@ public class JiTCaptionEmbeddingLayer extends Layer {
     public void update() {
         // TODO Auto-generated method stub
         linear1.update();
+        if (!this.freeze) {
+            if (accDW != null) {
+                this.accDW.copy(diffW);
+            }
+            if (this.updater != null) {
+                this.updater.update(this);
+            } else {
+                for (int i = 0; i < this.weight.getDataLength(); i++) {
+                    this.weight.data[i] -= this.learnRate * this.diffW.data[i];
+                }
+            }
+            this.clearAccGrad();
+        }
     }
 
     @Override
@@ -245,7 +263,7 @@ public class JiTCaptionEmbeddingLayer extends Layer {
     public void loadModel(RandomAccessFile inputStream) throws IOException {
         linear1.loadModel(inputStream);
         if(uncond_prob > 0) {
-        	y_embedding = new Tensor(1, 1, token_num, inChannel, true);
+        	weight = new Tensor(1, 1, 1, inChannel, true);
         	ModelUtils.loadParams(inputStream, getY_embedding());
         }
     }
@@ -257,18 +275,18 @@ public class JiTCaptionEmbeddingLayer extends Layer {
     }
 
 	public Tensor getY_embedding() {
-		return y_embedding;
+		return weight;
 	}
 	
 	public void setY_embedding(Tensor y_embedding) {
-		this.y_embedding = y_embedding;
+		this.weight = y_embedding;
 	}
 	
 	public Tensor init_y_embedding() {
-		if(y_embedding == null) {
-			y_embedding = new Tensor(1, 1, token_num, inChannel, true);
+		if(weight == null) {
+			weight = new Tensor(1, 1, 1, inChannel, true);
 		}
-		return y_embedding;
+		return weight;
 	}
 }
 

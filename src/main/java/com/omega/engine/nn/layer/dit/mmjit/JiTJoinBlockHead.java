@@ -45,10 +45,8 @@ public class JiTJoinBlockHead extends Layer {
     
     private boolean qkNorm = false;
     private boolean normParams = true;
-    private boolean pre_only = false;
-    
-    public JiTJoinBlockHead(int embedDim, int time, boolean bias, boolean qkNorm, boolean pre_only, boolean normParams, Network network) {
-    	this.pre_only = pre_only;
+
+    public JiTJoinBlockHead(int embedDim, int time, boolean bias, boolean qkNorm, boolean normParams, Network network) {
         this.bias = bias;
         this.network = network;
         if (this.updater == null) {
@@ -94,19 +92,15 @@ public class JiTJoinBlockHead extends Layer {
         	this.vLinerLayer.bias.clearGPU();
         }
         
-        if(!pre_only) {
-        	this.norm2 = new RMSLayer(1, 1, embedDim, normParams, BNType.fully_bn, network);
-	        this.setoLinerLayer(new FullyLayer(embedDim, embedDim, true, this.network));
-	        RandomUtils.xavier_uniform(this.oLinerLayer.weight, 1, embedDim, embedDim);
-	        if(this.oLinerLayer.bias != null) {
-	        	this.oLinerLayer.bias.clearGPU();
-	        }
+        this.norm2 = new RMSLayer(1, 1, embedDim, normParams, BNType.fully_bn, network);
+        this.setoLinerLayer(new FullyLayer(embedDim, embedDim, true, this.network));
+        RandomUtils.xavier_uniform(this.oLinerLayer.weight, 1, embedDim, embedDim);
+        if(this.oLinerLayer.bias != null) {
+        	this.oLinerLayer.bias.clearGPU();
         }
         
-        if(!pre_only) {
-            int swiNum = (int) (2.6667 * embedDim);
-            this.mlp = new DiTSwiGLUFFN(embedDim, swiNum, embedDim, false, network);
-        }
+        int swiNum = (int) (2.6667 * embedDim);
+        this.mlp = new DiTSwiGLUFFN(embedDim, swiNum, embedDim, false, network);
     }
 
     @Override
@@ -125,17 +119,13 @@ public class JiTJoinBlockHead extends Layer {
 
         if (this.output == null || this.output.number != this.batchSize) {
             // [batch_size, len_q, n_heads * dim_v]
-        	if(!pre_only) {
-        		this.output = Tensor.createGPUTensor(this.output, input.number, input.channel, input.height, input.width, true);
-        	}
+        	this.output = Tensor.createGPUTensor(this.output, input.number, input.channel, input.height, input.width, true);
         }
         if (this.getqLinerLayer().getOutput() != null) {
             this.getqLinerLayer().getOutput().viewOrg();
             this.getkLinerLayer().getOutput().viewOrg();
             this.getvLinerLayer().getOutput().viewOrg();
-            if(!pre_only) {
-            	this.getoLinerLayer().getOutput().viewOrg();
-            }
+            this.getoLinerLayer().getOutput().viewOrg();
         }
     }
 
@@ -306,11 +296,9 @@ public class JiTJoinBlockHead extends Layer {
         this.kLinerLayer.update();
         this.vLinerLayer.update();
         
-        if(!pre_only) {
-        	this.norm2.update();
-	        this.oLinerLayer.update();
-	        mlp.update();
-        }
+        this.norm2.update();
+        this.oLinerLayer.update();
+        mlp.update();
         
     }
 
@@ -354,11 +342,9 @@ public class JiTJoinBlockHead extends Layer {
         getqLinerLayer().saveModel(outputStream);
         getkLinerLayer().saveModel(outputStream);
         getvLinerLayer().saveModel(outputStream);
-        if(!pre_only) {
-        	this.norm2.saveModel(outputStream);
-	        this.oLinerLayer.saveModel(outputStream);
-	        mlp.saveModel(outputStream);
-        }
+        this.norm2.saveModel(outputStream);
+        this.oLinerLayer.saveModel(outputStream);
+        mlp.saveModel(outputStream);
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
@@ -371,11 +357,9 @@ public class JiTJoinBlockHead extends Layer {
         getqLinerLayer().loadModel(inputStream);
         getkLinerLayer().loadModel(inputStream);
         getvLinerLayer().loadModel(inputStream);
-        if(!pre_only) {
-        	this.norm2.loadModel(inputStream, 1, 1, width, BNType.fully_bn);
-	        this.oLinerLayer.loadModel(inputStream);
-	        mlp.loadModel(inputStream);
-        }
+        this.norm2.loadModel(inputStream, 1, 1, width, BNType.fully_bn);
+        this.oLinerLayer.loadModel(inputStream);
+        mlp.loadModel(inputStream);
     }
 
     public FullyLayer getqLinerLayer() {
