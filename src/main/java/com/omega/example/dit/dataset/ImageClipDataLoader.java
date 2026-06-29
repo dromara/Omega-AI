@@ -251,10 +251,8 @@ public class ImageClipDataLoader extends BaseDataLoader {
     public void loadLabels(int[] indexs, Tensor label) {
         for (int i = 0; i < indexs.length; i++) {
             int idx = indexs[i];
-            float[] data = loadLabelData(idx);
-            for (int j = 0; j < maxContextLen; j++) {
-            	label.data[i * maxContextLen + j] = data[j];
-            }
+            float[] clipToken = loadLabelData(idx);
+            System.arraycopy(clipToken, 0, label.data, i * clipToken.length, clipToken.length);
         }
     }
     

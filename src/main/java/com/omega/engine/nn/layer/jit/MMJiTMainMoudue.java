@@ -143,11 +143,9 @@ public class MMJiTMainMoudue extends Layer {
             for (int col = 0; col < grid; col++) {
                 int idx = row * grid + col;
                 int base = idx * embedDim;
-
                 for (int d = 0; d < quarter; d++) {
                     float outX = col * omega[d];
                     float outY = row * omega[d];
-
                     result[base + d] = (float) Math.sin(outX);
                     result[base + quarter + d] = (float) Math.cos(outX);
                     result[base + 2 * quarter + d] = (float) Math.sin(outY);
