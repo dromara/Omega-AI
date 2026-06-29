@@ -24,7 +24,37 @@ __global__ void token_drop_back(const size_t size, const float *delta, float *dp
     	int b = pos / len;
     	int w = pos % len;
     	if(mask[b] < prob){
-			dparam[w] += delta[pos];
+			atomicAdd(&dparam[w], delta[pos]);
+		}
+  	}
+
+}
+
+extern "C"
+__global__ void token_drop_cw(const size_t size, const float *x, float *param, float *mask, float *out, const int C, const int W, float prob)
+{
+
+    for (size_t pos = blockIdx.x * blockDim.x + threadIdx.x; pos < (size); pos += blockDim.x * gridDim.x) {
+    	int b = pos / C / W;
+    	int w = pos % W;
+    	if(mask[b] < prob){
+			out[pos] = param[w];
+		}else{
+			out[pos] = x[pos];
+		}
+  	}
+
+}
+
+extern "C"
+__global__ void token_drop_cw_back(const size_t size, const float *delta, float *dparam, float *mask, const int C, const int W, float prob)
+{
+
+    for (size_t pos = blockIdx.x * blockDim.x + threadIdx.x; pos < (size); pos += blockDim.x * gridDim.x) {
+    	int b = pos / C / W;
+    	int w = pos % W;
+    	if(mask[b] < prob){
+			atomicAdd(&dparam[w], delta[pos]);
 		}
   	}
 

@@ -26,6 +26,9 @@ public class TokenDropKernel extends CUDAKernel {
     
     private CUfunction function_back;
     
+    private CUfunction function_cw;
+    private CUfunction function_cw_back;
+    
     private CUfunction rnd_int_function;
     
     private int CAFFE_CUDA_NUM_THREADS = 1024;
@@ -43,6 +46,12 @@ public class TokenDropKernel extends CUDAKernel {
             }
             if (function_back == null) {
             	function_back = getCudaManager().getLocalFunctionByModule("TokenDropKernel.cu", "token_drop_back");
+            }
+            if (function_cw == null) {
+            	function_cw = getCudaManager().getLocalFunctionByModule("TokenDropKernel.cu", "token_drop_cw");
+            }
+            if (function_cw_back == null) {
+            	function_cw_back = getCudaManager().getLocalFunctionByModule("TokenDropKernel.cu", "token_drop_cw_back");
             }
             if (function2 == null) {
             	function2 = getCudaManager().getLocalFunctionByModule("TokenDropKernel.cu", "token_drop_class");
@@ -126,6 +135,25 @@ public class TokenDropKernel extends CUDAKernel {
         }
     }
     
+    public void tokenDrop(Tensor x, Tensor param, Tensor mask, Tensor output, int C, int W, float prob) {
+        try {
+      
+            /**
+             * 设置入参
+             * const size_t size, const float *x, float *param, float *mask, float *out, const int len, float prob
+             */
+            kernelParameters = Pointer.to(Pointer.to(new long[]{x.dataLength}), Pointer.to(x.getGpuData()), Pointer.to(param.getGpuData()), Pointer.to(mask.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{C}), Pointer.to(new int[]{W}), Pointer.to(new float[]{prob}));
+            cuLaunchKernel(function_cw, this.CAFFE_GET_BLOCKS(x.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameters, null // Kernel- and extra parameters
+            );
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
     public void tokenDropBack(Tensor delta, Tensor dparam, Tensor mask, int W, float prob) {
         try {
         	dparam.clearGPU();
@@ -135,6 +163,25 @@ public class TokenDropKernel extends CUDAKernel {
              */
             kernelParameters = Pointer.to(Pointer.to(new long[]{delta.dataLength}), Pointer.to(delta.getGpuData()), Pointer.to(dparam.getGpuData()), Pointer.to(mask.getGpuData()), Pointer.to(new int[]{W}), Pointer.to(new float[]{prob}));
             cuLaunchKernel(function_back, this.CAFFE_GET_BLOCKS(delta.dataLength), 1, 1,      // Grid dimension
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
+                    0, null,               // Shared memory size and stream
+                    kernelParameters, null // Kernel- and extra parameters
+            );
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void tokenDropBack(Tensor delta, Tensor dparam, Tensor mask, int C, int W, float prob) {
+        try {
+        	dparam.clearGPU();
+            /**
+             * 设置入参
+             * const size_t size, const float *x, float *param, float *mask, float *out, const int len, float prob
+             */
+            kernelParameters = Pointer.to(Pointer.to(new long[]{delta.dataLength}), Pointer.to(delta.getGpuData()), Pointer.to(dparam.getGpuData()), Pointer.to(mask.getGpuData()), Pointer.to(new int[]{C}), Pointer.to(new int[]{W}), Pointer.to(new float[]{prob}));
+            cuLaunchKernel(function_cw_back, this.CAFFE_GET_BLOCKS(delta.dataLength), 1, 1,      // Grid dimension
                     CAFFE_CUDA_NUM_THREADS, 1, 1,      // Block dimension
                     0, null,               // Shared memory size and stream
                     kernelParameters, null // Kernel- and extra parameters

@@ -67,7 +67,6 @@ public class JiTCaptionEmbeddingLayer extends Layer {
     public void initLayers() {
 
         linear1 = new FullyLayer(inChannel, outChannel, bias, network);
-        linear1.PROPAGATE_DOWN = false;
 
         linear1.weight.setData(RandomUtils.normal_(inChannel * outChannel, 0.0f, 0.02f));
         if(linear1.bias != null) {
@@ -116,7 +115,7 @@ public class JiTCaptionEmbeddingLayer extends Layer {
     	
     	if(network.RUN_MODEL == RunModel.TRAIN && uncond_prob > 0) {
     		GPUOP.getInstance().cudaRandom(this.mask);//0-1
-    		kernel.tokenDrop(input, weight, mask, input, weight.dataLength, uncond_prob);
+    		kernel.tokenDrop(input, weight, mask, input, token_num, weight.dataLength, uncond_prob);
     	}
     	
         linear1.forward(input);
@@ -134,7 +133,7 @@ public class JiTCaptionEmbeddingLayer extends Layer {
         // TODO Auto-generated method stub
         linear1.back(delta);
         if(network.RUN_MODEL == RunModel.TRAIN && uncond_prob > 0) {
-        	kernel.tokenDropBack(linear1.diff, diffW, mask, diffW.dataLength, uncond_prob);
+        	kernel.tokenDropBack(linear1.diff, diffW, mask, token_num, diffW.dataLength, uncond_prob);
         }
     }
 
@@ -264,7 +263,7 @@ public class JiTCaptionEmbeddingLayer extends Layer {
         linear1.loadModel(inputStream);
         if(uncond_prob > 0) {
         	weight = new Tensor(1, 1, 1, inChannel, true);
-        	ModelUtils.loadParams(inputStream, getY_embedding());
+        	ModelUtils.loadParams(inputStream, weight);
         }
     }
 

@@ -857,7 +857,7 @@ public class OmegaDiTTest {
             Tensor y_null = network.main.labelEmbd.getY_embedding();
             int part_input_size = y_null.dataLength;
             for(int b = 0;b<batchSize;b++) {
-            	network.tensorOP.op.copy_gpu(y_null, condInput_ynull, part_input_size, 0, 1, 0, 1);
+            	network.tensorOP.op.copy_gpu(y_null, condInput_ynull, part_input_size, 0, 1, b * part_input_size, 1);
             }
         }
         
@@ -1280,7 +1280,7 @@ public class OmegaDiTTest {
             Tensor y_null = network.main.labelEmbd.getY_embedding();
             int part_input_size = y_null.dataLength;
             for(int b = 0;b<batchSize;b++) {
-            	network.tensorOP.op.copy_gpu(y_null, condInput_ynull, part_input_size, 0, 1, 0, 1);
+            	network.tensorOP.op.copy_gpu(y_null, condInput_ynull, part_input_size, 0, 1, b * part_input_size, 1);
             }
         }
         
@@ -1467,7 +1467,7 @@ public class OmegaDiTTest {
                 Tensor y_null = network.main.labelEmbd.getY_embedding();
                 int part_input_size = y_null.dataLength;
                 for(int b = 0;b<batchSize;b++) {
-                	network.tensorOP.op.copy_gpu(y_null, condInput_ynull, part_input_size, 0, 1, 0, 1);
+                	network.tensorOP.op.copy_gpu(y_null, condInput_ynull, part_input_size, 0, 1, b * part_input_size, 1);
                 }
             }
 

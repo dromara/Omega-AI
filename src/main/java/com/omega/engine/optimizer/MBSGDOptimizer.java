@@ -16220,7 +16220,7 @@ public class MBSGDOptimizer extends Optimizer {
     public void jax_warmup_constant_lr(int step, int warmup_steps, float base_lr) {
     	if(step < warmup_steps) {
     		float start_lr = 1e-6f;
-    		float alpha = (float) ((step + 1) / Math.max(warmup_steps, 1));
+    		float alpha = (step + 1) * 1.0f / Math.max(warmup_steps, 1);
     		network.learnRate = start_lr + alpha * (base_lr - start_lr);
     		return;
     	}

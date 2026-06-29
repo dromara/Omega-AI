@@ -13,12 +13,13 @@ import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.gpu.AttentionKernel;
 import com.omega.engine.nn.layer.gpu.RoPEKernel;
+import com.omega.engine.nn.layer.normalization.BNType;
+import com.omega.engine.nn.layer.normalization.RMSLayer;
 import com.omega.engine.nn.network.CNN;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 import com.omega.example.common.ModeLoaderlUtils;
-import com.omega.example.transformer.utils.LagJsonReader;
 
 /**
  * DiTAttentionLayer2
@@ -108,6 +109,14 @@ public class MMJiTBlock extends Layer {
     	
     	context_block = new JiTJoinBlockHead(embedDim, textTime, bias, qkNorm, normParams, network);
     	
+
+    	if(qkNorm) {
+    		x_block.qNorm = new RMSLayer(1, 1, dk, normParams, BNType.fully_bn, network);
+    		x_block.kNorm = new RMSLayer(1, 1, dk, normParams, BNType.fully_bn, network);
+    		context_block.qNorm = new RMSLayer(1, 1, dk, normParams, BNType.fully_bn, network);
+    		context_block.kNorm = new RMSLayer(1, 1, dk, normParams, BNType.fully_bn, network);
+	    }
+
         if (attentionKernel == null) {
             attentionKernel = new AttentionKernel(cuda());
         }
@@ -333,18 +342,24 @@ public class MMJiTBlock extends Layer {
         /**
          * RoPE backward
          */
-    	ropeKernel.rope_2d_back_rotate_half(cos1d, sin1d, cond_rq, cond_qt, textTime, headNum, dk);
-        ropeKernel.rope_2d_back_rotate_half(cos1d, sin1d,cond_rk,  cond_kt, textTime, headNum, dk);
-        Tensor cqt = cond_qt;
-        Tensor ckt = cond_kt;
+    	int[] cond_shape = new int[] {batchSize, textTime, headNum, dk};
+    	int[] cond_t_shape = new int[] {batchSize, headNum, textTime, dk};
+    	Tensor cqt = cond_qt;
+    	Tensor ckt = cond_kt;
+    	if(qkNorm) {
+        	Tensor_OP().permute(context_block.q(), cond_qt, cond_shape, cond_t_shape, new int[]{0, 2, 1, 3});
+        	Tensor_OP().permute(context_block.k(), cond_kt, cond_shape, cond_t_shape, new int[]{0, 2, 1, 3});
+    		cqt = context_block.qNorm.getOutput();
+    		ckt = context_block.kNorm.getOutput();
+    	}
+    	ropeKernel.rope_2d_back_rotate_half(cos1d, sin1d, cond_rq, cqt, textTime, headNum, dk);
+        ropeKernel.rope_2d_back_rotate_half(cos1d, sin1d, cond_rk, ckt, textTime, headNum, dk);
         if(qkNorm) {
         	context_block.qNorm.back(cqt);
           	context_block.kNorm.back(ckt);
           	cqt = context_block.qNorm.diff;
           	ckt = context_block.kNorm.diff;
         }
-        int[] cond_shape = new int[] {batchSize, textTime, headNum, dk};
-    	int[] cond_t_shape = new int[] {batchSize, headNum, textTime, dk};
     	Tensor_OP().permute(cqt, context_block.q(), cond_t_shape, cond_shape, new int[]{0, 2, 1, 3});
     	Tensor_OP().permute(ckt, context_block.k(), cond_t_shape, cond_shape, new int[]{0, 2, 1, 3});
     	Tensor_OP().permute(cond_vt, context_block.v(), cond_t_shape, cond_shape, new int[]{0, 2, 1, 3});
@@ -353,18 +368,24 @@ public class MMJiTBlock extends Layer {
         /**
          * RoPE backward
          */
-    	ropeKernel.rope_2d_back_rotate_half(cos2d, sin2d, x_rq, x_qt, imgTime, headNum, dk);
-        ropeKernel.rope_2d_back_rotate_half(cos2d, sin2d, x_rk,  x_kt, imgTime, headNum, dk);
-        Tensor xqt = x_kt;
-        Tensor xkt = cond_kt;
+    	int[] x_shape = new int[] {batchSize, imgTime, headNum, dk};
+    	int[] x_t_shape = new int[] {batchSize, headNum, imgTime, dk};
+        Tensor xqt = x_qt;
+    	Tensor xkt = x_kt;
+    	if(qkNorm) {
+    		Tensor_OP().permute(x_block.q(), x_qt, x_shape, x_t_shape, new int[]{0, 2, 1, 3});
+        	Tensor_OP().permute(x_block.k(), x_kt, x_shape, x_t_shape, new int[]{0, 2, 1, 3});
+    		xqt = x_block.qNorm.getOutput();
+    		xkt = x_block.kNorm.getOutput();
+    	}
+    	ropeKernel.rope_2d_back_rotate_half(cos2d, sin2d, x_rq, xqt, imgTime, headNum, dk);
+        ropeKernel.rope_2d_back_rotate_half(cos2d, sin2d, x_rk, xkt, imgTime, headNum, dk);
         if(qkNorm) {
         	x_block.qNorm.back(xqt);
         	x_block.kNorm.back(xkt);
           	xqt = x_block.qNorm.diff;
           	xkt = x_block.kNorm.diff;
         }
-    	int[] x_shape = new int[] {batchSize, imgTime, headNum, dk};
-    	int[] x_t_shape = new int[] {batchSize, headNum, imgTime, dk};
     	Tensor_OP().permute(xqt, x_block.q(), x_t_shape, x_shape, new int[]{0, 2, 1, 3});
     	Tensor_OP().permute(xkt, x_block.k(), x_t_shape, x_shape, new int[]{0, 2, 1, 3});
     	Tensor_OP().permute(x_vt, x_block.v(), x_t_shape, x_shape, new int[]{0, 2, 1, 3});
@@ -452,7 +473,15 @@ public class MMJiTBlock extends Layer {
     @Override
     public void update() {
         // TODO Auto-generated method stub
+    	if(qkNorm) {
+    		x_block.qNorm.update();
+    		x_block.kNorm.update();
+        }
     	x_block.update();
+    	if(qkNorm) {
+    		context_block.qNorm.update();
+    		context_block.kNorm.update();
+        }
     	context_block.update();
     }
 
@@ -484,12 +513,29 @@ public class MMJiTBlock extends Layer {
     }
 
     public void saveModel(RandomAccessFile outputStream) throws IOException {
+       	if(qkNorm) {
+    		x_block.qNorm.saveModel(outputStream);
+    		x_block.kNorm.saveModel(outputStream);
+    	}
     	x_block.saveModel(outputStream);
+       	if(qkNorm) {
+       		context_block.qNorm.saveModel(outputStream);
+       		context_block.kNorm.saveModel(outputStream);
+    	}
     	context_block.saveModel(outputStream);
+ 
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
+    	if(qkNorm) {
+    		x_block.qNorm.loadModel(inputStream, 1, 1, dk, BNType.fully_bn);
+    		x_block.kNorm.loadModel(inputStream, 1, 1, dk, BNType.fully_bn);
+    	}
     	x_block.loadModel(inputStream);
+       	if(qkNorm) {
+       		context_block.qNorm.loadModel(inputStream, 1, 1, dk, BNType.fully_bn);
+       		context_block.kNorm.loadModel(inputStream, 1, 1, dk, BNType.fully_bn);
+    	}
     	context_block.loadModel(inputStream);
     }
 
@@ -553,18 +599,18 @@ public class MMJiTBlock extends Layer {
     	
         MMJiTBlock jb = new MMJiTBlock(DM, hn, N, TT, true, false, true, nn);
     	
-        String weight = "D:\\models\\mmjit.json";
-        loadWeight(LagJsonReader.readJsonFileSmallWeight(weight), jb, true);
+//        String weight = "D:\\models\\mmjit.json";
+//        loadWeight(LagJsonReader.readJsonFileSmallWeight(weight), jb, true);
     	
-	    String inputPath = "D:\\models\\mmjit_x.json";
-	    Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
+//	    String inputPath = "D:\\models\\mmjit_x.json";
+//	    Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
 	    Tensor input = new Tensor(B, N, 1, DM, true);
-        ModeLoaderlUtils.loadData(input, datas, "x", 3);
+//        ModeLoaderlUtils.loadData(input, datas, "x", 3);
     	
-	    String cyPath = "D:\\models\\mmjit_txt.json";
-	    Map<String, Object> cydatas = LagJsonReader.readJsonFileSmallWeight(cyPath);
+//	    String cyPath = "D:\\models\\mmjit_txt.json";
+//	    Map<String, Object> cydatas = LagJsonReader.readJsonFileSmallWeight(cyPath);
 	    Tensor txt = new Tensor(B, TT, 1, DM, true);
-	    ModeLoaderlUtils.loadData(txt, cydatas, "txt", 3);
+//	    ModeLoaderlUtils.loadData(txt, cydatas, "txt", 3);
 
         input.view(B * N, 1, 1, DM);
         txt.view(B * TT, 1, 1, DM);
@@ -586,10 +632,10 @@ public class MMJiTBlock extends Layer {
 //        cos2d.showDMByOffset(100 * 64, 64, "cos2d");
 //        sin2d.showDMByOffset(100 * 64, 64, "sin2d");
         
-	    String dinputPath = "D:\\models\\mmjit_delta.json";
-	    Map<String, Object> d_datas = LagJsonReader.readJsonFileSmallWeight(dinputPath);
+//	    String dinputPath = "D:\\models\\mmjit_delta.json";
+//	    Map<String, Object> d_datas = LagJsonReader.readJsonFileSmallWeight(dinputPath);
 	    Tensor delta = new Tensor(B, TT+N, 1, DM, true);
-	    ModeLoaderlUtils.loadData(delta, d_datas, "delta", 3);
+//	    ModeLoaderlUtils.loadData(delta, d_datas, "delta", 3);
         
 	    Tensor img_delta = new Tensor(B, N, 1, DM, true);
 	    Tensor txt_delta = new Tensor(B, TT, 1, DM, true);

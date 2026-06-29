@@ -67,11 +67,6 @@ public class JiTJoinBlockHead extends Layer {
     }
     public void initLayers() {
 
-    	if(qkNorm) {
-	    	qNorm = new RMSLayer(1, 1, embedDim, normParams, BNType.fully_bn, network);
-	    	kNorm = new RMSLayer(1, 1, embedDim, normParams, BNType.fully_bn, network);
-	    }
-    	
     	this.norm1 = new RMSLayer(1, 1, embedDim, normParams, BNType.fully_bn, network);
 
         this.setqLinerLayer(new FullyLayer(embedDim, embedDim, bias, this.network));
@@ -285,10 +280,6 @@ public class JiTJoinBlockHead extends Layer {
     @Override
     public void update() {
         // TODO Auto-generated method stub
-    	if(qkNorm) {
-        	qNorm.update();
-        	kNorm.update();
-        }
     	
     	this.norm1.update();
     	
@@ -333,10 +324,7 @@ public class JiTJoinBlockHead extends Layer {
     }
 
     public void saveModel(RandomAccessFile outputStream) throws IOException {
-    	if(qkNorm) {
-	        qNorm.saveModel(outputStream);
-	        kNorm.saveModel(outputStream);
-    	}
+
     	norm1.saveModel(outputStream);
 
         getqLinerLayer().saveModel(outputStream);
@@ -348,10 +336,7 @@ public class JiTJoinBlockHead extends Layer {
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
-    	if(qkNorm) {
-	        qNorm.loadModel(inputStream, 1, 1, width, BNType.fully_bn);
-	        kNorm.loadModel(inputStream, 1, 1, width, BNType.fully_bn);
-    	}
+
     	norm1.loadModel(inputStream, 1, 1, width, BNType.fully_bn);
 
         getqLinerLayer().loadModel(inputStream);

@@ -115,7 +115,7 @@ public class MMJiTTest {
         
         float y_prob = 0.1f;
         
-        MMJiT network = new MMJiT(LossType.MSE_right, UpdaterType.adamw, channel, imgSize, imgSize, patchSize, bottleneck_dim, hiddenSize, jitHeadNum, txt_depth, depth, textEmbedDim, maxContextLen, y_prob);
+        MMJiT network = new MMJiT(LossType.MSE, UpdaterType.adamw, channel, imgSize, imgSize, patchSize, bottleneck_dim, hiddenSize, jitHeadNum, txt_depth, depth, textEmbedDim, maxContextLen, y_prob);
         network.CUDNN = true;
         network.learnRate = 0.0001f;
 
@@ -186,8 +186,8 @@ public class MMJiTTest {
             	condInput_ynull = Tensor.createGPUTensor(condInput_ynull, condInput.number, condInput.channel, condInput.height, condInput.width, true);
                 Tensor y_null = network.main.labelEmbd.getY_embedding();
                 int part_input_size = y_null.dataLength;
-                for(int b = 0;b<batchSize;b++) {
-                	network.tensorOP.op.copy_gpu(y_null, condInput_ynull, part_input_size, 0, 1, 0, 1);
+                for(int b = 0;b<batchSize * maxContextLen;b++) {
+                	network.tensorOP.op.copy_gpu(y_null, condInput_ynull, part_input_size, 0, 1, b * part_input_size, 1);
                 }
             }
 
@@ -200,7 +200,7 @@ public class MMJiTTest {
                 noise.copyGPU(noise2);
                 
                 Tensor sample = icplan.forward_with_path_drop_cfg(network, noise, t, condInput, condInput_ynull, cos1d, sin1d, cos2d, sin2d, eps, 1.0f);
-
+                network.tensorOP.div(sample, 2.0f, sample);
                 JCuda.cudaDeviceSynchronize();
                 
                 sample.data = MatrixOperation.clampSelf(sample.syncHost(), -1, 1);
@@ -210,7 +210,7 @@ public class MMJiTTest {
                 System.out.println("finish create.");
                 
                 sample = icplan.forward_with_path_drop_cfg(network, noise2, t, condInput, condInput_ynull, cos1d, sin1d, cos2d, sin2d, eps, 2.0f);
-
+                network.tensorOP.div(sample, 2.0f, sample);
                 JCuda.cudaDeviceSynchronize();
                 
                 sample.data = MatrixOperation.clampSelf(sample.syncHost(), -1, 1);

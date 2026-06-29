@@ -51,7 +51,7 @@ public class MMJiT extends Network {
     
     public MMJiT(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int bottleneck_dim, int hiddenSize, int headNum, int txt_depth, int depth, int textEmbedDim, int maxContextLen, float y_drop_prob) {
         this.lossFunction = LossFactory.create(lossType, this);
-//        this.weight_decay = 0.1f;
+        this.weight_decay = 0.0f;
         this.updater = updater;
         this.inChannel = inChannel;
         this.width = width;
