@@ -15077,7 +15077,8 @@ public class MBSGDOptimizer extends Optimizer {
                     	/**
                          * dynamic update learnRate
                          */
-                        updateLRDynamic(i * trainingData.count_it + it, this.trainTime * trainingData.count_it);
+//                        updateLRDynamic(i * trainingData.count_it + it, this.trainTime * trainingData.count_it);
+                    	jax_warmup_constant_lr(i * trainingData.count_it + it, 5000, 4e-4f);
                     }
                     
                     /**
@@ -16214,6 +16215,16 @@ public class MBSGDOptimizer extends Optimizer {
         BigDecimal tlr = new BigDecimal(min_lr).add(coeff.multiply(new BigDecimal((this.lr - min_lr))));
         tlr = tlr.setScale(24, BigDecimal.ROUND_HALF_DOWN);
         network.learnRate = (float) tlr.doubleValue();
+    }
+    
+    public void jax_warmup_constant_lr(int step, int warmup_steps, float base_lr) {
+    	if(step < warmup_steps) {
+    		float start_lr = 1e-6f;
+    		float alpha = (float) ((step + 1) / Math.max(warmup_steps, 1));
+    		network.learnRate = start_lr + alpha * (base_lr - start_lr);
+    		return;
+    	}
+    	network.learnRate = base_lr;
     }
     
     public void transforms2(Tensor trainData, Tensor transData, float[] mean, float[] std) {

@@ -84,7 +84,7 @@ public class ICPlan {
 	}
 	
 	public void ininT(int start,int end,int count) {
-		if(T == null) {
+		if(T == null || count != T.length) {
 			T = MatrixUtils.linspace(start, end, count);
 //			System.err.println(timestep_shift);
 			if(timestep_shift > 0) {
