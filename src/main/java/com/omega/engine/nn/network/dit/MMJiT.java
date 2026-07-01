@@ -160,7 +160,7 @@ public class MMJiT extends Network {
              *  v_cond = (out_cond - z) / (1.0 - t).clamp_min(self.t_eps)
              *  v_uncond = (out_uncond - z) / (1.0 - t).clamp_min(self.t_eps)
              */
-            icplan.compute_v(uncond_eps, t, input, uncond_eps, 5e-2f);
+            icplan.compute_v(uncond_eps, t, input_null, uncond_eps, 5e-2f);
             
             /**
              * out = uncond_eps + cfg_scale * (eps - uncond_eps)

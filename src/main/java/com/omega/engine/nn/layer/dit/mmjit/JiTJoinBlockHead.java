@@ -42,11 +42,10 @@ public class JiTJoinBlockHead extends Layer {
     private boolean bias = false;
 
     private int batchSize = 1;
-    
-    private boolean qkNorm = false;
+
     private boolean normParams = true;
 
-    public JiTJoinBlockHead(int embedDim, int time, boolean bias, boolean qkNorm, boolean normParams, Network network) {
+    public JiTJoinBlockHead(int embedDim, int time, boolean bias, boolean normParams, Network network) {
         this.bias = bias;
         this.network = network;
         if (this.updater == null) {
@@ -54,7 +53,6 @@ public class JiTJoinBlockHead extends Layer {
         }
         this.time = time;
         this.embedDim = embedDim;
-        this.qkNorm = qkNorm;
         this.normParams = normParams;
         this.bias = bias;
         this.channel = time;
@@ -280,17 +278,13 @@ public class JiTJoinBlockHead extends Layer {
     @Override
     public void update() {
         // TODO Auto-generated method stub
-    	
     	this.norm1.update();
-    	
         this.qLinerLayer.update();
         this.kLinerLayer.update();
         this.vLinerLayer.update();
-        
-        this.norm2.update();
         this.oLinerLayer.update();
-        mlp.update();
-        
+        this.norm2.update();
+        this.mlp.update();
     }
 
     @Override
@@ -324,27 +318,23 @@ public class JiTJoinBlockHead extends Layer {
     }
 
     public void saveModel(RandomAccessFile outputStream) throws IOException {
-
-    	norm1.saveModel(outputStream);
-
-        getqLinerLayer().saveModel(outputStream);
-        getkLinerLayer().saveModel(outputStream);
-        getvLinerLayer().saveModel(outputStream);
-        this.norm2.saveModel(outputStream);
+    	this.norm1.saveModel(outputStream);
+    	this.qLinerLayer.saveModel(outputStream);
+    	this.kLinerLayer.saveModel(outputStream);
+    	this.vLinerLayer.saveModel(outputStream);
         this.oLinerLayer.saveModel(outputStream);
-        mlp.saveModel(outputStream);
+        this.norm2.saveModel(outputStream);
+        this.mlp.saveModel(outputStream);
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
-
-    	norm1.loadModel(inputStream, 1, 1, width, BNType.fully_bn);
-
-        getqLinerLayer().loadModel(inputStream);
-        getkLinerLayer().loadModel(inputStream);
-        getvLinerLayer().loadModel(inputStream);
-        this.norm2.loadModel(inputStream, 1, 1, width, BNType.fully_bn);
+    	this.norm1.loadModel(inputStream, 1, 1, embedDim, BNType.fully_bn);
+        this.qLinerLayer.loadModel(inputStream);
+        this.kLinerLayer.loadModel(inputStream);
+        this.vLinerLayer.loadModel(inputStream);
         this.oLinerLayer.loadModel(inputStream);
-        mlp.loadModel(inputStream);
+        this.norm2.loadModel(inputStream, 1, 1, embedDim, BNType.fully_bn);
+        this.mlp.loadModel(inputStream);
     }
 
     public FullyLayer getqLinerLayer() {
@@ -382,14 +372,13 @@ public class JiTJoinBlockHead extends Layer {
     @Override
     public void accGrad(float scale) {
         // TODO Auto-generated method stub
-    	if(qkNorm) {
-	        qNorm.accGrad(scale);
-	        kNorm.accGrad(scale);
-    	}
-        qLinerLayer.accGrad(scale);
-        kLinerLayer.accGrad(scale);
-        vLinerLayer.accGrad(scale);
-        oLinerLayer.accGrad(scale);
+    	this.norm1.accGrad(scale);
+    	this.qLinerLayer.accGrad(scale);
+        this.kLinerLayer.accGrad(scale);
+        this.vLinerLayer.accGrad(scale);
+        this.oLinerLayer.accGrad(scale);
+        this.norm2.accGrad(scale);
+        this.mlp.accGrad(scale);
     }
 }
 

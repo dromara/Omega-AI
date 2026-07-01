@@ -48,6 +48,7 @@ public class MMJiTMainMoudue extends Layer {
 
     public BottleneckPatchEmbed patchEmbd;
     public JiTCaptionEmbeddingLayer labelEmbd;
+//    public DiTCaptionEmbeddingLayer labelEmbd;
     public List<PlainTextBlock> txt_blocks;
     public List<MMJiTBlock> blocks;
     public RMSLayer finalNorm;
@@ -93,6 +94,8 @@ public class MMJiTMainMoudue extends Layer {
         
     	labelEmbd = new JiTCaptionEmbeddingLayer(textEmbedDim, hiddenSize, maxContextLen, y_drop_prob, false, network);
 
+//        labelEmbd = new DiTCaptionEmbeddingLayer(textEmbedDim, hiddenSize, maxContextLen, y_drop_prob, true, network);
+    	
         txt_blocks = new ArrayList<PlainTextBlock>();
         
         blocks = new ArrayList<MMJiTBlock>();
@@ -174,8 +177,8 @@ public class MMJiTMainMoudue extends Layer {
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
-    	if(tmp_cond == null || tmp_cond.number != number) {
-    		tmp_cond = Tensor.createGPUTensor(output, number * maxContextLen, 1, 1, hiddenSize, true);
+    	if(tmp_cond == null || tmp_cond.number != number * maxContextLen) {
+    		tmp_cond = Tensor.createGPUTensor(tmp_cond, number * maxContextLen, 1, 1, hiddenSize, true);
     	}
     }
 
@@ -455,7 +458,7 @@ public class MMJiTMainMoudue extends Layer {
     		blocks.get(i).loadModel(inputStream);
     	}
     	
-    	finalNorm.loadModel(inputStream);
+    	finalNorm.loadModel(inputStream, 1, 1, hiddenSize, BNType.fully_bn);
     	finalLayer.loadModel(inputStream);
     }
 
@@ -474,6 +477,7 @@ public class MMJiTMainMoudue extends Layer {
     		blocks.get(i).accGrad(scale);
     	}
     	
+    	finalNorm.accGrad(scale);
     	finalLayer.accGrad(scale);
     }
     

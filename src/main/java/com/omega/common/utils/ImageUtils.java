@@ -579,6 +579,29 @@ public class ImageUtils {
         return rgb;
     }
     
+    public static int[][] color2rgb(float[] data, int channel, int height, int width) {
+        int[][] rgb = new int[height][width];
+        int ocount = height * width;
+        float n = 127.5f;
+        for (int i = 0; i < height; i++) {
+            for (int j = 0; j < width; j++) {
+                int index = i * width + j;
+                int r = (int) data[index];
+                int g = (int) data[ocount + index];
+                int b = (int) data[ocount * 2 + index];
+                r = (int) ((data[index] + 1.0f) / (1.0f / n));
+                g = (int) ((data[ocount + index] + 1.0f) / (1.0f / n));
+                b = (int) ((data[ocount * 2 + index] + 1.0f) / (1.0f / n));
+                r = clamp(r, 0, 255);
+                g = clamp(g, 0, 255);
+                b = clamp(b, 0, 255);
+                int orgb = colorToRGB(255, r, g, b);
+                rgb[i][j] = orgb;
+            }
+        }
+        return rgb;
+    }
+    
     public static int clamp(int x, int min, int max) {
         if (x > max) {
             x = max;
@@ -1170,6 +1193,42 @@ public class ImageUtils {
                     color[1 * width * height + j * width + i] = g * 1.0f / n;
                     color[2 * width * height + j * width + i] = b * 1.0f / n;
                 }
+            }
+        }
+        return color;
+    }
+    
+    public float[] getImageData_norm(File file) throws Exception {
+        BufferedImage bi = null;
+        try {
+            bi = ImageIO.read(file);
+            if(bi == null) {
+            	System.err.println(file.getName());
+            }
+        } catch (Exception e) {
+            System.err.println("error file:" + file.getName());
+            e.printStackTrace();
+        }
+        int width = bi.getWidth();
+        int height = bi.getHeight();
+        int minx = bi.getMinX();
+        int miny = bi.getMinY();
+        int size = height * width * 3;
+        float[] color = new float[size];
+        float n = 127.5f;
+        int r = 0;
+        int g = 0;
+        int b = 0;
+        int pixel = 0;
+        for (int j = miny; j < height; j++) {
+            for (int i = minx; i < width; i++) {
+                pixel = bi.getRGB(i, j); // 下面三行代码将一个数字转换为RGB数字
+                r = (pixel & 0xff0000) >> 16;
+                g = (pixel & 0xff00) >> 8;
+                b = (pixel & 0xff);
+                color[0 * width * height + j * width + i] = r * (1.0f / n) - 1.0f;
+                color[1 * width * height + j * width + i] = g * (1.0f / n) - 1.0f;
+                color[2 * width * height + j * width + i] = b * (1.0f / n) - 1.0f;
             }
         }
         return color;

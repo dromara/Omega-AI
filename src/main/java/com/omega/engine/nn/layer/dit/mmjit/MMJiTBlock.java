@@ -105,9 +105,9 @@ public class MMJiTBlock extends Layer {
     
     public void initLayers() {
         
-    	x_block = new JiTJoinBlockHead(embedDim, imgTime, bias, qkNorm, normParams, network);
+    	x_block = new JiTJoinBlockHead(embedDim, imgTime, bias, normParams, network);
     	
-    	context_block = new JiTJoinBlockHead(embedDim, textTime, bias, qkNorm, normParams, network);
+    	context_block = new JiTJoinBlockHead(embedDim, textTime, bias, normParams, network);
     	
 
     	if(qkNorm) {

@@ -722,7 +722,7 @@ public class ICPlan {
 		return out;
 	}
 	
-	public Tensor forward_with_path_drop_cfg(MMJiT jit, Tensor x, Tensor t, Tensor context, Tensor null_context, Tensor cos1d, Tensor sin1d, Tensor cos2d, Tensor sin2d, Tensor eps, float cfg_scale) {
+	public Tensor forward_with_cfg(MMJiT jit, Tensor x, Tensor t, Tensor context, Tensor null_context, Tensor cos1d, Tensor sin1d, Tensor cos2d, Tensor sin2d, Tensor eps, float cfg_scale) {
 		ininT(0, 1, count+1);
 		Tensor v = null;
 		for(int i = 0;i<count;i++) {

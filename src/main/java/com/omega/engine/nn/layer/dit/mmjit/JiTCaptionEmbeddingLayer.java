@@ -255,7 +255,7 @@ public class JiTCaptionEmbeddingLayer extends Layer {
     public void saveModel(RandomAccessFile outputStream) throws IOException {
         linear1.saveModel(outputStream);
         if(uncond_prob > 0) {
-        	ModelUtils.saveParams(outputStream, getY_embedding());
+        	ModelUtils.saveParams(outputStream, weight);
         }
     }
 

@@ -120,6 +120,7 @@ public class PlainTextBlock extends Layer {
     	Tensor_OP().add(norm2.diff, delta, norm2.diff);
     	attn.back(norm2.diff, cos, sin);
     	norm1.back(attn.diff);
+    	Tensor_OP().add(norm2.diff, norm1.diff, norm1.diff);
     	this.diff = norm1.diff;
     }
     
@@ -250,8 +251,8 @@ public class PlainTextBlock extends Layer {
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
-        this.norm1.loadModel(inputStream);
-        this.norm2.loadModel(inputStream);
+        this.norm1.loadModel(inputStream, 1, 1, embedDim, BNType.fully_bn);
+        this.norm2.loadModel(inputStream, 1, 1, embedDim, BNType.fully_bn);
         this.attn.loadModel(inputStream);
         this.mlp.loadModel(inputStream);
     }

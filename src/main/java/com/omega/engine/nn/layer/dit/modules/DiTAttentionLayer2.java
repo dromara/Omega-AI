@@ -226,11 +226,11 @@ public class DiTAttentionLayer2 extends Layer {
         if (time < dk) {
             this.temp = CUDAMemoryManager.getCache("dit_block_attn_temp", batchSize, headNum, time, dk);
         } else {
-            this.temp = CUDAMemoryManager.getCache("dit_block_attn_temp", batchSize, time, time, dk);
+            this.temp = CUDAMemoryManager.getCache("dit_block_attn_temp", batchSize, headNum, time, time);
         }
         temp.clearGPU();
         // [batch_size，n_heads，len_q，len_k]
-        this.attn = CUDAMemoryManager.getCache("dit_block_attn_attn", batchSize, time, time, dk);
+        this.attn = CUDAMemoryManager.getCache("dit_block_attn_attn", batchSize, headNum, time, time);
         // [batch_size, len_q, n_heads * dim_v]
         this.oi = CUDAMemoryManager.getCache("dit_block_attn_oi", batchSize * time, 1, 1, embedDim);
         this.output = CUDAMemoryManager.getCache("dit_block_attn_out", input.number, input.channel, input.height, input.width);

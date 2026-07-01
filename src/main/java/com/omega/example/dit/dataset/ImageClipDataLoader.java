@@ -14,6 +14,7 @@ import com.omega.example.diffusion.utils.DiffusionImageLoader;
 import com.omega.example.transformer.utils.LagJsonReader;
 import com.omega.example.transformer.utils.bpe.BPETokenizerEN;
 import com.omega.example.unet.utils.SegImageLoader;
+import com.omega.example.unet.utils.SegImageLoader3;
 import com.omega.example.yolo.data.BaseDataLoader;
 import com.omega.example.yolo.data.ImageLoader;
 import com.omega.example.yolo.utils.YoloImageUtils;
@@ -236,7 +237,7 @@ public class ImageClipDataLoader extends BaseDataLoader {
                 if (mean != null) {
                     SegImageLoader.load(imgDirPath, extName, idxSet, indexs, input.number, input, false, true, mean, std);
                 } else {
-                    SegImageLoader.load(imgDirPath, extName, idxSet, indexs, input.number, input, false, true);
+                    SegImageLoader3.load(imgDirPath, extName, idxSet, indexs, input.number, input);
                 }
                 loadLabels(indexs, label);
             } catch (Exception e) {

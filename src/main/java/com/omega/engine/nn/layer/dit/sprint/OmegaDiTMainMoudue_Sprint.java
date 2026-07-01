@@ -343,7 +343,7 @@ public class OmegaDiTMainMoudue_Sprint extends Layer {
 		Tensor h_x = e_x;
 		if(!uncond) {
 			if(idsKeep != null && network.RUN_MODEL == RunModel.TRAIN) {
-				tokenDropKernel.idsKeep(idsKeep, number, (hw - 1), token_t);
+				tokenDropKernel.idsKeep(idsKeep, number, hw, token_t);
 //				idsKeep.showDM();
 //				getRandomIds(idsKeep);
 				tokenDropKernel.imgTokenDrop(e_x, idsKeep, td_x, token_t, hw, maxContextLen, hiddenSize);
