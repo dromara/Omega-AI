@@ -6,8 +6,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import com.omega.common.utils.JsonUtils;
-import com.omega.common.utils.MatrixUtils;
+import com.omega.common.utils.MatrixOperation;
+import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.loss.MSELoss;
 import com.omega.engine.nn.layer.FullyLayer;
@@ -21,7 +21,6 @@ import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.RMSLayer;
 import com.omega.engine.nn.network.CNN;
 import com.omega.engine.nn.network.Network;
-import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 import com.omega.example.common.ModeLoaderlUtils;
@@ -590,10 +589,10 @@ public class MMJiTMainMoudue extends Layer {
         Tensor cos2d = cs2d[0];
         Tensor sin2d = cs2d[1];
 
-//        String inputPath = "D:\\models\\mmjit_x.json";
-//	    Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
-//	    Tensor input = new Tensor(N, C, H, W, true);
-//        ModeLoaderlUtils.loadData(input, datas, "x", 4);
+        String inputPath = "D:\\models\\mmjit_x.json";
+	    Map<String, Object> datas = LagJsonReader.readJsonFileSmallWeight(inputPath);
+	    Tensor input = new Tensor(N, C, H, W, true);
+        ModeLoaderlUtils.loadData(input, datas, "x", 4);
         
         String noisePath = "D:\\models\\mmjit_noise.json";
 	    Map<String, Object> noiseDatas = LagJsonReader.readJsonFileSmallWeight(noisePath);
@@ -605,89 +604,91 @@ public class MMJiTMainMoudue extends Layer {
 	    Tensor txt = new Tensor(N, TT, 1, TEM, true);
 	    ModeLoaderlUtils.loadData(txt, cydatas, "txt", 3);
 	    txt.view(N * TT, 1, 1, TEM);
-//	    
-//	    String dinputPath = "D:\\models\\mmjit_delta.json";
-//	    Map<String, Object> d_datas = LagJsonReader.readJsonFileSmallWeight(dinputPath);
-//	    Tensor delta = new Tensor(N, C, H, W, true);
-//	    ModeLoaderlUtils.loadData(delta, d_datas, "delta", 4);
-//	    
-//        txt.view(N * TT, 1, 1, TEM);
-//        
-//        Tensor t = new Tensor(N, 1, 1, 1, true);
-//        Tensor rnd = new Tensor(N, 1, 1, 1, new float[] {0.2f, 0.8f}, true);
-//        RandomUtils.gaussianRandomLogitNormal(t, rnd, -0.8f, 0.8f);
+	    
+	    String dinputPath = "D:\\models\\mmjit_delta.json";
+	    Map<String, Object> d_datas = LagJsonReader.readJsonFileSmallWeight(dinputPath);
+	    Tensor delta = new Tensor(N, C, H, W, true);
+	    ModeLoaderlUtils.loadData(delta, d_datas, "delta", 4);
+	    
+        txt.view(N * TT, 1, 1, TEM);
+        
+        Tensor t = new Tensor(N, 1, 1, 1, true);
+        Tensor rnd = new Tensor(N, 1, 1, 1, new float[] {0.2f, 0.8f}, true);
+        RandomUtils.gaussianRandomLogitNormal(t, rnd, -0.8f, 0.8f);
         
         ICPlan icplan = new ICPlan(nn.tensorOP);
         
-//        /**
-//         * latend add noise
-//         */
-//        Tensor x_t = new Tensor(N, C, H, W, true);
-//        Tensor target = new Tensor(N, C, H, W, true);
-//        Tensor v_pred = new Tensor(N, C, H, W, true);
+        /**
+         * latend add noise
+         */
+        Tensor x_t = new Tensor(N, C, H, W, true);
+        Tensor target = new Tensor(N, C, H, W, true);
+        Tensor v_pred = new Tensor(N, C, H, W, true);
+        
+        icplan.compute_z(input, t, noise, x_t);
+        icplan.compute_v(input, t, x_t, target, 5e-2f);
+        t.showDM("t");
+        x_t.showDM("x_t");
+        for(int i = 0;i<2;i++) {
+            jb.forward(x_t, txt, cos1d, sin1d, cos2d, sin2d);
+            
+            jb.getOutput().showDM("out");
+            
+            jb.getOutput().showDMByOffset(1 * 256 * 256 + 101 * 256, 256, "out_");
+            
+            icplan.compute_v(jb.getOutput(), t, x_t, v_pred, 5e-2f);
+            
+            /**
+             * loss
+             */
+            Tensor loss = lossfn.loss(v_pred, target);
+            float mse_loss = MatrixOperation.sum(loss.syncHost()) / N;
+            System.err.println(mse_loss);
+            /**
+             * loss diff
+             */
+            Tensor lossDiff = lossfn.diff(v_pred, target);
+            
+            /**
+             * dx_pred = delta / (1 - t).clamp_min(self.t_eps)
+             */
+            icplan.compute_dv(lossDiff, t, lossDiff, 5e-2f);
+            
+            /**
+             * back
+             */
+            jb.back(lossDiff, cos1d, sin1d, cos2d, sin2d);
+            
+            nn.clipGradNormFast(1.0f);
+            
+        }
+        
+//        int count = 100;
 //        
-//        icplan.compute_z(input, t, noise, x_t);
-//        icplan.compute_v(input, t, x_t, target, 5e-2f);
-//        t.showDM("t");
-//        x_t.showDM("x_t");
-//        for(int i = 0;i<2;i++) {
-//            jb.forward(x_t, txt, cos1d, sin1d, cos2d, sin2d);
-//            
-//            jb.getOutput().showDM("out");
-//            
-//            jb.getOutput().showDMByOffset(1 * 256 * 256 + 101 * 256, 256, "out_");
-//            
-//            icplan.compute_v(jb.getOutput(), t, x_t, v_pred, 5e-2f);
-//            
-//            /**
-//             * loss
-//             */
-//            Tensor loss = lossfn.loss(v_pred, target);
-//            float mse_loss = MatrixOperation.sum(loss.syncHost()) / N;
-//            System.err.println(mse_loss);
-//            /**
-//             * loss diff
-//             */
-//            Tensor lossDiff = lossfn.diff(v_pred, target);
-//            
-//            /**
-//             * dx_pred = delta / (1 - t).clamp_min(self.t_eps)
-//             */
-//            icplan.compute_dv(lossDiff, t, lossDiff, 5e-2f);
-//            
-//            /**
-//             * back
-//             */
-//            jb.back(lossDiff, cos1d, sin1d, cos2d, sin2d);
-//            
-//        }
-        
-        int count = 100;
-        
-        Tensor x0 = new Tensor(N, C, H, W, true);
-        Tensor t = new Tensor(N, 1, 1, 1, true);
-        
-        Tensor v = new Tensor(N, C, H, W, true);
-        jb.Tensor_OP().mul(noise, 2, x0);
-        float[] T = MatrixUtils.linspace(0, 1, count+1);
-        System.err.println(JsonUtils.toJson(T));
-
-        x0.showDM("x0");
-        txt.showDM("txt");
-        nn.RUN_MODEL = RunModel.EVAL;
-		for(int i = 0;i<count;i++) {
-			float t0 = T[i];
-			float t1 = T[i + 1];
-			float dt = t1 - t0;
-			MatrixUtils.val(t.data, t0);
-			t.hostToDevice();
-			jb.forward(x0, txt, cos1d, sin1d, cos2d, sin2d);
-		    Tensor pred_x0 = jb.getOutput();
-		    icplan.compute_v(pred_x0, t, x0, v, 5e-2f);
-		    jb.Tensor_OP().mul(v, dt, v);
-		    jb.Tensor_OP().add(x0, v, x0);
-		}
-        x0.showDM("out");
+//        Tensor x0 = new Tensor(N, C, H, W, true);
+//        Tensor t = new Tensor(N, 1, 1, 1, true);
+//        
+//        Tensor v = new Tensor(N, C, H, W, true);
+//        jb.Tensor_OP().mul(noise, 2, x0);
+//        float[] T = MatrixUtils.linspace(0, 1, count+1);
+//        System.err.println(JsonUtils.toJson(T));
+//
+//        x0.showDM("x0");
+//        txt.showDM("txt");
+//        nn.RUN_MODEL = RunModel.EVAL;
+//		for(int i = 0;i<count;i++) {
+//			float t0 = T[i];
+//			float t1 = T[i + 1];
+//			float dt = t1 - t0;
+//			MatrixUtils.val(t.data, t0);
+//			t.hostToDevice();
+//			jb.forward(x0, txt, cos1d, sin1d, cos2d, sin2d);
+//		    Tensor pred_x0 = jb.getOutput();
+//		    icplan.compute_v(pred_x0, t, x0, v, 5e-2f);
+//		    jb.Tensor_OP().mul(v, dt, v);
+//		    jb.Tensor_OP().add(x0, v, x0);
+//		}
+//        x0.showDM("out");
     }
 }
 

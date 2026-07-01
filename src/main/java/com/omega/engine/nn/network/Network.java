@@ -9,6 +9,7 @@ import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.RouteLayer;
 import com.omega.engine.nn.layer.normalization.NormalizationLayer;
 import com.omega.engine.nn.model.NetworkInit;
+import com.omega.engine.nn.network.utils.ClipGradNormKernel;
 import com.omega.engine.parallel.cuda.CUDACommonManager;
 import com.omega.engine.parallel.cuda.CUDAPool;
 import com.omega.engine.tensor.Tensor;
@@ -77,6 +78,8 @@ public abstract class Network {
     private int height = 0;
     private int width = 0;
 
+    public ClipGradNormKernel clipGradNormKernel;
+    
     public Network() {
         initCUDA();
     }
@@ -498,4 +501,49 @@ public abstract class Network {
     		}
     	}
     }
+    
+    public void clipGradNormFast(float maxNorm) {
+        if (clipGradNormKernel == null) {
+            clipGradNormKernel = new ClipGradNormKernel(cudaManager);
+        }
+
+        List<Tensor> grads = new ArrayList<Tensor>();
+
+        for (Layer layer : paramLayers) {
+            if (layer.freeze) {
+                continue;
+            }
+
+            if (layer instanceof NormalizationLayer) {
+                NormalizationLayer nl = (NormalizationLayer) layer;
+
+                if (nl.accDW != null) {
+                    grads.add(nl.accDW);
+                } else if (nl.diffGamma != null) {
+                    grads.add(nl.diffGamma);
+                }
+
+                if (nl.accDB != null) {
+                    grads.add(nl.accDB);
+                } else if (nl.diffBeta != null) {
+                    grads.add(nl.diffBeta);
+                }
+            } else {
+                if (layer.accDW != null) {
+                    grads.add(layer.accDW);
+                } else if (layer.diffW != null) {
+                    grads.add(layer.diffW);
+                }
+
+                if (layer.accDB != null) {
+                    grads.add(layer.accDB);
+                } else if (layer.diffB != null) {
+                    grads.add(layer.diffB);
+                }
+            }
+        }
+
+        clipGradNormKernel.clip(grads, maxNorm);
+    }
+    
 }
