@@ -4,10 +4,6 @@
 
 #define BLOCK 256
 
-__device__ __forceinline__ float sanitize_grad(float v) {
-    return isfinite(v) ? v : 0.0f;
-}
-
 extern "C"
 __global__ void grad_global_sum_sq_kernel(
     float** grads,
@@ -38,7 +34,7 @@ __global__ void grad_global_sum_sq_kernel(
             } else if (idx >= end) {
                 lo = mid + 1;
             } else {
-                float v = sanitize_grad(grads[mid][idx - begin]);
+                float v = grads[mid][idx - begin];
                 local += v * v;
                 break;
             }
@@ -61,13 +57,21 @@ __global__ void grad_global_sum_sq_kernel(
 }
 
 extern "C"
+__global__ void grad_norm_from_sum_sq_kernel(
+    const float* sumSq,
+    float* norm
+) {
+    norm[0] = sqrtf(sumSq[0]);
+}
+
+extern "C"
 __global__ void grad_clip_coef_kernel(
     const float* sumSq,
     float* coef,
     float maxNorm,
     float eps
 ) {
-    float norm = sqrtf(fmaxf(sumSq[0], 0.0f));
+    float norm = sqrtf(sumSq[0]);
     float c = maxNorm / (norm + eps);
     coef[0] = fminf(c, 1.0f);
 }

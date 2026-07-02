@@ -67,7 +67,7 @@ public class BottleneckPatchEmbed extends Layer {
 
     public void initLayers(int inChannel, int height, int width, int patchSize, boolean bias) {
         this.proj1 = new ConvolutionLayer(inChannel, pca_dim, width, height, patchSize, patchSize, 0, patchSize, false, network);
-//        proj1.PROPAGATE_DOWN = false;
+
         RandomUtils.xavier_uniform(proj1.weight, 1, inChannel * patchSize * patchSize, pca_dim * patchSize * patchSize);
 
         this.proj2 = new ConvolutionLayer(pca_dim, embedDim, proj1.oWidth, proj1.oHeight, 1, 1, 0, 1, bias, network);

@@ -377,7 +377,6 @@ public class ConvolutionLayer extends Layer {
              * 20220816: dw = diff * im2col(input)T
              * diff[knumber * oh * ow]
              * im2col(input)T[oh * ow * C * kh * kw]
-
              */
             kernel.dw(input, delta, diffW);
             /**

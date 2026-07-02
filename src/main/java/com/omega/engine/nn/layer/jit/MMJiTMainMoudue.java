@@ -21,6 +21,7 @@ import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.RMSLayer;
 import com.omega.engine.nn.network.CNN;
 import com.omega.engine.nn.network.Network;
+import com.omega.engine.nn.network.utils.ClipGradNormKernel;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 import com.omega.example.common.ModeLoaderlUtils;
@@ -100,12 +101,12 @@ public class MMJiTMainMoudue extends Layer {
         blocks = new ArrayList<MMJiTBlock>();
          
         for(int i = 0;i<txt_depth;i++) {
-        	PlainTextBlock block = new PlainTextBlock(hiddenSize, maxContextLen, headNum, true, true, network);
+        	PlainTextBlock block = new PlainTextBlock(hiddenSize, maxContextLen, headNum, true, false, network);
         	txt_blocks.add(block);
         }
         
         for(int i = 0;i<depth;i++) {
-        	MMJiTBlock block = new MMJiTBlock(hiddenSize, headNum, patchEmbd.oChannel, maxContextLen, true, true, true, network);
+        	MMJiTBlock block = new MMJiTBlock(hiddenSize, headNum, patchEmbd.oChannel, maxContextLen, true, false, true, network);
 	        blocks.add(block);
         }
         this.oChannel = inChannel;
@@ -605,10 +606,10 @@ public class MMJiTMainMoudue extends Layer {
 	    ModeLoaderlUtils.loadData(txt, cydatas, "txt", 3);
 	    txt.view(N * TT, 1, 1, TEM);
 	    
-	    String dinputPath = "D:\\models\\mmjit_delta.json";
-	    Map<String, Object> d_datas = LagJsonReader.readJsonFileSmallWeight(dinputPath);
-	    Tensor delta = new Tensor(N, C, H, W, true);
-	    ModeLoaderlUtils.loadData(delta, d_datas, "delta", 4);
+//	    String dinputPath = "D:\\models\\mmjit_delta.json";
+//	    Map<String, Object> d_datas = LagJsonReader.readJsonFileSmallWeight(dinputPath);
+//	    Tensor delta = new Tensor(N, C, H, W, true);
+//	    ModeLoaderlUtils.loadData(delta, d_datas, "delta", 4);
 	    
         txt.view(N * TT, 1, 1, TEM);
         
@@ -628,41 +629,62 @@ public class MMJiTMainMoudue extends Layer {
         icplan.compute_z(input, t, noise, x_t);
         icplan.compute_v(input, t, x_t, target, 5e-2f);
         t.showDM("t");
-        x_t.showDM("x_t");
-        for(int i = 0;i<2;i++) {
-            jb.forward(x_t, txt, cos1d, sin1d, cos2d, sin2d);
-            
-            jb.getOutput().showDM("out");
-            
-            jb.getOutput().showDMByOffset(1 * 256 * 256 + 101 * 256, 256, "out_");
-            
-            icplan.compute_v(jb.getOutput(), t, x_t, v_pred, 5e-2f);
-            
-            /**
-             * loss
-             */
-            Tensor loss = lossfn.loss(v_pred, target);
-            float mse_loss = MatrixOperation.sum(loss.syncHost()) / N;
-            System.err.println(mse_loss);
-            /**
-             * loss diff
-             */
-            Tensor lossDiff = lossfn.diff(v_pred, target);
-            
-            /**
-             * dx_pred = delta / (1 - t).clamp_min(self.t_eps)
-             */
-            icplan.compute_dv(lossDiff, t, lossDiff, 5e-2f);
-            
-            /**
-             * back
-             */
-            jb.back(lossDiff, cos1d, sin1d, cos2d, sin2d);
-            
-            nn.clipGradNormFast(1.0f);
-            
-        }
+
+//        for(int i = 0;i<1;i++) {
+//        	
+//            x_t.showDM("x_t");
+//        	
+//            jb.forward(x_t, txt, cos1d, sin1d, cos2d, sin2d);
+//            
+//            jb.getOutput().showDM("out");
+//            
+//            jb.getOutput().showDMByOffset(1 * 256 * 256 + 101 * 256, 256, "out_");
+//            
+//            icplan.compute_v(jb.getOutput(), t, x_t, v_pred, 5e-2f);
+//            
+//            /**
+//             * loss
+//             */
+//            Tensor loss = lossfn.loss(v_pred, target);
+//            float mse_loss = MatrixOperation.sum(loss.syncHost()) / N;
+//            System.err.println(mse_loss);
+//            /**
+//             * loss diff
+//             */
+//            Tensor lossDiff = lossfn.diff(v_pred, target);
+//            
+//            /**
+//             * dx_pred = delta / (1 - t).clamp_min(self.t_eps)
+//             */
+//            icplan.compute_dv(lossDiff, t, lossDiff, 5e-2f);
+//            
+//            /**
+//             * back
+//             */
+//            jb.back(lossDiff, cos1d, sin1d, cos2d, sin2d);
+//            
+////            nn.clipGradNormFast(1.0f);
+//            
+//        }
         
+	    String gradPath = "D:\\models\\mmjit_grads.json";
+	    Map<String, Object> gradsdatas = LagJsonReader.readJsonFileSmallWeight(gradPath);
+
+	    Tensor grad1 = new Tensor(128, 3, 16, 16, true);
+	    ModeLoaderlUtils.loadData(grad1, gradsdatas, "img_embed.proj1.weight", 4);
+
+	    Tensor grad2 = new Tensor(1, 1, 768, 768, true);
+	    ModeLoaderlUtils.loadData(grad2, gradsdatas, "txt_embed.weight", 2);
+	    txt.view(1, 1, 768, 768);
+        
+	    List<Tensor> grads = new ArrayList<Tensor>();
+	    grads.add(grad1);
+	    grads.add(grad2);
+	    ClipGradNormKernel clipGradNormKernel = new ClipGradNormKernel(nn.cudaManager);
+//	    clipGradNormKernel.clip(grads, 1.0f);
+	    Tensor gradNorm = new Tensor(1, 1, 1, 1, true);
+	    clipGradNormKernel.norm(grads, gradNorm);
+	    gradNorm.showDM("gradNorm");
 //        int count = 100;
 //        
 //        Tensor x0 = new Tensor(N, C, H, W, true);

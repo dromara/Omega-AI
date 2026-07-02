@@ -502,11 +502,39 @@ public abstract class Network {
     	}
     }
     
+    public Tensor gradNormFast() {
+        if (clipGradNormKernel == null) {
+            clipGradNormKernel = new ClipGradNormKernel(cudaManager);
+        }
+
+        return clipGradNormKernel.norm(collectGradTensors());
+    }
+
+    public Tensor gradNormFast(List<Tensor> grads) {
+        if (clipGradNormKernel == null) {
+            clipGradNormKernel = new ClipGradNormKernel(cudaManager);
+        }
+
+        return clipGradNormKernel.norm(grads);
+    }
+
     public void clipGradNormFast(float maxNorm) {
         if (clipGradNormKernel == null) {
             clipGradNormKernel = new ClipGradNormKernel(cudaManager);
         }
 
+        clipGradNormKernel.clip(collectGradTensors(), maxNorm);
+    }
+
+    public void clipGradNormFast(List<Tensor> grads, float maxNorm) {
+        if (clipGradNormKernel == null) {
+            clipGradNormKernel = new ClipGradNormKernel(cudaManager);
+        }
+
+        clipGradNormKernel.clip(grads, maxNorm);
+    }
+
+    private List<Tensor> collectGradTensors() {
         List<Tensor> grads = new ArrayList<Tensor>();
 
         for (Layer layer : paramLayers) {
@@ -543,7 +571,7 @@ public abstract class Network {
             }
         }
 
-        clipGradNormKernel.clip(grads, maxNorm);
+        return grads;
     }
     
 }

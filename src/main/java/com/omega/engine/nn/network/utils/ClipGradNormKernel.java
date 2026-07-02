@@ -1,8 +1,13 @@
 package com.omega.engine.nn.network.utils;
 
+import static jcuda.driver.JCudaDriver.cuLaunchKernel;
+
+import java.util.List;
+
 import com.omega.engine.gpu.CUDAKernel;
 import com.omega.engine.gpu.CUDAManager;
 import com.omega.engine.tensor.Tensor;
+
 import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUfunction;
@@ -10,15 +15,12 @@ import jcuda.runtime.JCuda;
 import jcuda.runtime.cudaError;
 import jcuda.runtime.cudaMemcpyKind;
 
-import java.util.List;
-
-import static jcuda.driver.JCudaDriver.cuLaunchKernel;
-
 public class ClipGradNormKernel extends CUDAKernel {
 
     private static final int THREADS = 256;
 
     private CUfunction sumSqFunction;
+    private CUfunction normFunction;
     private CUfunction coefFunction;
     private CUfunction scaleFunction;
 
@@ -27,6 +29,7 @@ public class ClipGradNormKernel extends CUDAKernel {
     private Pointer dOffsets;
     private Pointer dSumSq;
     private Pointer dCoef;
+    private Tensor norm;
 
     private int tensorCapacity = 0;
     private long totalCapacity = 0;
@@ -34,6 +37,7 @@ public class ClipGradNormKernel extends CUDAKernel {
     public ClipGradNormKernel(CUDAManager cudaManager) {
         super(cudaManager);
         sumSqFunction = cudaManager.getLocalFunctionByModule("ClipGradNormKernel.cu", "grad_global_sum_sq_kernel");
+        normFunction = cudaManager.getLocalFunctionByModule("ClipGradNormKernel.cu", "grad_norm_from_sum_sq_kernel");
         coefFunction = cudaManager.getLocalFunctionByModule("ClipGradNormKernel.cu", "grad_clip_coef_kernel");
         scaleFunction = cudaManager.getLocalFunctionByModule("ClipGradNormKernel.cu", "grad_scale_kernel");
 
@@ -41,6 +45,29 @@ public class ClipGradNormKernel extends CUDAKernel {
         dCoef = new Pointer();
         JCuda.cudaMalloc(dSumSq, Sizeof.FLOAT);
         JCuda.cudaMalloc(dCoef, Sizeof.FLOAT);
+        norm = new Tensor(1, 1, 1, 1, true);
+    }
+
+    public Tensor norm(List<Tensor> grads) {
+        return norm(grads, norm);
+    }
+
+    public Tensor norm(List<Tensor> grads, Tensor output) {
+        output = Tensor.createGPUTensor(output, 1, 1, 1, 1, true);
+        if (grads == null || grads.isEmpty()) {
+            output.clearGPU();
+            return output;
+        }
+
+        long totalSize = prepare(grads);
+        if (totalSize <= 0L) {
+            output.clearGPU();
+            return output;
+        }
+
+        launchSumSq(grads.size(), totalSize);
+        launchNorm(output);
+        return output;
     }
 
     public void clip(List<Tensor> grads, float maxNorm) {
@@ -52,6 +79,18 @@ public class ClipGradNormKernel extends CUDAKernel {
             return;
         }
 
+        long totalSize = prepare(grads);
+        if (totalSize <= 0L) {
+            return;
+        }
+
+        int tensorCount = grads.size();
+        int blocks = launchSumSq(tensorCount, totalSize);
+        launchClipCoef(maxNorm, eps);
+        launchScale(tensorCount, totalSize, blocks);
+    }
+
+    private long prepare(List<Tensor> grads) {
         int tensorCount = grads.size();
         int[] sizes = new int[tensorCount];
         long[] offsets = new long[tensorCount];
@@ -66,15 +105,15 @@ public class ClipGradNormKernel extends CUDAKernel {
             totalSize += g.dataLength;
         }
 
-        if (totalSize <= 0L) {
-            return;
-        }
-
         ensureCapacity(tensorCount, totalSize);
 
         JCuda.cudaMemcpy(dGradPtrs, Pointer.to(ptrs), (long) tensorCount * Sizeof.POINTER, cudaMemcpyKind.cudaMemcpyHostToDevice);
         JCuda.cudaMemcpy(dSizes, Pointer.to(sizes), (long) tensorCount * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
         JCuda.cudaMemcpy(dOffsets, Pointer.to(offsets), (long) tensorCount * Sizeof.LONG, cudaMemcpyKind.cudaMemcpyHostToDevice);
+        return totalSize;
+    }
+
+    private int launchSumSq(int tensorCount, long totalSize) {
         JCuda.cudaMemset(dSumSq, 0, Sizeof.FLOAT);
 
         int blocks = (int) Math.min(65535L, (totalSize + THREADS - 1L) / THREADS);
@@ -95,7 +134,25 @@ public class ClipGradNormKernel extends CUDAKernel {
                 0, null,
                 sumParams, null
         ));
+        return blocks;
+    }
 
+    private void launchNorm(Tensor output) {
+        Pointer normParams = Pointer.to(
+                Pointer.to(dSumSq),
+                Pointer.to(output.getGpuData())
+        );
+
+        checkCUDA(cuLaunchKernel(
+                normFunction,
+                1, 1, 1,
+                1, 1, 1,
+                0, null,
+                normParams, null
+        ));
+    }
+
+    private void launchClipCoef(float maxNorm, float eps) {
         Pointer coefParams = Pointer.to(
                 Pointer.to(dSumSq),
                 Pointer.to(dCoef),
@@ -110,7 +167,9 @@ public class ClipGradNormKernel extends CUDAKernel {
                 0, null,
                 coefParams, null
         ));
+    }
 
+    private void launchScale(int tensorCount, long totalSize, int blocks) {
         Pointer scaleParams = Pointer.to(
                 Pointer.to(dGradPtrs),
                 Pointer.to(dSizes),
