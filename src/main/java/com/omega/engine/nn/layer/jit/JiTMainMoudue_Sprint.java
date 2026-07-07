@@ -12,9 +12,9 @@ import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.dit.DiTCaptionEmbeddingLayer;
 import com.omega.engine.nn.layer.dit.flux.REPAMLPLayer;
-import com.omega.engine.nn.layer.dit.mmjit.MMJiTBlock;
-import com.omega.engine.nn.layer.dit.mmjit.MMJiTFusionTXTLayer;
+import com.omega.engine.nn.layer.dit.mmjit.JiTBlock;
 import com.omega.engine.nn.layer.dit.mmjit.PlainTextBlock;
+import com.omega.engine.nn.layer.dit.sprint.FusionLayer2;
 import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.RMSLayer;
 import com.omega.engine.nn.network.Network;
@@ -26,7 +26,7 @@ import com.omega.engine.updater.UpdaterFactory;
  * MMJiTMainMoudue_REPA
  * @author Administrator
  */
-public class MMJiTMainMoudue_Sprint extends Layer {
+public class JiTMainMoudue_Sprint extends Layer {
 	
 	public int inChannel;
     public int width;
@@ -39,7 +39,9 @@ public class MMJiTMainMoudue_Sprint extends Layer {
     private int headNum;
     private int textEmbedDim;
     private int maxContextLen;
-
+    
+    private int mlpRatio = 4;
+    
     private int projector_dim = 2048;
     private int z_dim = 768;
     
@@ -50,11 +52,10 @@ public class MMJiTMainMoudue_Sprint extends Layer {
     public BottleneckPatchEmbed patchEmbd;
     public DiTCaptionEmbeddingLayer labelEmbd;
     public List<PlainTextBlock> txt_blocks;
-    public List<MMJiTBlock> encoders;
-    public List<MMJiTBlock> mids;
-    public List<MMJiTBlock> decoders;
-//    public MMJiTFusionLayer fusion;
-    public MMJiTFusionTXTLayer fusion;
+    public List<JiTBlock> encoders;
+    public List<JiTBlock> mids;
+    public List<JiTBlock> decoders;
+    public FusionLayer2 fusion;
     public RMSLayer finalNorm;
     public FullyLayer finalLayer;
     
@@ -64,10 +65,7 @@ public class MMJiTMainMoudue_Sprint extends Layer {
     
     private Tensor posEmbd;
     
-    private Tensor tmp_cond;
-    
     private Tensor dencoder;
-    private Tensor dencoder_txt;
     
     private float y_drop_prob = 0.0f;
     
@@ -80,7 +78,16 @@ public class MMJiTMainMoudue_Sprint extends Layer {
     
     public boolean uncond = false;
     
-    public MMJiTMainMoudue_Sprint(int inChannel, int width, int height, int patchSize, int bottleneck_dim, int hiddenSize, int headNum, int z_dim, int txt_depth, int depth, int textEmbedDim, int maxContextLen, float y_drop_prob, float path_drop_prob, Network network) {
+    private int token_t;
+    
+    private Tensor cat_x;
+    private Tensor img_x;
+    
+    private Tensor z_img_x;
+    
+    private Tensor d_o;
+    
+    public JiTMainMoudue_Sprint(int inChannel, int width, int height, int patchSize, int bottleneck_dim, int hiddenSize, int headNum, int z_dim, int txt_depth, int depth, int textEmbedDim, int maxContextLen, float y_drop_prob, float path_drop_prob, Network network) {
 		this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
@@ -111,14 +118,16 @@ public class MMJiTMainMoudue_Sprint extends Layer {
     	patchEmbd = new BottleneckPatchEmbed(inChannel, width, bottleneck_dim, hiddenSize, patchSize, true, network);
         
     	hw = patchEmbd.oChannel;
+
+		this.token_t = (int) (hw * (1.0f - 0));
     	
         labelEmbd = new DiTCaptionEmbeddingLayer(textEmbedDim, hiddenSize, maxContextLen, y_drop_prob, true, network);
     	
         txt_blocks = new ArrayList<PlainTextBlock>();
         
-        encoders = new ArrayList<MMJiTBlock>();
-        mids = new ArrayList<MMJiTBlock>();
-        decoders = new ArrayList<MMJiTBlock>();
+        encoders = new ArrayList<JiTBlock>();
+        mids = new ArrayList<JiTBlock>();
+        decoders = new ArrayList<JiTBlock>();
          
         for(int i = 0;i<txt_depth;i++) {
         	PlainTextBlock block = new PlainTextBlock(hiddenSize, maxContextLen, headNum, true, false, network);
@@ -126,22 +135,22 @@ public class MMJiTMainMoudue_Sprint extends Layer {
         }
         
         for(int i = 0;i<num_f;i++) {
-        	MMJiTBlock block = new MMJiTBlock(hiddenSize, headNum, patchEmbd.oChannel, maxContextLen, true, false, true, network);
+        	//int embedDim, int time, int mlpHiddenDim, int headNum, int maxContext, boolean bias, boolean qkNorm, Network network
+        	JiTBlock block = new JiTBlock(hiddenSize, patchEmbd.oChannel + maxContextLen, mlpRatio * hiddenSize, headNum, maxContextLen, true, false, network);
 	        encoders.add(block);
         }
         
         for(int i = 0;i<num_g;i++) {
-        	MMJiTBlock block = new MMJiTBlock(hiddenSize, headNum, patchEmbd.oChannel, maxContextLen, true, false, true, network);
+        	JiTBlock block = new JiTBlock(hiddenSize, patchEmbd.oChannel + maxContextLen, mlpRatio * hiddenSize, headNum, maxContextLen, true, false, network);
 	        mids.add(block);
         }
+
+        fusion = new FusionLayer2(hiddenSize, hw, token_t, maxContextLen, path_drop_prob, network);
         
         for(int i = 0;i<num_h;i++) {
-        	MMJiTBlock block = new MMJiTBlock(hiddenSize, headNum, patchEmbd.oChannel, maxContextLen, true, false, true, network);
+        	JiTBlock block = new JiTBlock(hiddenSize, patchEmbd.oChannel + maxContextLen, mlpRatio * hiddenSize, headNum, maxContextLen, true, false, network);
 	        decoders.add(block);
         }
-        
-//        fusion = new MMJiTFusionLayer(hiddenSize, patchEmbd.oChannel, path_drop_prob, network);
-        fusion = new MMJiTFusionTXTLayer(hiddenSize, patchEmbd.oChannel, maxContextLen, path_drop_prob, network);
         
         z_mlp = new REPAMLPLayer(hiddenSize, projector_dim, z_dim, true, network);
         
@@ -200,6 +209,9 @@ public class MMJiTMainMoudue_Sprint extends Layer {
         // TODO Auto-generated method stub
         this.number = input.number;
         if(this.output == null || this.output.number != number) {
+        	cat_x = Tensor.createGPUTensor(cat_x, number * (patchEmbd.oChannel + maxContextLen), 1, 1, patchEmbd.oWidth, true);
+        	img_x = Tensor.createGPUTensor(img_x, number * patchEmbd.oChannel, 1, 1, patchEmbd.oWidth, true);
+        	z_img_x = Tensor.createGPUTensor(z_img_x, number * patchEmbd.oChannel, 1, 1, patchEmbd.oWidth, true);
         	output = Tensor.createGPUTensor(output, number, oChannel, oHeight, oWidth, true);
         }
         if(posEmbd == null) {
@@ -213,10 +225,11 @@ public class MMJiTMainMoudue_Sprint extends Layer {
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
-    	if(tmp_cond == null || tmp_cond.number != number * maxContextLen) {
-    		tmp_cond = Tensor.createGPUTensor(tmp_cond, number * maxContextLen, 1, 1, hiddenSize, true);
-    		dencoder = Tensor.createGPUTensor(dencoder, number * hw, 1, 1, hiddenSize, true);
-    		dencoder_txt = Tensor.createGPUTensor(dencoder_txt, number * maxContextLen, 1, 1, hiddenSize, true);
+    	if(d_o == null || d_o.number != input.number * (maxContextLen + hw)) {
+    		d_o = Tensor.createGPUTensor(d_o, input.number * (maxContextLen + hw), 1, 1, patchEmbd.getOutput().width, true);
+    		dencoder = Tensor.createGPUTensor(dencoder, number * (maxContextLen + hw), 1, 1, hiddenSize, true);
+    	}else {
+    		d_o.clearGPU();
     	}
     }
 
@@ -254,60 +267,59 @@ public class MMJiTMainMoudue_Sprint extends Layer {
     		bc = block.getOutput();
     	}
     	
-    	Tensor ex = x;
-    	Tensor ec = bc;
+     	baseKernel.concat_channel_forward(bc, x, cat_x, input.number, maxContextLen, hw, 1, patchEmbd.getOutput().width);
+    	
+    	Tensor e_x = cat_x;
     	for(int i = 0;i<num_f;i++) {
-    		MMJiTBlock block = encoders.get(i);
-    		block.forward(ex, ec, cos1d, sin1d, cos2d, sin2d);
-    		ex = block.getOutput();
-    		ec = block.context_block.getOutput();
+    		JiTBlock block = encoders.get(i);
+    		block.forward(e_x, cos2d, sin2d);
+    		e_x = block.getOutput();
     	}
     	
+    	/**
+    	 * repa
+    	 */
 		if(network.RUN_MODEL == RunModel.TRAIN) {
-			z_mlp.forward(ex);
+			Tensor_OP().getByChannel(e_x, z_img_x, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
+			z_mlp.forward(z_img_x);
 		}
-		
+
 		/**
 		 * mids
 		 */
-		Tensor hx = ex;
-		Tensor hc = ec;
+		Tensor h_x = e_x;
 		if(!uncond) {
+			/**
+			 * mids
+			 */
 			for(int i = 0;i<num_g;i++) {
-	    		MMJiTBlock block = mids.get(i);
-	    		block.forward(hx, hc, cos1d, sin1d, cos2d, sin2d);
-	    		hx = block.getOutput();
-	    		hc = block.context_block.getOutput();
+				JiTBlock block = mids.get(i);
+				block.forward(h_x, cos2d, sin2d);
+	    		h_x = block.getOutput();
 	    	}
 		}else {
-			hx = mids.get(num_g - 1).getOutput();
-			hc = mids.get(num_g - 1).context_block.getOutput();
+			h_x = mids.get(num_g - 1).getOutput();
 		}
 		
 		/**
 		 * pad_mask
 		 */
-//		if(uncond){
-//			fusion.forward_uncond(hx, ex);
-//		}else {
-//			fusion.forward(hx, ex);
-//		}
 		if(uncond){
-			fusion.forward_uncond(hx, ex, hc, ec);
+			fusion.forward_uncond(h_x, e_x);
 		}else {
-			fusion.forward(hx, ex, hc, ec);
+			fusion.forward(h_x, e_x);
 		}
 		
-		Tensor dx = fusion.getOutput();
-		Tensor dc = fusion.fusion_txt_proj.getOutput();
+		Tensor d_x = fusion.getOutput();
 		for(int i = 0;i<num_h;i++) {
-    		MMJiTBlock block = decoders.get(i);
-    		block.forward(dx, dc, cos1d, sin1d, cos2d, sin2d);
-    		dx = block.getOutput();
-    		dc = block.context_block.getOutput();
+			JiTBlock block = decoders.get(i);
+    		block.forward(d_x, cos2d, sin2d);
+    		d_x = block.getOutput();
     	}
-
-    	finalNorm.forward(dx);
+		
+    	Tensor_OP().getByChannel(d_x, img_x, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
+		
+    	finalNorm.forward(img_x);
     	finalLayer.forward(finalNorm.getOutput());
     	
     	/**
@@ -350,56 +362,57 @@ public class MMJiTMainMoudue_Sprint extends Layer {
     	finalLayer.back(finalLayer.getOutput());
     	finalNorm.back(finalLayer.diff);
     	
-    	Tensor dy = finalNorm.diff;
-    	Tensor dc = tmp_cond;
-    	dc.clearGPU();
+    	Tensor dy = d_o;
+    	dy.clearGPU();
+
+    	Tensor_OP().getByChannel_back(dy, finalLayer.diff, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
+
     	for(int i = num_h - 1;i>=0;i--) {
-     		MMJiTBlock block = decoders.get(i);
-    		block.back(dy, dc, cos1d, sin1d, cos2d, sin2d);
+    		JiTBlock block = decoders.get(i);
+    		block.back(dy, cos2d, sin2d);
     		dy = block.diff;
-    		dc = block.context_block.diff;
     	}
      	
     	/**
 		 * pad_mask backward
 		 */
-    	fusion.back(dy, dencoder, dc, dencoder_txt);
+		fusion.back(dy, dencoder);
     	
     	/**
 		 * mids backward
 		 */
 		Tensor dh = fusion.diff;
-		Tensor dhc = fusion.diffTxt;
 		for(int i = num_g - 1;i>=0;i--) {
-			MMJiTBlock block = mids.get(i);
-			block.back(dh, dhc, cos1d, sin1d, cos2d, sin2d);
+			JiTBlock block = mids.get(i);
+			block.back(dh, cos2d, sin2d);
     		dh = block.diff;
-    		dhc = block.context_block.diff;
     	}
     	
 		Tensor de = dh;
-		Tensor dec = dhc;
+
 		/**
 		 * repa backward
 		 */
-		Tensor_OP().add(de, z_mlp.diff, de);
-		Tensor_OP().add(de, dencoder, de);
-		Tensor_OP().add(dec, dencoder_txt, dec);
+		Tensor_OP().getByChannel_add_back(de, z_mlp.diff, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
+    	Tensor_OP().add(dencoder, de, de);
     	
     	for(int i = num_f - 1;i>=0;i--) {
-     		MMJiTBlock block = encoders.get(i);
-    		block.back(de, dec, cos1d, sin1d, cos2d, sin2d);
+    		JiTBlock block = encoders.get(i);
+    		block.back(de, cos2d, sin2d);
     		de = block.diff;
-    		dec = block.context_block.diff;
     	}
 		
+    	Tensor bc = txt_blocks.get(txt_depth - 1).getOutput();
+    	
+    	baseKernel.concat_channel_backward(de, bc, img_x, input.number, maxContextLen, hw, 1, patchEmbd.getOutput().width);
+    	
      	for(int i = txt_depth - 1;i>=0;i--) {
      		PlainTextBlock block = txt_blocks.get(i);
-    		block.back(dec, cos1d, sin1d);
-    		dec = block.diff;
+    		block.back(bc, cos1d, sin1d);
+    		bc = block.diff;
     	}
      	
-     	labelEmbd.back(dec);
+     	labelEmbd.back(bc);
      	
      	patchEmbd.back(de);
      	
@@ -644,7 +657,7 @@ public class MMJiTMainMoudue_Sprint extends Layer {
     	finalLayer.accGrad(scale);
     }
     
-    public static void loadWeight(Map<String, Object> weightMap, MMJiTMainMoudue_Sprint block, boolean showLayers) {
+    public static void loadWeight(Map<String, Object> weightMap, JiTMainMoudue_Sprint block, boolean showLayers) {
         if (showLayers) {
             for (String key : weightMap.keySet()) {
                 System.out.println(key);

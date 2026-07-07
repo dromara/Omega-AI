@@ -767,7 +767,7 @@ public class ICPlan {
 			float dt = t1 - t0;
 			MatrixUtils.val(t.data, t0);
 			t.hostToDevice();
-			f0 = dit.forward_with_path_drop_cfg(y0, context, null_context, cos1d, sin1d, cos2d, sin2d, eps, cfg_scale);
+			f0 = dit.forward_with_path_drop_cfg(this, y0, t, context, null_context, cos1d, sin1d, cos2d, sin2d, eps, cfg_scale);
 			dit.tensorOP.mul(f0, dt, f0);
 			dit.tensorOP.add(y0, f0, y1);
 			float tj = T[j];

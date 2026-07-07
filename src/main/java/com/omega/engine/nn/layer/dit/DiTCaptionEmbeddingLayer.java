@@ -258,7 +258,7 @@ public class DiTCaptionEmbeddingLayer extends Layer {
         linear1.saveModel(outputStream);
         linear2.saveModel(outputStream);
         if(uncond_prob > 0) {
-        	ModelUtils.saveParams(outputStream, getY_embedding());
+        	ModelUtils.saveParams(outputStream, y_embedding);
         }
     }
 
@@ -267,7 +267,7 @@ public class DiTCaptionEmbeddingLayer extends Layer {
         linear2.loadModel(inputStream);
         if(uncond_prob > 0) {
         	y_embedding = new Tensor(1, 1, token_num, inChannel, true);
-        	ModelUtils.loadParams(inputStream, getY_embedding());
+        	ModelUtils.loadParams(inputStream, y_embedding);
         }
     }
 

@@ -9,6 +9,7 @@ import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.layer.InputLayer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.SoftmaxWithCrossEntropyLayer;
+import com.omega.engine.nn.layer.jit.JiTMainMoudue_Sprint;
 import com.omega.engine.nn.layer.jit.MMJiTMainMoudue_Sprint;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.NetworkType;
@@ -25,7 +26,7 @@ import jcuda.runtime.JCuda;
  *
  * @author Administrator
  */
-public class MMJiT_Sprint extends Network {
+public class JiT_Sprint extends Network {
 	
     public int inChannel;
     public int width;
@@ -46,12 +47,12 @@ public class MMJiT_Sprint extends Network {
     private float path_drop_prob = 0.0f;
     
     private InputLayer inputLayer;
-    public MMJiTMainMoudue_Sprint main;
+    public JiTMainMoudue_Sprint main;
     
     private Tensor input_null;
     private Tensor uncond_eps;
     
-    public MMJiT_Sprint(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int bottleneck_dim, int hiddenSize, int headNum, int z_dim, int txt_depth, int depth, int textEmbedDim, int maxContextLen, float y_drop_prob, float path_drop_prob) {
+    public JiT_Sprint(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int bottleneck_dim, int hiddenSize, int headNum, int z_dim, int txt_depth, int depth, int textEmbedDim, int maxContextLen, float y_drop_prob, float path_drop_prob) {
         this.lossFunction = LossFactory.create(lossType, this);
         this.weight_decay = 0.0f;
         this.updater = updater;
@@ -79,7 +80,7 @@ public class MMJiT_Sprint extends Network {
     	
         this.inputLayer = new InputLayer(inChannel, height, width);
         
-        main = new MMJiTMainMoudue_Sprint(inChannel, width, height, patchSize, bottleneck_dim, hiddenSize, headNum, z_dim, txt_depth, depth, textEmbedDim, maxContextLen, y_drop_prob, path_drop_prob, this);
+        main = new JiTMainMoudue_Sprint(inChannel, width, height, patchSize, bottleneck_dim, hiddenSize, headNum, z_dim, txt_depth, depth, textEmbedDim, maxContextLen, y_drop_prob, path_drop_prob, this);
         
         this.addLayer(inputLayer);
         this.addLayer(main);

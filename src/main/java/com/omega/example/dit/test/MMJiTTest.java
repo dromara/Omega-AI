@@ -12,6 +12,7 @@ import com.omega.engine.nn.network.ClipTextModel;
 import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.nn.network.dit.Dinov2;
 import com.omega.engine.nn.network.dit.JiT;
+import com.omega.engine.nn.network.dit.JiT_Sprint;
 import com.omega.engine.nn.network.dit.MMJiT;
 import com.omega.engine.nn.network.dit.MMJiT_REPA;
 import com.omega.engine.nn.network.dit.MMJiT_Sprint;
@@ -187,6 +188,66 @@ public class MMJiTTest {
         
         optimizer.train_MMJiT_Sprint(dinov, dataLoader, dataLoader2, icplan, "D://models//jit//", 1);
         String save_model_path = "D://models//jit//mmjit_b16.model";
+        ModelUtils.saveModel(jit, save_model_path);
+    }
+	
+	public static void jit_b16_sprint_train() throws Exception {
+		
+        String clipDataPath = "D:\\dataset\\amine\\dalle_full_clip.bin";
+        String labelPath = "D:\\dataset\\labels.json";
+		String imgDirPath = "D:\\dataset\\images_256_256\\";
+        boolean horizontalFilp = false;
+        int imgSize = 256;
+        int channel = 3;
+        int maxContextLen = 77;
+        int textEmbedDim = 768;
+        int batchSize = 24;
+
+        ImageClipDataLoader dataLoader = new ImageClipDataLoader(labelPath, imgDirPath, clipDataPath, ".jpg", imgSize, imgSize, maxContextLen, textEmbedDim, batchSize, horizontalFilp, null, null);
+
+		String repaImgDirPath = "D:\\dataset\\images_224_224\\";
+
+        int repaImgSize = 224;
+
+        float[] mean = new float[]{0.485f, 0.456f, 0.406f};
+        float[] std = new float[]{0.229f, 0.224f, 0.225f};
+        SDImageLoader dataLoader2 = new SDImageLoader(labelPath, repaImgDirPath, ".jpg", repaImgSize, repaImgSize, batchSize, false, mean, std);
+		
+		int dinov_patchSize = 14;
+		int dinov_hiddenSize = 768;
+		int headNum = 12;
+		int dinov_depth = 12;
+		int dinov_mlpRatio = 4;
+		Dinov2 dinov = new Dinov2(LossType.MSE, UpdaterType.adamw, 3, repaImgSize, repaImgSize, dinov_patchSize, dinov_hiddenSize, headNum, dinov_depth, dinov_mlpRatio);
+		dinov.CUDNN = true;
+		dinov.RUN_MODEL = RunModel.EVAL;
+        
+        String repa_model_path = "D:\\models\\dionv2-14-b.model";
+        ModelUtils.loadModel(dinov, repa_model_path);
+        
+        int ditHeadNum = 12;
+        int txt_depth = 2;
+        int depth = 12;
+        int patchSize = 16;
+        int bottleneck_dim = 128;
+        int hiddenSize = 768;
+        
+        float y_prob = 0.1f;
+        float path_drop_prob = 0.05f;
+        
+        JiT_Sprint jit = new JiT_Sprint(LossType.MSE, UpdaterType.adamw, channel, imgSize, imgSize, patchSize, bottleneck_dim, hiddenSize, ditHeadNum, dinov_hiddenSize, txt_depth, depth, textEmbedDim, maxContextLen, y_prob, path_drop_prob);
+        jit.CUDNN = true;
+        jit.learnRate = 1e-4f;
+        
+        ICPlan icplan = new ICPlan(jit.tensorOP);
+
+//        String model_path = "D://models//jit//jit_b16_20.model";
+//        ModelUtils.loadModel(jit, model_path);
+        
+        MBSGDOptimizer optimizer = new MBSGDOptimizer(jit, 20, 0.00001f, batchSize, LearnRateUpdate.NONE, false);
+        
+        optimizer.train_JiT_Sprint(dinov, dataLoader, dataLoader2, icplan, "D://models//jit//", 1);
+        String save_model_path = "D://models//jit//jit_b16.model";
         ModelUtils.saveModel(jit, save_model_path);
     }
 	
@@ -600,7 +661,7 @@ public class MMJiTTest {
             	condInput_ynull = Tensor.createGPUTensor(condInput_ynull, condInput.number, condInput.channel, condInput.height, condInput.width, true);
                 Tensor y_null = network.main.labelEmbd.getY_embedding();
                 int part_input_size = y_null.dataLength;
-                for(int b = 0;b<batchSize * maxContextLen;b++) {
+                for(int b = 0;b<batchSize;b++) {
                 	network.tensorOP.op.copy_gpu(y_null, condInput_ynull, part_input_size, 0, 1, b * part_input_size, 1);
                 }
             }
@@ -707,9 +768,9 @@ public class MMJiTTest {
 		   
 //			test_img();
 			
-			mmjit_b16_iddpm_train();
+//			mmjit_b16_iddpm_train();
 			
-//			jit_repa_b16_iddpm_train();
+			jit_b16_sprint_train();
 			
 //			test_mmjit_b16_cfg();
 

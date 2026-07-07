@@ -278,6 +278,7 @@ __global__ void mask_igone_diff2(
     int igoneT
 ) {
 	int w = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+	if (w >= W) return;
 	float val = 0;
     for(int b = 0;b<B;b++){
 		for(int t = 0;t<T;t++){

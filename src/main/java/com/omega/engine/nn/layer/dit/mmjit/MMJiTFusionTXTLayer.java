@@ -1,4 +1,4 @@
-package com.omega.engine.nn.layer.dit.sprint;
+package com.omega.engine.nn.layer.dit.mmjit;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -15,49 +15,37 @@ import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
 
 /**
- * FusionLayer
+ * MMJiTFusionLayer
  *
  * @author Administrator
  */
-public class FusionLayer2 extends Layer {
+public class MMJiTFusionTXTLayer extends Layer {
 	
 	private int batchSize;
     private int embedDim = 0;
-    private int T;
     private int FT;
-    private int TT = 0;
+    private int TT;
     
     private float path_drop_prob = 0.0f;
 
     public FullyLayer fusion_proj;
-    
-    private Tensor g_pad;
+    public FullyLayer fusion_txt_proj;
+
     private Tensor e_m;
+    private Tensor t_e_m;
     
     private PaddingMaskKernel pmKernel;
     
     private float pdp = 0.0f;
-
-    public FusionLayer2(int embedDim, int FT, int T, Network network) {
-        this.network = network;
-        if (this.updater == null) {
-            this.setUpdater(UpdaterFactory.create(network));
-        }
-        this.T = T;
-        this.FT = FT;
-        this.embedDim = embedDim;
-        this.oChannel = 1;
-        this.oHeight = 1;
-        this.oWidth = embedDim;
-        this.initLayers();
-    }
     
-    public FusionLayer2(int embedDim, int FT, int T, int TT, Network network) {
+    private Tensor diffWTxt;
+    public Tensor diffTxt;
+
+    public MMJiTFusionTXTLayer(int embedDim, int FT, int TT, Network network) {
         this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
         }
-        this.T = T;
         this.FT = FT;
         this.TT = TT;
         this.embedDim = embedDim;
@@ -67,12 +55,11 @@ public class FusionLayer2 extends Layer {
         this.initLayers();
     }
     
-    public FusionLayer2(int embedDim, int FT, int T, int TT, float path_drop_prob, Network network) {
+    public MMJiTFusionTXTLayer(int embedDim, int FT, int TT, float path_drop_prob, Network network) {
         this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
         }
-        this.T = T;
         this.FT = FT;
         this.TT = TT;
         this.path_drop_prob = path_drop_prob;
@@ -80,6 +67,7 @@ public class FusionLayer2 extends Layer {
         this.oChannel = 1;
         this.oHeight = 1;
         this.oWidth = embedDim;
+        network.paramLayers.add(this);
         this.initLayers();
     }
 
@@ -97,6 +85,12 @@ public class FusionLayer2 extends Layer {
         	this.fusion_proj.bias.clearGPU();
         }
         
+        this.fusion_txt_proj = new FullyLayer(embedDim * 2, embedDim, true, network);
+        RandomUtils.xavier_uniform(this.fusion_txt_proj.weight, 1, embedDim * 2, embedDim);
+        if(this.fusion_txt_proj.bias != null) {
+        	this.fusion_txt_proj.bias.clearGPU();
+        }
+        
         if(pmKernel == null) {
         	pmKernel = new PaddingMaskKernel(cuda());
         }
@@ -107,12 +101,11 @@ public class FusionLayer2 extends Layer {
     public void init() {
         // TODO Auto-generated method stub
         this.number = this.input.number;
-        this.batchSize = number / (T + TT);
-        if(number != batchSize * (TT + FT) && (g_pad == null || g_pad.number != batchSize * (TT + FT))) {
-        	this.g_pad = Tensor.createGPUTensor(g_pad, batchSize * (TT + FT), 1, 1, embedDim, true);
-        }
-        if(e_m == null || e_m.number != batchSize * (TT + FT)) {
-        	this.e_m = Tensor.createGPUTensor(e_m, batchSize * (TT + FT), 1, 1, embedDim * 2, true);
+        this.batchSize = number / FT;
+
+        if(e_m == null || e_m.number != batchSize * FT) {
+        	this.e_m = Tensor.createGPUTensor(e_m, batchSize * FT, 1, 1, embedDim * 2, true);
+        	this.t_e_m = Tensor.createGPUTensor(t_e_m, batchSize * TT, 1, 1, embedDim * 2, true);
         }
     }
 
@@ -124,10 +117,20 @@ public class FusionLayer2 extends Layer {
     	}else {
     		diffW.clearGPU();
     	}
+    	if(diffWTxt == null) {
+    		diffWTxt = Tensor.createGPUTensor(diffWTxt, weight.shape(), true);
+    	}else {
+    		diffWTxt.clearGPU();
+    	}
     	if(diff == null || diff.number != number) {
     		diff = Tensor.createGPUTensor(diff, input.shape(), true);
     	}else {
     		diff.clearGPU();
+    	}
+    	if(diffTxt == null || diffTxt.number != batchSize * TT) {
+    		diffTxt = Tensor.createGPUTensor(diffTxt, batchSize * TT, 1, 1, embedDim, true);
+    	}else {
+    		diffTxt.clearGPU();
     	}
     }
 
@@ -142,39 +145,27 @@ public class FusionLayer2 extends Layer {
 
     }
     
-    public void output(Tensor encoder) {
+    public void output(Tensor encoder, Tensor txt, Tensor e_txt) {
     	pdp = RandomUtils.randomFloat();
 //    	pdp = 0.00001f;
     	if(network.RUN_MODEL == RunModel.TRAIN && path_drop_prob > 0 && pdp < path_drop_prob) {
-    		pmKernel.set_mask_igone(weight, input, FT + TT, 0, embedDim);
+    		pmKernel.set_mask_igone(weight, input, FT, 0, embedDim);
+    		pmKernel.set_mask_igone(weight, txt, TT, 0, embedDim);
     	}
     	Tensor_OP().cat_width(encoder, input, e_m, embedDim, embedDim);
+       	Tensor_OP().cat_width(e_txt, txt, t_e_m, embedDim, embedDim);
     	fusion_proj.forward(e_m);
+    	fusion_txt_proj.forward(t_e_m);
     	this.output = fusion_proj.getOutput();
     }
     
-    public void output_uncond(Tensor encoder) {
-    	pmKernel.set_mask_igone(weight, input, FT + TT, 0, embedDim);
+    public void output_uncond(Tensor encoder, Tensor txt, Tensor e_txt) {
+    	pmKernel.set_mask_igone(weight, input, FT, 0, embedDim);
+		pmKernel.set_mask_igone(weight, txt, TT, 0, embedDim);
     	Tensor_OP().cat_width(encoder, input, e_m, embedDim, embedDim);
+       	Tensor_OP().cat_width(e_txt, txt, t_e_m, embedDim, embedDim);
     	fusion_proj.forward(e_m);
-    	this.output = fusion_proj.getOutput();
-    }
-    
-    public void output(Tensor encoder, Tensor idskeep) {
-    	if(TT > 0) {
-        	pmKernel.forward(input, weight, idskeep, g_pad, FT, T, TT, embedDim);
-    	}else {
-        	pmKernel.forward(input, weight, idskeep, g_pad, FT, T, embedDim);
-    	}
-    	if(network.RUN_MODEL == RunModel.TRAIN) {
-        	pdp = RandomUtils.randomFloat();
-//        	pdp = 0.001f;
-        	if(path_drop_prob > 0 && pdp < path_drop_prob) {
-        		pmKernel.set_mask_igone(weight, g_pad, FT + TT, 0, embedDim);
-        	}
-    	}
-    	Tensor_OP().cat_width(encoder, g_pad, e_m, embedDim, embedDim);
-    	fusion_proj.forward(e_m);
+    	fusion_txt_proj.forward(t_e_m);
     	this.output = fusion_proj.getOutput();
     }
     
@@ -190,34 +181,18 @@ public class FusionLayer2 extends Layer {
     	
     }
     
-    public void diff(Tensor dencoder, Tensor idskeep) {
+    public void diff(Tensor dencoder, Tensor dtxt, Tensor de_txt) {
         // TODO Auto-generated method stub
     	fusion_proj.back(delta);
-//    	fusion_proj.diff.showDM("fusion_proj.diff");
-    	Tensor_OP().cat_width_back(dencoder, g_pad, fusion_proj.diff, embedDim, embedDim);
-    	if(path_drop_prob > 0 && pdp < path_drop_prob) {
-    		pmKernel.mask_igone_diff(g_pad, diffW, g_pad.number, embedDim, FT + TT, 0);
-//    		diff.clearGPU();
-    	}else {
-    		if(TT > 0) {
-        		pmKernel.backward(g_pad, idskeep, diff, diffW, FT, T, TT, embedDim);
-        	}else {
-        		pmKernel.backward(g_pad, idskeep, diff, diffW, FT, T, embedDim);
-        	}
-    	}
-//    	diff.showDM("diff");
-//    	diffW.showDM("diffW");
-    }
-    
-    public void diff(Tensor dencoder) {
-        // TODO Auto-generated method stub
-    	fusion_proj.back(delta);
+    	fusion_txt_proj.back(dtxt);
     	Tensor_OP().cat_width_back(dencoder, diff, fusion_proj.diff, embedDim, embedDim);
+    	Tensor_OP().cat_width_back(de_txt, diffTxt, fusion_txt_proj.diff, embedDim, embedDim);
     	if(path_drop_prob > 0 && pdp < path_drop_prob) {
-//    		pmKernel.mask_igone_diff(diff, diffW, diff.number, embedDim, FT + TT, 0);
-//    		pmKernel.set_mask_back_igone(diff, FT + TT, 0, embedDim);
-    		pmKernel.mask_igone_diff2(diff, diffW, batchSize, FT + TT, embedDim, 0);
+    		pmKernel.mask_igone_diff2(diff, diffW, batchSize, FT, embedDim, 0);
+    		pmKernel.mask_igone_diff2(diffTxt, diffWTxt, batchSize, TT, embedDim, 0);
+    		Tensor_OP().add(diffW, diffWTxt, diffW);
     		diff.clearGPU();
+    		diffTxt.clearGPU();
     	}
     }
 
@@ -272,7 +247,7 @@ public class FusionLayer2 extends Layer {
         this.output();
     }
     
-    public void forward(Tensor input, Tensor encoder) {
+    public void forward(Tensor input, Tensor encoder, Tensor txt, Tensor encoder_txt) {
         // TODO Auto-generated method stub
         /**
          * 设置输入
@@ -285,10 +260,10 @@ public class FusionLayer2 extends Layer {
         /**
          * 计算输出
          */
-        this.output(encoder);
+        this.output(encoder, txt, encoder_txt);
     }
     
-    public void forward_uncond(Tensor input, Tensor encoder) {
+    public void forward_uncond(Tensor input, Tensor encoder, Tensor txt, Tensor encoder_txt) {
         // TODO Auto-generated method stub
         /**
          * 设置输入
@@ -301,23 +276,7 @@ public class FusionLayer2 extends Layer {
         /**
          * 计算输出
          */
-        this.output_uncond(encoder);
-    }
-    
-    public void forward(Tensor input, Tensor encoder, Tensor idskeep) {
-        // TODO Auto-generated method stub
-        /**
-         * 设置输入
-         */
-        this.setInput(input);
-        /**
-         * 参数初始化
-         */
-        this.init();
-        /**
-         * 计算输出
-         */
-        this.output(encoder, idskeep);
+        this.output_uncond(encoder, txt, encoder_txt);
     }
     
     @Override
@@ -337,7 +296,7 @@ public class FusionLayer2 extends Layer {
         }
     }
     
-    public void back(Tensor delta, Tensor dencoder) {
+    public void back(Tensor delta, Tensor dencoder, Tensor txt_delta, Tensor txt_dencoder) {
         // TODO Auto-generated method stub
         this.initBack();
         /**
@@ -347,20 +306,7 @@ public class FusionLayer2 extends Layer {
         /**
          * 计算梯度
          */
-        this.diff(dencoder);
-    }
-    
-    public void back(Tensor delta, Tensor dencoder, Tensor idskeep) {
-        // TODO Auto-generated method stub
-        this.initBack();
-        /**
-         * 设置梯度
-         */
-        this.setDelta(delta);
-        /**
-         * 计算梯度
-         */
-        this.diff(dencoder, idskeep);
+        this.diff(dencoder, txt_delta, txt_dencoder);
     }
     
     @Override
@@ -386,6 +332,7 @@ public class FusionLayer2 extends Layer {
             this.clearAccGrad();
         }
     	fusion_proj.update();
+    	fusion_txt_proj.update();
     }
 
     @Override
@@ -418,17 +365,20 @@ public class FusionLayer2 extends Layer {
     public void saveModel(RandomAccessFile outputStream) throws IOException {
     	ModelUtils.saveParams(outputStream, weight);
     	fusion_proj.saveModel(outputStream);
+    	fusion_txt_proj.saveModel(outputStream);
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
     	ModelUtils.loadParams(inputStream, weight);
     	fusion_proj.loadModel(inputStream);
+    	fusion_txt_proj.loadModel(inputStream);
     }
 
     @Override
     public void accGrad(float scale) {
         // TODO Auto-generated method stub
     	fusion_proj.accGrad(scale);
+    	fusion_txt_proj.accGrad(scale);
     }
 }
 
