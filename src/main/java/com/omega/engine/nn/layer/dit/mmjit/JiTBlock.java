@@ -21,8 +21,6 @@ import com.omega.engine.updater.UpdaterFactory;
  */
 public class JiTBlock extends Layer {
 	
-	private int batchSize;
-	
     private int embedDim = 0;
     private int headNum;
     private int time;
@@ -41,8 +39,6 @@ public class JiTBlock extends Layer {
     public DiTSwiGLUFFN mlp;
 
     private Tensor crossAttnInput;
-    
-    private int[] shape;
     
     public JiTBlock(int embedDim, int time, int mlpHiddenDim, int headNum, int maxContext, boolean bias, boolean qkNorm, Network network) {
         this.network = network;
@@ -85,11 +81,6 @@ public class JiTBlock extends Layer {
     public void init(Tensor input) {
         // TODO Auto-generated method stub
     	this.number = input.number;
-        this.batchSize = number / time;
-        if(shape == null) {
-        	shape= new int[] {batchSize, 6, 1, embedDim};
-        }
-
         if(crossAttnInput == null || crossAttnInput.number != number) {
         	crossAttnInput = Tensor.createGPUTensor(crossAttnInput, input.number, input.channel, input.height, input.width, true);
         }

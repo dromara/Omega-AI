@@ -7,16 +7,14 @@ import java.util.List;
 import java.util.Map;
 
 import com.omega.engine.gpu.BaseKernel;
-import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.dit.DiTCaptionEmbeddingLayer;
+import com.omega.engine.nn.layer.dit.DiTOrgTimeEmbeddingLayer;
+import com.omega.engine.nn.layer.dit.flux.FluxDiTBlock;
 import com.omega.engine.nn.layer.dit.flux.REPAMLPLayer;
-import com.omega.engine.nn.layer.dit.mmjit.JiTBlock;
-import com.omega.engine.nn.layer.dit.mmjit.PlainTextBlock;
 import com.omega.engine.nn.layer.dit.sprint.FusionLayer2;
-import com.omega.engine.nn.layer.normalization.BNType;
-import com.omega.engine.nn.layer.normalization.RMSLayer;
+import com.omega.engine.nn.layer.dit.txt.DiT_TXTFinalLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
 import com.omega.engine.tensor.Tensor;
@@ -26,7 +24,7 @@ import com.omega.engine.updater.UpdaterFactory;
  * MMJiTMainMoudue_REPA
  * @author Administrator
  */
-public class JiTMainMoudue_Sprint extends Layer {
+public class JiTMainMoudue_Sprint2 extends Layer {
 	
 	public int inChannel;
     public int width;
@@ -34,7 +32,6 @@ public class JiTMainMoudue_Sprint extends Layer {
     public int patchSize;
     private int bottleneck_dim;
     private int hiddenSize;
-    private int txt_depth;
     private int depth;
     private int headNum;
     private int textEmbedDim;
@@ -50,14 +47,13 @@ public class JiTMainMoudue_Sprint extends Layer {
     private int num_g = 0;
     
     public BottleneckPatchEmbed patchEmbd;
+    public DiTOrgTimeEmbeddingLayer timeEmbd;
     public DiTCaptionEmbeddingLayer labelEmbd;
-    public List<PlainTextBlock> txt_blocks;
-    public List<JiTBlock> encoders;
-    public List<JiTBlock> mids;
-    public List<JiTBlock> decoders;
+    public List<FluxDiTBlock> encoders;
+    public List<FluxDiTBlock> mids;
+    public List<FluxDiTBlock> decoders;
     public FusionLayer2 fusion;
-    public RMSLayer finalNorm;
-    public FullyLayer finalLayer;
+    public DiT_TXTFinalLayer finalLayer;
     
     public REPAMLPLayer z_mlp;
     
@@ -85,9 +81,10 @@ public class JiTMainMoudue_Sprint extends Layer {
     
     private Tensor z_img_x;
     
+    private Tensor dtc;
     private Tensor d_o;
     
-    public JiTMainMoudue_Sprint(int inChannel, int width, int height, int patchSize, int bottleneck_dim, int hiddenSize, int headNum, int z_dim, int txt_depth, int depth, int textEmbedDim, int maxContextLen, float y_drop_prob, float path_drop_prob, Network network) {
+    public JiTMainMoudue_Sprint2(int inChannel, int width, int height, int patchSize, int bottleneck_dim, int hiddenSize, int headNum, int z_dim, int depth, int textEmbedDim, int maxContextLen, float y_drop_prob, float path_drop_prob, Network network) {
 		this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
@@ -101,7 +98,6 @@ public class JiTMainMoudue_Sprint extends Layer {
 		this.bottleneck_dim = bottleneck_dim;
 		this.headNum = headNum;
 		this.hiddenSize = hiddenSize;
-		this.txt_depth = txt_depth;
 		this.depth = depth;
 		this.textEmbedDim = textEmbedDim;
 		this.maxContextLen = maxContextLen;
@@ -121,46 +117,37 @@ public class JiTMainMoudue_Sprint extends Layer {
 
 		this.token_t = (int) (hw * (1.0f - 0));
     	
+        timeEmbd = new DiTOrgTimeEmbeddingLayer(1000, 256, hiddenSize, true, network);
+		
         labelEmbd = new DiTCaptionEmbeddingLayer(textEmbedDim, hiddenSize, maxContextLen, y_drop_prob, true, network);
     	
-        txt_blocks = new ArrayList<PlainTextBlock>();
-        
-        encoders = new ArrayList<JiTBlock>();
-        mids = new ArrayList<JiTBlock>();
-        decoders = new ArrayList<JiTBlock>();
-         
-        for(int i = 0;i<txt_depth;i++) {
-        	PlainTextBlock block = new PlainTextBlock(hiddenSize, maxContextLen, headNum, true, false, network);
-        	txt_blocks.add(block);
-        }
+        encoders = new ArrayList<FluxDiTBlock>();
+        mids = new ArrayList<FluxDiTBlock>();
+        decoders = new ArrayList<FluxDiTBlock>();
         
         for(int i = 0;i<num_f;i++) {
         	//int embedDim, int time, int mlpHiddenDim, int headNum, int maxContext, boolean bias, boolean qkNorm, Network network
-        	JiTBlock block = new JiTBlock(hiddenSize, patchEmbd.oChannel + maxContextLen, mlpRatio * hiddenSize, headNum, maxContextLen, true, false, network);
+        	FluxDiTBlock block = new FluxDiTBlock(hiddenSize, hiddenSize, patchEmbd.oChannel + maxContextLen, mlpRatio * hiddenSize, headNum, maxContextLen, true, false, network);
 	        encoders.add(block);
         }
         
         for(int i = 0;i<num_g;i++) {
-        	JiTBlock block = new JiTBlock(hiddenSize, patchEmbd.oChannel + maxContextLen, mlpRatio * hiddenSize, headNum, maxContextLen, true, false, network);
+        	FluxDiTBlock block = new FluxDiTBlock(hiddenSize, hiddenSize, patchEmbd.oChannel + maxContextLen, mlpRatio * hiddenSize, headNum, maxContextLen, true, false, network);
 	        mids.add(block);
         }
 
         fusion = new FusionLayer2(hiddenSize, hw, token_t, maxContextLen, path_drop_prob, network);
         
         for(int i = 0;i<num_h;i++) {
-        	JiTBlock block = new JiTBlock(hiddenSize, patchEmbd.oChannel + maxContextLen, mlpRatio * hiddenSize, headNum, maxContextLen, true, false, network);
+        	FluxDiTBlock block = new FluxDiTBlock(hiddenSize, hiddenSize, patchEmbd.oChannel + maxContextLen, mlpRatio * hiddenSize, headNum, maxContextLen, true, false, network);
 	        decoders.add(block);
         }
         
-        z_mlp = new REPAMLPLayer(hiddenSize, projector_dim, z_dim, true, network);
-        
         this.oChannel = inChannel;
-        finalNorm = new RMSLayer(1, 1, hiddenSize, true, BNType.fully_bn, network);
-        finalLayer = new FullyLayer(hiddenSize, patchSize * patchSize * oChannel, true, network);
-        this.finalLayer.weight.clearGPU();
-        if(this.finalLayer.bias != null) {
-        	this.finalLayer.bias.clearGPU();
-        }
+
+        finalLayer = new DiT_TXTFinalLayer(patchSize, hiddenSize, inChannel, patchEmbd.oChannel, true, true, network);
+        
+        z_mlp = new REPAMLPLayer(hiddenSize, projector_dim, z_dim, true, network);
         
         if(baseKernel == null) {
         	baseKernel = new BaseKernel(cuda());
@@ -225,10 +212,12 @@ public class JiTMainMoudue_Sprint extends Layer {
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
-    	if(d_o == null || d_o.number != input.number * (maxContextLen + hw)) {
+    	if(dtc == null || dtc.number != timeEmbd.getOutput().number) {
     		d_o = Tensor.createGPUTensor(d_o, input.number * (maxContextLen + hw), 1, 1, patchEmbd.getOutput().width, true);
+    		dtc = Tensor.createGPUTensor(dtc, timeEmbd.getOutput().shape(), true);
     		dencoder = Tensor.createGPUTensor(dencoder, number * (maxContextLen + hw), 1, 1, hiddenSize, true);
     	}else {
+    		dtc.clearGPU();
     		d_o.clearGPU();
     	}
     }
@@ -248,31 +237,28 @@ public class JiTMainMoudue_Sprint extends Layer {
     	
     }
     
-    public void output(Tensor label, Tensor cos1d,Tensor sin1d, Tensor cos2d, Tensor sin2d) {
+    public void output(Tensor tc, Tensor label, Tensor cos,Tensor sin) {
 
     	patchEmbd.forward(input);
 
     	Tensor_OP().addAxis(patchEmbd.getOutput(), posEmbd, patchEmbd.getOutput(), posEmbd.channel * posEmbd.width);
 
+    	timeEmbd.forward(tc);
+    	
     	labelEmbd.forward(label);
     	
     	Tensor x = patchEmbd.getOutput().view(patchEmbd.getOutput().number * patchEmbd.getOutput().channel, 1, 1, patchEmbd.getOutput().width);
     	
     	Tensor cond = labelEmbd.getOutput();
     	
-    	Tensor bc = cond;
-    	for(int i = 0;i<txt_depth;i++) {
-    		PlainTextBlock block = txt_blocks.get(i);
-    		block.forward(bc, cos1d, sin1d);
-    		bc = block.getOutput();
-    	}
+    	Tensor t = timeEmbd.getOutput();
     	
-     	baseKernel.concat_channel_forward(bc, x, cat_x, input.number, maxContextLen, hw, 1, patchEmbd.getOutput().width);
+     	baseKernel.concat_channel_forward(cond, x, cat_x, input.number, maxContextLen, hw, 1, patchEmbd.getOutput().width);
     	
     	Tensor e_x = cat_x;
     	for(int i = 0;i<num_f;i++) {
-    		JiTBlock block = encoders.get(i);
-    		block.forward(e_x, cos2d, sin2d);
+    		FluxDiTBlock block = encoders.get(i);
+    		block.forward(e_x, t, cos, sin);
     		e_x = block.getOutput();
     	}
     	
@@ -293,8 +279,8 @@ public class JiTMainMoudue_Sprint extends Layer {
 			 * mids
 			 */
 			for(int i = 0;i<num_g;i++) {
-				JiTBlock block = mids.get(i);
-				block.forward(h_x, cos2d, sin2d);
+				FluxDiTBlock block = mids.get(i);
+				block.forward(h_x, t, cos, sin);
 	    		h_x = block.getOutput();
 	    	}
 		}else {
@@ -312,15 +298,14 @@ public class JiTMainMoudue_Sprint extends Layer {
 		
 		Tensor d_x = fusion.getOutput();
 		for(int i = 0;i<num_h;i++) {
-			JiTBlock block = decoders.get(i);
-    		block.forward(d_x, cos2d, sin2d);
+			FluxDiTBlock block = decoders.get(i);
+    		block.forward(d_x, t, cos, sin);
     		d_x = block.getOutput();
     	}
 		
     	Tensor_OP().getByChannel(d_x, img_x, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
-		
-    	finalNorm.forward(img_x);
-    	finalLayer.forward(finalNorm.getOutput());
+
+    	finalLayer.forward(img_x, t);
     	
     	/**
     	 * unpatchify
@@ -348,7 +333,7 @@ public class JiTMainMoudue_Sprint extends Layer {
 
     }
     
-    public void diff(Tensor cos1d, Tensor sin1d, Tensor cos2d, Tensor sin2d) {
+    public void diff(Tensor cos, Tensor sin) {
         // TODO Auto-generated method stub
     	/**
     	 * unpatchify back
@@ -359,17 +344,16 @@ public class JiTMainMoudue_Sprint extends Layer {
 //    	int[] xShape = new int[] {number, h, w, patchSize, patchSize, oChannel};
     	Tensor_OP().permute(delta, finalLayer.getOutput(), yShape, xShape, new int[] {0, 2, 4, 3, 5, 1});
     	
-    	finalLayer.back(finalLayer.getOutput());
-    	finalNorm.back(finalLayer.diff);
+    	finalLayer.back(finalLayer.getOutput(), dtc);
     	
     	Tensor dy = d_o;
     	dy.clearGPU();
 
-    	Tensor_OP().getByChannel_back(dy, finalNorm.diff, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
+    	Tensor_OP().getByChannel_back(dy, finalLayer.diff, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
 
     	for(int i = num_h - 1;i>=0;i--) {
-    		JiTBlock block = decoders.get(i);
-    		block.back(dy, cos2d, sin2d);
+    		FluxDiTBlock block = decoders.get(i);
+    		block.back(dy, dtc, cos, sin);
     		dy = block.diff;
     	}
      	
@@ -383,8 +367,8 @@ public class JiTMainMoudue_Sprint extends Layer {
 		 */
 		Tensor dh = fusion.diff;
 		for(int i = num_g - 1;i>=0;i--) {
-			JiTBlock block = mids.get(i);
-			block.back(dh, cos2d, sin2d);
+			FluxDiTBlock block = mids.get(i);
+    		block.back(dh, dtc, cos, sin);
     		dh = block.diff;
     	}
     	
@@ -397,22 +381,16 @@ public class JiTMainMoudue_Sprint extends Layer {
     	Tensor_OP().add(dencoder, de, de);
     	
     	for(int i = num_f - 1;i>=0;i--) {
-    		JiTBlock block = encoders.get(i);
-    		block.back(de, cos2d, sin2d);
+    		FluxDiTBlock block = encoders.get(i);
+    		block.back(de, dtc, cos, sin);
     		de = block.diff;
     	}
 		
-    	Tensor bc = txt_blocks.get(txt_depth - 1).getOutput();
+    	baseKernel.concat_channel_backward(de, labelEmbd.getOutput(), img_x, input.number, maxContextLen, hw, 1, patchEmbd.getOutput().width);
     	
-    	baseKernel.concat_channel_backward(de, bc, img_x, input.number, maxContextLen, hw, 1, patchEmbd.getOutput().width);
-    	
-     	for(int i = txt_depth - 1;i>=0;i--) {
-     		PlainTextBlock block = txt_blocks.get(i);
-    		block.back(bc, cos1d, sin1d);
-    		bc = block.diff;
-    	}
+     	labelEmbd.back(labelEmbd.getOutput());
      	
-     	labelEmbd.back(bc);
+     	timeEmbd.back(dtc);
      	
      	patchEmbd.back(img_x);
      	
@@ -475,7 +453,7 @@ public class JiTMainMoudue_Sprint extends Layer {
      * @param tc time cond
      * @param text
      */
-    public void forward(Tensor input,Tensor text, Tensor cos1d, Tensor sin1d, Tensor cos2d, Tensor sin2d) {
+    public void forward(Tensor input, Tensor t, Tensor text, Tensor cos, Tensor sin) {
         // TODO Auto-generated method stub
         /**
          * 设置输入
@@ -488,7 +466,7 @@ public class JiTMainMoudue_Sprint extends Layer {
         /**
          * 计算输出
          */
-        this.output(text, cos1d, sin1d, cos2d, sin2d);
+        this.output(t, text, cos, sin);
     }
 
     @Override
@@ -497,7 +475,7 @@ public class JiTMainMoudue_Sprint extends Layer {
 
     }
     
-    public void back(Tensor delta, Tensor cos1d, Tensor sin1d, Tensor cos2d, Tensor sin2d) {
+    public void back(Tensor delta, Tensor cos, Tensor sin) {
         // TODO Auto-generated method stub
         this.initBack();
         /**
@@ -507,7 +485,7 @@ public class JiTMainMoudue_Sprint extends Layer {
         /**
          * 计算梯度
          */
-        this.diff(cos1d, sin1d, cos2d, sin2d);
+        this.diff(cos, sin);
     }
     
     @Override
@@ -515,11 +493,9 @@ public class JiTMainMoudue_Sprint extends Layer {
         // TODO Auto-generated method stub
     	patchEmbd.update();
 
-    	labelEmbd.update();
+    	timeEmbd.update();
     	
-    	for(int i = 0;i<txt_depth;i++) {
-    		txt_blocks.get(i).update();
-    	}
+    	labelEmbd.update();
     	
     	for(int i = 0;i<num_f;i++) {
     		encoders.get(i).update();
@@ -536,8 +512,7 @@ public class JiTMainMoudue_Sprint extends Layer {
     	}
     	
     	z_mlp.update();
-    	
-    	finalNorm.update();
+
     	finalLayer.update();
     }
 
@@ -570,12 +545,10 @@ public class JiTMainMoudue_Sprint extends Layer {
 
     public void saveModel(RandomAccessFile outputStream) throws IOException {
     	patchEmbd.saveModel(outputStream);
-
-    	labelEmbd.saveModel(outputStream);
     	
-    	for(int i = 0;i<txt_depth;i++) {
-    		txt_blocks.get(i).saveModel(outputStream);
-    	}
+    	timeEmbd.saveModel(outputStream);
+    	
+    	labelEmbd.saveModel(outputStream);
     	
     	for(int i = 0;i<num_f;i++) {
     		encoders.get(i).saveModel(outputStream);
@@ -592,19 +565,16 @@ public class JiTMainMoudue_Sprint extends Layer {
     	}
     	
     	z_mlp.saveModel(outputStream);
-    	
-    	finalNorm.saveModel(outputStream);
+
     	finalLayer.saveModel(outputStream);
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
     	patchEmbd.loadModel(inputStream);
 
-    	labelEmbd.loadModel(inputStream);
+    	timeEmbd.loadModel(inputStream);
     	
-    	for(int i = 0;i<txt_depth;i++) {
-    		txt_blocks.get(i).loadModel(inputStream);
-    	}
+    	labelEmbd.loadModel(inputStream);
     	
     	for(int i = 0;i<num_f;i++) {
     		encoders.get(i).loadModel(inputStream);
@@ -621,8 +591,7 @@ public class JiTMainMoudue_Sprint extends Layer {
     	}
     	
     	z_mlp.loadModel(inputStream);
-    	
-    	finalNorm.loadModel(inputStream, 1, 1, hiddenSize, BNType.fully_bn);
+
     	finalLayer.loadModel(inputStream);
     }
 
@@ -631,11 +600,9 @@ public class JiTMainMoudue_Sprint extends Layer {
         // TODO Auto-generated method stub
     	patchEmbd.accGrad(scale);
 
-    	labelEmbd.accGrad(scale);
+    	timeEmbd.accGrad(scale);
     	
-    	for(int i = 0;i<txt_depth;i++) {
-    		txt_blocks.get(i).accGrad(scale);
-    	}
+    	labelEmbd.accGrad(scale);
     	
     	for(int i = 0;i<num_f;i++) {
     		encoders.get(i).accGrad(scale);
@@ -652,12 +619,11 @@ public class JiTMainMoudue_Sprint extends Layer {
     	}
     	
     	z_mlp.accGrad(scale);
-    	
-    	finalNorm.accGrad(scale);
+
     	finalLayer.accGrad(scale);
     }
     
-    public static void loadWeight(Map<String, Object> weightMap, JiTMainMoudue_Sprint block, boolean showLayers) {
+    public static void loadWeight(Map<String, Object> weightMap, JiTMainMoudue_Sprint2 block, boolean showLayers) {
         if (showLayers) {
             for (String key : weightMap.keySet()) {
                 System.out.println(key);

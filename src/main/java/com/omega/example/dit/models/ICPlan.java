@@ -19,6 +19,8 @@ import com.omega.engine.nn.network.dit.FluxDiT_SPRINT;
 import com.omega.engine.nn.network.dit.FluxDiT_SPRINT3;
 import com.omega.engine.nn.network.dit.JiT;
 import com.omega.engine.nn.network.dit.JiT_REPA;
+import com.omega.engine.nn.network.dit.JiT_Sprint;
+import com.omega.engine.nn.network.dit.JiT_Sprint2;
 import com.omega.engine.nn.network.dit.MMDiT_RoPE;
 import com.omega.engine.nn.network.dit.MMJiT;
 import com.omega.engine.nn.network.dit.MMJiT_REPA;
@@ -757,6 +759,54 @@ public class ICPlan {
 	}
 	
 	public Tensor forward_with_path_drop_cfg(MMJiT_Sprint dit, Tensor y0, Tensor t, Tensor context, Tensor null_context, Tensor cos1d, Tensor sin1d, Tensor cos2d, Tensor sin2d, Tensor y1, Tensor eps, float cfg_scale) {
+		ininT(0, 1, count);
+		int j = 1;
+		Tensor out = null;
+		Tensor f0 = null;
+		for(int i = 0;i<count - 1;i++) {
+			float t0 = T[i];
+			float t1 = T[i + 1];
+			float dt = t1 - t0;
+			MatrixUtils.val(t.data, t0);
+			t.hostToDevice();
+			f0 = dit.forward_with_path_drop_cfg(this, y0, t, context, null_context, cos1d, sin1d, cos2d, sin2d, eps, cfg_scale);
+			dit.tensorOP.mul(f0, dt, f0);
+			dit.tensorOP.add(y0, f0, y1);
+			float tj = T[j];
+			if(j < T.length && t1 >= tj) {
+				out = linear_interp(dit.tensorOP, t0, t1, y0, y1, tj);
+				j++;
+			}
+			dit.tensorOP.copyGPU(y1, y0);
+		}
+		return out;
+	}
+	
+	public Tensor forward_with_path_drop_cfg(JiT_Sprint2 dit, Tensor y0, Tensor t, Tensor context, Tensor null_context, Tensor cos, Tensor sin, Tensor y1, Tensor eps, float cfg_scale) {
+		ininT(0, 1, count);
+		int j = 1;
+		Tensor out = null;
+		Tensor f0 = null;
+		for(int i = 0;i<count - 1;i++) {
+			float t0 = T[i];
+			float t1 = T[i + 1];
+			float dt = t1 - t0;
+			MatrixUtils.val(t.data, t0);
+			t.hostToDevice();
+			f0 = dit.forward_with_path_drop_cfg(this, y0, t, context, null_context, cos, sin, eps, cfg_scale);
+			dit.tensorOP.mul(f0, dt, f0);
+			dit.tensorOP.add(y0, f0, y1);
+			float tj = T[j];
+			if(j < T.length && t1 >= tj) {
+				out = linear_interp(dit.tensorOP, t0, t1, y0, y1, tj);
+				j++;
+			}
+			dit.tensorOP.copyGPU(y1, y0);
+		}
+		return out;
+	}
+	
+	public Tensor forward_with_path_drop_cfg(JiT_Sprint dit, Tensor y0, Tensor t, Tensor context, Tensor null_context, Tensor cos1d, Tensor sin1d, Tensor cos2d, Tensor sin2d, Tensor y1, Tensor eps, float cfg_scale) {
 		ininT(0, 1, count);
 		int j = 1;
 		Tensor out = null;

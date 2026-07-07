@@ -9,7 +9,7 @@ import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.layer.InputLayer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.SoftmaxWithCrossEntropyLayer;
-import com.omega.engine.nn.layer.jit.JiTMainMoudue_Sprint;
+import com.omega.engine.nn.layer.jit.JiTMainMoudue_Sprint2;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.NetworkType;
 import com.omega.engine.nn.network.RunModel;
@@ -25,7 +25,7 @@ import jcuda.runtime.JCuda;
  *
  * @author Administrator
  */
-public class JiT_Sprint extends Network {
+public class JiT_Sprint2 extends Network {
 	
     public int inChannel;
     public int width;
@@ -36,7 +36,6 @@ public class JiT_Sprint extends Network {
     public int maxContextLen;
     public int hiddenSize;
     public int z_dim;
-    private int txt_depth;
     private int depth;
     public int headNum;
     public int headDims;
@@ -46,12 +45,12 @@ public class JiT_Sprint extends Network {
     private float path_drop_prob = 0.0f;
     
     private InputLayer inputLayer;
-    public JiTMainMoudue_Sprint main;
+    public JiTMainMoudue_Sprint2 main;
     
     private Tensor input_null;
     private Tensor uncond_eps;
     
-    public JiT_Sprint(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int bottleneck_dim, int hiddenSize, int headNum, int z_dim, int txt_depth, int depth, int textEmbedDim, int maxContextLen, float y_drop_prob, float path_drop_prob) {
+    public JiT_Sprint2(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int bottleneck_dim, int hiddenSize, int headNum, int z_dim, int depth, int textEmbedDim, int maxContextLen, float y_drop_prob, float path_drop_prob) {
         this.lossFunction = LossFactory.create(lossType, this);
         this.weight_decay = 0.0f;
         this.updater = updater;
@@ -68,7 +67,6 @@ public class JiT_Sprint extends Network {
         this.z_dim = z_dim;
         this.textEmbedDim = textEmbedDim;
         this.maxContextLen = maxContextLen;
-        this.txt_depth = txt_depth;
         this.y_drop_prob = y_drop_prob;
         this.path_drop_prob = path_drop_prob;
         this.time = (width / patchSize) * (height / patchSize);
@@ -79,7 +77,7 @@ public class JiT_Sprint extends Network {
     	
         this.inputLayer = new InputLayer(inChannel, height, width);
         
-        main = new JiTMainMoudue_Sprint(inChannel, width, height, patchSize, bottleneck_dim, hiddenSize, headNum, z_dim, txt_depth, depth, textEmbedDim, maxContextLen, y_drop_prob, path_drop_prob, this);
+        main = new JiTMainMoudue_Sprint2(inChannel, width, height, patchSize, bottleneck_dim, hiddenSize, headNum, z_dim, depth, textEmbedDim, maxContextLen, y_drop_prob, path_drop_prob, this);
         
         this.addLayer(inputLayer);
         this.addLayer(main);
@@ -135,20 +133,20 @@ public class JiT_Sprint extends Network {
         return this.main.getOutput();
     }
     
-    public Tensor forward(Tensor input, Tensor context, Tensor cos1d, Tensor sin1d, Tensor cos2d, Tensor sin2d) {
+    public Tensor forward(Tensor input, Tensor t, Tensor context, Tensor cos, Tensor sin) {
         /**
          * 设置输入数据
          */
         this.setInputData(input);
-        this.main.forward(input, context, cos1d, sin1d, cos2d, sin2d);
+        this.main.forward(input, t, context, cos, sin);
         return this.main.getOutput();
     }
     
-    public Tensor forward_with_cfg(ICPlan icplan, Tensor input, Tensor t, Tensor context, Tensor null_context, Tensor cos1d, Tensor sin1d, Tensor cos2d, Tensor sin2d, Tensor eps, float cfg_scale) {
+    public Tensor forward_with_cfg(ICPlan icplan, Tensor input, Tensor t, Tensor context, Tensor null_context, Tensor cos, Tensor sin, Tensor eps, float cfg_scale) {
         /**
          * 设置输入数据
          */
-        this.main.forward(input, context, cos1d, sin1d, cos2d, sin2d);
+        this.main.forward(input, t, context, cos, sin);
         this.main.getOutput().copyGPU(eps);
         icplan.compute_v(eps, t, input, eps, 5e-2f);
         
@@ -157,7 +155,7 @@ public class JiT_Sprint extends Network {
         		input_null = Tensor.createGPUTensor(input_null, input.number, input.channel, input.height, input.width, true);
         	}
             input.copyGPU(input_null);
-            this.main.forward(input_null, null_context, cos1d, sin1d, cos2d, sin2d);
+            this.main.forward(input_null, t, null_context, cos, sin);
             uncond_eps = this.main.getOutput();
             
             /**
@@ -177,7 +175,7 @@ public class JiT_Sprint extends Network {
         return eps;
     }
     
-    public Tensor forward_with_path_drop_cfg(ICPlan icplan, Tensor input, Tensor t, Tensor context, Tensor null_context, Tensor cos1d, Tensor sin1d, Tensor cos2d, Tensor sin2d, Tensor eps, float cfg_scale) {
+    public Tensor forward_with_path_drop_cfg(ICPlan icplan, Tensor input, Tensor t, Tensor context, Tensor null_context, Tensor cos, Tensor sin, Tensor eps, float cfg_scale) {
         /**
          * 设置输入数据
          */
@@ -186,10 +184,10 @@ public class JiT_Sprint extends Network {
     	}
         input.copyGPU(input_null);
         this.main.uncond = false;
-        this.main.forward(input, context, cos1d, sin1d, cos2d, sin2d);
+        this.main.forward(input, t, context, cos, sin);
         this.main.getOutput().copyGPU(eps);
         this.main.uncond = true;
-        this.main.forward(input_null, null_context, cos1d, sin1d, cos2d, sin2d);
+        this.main.forward(input_null, t, null_context, cos, sin);
         uncond_eps = this.main.getOutput();
 
         /**
@@ -228,7 +226,7 @@ public class JiT_Sprint extends Network {
         //		this.unet.diff.showDMByOffset(0, 100, "unet.diff");
     }
     
-    public void back(Tensor lossDiff, Tensor cos1d, Tensor sin1d, Tensor cos2d, Tensor sin2d) {
+    public void back(Tensor lossDiff, Tensor cos, Tensor sin) {
         // TODO Auto-generated method stub
         //		lossDiff.showDMByNumber(0);
         initBack();
@@ -239,7 +237,7 @@ public class JiT_Sprint extends Network {
         //		lossDiff.showDMByOffset(0, 100, "lossDiff");
         this.setLossDiff(lossDiff);
         //		lossDiff.showDM("lossDiff");
-        this.main.back(lossDiff, cos1d, sin1d, cos2d, sin2d);
+        this.main.back(lossDiff, cos, sin);
         //		this.unet.diff.showDMByOffset(0, 100, "unet.diff");
     }
 

@@ -49,6 +49,7 @@ public class FusionLayer2 extends Layer {
         this.oChannel = 1;
         this.oHeight = 1;
         this.oWidth = embedDim;
+        network.paramLayers.add(this);
         this.initLayers();
     }
     
@@ -64,6 +65,7 @@ public class FusionLayer2 extends Layer {
         this.oChannel = 1;
         this.oHeight = 1;
         this.oWidth = embedDim;
+        network.paramLayers.add(this);
         this.initLayers();
     }
     
@@ -80,6 +82,7 @@ public class FusionLayer2 extends Layer {
         this.oChannel = 1;
         this.oHeight = 1;
         this.oWidth = embedDim;
+        network.paramLayers.add(this);
         this.initLayers();
     }
 
