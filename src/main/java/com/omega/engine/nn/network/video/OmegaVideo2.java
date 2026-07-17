@@ -179,6 +179,7 @@ public class OmegaVideo2 extends Network {
             tensorOP.mul(eps, cfg_scale, eps);
             tensorOP.add(uncond_eps, eps, eps);
         }
+        this.main.uncond = false;
         
         return eps;
     }

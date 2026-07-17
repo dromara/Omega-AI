@@ -16196,7 +16196,8 @@ public class MBSGDOptimizer extends Optimizer {
                         break;
                     }
                     
-                    icplan.t(t);
+//                    icplan.t(t);
+                    icplan.sample_t(t, -0.8f, 0.8f);
                     
                     GPUOP.getInstance().cudaRandn(noise);
                     
@@ -16247,6 +16248,7 @@ public class MBSGDOptimizer extends Optimizer {
                     /**
                      * update
                      */
+                    network.clipGradNormFast(1.0f);
                     network.update();
 
                     JCudaDriver.cuCtxSynchronize();

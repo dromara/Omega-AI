@@ -137,7 +137,7 @@ public class MMJiTTest {
         String clipDataPath = "D:\\dataset\\amine\\dalle_full_clip.bin";
         String labelPath = "D:\\dataset\\labels.json";
 		String imgDirPath = "D:\\dataset\\images_256_256\\";
-        boolean horizontalFilp = true;
+        boolean horizontalFilp = false;
         int imgSize = 256;
         int channel = 3;
         int maxContextLen = 77;
@@ -782,7 +782,7 @@ public class MMJiTTest {
 
         int jitHeadNum = 12;
         int txt_depth = 2;
-        int depth = 17;
+        int depth = 12;
         int patchSize = 16;
         int bottleneck_dim = 128;
         int hiddenSize = 768;
@@ -816,7 +816,7 @@ public class MMJiTTest {
         Tensor cos1d = cs1d[0];
         Tensor sin1d = cs1d[1];
 
-        Tensor[] cs2d = RoPEKernel.create2DRope(network.headNum, network.time, network.headDims, network.grid, theta);
+        Tensor[] cs2d = RoPEKernel.getCosAndSin2D(network.time, network.hiddenSize, network.headNum);
         Tensor cos2d = cs2d[0];
         Tensor sin2d = cs2d[1];
 
@@ -922,7 +922,7 @@ public class MMJiTTest {
         ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, "", false);
 
         int jitHeadNum = 12;
-        int depth = 17;
+        int depth = 12;
         int patchSize = 16;
         int bottleneck_dim = 128;
         int hiddenSize = 768;

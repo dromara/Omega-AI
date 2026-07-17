@@ -38,8 +38,6 @@ public class JiTBlock extends Layer {
 
     public DiTSwiGLUFFN mlp;
 
-    private Tensor crossAttnInput;
-    
     public JiTBlock(int embedDim, int time, int mlpHiddenDim, int headNum, int maxContext, boolean bias, boolean qkNorm, Network network) {
         this.network = network;
         if (this.updater == null) {
@@ -81,13 +79,7 @@ public class JiTBlock extends Layer {
     public void init(Tensor input) {
         // TODO Auto-generated method stub
     	this.number = input.number;
-        if(crossAttnInput == null || crossAttnInput.number != number) {
-        	crossAttnInput = Tensor.createGPUTensor(crossAttnInput, input.number, input.channel, input.height, input.width, true);
-        }
-        
-        if(output == null || output.number != number) {
-        	output = Tensor.createGPUTensor(output, input.number, oChannel, oHeight, oWidth, true);
-        }
+
     }
     
     @Override
@@ -114,14 +106,16 @@ public class JiTBlock extends Layer {
     	 */
     	norm1.forward(input);
     	attn.forward(norm1.getOutput(), cos, sin, maxContext);
-    	Tensor_OP().add(input, attn.getOutput(), crossAttnInput);
+    	Tensor_OP().add(input, attn.getOutput(), attn.getOutput());
 
     	/**
     	 * x3 = x1 + self.mlp(self.norm3(x1))
     	 */
-    	norm3.forward(crossAttnInput);
+    	norm3.forward(attn.getOutput());
     	mlp.forward(norm3.getOutput());
-    	Tensor_OP().add(crossAttnInput, mlp.getOutput(), output);
+    	Tensor_OP().add(attn.getOutput(), mlp.getOutput(), mlp.getOutput());
+    	
+    	this.output = mlp.getOutput();
 
     }
     

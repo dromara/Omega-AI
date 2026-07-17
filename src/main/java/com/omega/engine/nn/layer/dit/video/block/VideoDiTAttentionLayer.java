@@ -186,8 +186,10 @@ public class VideoDiTAttentionLayer extends Layer {
         	this.qkv = CUDAMemoryManager.getCache("dit_block_attn_qkv", number, 1, 1, embedDim);
         	this.qk = CUDAMemoryManager.getCache("dit_block_attn_qk", batchSize, headNum, time, time);
             // [batch_size，time，head_num，d_k]
-        	this.rq = Tensor.createGPUTensor(this.rq, batchSize, headNum, time, dk, true);
-            this.rk = Tensor.createGPUTensor(this.rk, batchSize, headNum, time, dk, true);
+        	this.rq = CUDAMemoryManager.getCache("dit_block_attn_rq", batchSize, headNum, time, dk);
+        	this.rk = CUDAMemoryManager.getCache("dit_block_attn_rk", batchSize, headNum, time, dk);
+//        	this.rq = Tensor.createGPUTensor(this.rq, batchSize, headNum, time, dk, true);
+//          this.rk = Tensor.createGPUTensor(this.rk, batchSize, headNum, time, dk, true);
             this.qt = Tensor.createGPUTensor(this.qt, batchSize, headNum, time, dk, true);
             this.kt = Tensor.createGPUTensor(this.kt, batchSize, headNum, time, dk, true);
             this.vt = Tensor.createGPUTensor(this.vt, batchSize, headNum, time, dk, true);
@@ -226,7 +228,7 @@ public class VideoDiTAttentionLayer extends Layer {
     	 this.vaccum = CUDAMemoryManager.getCache("dit_block_attn_vaccum", batchSize, headNum, time, dk);
 //    	 vaccum.clearGPU();
         // [batch_size，n_heads，len_q，len_k]
-        this.attn = CUDAMemoryManager.getCache("dit_block_attn_attn", batchSize, time, time, dk);
+        this.attn = CUDAMemoryManager.getCache("dit_block_attn_attn", batchSize, headNum, time, time);
         // [batch_size, len_q, n_heads * dim_v]
         this.oi = CUDAMemoryManager.getCache("dit_block_attn_oi", batchSize * time, 1, 1, embedDim);
         this.output = CUDAMemoryManager.getCache("dit_block_attn_out", input.number, input.channel, input.height, input.width);
@@ -430,6 +432,19 @@ public class VideoDiTAttentionLayer extends Layer {
     }
     
     public void diff(Tensor[] cos, Tensor[] sin, int igone) {
+    	Tensor q = qt;
+        Tensor k = kt;
+    	if(qkNorm) {
+    		q = qNorm.getOutput();
+        	k = kNorm.getOutput();
+    	}
+        /**
+         * apply RoPE
+         * qt = [B, HN, T, HS]
+         */
+        ropeKernel.forward3d(cos[0], sin[0], cos[1], sin[1], cos[2], sin[2], q, rq, time, headNum, dk/3, igone);
+        ropeKernel.forward3d(cos[0], sin[0], cos[1], sin[1], cos[2], sin[2], k, rk, time, headNum, dk/3, igone);
+    	
     	this.getoLinerLayer().back(delta, oi);
         attentionKernel.unpermute_backward(vaccum, oi, batchSize, time, headNum, dk);
         scaledDotProductAttentionBackward(rq, rk);

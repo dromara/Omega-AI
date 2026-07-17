@@ -242,12 +242,16 @@ public class OmegaVideoDiTMain2 extends Layer {
     		d_o = Tensor.createGPUTensor(d_o, input.number * (maxContextLen + thw), 1, 1, patchEmbd.getOutput().width, true);
     		dtc = Tensor.createGPUTensor(dtc, timeEmbd.getOutput().shape(), true);
     		dencoder = Tensor.createGPUTensor(dencoder, number * (maxContextLen + thw), 1, 1, hiddenSize, true);
-//    		drop_delta = Tensor.createGPUTensor(drop_delta, number * (maxContextLen + thw), 1, 1, hiddenSize, true);
+    		if(idsKeep != null) {
+    			drop_delta = Tensor.createGPUTensor(drop_delta, number * (maxContextLen + thw), 1, 1, hiddenSize, true);
+    		}
     	}else {
     		dtc.clearGPU();
     		d_o.clearGPU();
 //    		dencoder.clearGPU();
-//    		drop_delta.clearGPU();
+    		if(drop_delta != null) {
+    			drop_delta.clearGPU();
+    		}
     	}
     }
 
@@ -295,7 +299,7 @@ public class OmegaVideoDiTMain2 extends Layer {
 		Tensor h_x = e_x;
 		if(!uncond) {
 			if(idsKeep != null && network.RUN_MODEL == RunModel.TRAIN) {
-				tokenDropKernel.idsKeep(idsKeep, number, (thw - 1), token_t);
+				tokenDropKernel.idsKeep(idsKeep, number, thw, token_t);
 				tokenDropKernel.imgTokenDrop(e_x, idsKeep, td_x, token_t, thw, maxContextLen, hiddenSize);
 				h_x = td_x;
 			}

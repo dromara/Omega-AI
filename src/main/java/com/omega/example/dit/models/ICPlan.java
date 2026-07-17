@@ -358,7 +358,7 @@ public class ICPlan {
 	public Tensor forward_with_path_drop_cfg_heun_step(OmegaDiT2 dit, Tensor y0, Tensor t, Tensor context, Tensor null_context, Tensor cos, Tensor sin, Tensor eps, Tensor eps2, float cfg_scale) {
 		ininT(0, 1, count);
 		Tensor out = null;
-		for(int i = 0;i<count - 1;i++) {
+		for(int i = 0;i<count - 2;i++) {
 			float t0 = T[i];
 			float t1 = T[i + 1];
 			MatrixUtils.val(t.data, t0);
@@ -378,7 +378,7 @@ public class ICPlan {
 	public Tensor forward_with_path_drop_cfg_heun_step(OmegaDiT dit, Tensor y0, Tensor t, Tensor context, Tensor null_context, Tensor cos, Tensor sin, Tensor eps, Tensor eps2, float cfg_scale) {
 		ininT(0, 1, count);
 		Tensor out = null;
-		for(int i = 0;i<count - 1;i++) {
+		for(int i = 0;i<count - 2;i++) {
 			float t0 = T[i];
 			float t1 = T[i + 1];
 			MatrixUtils.val(t.data, t0);
@@ -417,7 +417,7 @@ public class ICPlan {
 		dit.tensorOP.add(z, z_next_euler, z_next_euler);
 		
 		//set t_next
-		MatrixUtils.val(t.data, t0);
+		MatrixUtils.val(t.data, t1);
 		t.hostToDevice();
 		Tensor v_pred_t_next = dit.forward_with_path_drop_cfg(this, z_next_euler, t, context, null_context, cos, sin, eps2, cfg_scale);
 		
@@ -454,7 +454,7 @@ public class ICPlan {
 		dit.tensorOP.add(z, z_next_euler, z_next_euler);
 		
 		//set t_next
-		MatrixUtils.val(t.data, t0);
+		MatrixUtils.val(t.data, t1);
 		t.hostToDevice();
 		Tensor v_pred_t_next = dit.forward_with_path_drop_cfg(this, z_next_euler, t, context, null_context, cos, sin, eps2, cfg_scale);
 		
@@ -563,6 +563,64 @@ public class ICPlan {
 			dit.tensorOP.copyGPU(y1, y0);
 		}
 		return out;
+	}
+	
+	public Tensor forward_with_path_drop_cfg_heun_step(OmegaVideo2 dit, Tensor y0, Tensor t, Tensor context, Tensor null_context, Tensor[] cos, Tensor[] sin, Tensor eps, Tensor eps2, float cfg_scale) {
+		ininT(0, 1, count);
+		Tensor out = null;
+		for(int i = 0;i<count - 2;i++) {
+			float t0 = T[i];
+			float t1 = T[i + 1];
+			MatrixUtils.val(t.data, t0);
+			t.hostToDevice();
+			Tensor z = heun_step(dit, y0, t, context, null_context, cos, sin, eps, eps2, t0, t1, cfg_scale);
+			dit.tensorOP.copyGPU(z, y0);
+		}
+		//last step euler
+        //z = self._euler_step(z, timesteps[-2], timesteps[-1], labels)
+		float t0 = T[count-2];
+		float t1 = T[count-1];
+		MatrixUtils.val(t.data, t0);
+		out = euler_step(dit, y0, t, context, null_context, cos, sin, eps, t0, t1, cfg_scale);
+		return out;
+	}
+	
+	public Tensor heun_step(OmegaVideo2 dit, Tensor z, Tensor t, Tensor context, Tensor null_context, Tensor[] cos, Tensor[] sin, Tensor eps, Tensor eps2, float t0, float t1, float cfg_scale) {
+		//Tensor input, Tensor t, Tensor context, Tensor null_context, Tensor[] cos, Tensor[] sin, Tensor eps, float cfg_scale
+		Tensor v_pred_t = dit.forward_with_path_drop_cfg(z, t, context, null_context, cos, sin, eps, cfg_scale);
+		
+		if(tmp == null) {
+			tmp = Tensor.createGPUTensor(tmp, z.shape(), true);
+		}
+		float t_ = t1 - t0;
+		
+		//z_next_euler = z + (t_next - t) * v_pred_t
+		Tensor z_next_euler = tmp;
+		dit.tensorOP.mul(v_pred_t, t_, z_next_euler);
+		dit.tensorOP.add(z, z_next_euler, z_next_euler);
+		
+		//set t_next
+		MatrixUtils.val(t.data, t1);
+		t.hostToDevice();
+		Tensor v_pred_t_next = dit.forward_with_path_drop_cfg(z_next_euler, t, context, null_context, cos, sin, eps2, cfg_scale);
+		
+		//v_pred = 0.5 * (v_pred_t + v_pred_t_next)
+		dit.tensorOP.add(v_pred_t, v_pred_t_next, v_pred_t_next);
+		dit.tensorOP.mul(v_pred_t_next, 0.5f, v_pred_t_next);
+		Tensor z_next = v_pred_t_next;
+		//z_next = z + (t_next - t) * v_pred
+		dit.tensorOP.mul(v_pred_t_next, t_, z_next);
+		dit.tensorOP.add(z, z_next, z_next);
+		
+		return z_next;
+	}
+	
+	public Tensor euler_step(OmegaVideo2 dit, Tensor z, Tensor t, Tensor context, Tensor null_context, Tensor[] cos, Tensor[] sin, Tensor eps, float t0, float t1, float cfg_scale) {
+		float t_ = t1 - t0;
+		Tensor v_pred = dit.forward_with_path_drop_cfg(z, t, context, null_context, cos, sin, eps, cfg_scale);
+		dit.tensorOP.mul(v_pred, t_, v_pred);
+		dit.tensorOP.add(z, v_pred, v_pred);
+		return v_pred;
 	}
 	
 	public Tensor forward_with_path_drop_cfg(OmegaVideoI2V dit, int[] shape, Tensor y0, Tensor imgs, Tensor t, Tensor[] cos, Tensor[] sin, Tensor y1, Tensor eps, float cfg_scale) {

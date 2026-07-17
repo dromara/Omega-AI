@@ -701,6 +701,17 @@ public class GPUOP {
             e.printStackTrace();
         }
     }
+    
+    public void cudaRandn(Tensor x, long seed) {
+        try {
+            checkCURANDResult(JCurand.curandSetPseudoRandomGeneratorSeed(getGenerator(), seed));
+            checkCURANDResult(JCurand.curandGenerateNormal(getGenerator(), x.getGpuData(), x.getDataLength(), 0, 1));
+            //    		System.out.println("in");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
 
     public void free(Pointer p) {
         cudaFree(p);
