@@ -3,6 +3,7 @@ package com.omega.example.opensora.utils;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -11,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.omega.common.utils.ImageUtils;
+import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MathUtils;
 import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.loss.LossType;
@@ -868,6 +870,43 @@ public class VideoTest {
 		
 	}
 	
+	public static void test10WVideoLatend() {
+		
+		try {
+			
+			String labelPath = "D:\\test\\videoufo_top_dynamic_100k_downloaded.csv";
+			
+			CsvReader reader = CsvUtil.getReader();
+	        CsvData data = reader.read(FileUtil.file(labelPath));
+	        
+	        List<CsvRow> rows = data.getRows();
+	        
+	        List<Map<String,String>> datas = new ArrayList<Map<String,String>>();
+	        
+	        System.err.println(rows.size());
+	        
+	        for(int i = 1;i<rows.size();i++) {
+	        	CsvRow row = rows.get(i);
+	        	Map<String,String> once = new HashMap<String, String>();
+	        	once.put("id", row.get(0));
+	        	once.put("prompt", row.get(3));
+	        	datas.add(once);
+	        }
+	        
+//	        System.err.println(datas.size());
+	        
+	        // 将JSON对象写入文件
+            FileWriter fileWriter = new FileWriter("D:\\test\\labels.json");
+            fileWriter.write(JsonUtils.toJson(datas));
+            fileWriter.flush();
+            fileWriter.close();
+	        
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+	}
+	
 	public static void main(String[] args) {
 		try {
 //			vae();
@@ -879,8 +918,9 @@ public class VideoTest {
 //			createVideoLatendByJson();
 //			createVideoImgLatendByJson();
 //			createVideoClipByJson();
-			create5WVideoLatend();
+//			create5WVideoLatend();
 //			create5WVideoClip();
+			test10WVideoLatend();
 		} catch (Exception e) {
 	        // TODO: handle exception
 	        e.printStackTrace();

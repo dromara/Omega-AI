@@ -10,6 +10,7 @@ import com.omega.engine.nn.layer.RouteLayer;
 import com.omega.engine.nn.layer.normalization.NormalizationLayer;
 import com.omega.engine.nn.model.NetworkInit;
 import com.omega.engine.nn.network.utils.ClipGradNormKernel;
+import com.omega.engine.nn.network.utils.EMAKernel;
 import com.omega.engine.parallel.cuda.CUDACommonManager;
 import com.omega.engine.parallel.cuda.CUDAPool;
 import com.omega.engine.tensor.Tensor;
@@ -79,6 +80,7 @@ public abstract class Network {
     private int width = 0;
 
     public ClipGradNormKernel clipGradNormKernel;
+    public EMAKernel emaKernel;
     
     public Network() {
         initCUDA();
@@ -481,25 +483,82 @@ public abstract class Network {
     }
     
     public void update_ema(Network model, float decay) {
-    	for(int i = 0;i<paramLayers.size();i++) {
-    		Layer l1 = paramLayers.get(i);
-    		Layer l2 = model.paramLayers.get(i);
-    		if (l1 instanceof NormalizationLayer) {
-                NormalizationLayer ema_nl = (NormalizationLayer) l1;
-                NormalizationLayer model_nl = (NormalizationLayer) l2;
-                if(model_nl.hasParams) {
-                	 tensorOP.update_ema(ema_nl.gamma, model_nl.gamma, decay);
-                     if(ema_nl.beta != null) {
-                     	tensorOP.update_ema(ema_nl.beta, model_nl.beta, decay);
-                     }
+        updateEmaFast(model, decay);
+    }
+
+    public void updateEmaFast(Network model, float decay) {
+        if (emaKernel == null) {
+            emaKernel = new EMAKernel(cudaManager);
+        }
+
+        List<Tensor> emaParams = new ArrayList<Tensor>();
+        List<Tensor> modelParams = new ArrayList<Tensor>();
+        collectEmaParamPairs(model, emaParams, modelParams);
+        emaKernel.update(emaParams, modelParams, decay);
+    }
+
+    private void collectEmaParamPairs(Network model, List<Tensor> emaParams, List<Tensor> modelParams) {
+        if (model == null) {
+            throw new IllegalArgumentException("EMA source model must not be null.");
+        }
+        if (paramLayers.size() != model.paramLayers.size()) {
+            throw new IllegalArgumentException(
+                    "EMA networks have different parameter layer counts: "
+                            + paramLayers.size() + " vs " + model.paramLayers.size());
+        }
+
+        for (int i = 0; i < paramLayers.size(); i++) {
+            Layer emaLayer = paramLayers.get(i);
+            Layer modelLayer = model.paramLayers.get(i);
+
+            boolean emaNorm = emaLayer instanceof NormalizationLayer;
+            boolean modelNorm = modelLayer instanceof NormalizationLayer;
+            if (emaNorm != modelNorm) {
+                throw new IllegalArgumentException("EMA layer type mismatch at parameter layer " + i);
+            }
+
+            if (emaNorm) {
+                NormalizationLayer emaNl = (NormalizationLayer) emaLayer;
+                NormalizationLayer modelNl = (NormalizationLayer) modelLayer;
+                if (emaNl.hasParams != modelNl.hasParams) {
+                    throw new IllegalArgumentException("EMA normalization parameter mismatch at layer " + i);
                 }
-    		}else {
-    			tensorOP.update_ema(l1.weight, l2.weight, decay);
-    			if(l1.bias != null) {
-    				tensorOP.update_ema(l1.bias, l2.bias, decay);
-    			}
-    		}
-    	}
+                if (modelNl.hasParams) {
+                    addEmaParamPair(emaNl.gamma, modelNl.gamma, emaParams, modelParams, i, "gamma");
+                    if (emaNl.beta != null || modelNl.beta != null) {
+                        addEmaParamPair(emaNl.beta, modelNl.beta, emaParams, modelParams, i, "beta");
+                    }
+                }
+            } else {
+                if (emaLayer.weight != null || modelLayer.weight != null) {
+                    addEmaParamPair(emaLayer.weight, modelLayer.weight, emaParams, modelParams, i, "weight");
+                }
+                if (emaLayer.bias != null || modelLayer.bias != null) {
+                    addEmaParamPair(emaLayer.bias, modelLayer.bias, emaParams, modelParams, i, "bias");
+                }
+            }
+        }
+    }
+
+    private void addEmaParamPair(
+            Tensor emaParam,
+            Tensor modelParam,
+            List<Tensor> emaParams,
+            List<Tensor> modelParams,
+            int layerIndex,
+            String paramName) {
+        if (emaParam == null || modelParam == null) {
+            throw new IllegalArgumentException(
+                    "EMA " + paramName + " mismatch at parameter layer " + layerIndex);
+        }
+        if (emaParam.dataLength != modelParam.dataLength) {
+            throw new IllegalArgumentException(
+                    "EMA " + paramName + " size mismatch at parameter layer " + layerIndex
+                            + ": " + emaParam.dataLength + " vs " + modelParam.dataLength);
+        }
+
+        emaParams.add(emaParam);
+        modelParams.add(modelParam);
     }
     
     public Tensor gradNormFast() {

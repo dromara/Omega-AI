@@ -140,6 +140,134 @@ __global__ void cosine_similarity_loss_back2(
 }
 
 extern "C"
+__global__ void cosine_similarity(
+    float* x1,
+    float* x2,
+    float* out,
+    int outer,
+    int N,
+    int C,
+    int H,
+    int W,
+    int dim,
+    float eps
+) {
+    int idx = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (idx < outer) {
+       int outN = (dim == 0) ? 1 : N;
+       int outC = (dim == 1) ? 1 : C;
+       int outH = (dim == 2) ? 1 : H;
+       int outW = (dim == 3) ? 1 : W;
+       int tmp = idx;
+       int ow = tmp % outW;
+       tmp /= outW;
+       int oh = tmp % outH;
+       tmp /= outH;
+       int oc = tmp % outC;
+       tmp /= outC;
+       int on = tmp % outN;
+       int base = ((on * C + oc) * H + oh) * W + ow;
+       int dimSize = W;
+       int stride = 1;
+       if (dim == 0) {
+          dimSize = N;
+          stride = C * H * W;
+       } else if (dim == 1) {
+          dimSize = C;
+          stride = H * W;
+       } else if (dim == 2) {
+          dimSize = H;
+          stride = W;
+       }
+       float dot = 0.0f;
+       float n1 = 0.0f;
+       float n2 = 0.0f;
+       for (int i = 0; i < dimSize; i++) {
+          int offset = base + i * stride;
+          float a = x1[offset];
+          float b = x2[offset];
+          dot += a * b;
+          n1 += a * a;
+          n2 += b * b;
+       }
+       n1 = fmaxf(sqrtf(n1), eps);
+       n2 = fmaxf(sqrtf(n2), eps);
+       out[idx] = dot / (n1 * n2);
+    }
+}
+
+extern "C"
+__global__ void cosine_similarity_back(
+    float* grad_out,
+    float* x1,
+    float* x2,
+    float* dx1,
+    int outer,
+    int N,
+    int C,
+    int H,
+    int W,
+    int dim,
+    float eps
+) {
+    int idx = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
+    if (idx < outer) {
+       int outN = (dim == 0) ? 1 : N;
+       int outC = (dim == 1) ? 1 : C;
+       int outH = (dim == 2) ? 1 : H;
+       int outW = (dim == 3) ? 1 : W;
+       int tmp = idx;
+       int ow = tmp % outW;
+       tmp /= outW;
+       int oh = tmp % outH;
+       tmp /= outH;
+       int oc = tmp % outC;
+       tmp /= outC;
+       int on = tmp % outN;
+       int base = ((on * C + oc) * H + oh) * W + ow;
+       int dimSize = W;
+       int stride = 1;
+       if (dim == 0) {
+          dimSize = N;
+          stride = C * H * W;
+       } else if (dim == 1) {
+          dimSize = C;
+          stride = H * W;
+       } else if (dim == 2) {
+          dimSize = H;
+          stride = W;
+       }
+       float dot = 0.0f;
+       float n1_raw = 0.0f;
+       float n2_raw = 0.0f;
+       for (int i = 0; i < dimSize; i++) {
+          int offset = base + i * stride;
+          float a = x1[offset];
+          float b = x2[offset];
+          dot += a * b;
+          n1_raw += a * a;
+          n2_raw += b * b;
+       }
+
+       float n1_sqrt = sqrtf(n1_raw);
+       float n2_sqrt = sqrtf(n2_raw);
+       float n1 = fmaxf(n1_sqrt, eps);
+       float n2 = fmaxf(n2_sqrt, eps);
+       float cosv = dot / (n1 * n2);
+       float go = grad_out[idx];
+       float inv = 1.0f / (n1 * n2);
+       float scale = (n1_sqrt > eps) ? (cosv / (n1 * n1)) : 0.0f;
+
+       for (int i = 0; i < dimSize; i++) {
+          int offset = base + i * stride;
+          float a = x1[offset];
+          float b = x2[offset];
+          dx1[offset] = go * (b * inv - a * scale);
+       }
+    }
+}
+
+extern "C"
 __global__ void latend_norm(
     float* x1,
     float* mean,

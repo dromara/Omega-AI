@@ -982,6 +982,62 @@ public class ICPlan {
 		return x_next;
 	}
 	
+	public Tensor forward_with_path_drop_cfg_heun_step_v(OmegaDiT dit, Tensor y0, Tensor t, Tensor context, Tensor null_context, Tensor cos, Tensor sin, Tensor eps, Tensor eps2, float cfg_scale) {
+		ininT(0, 1, count);
+		Tensor out = null;
+		for(int i = 0;i<count - 2;i++) {
+			float t0 = T[i];
+			float t1 = T[i + 1];
+			MatrixUtils.val(t.data, t0);
+			t.hostToDevice();
+			Tensor z = heun_step_v(dit, y0, t, context, null_context, cos, sin, eps, eps2, t0, t1, cfg_scale);
+			dit.tensorOP.copyGPU(z, y0);
+		}
+		//last step euler
+        //z = self._euler_step(z, timesteps[-2], timesteps[-1], labels)
+		float t0 = T[count-2];
+		float t1 = T[count-1];
+		MatrixUtils.val(t.data, t0);
+		out = euler_step_v(dit, y0, t, context, null_context, cos, sin, eps, t0, t1, cfg_scale);
+		return out;
+	}
+	
+	public Tensor heun_step_v(OmegaDiT dit, Tensor z, Tensor t, Tensor context, Tensor null_context, Tensor cos, Tensor sin, Tensor eps, Tensor eps2, float t0, float t1, float cfg_scale) {
+		Tensor v_pred_t = dit.forward_with_path_drop_cfg(z, t, context, null_context, cos, sin, eps, cfg_scale);
+		
+		if(tmp == null) {
+			tmp = Tensor.createGPUTensor(tmp, z.shape(), true);
+		}
+		float t_ = t1 - t0;
+		
+		//z_next_euler = z + (t_next - t) * v_pred_t
+		Tensor z_next_euler = tmp;
+		dit.tensorOP.mul(v_pred_t, t_, z_next_euler);
+		dit.tensorOP.add(z, z_next_euler, z_next_euler);
+		
+		//set t_next
+		MatrixUtils.val(t.data, t1);
+		t.hostToDevice();
+		Tensor v_pred_t_next = dit.forward_with_path_drop_cfg(z_next_euler, t, context, null_context, cos, sin, eps2, cfg_scale);
+		
+		//v_pred = 0.5 * (v_pred_t + v_pred_t_next)
+		dit.tensorOP.add(v_pred_t, v_pred_t_next, v_pred_t_next);
+		dit.tensorOP.mul(v_pred_t_next, 0.5f, v_pred_t_next);
+		Tensor z_next = v_pred_t_next;
+		//z_next = z + (t_next - t) * v_pred
+		dit.tensorOP.mul(v_pred_t_next, t_, z_next);
+		dit.tensorOP.add(z, z_next, z_next);
+		
+		return z_next;
+	}
+	
+	public Tensor euler_step_v(OmegaDiT dit, Tensor z, Tensor t, Tensor context, Tensor null_context, Tensor cos, Tensor sin, Tensor eps, float t0, float t1, float cfg_scale) {
+		float t_ = t1 - t0;
+		Tensor v_pred = dit.forward_with_path_drop_cfg(z, t, context, null_context, cos, sin, eps, cfg_scale);
+		dit.tensorOP.mul(v_pred, t_, v_pred);
+		dit.tensorOP.add(z, v_pred, v_pred);
+		return v_pred;
+	}
 	
 	/**
 	 * sample
@@ -1220,6 +1276,38 @@ public class ICPlan {
 //		x2.showDM("dnorm1");
 //		op.add(x2, dx1, dx1);
 	}
+
+	public void cosine_similarity(Tensor student,Tensor teacher,Tensor output) {
+		cosine_similarity(student, teacher, output, 1e-8f);
+	}
+
+	public void cosine_similarity(Tensor student,Tensor teacher,Tensor output,float eps) {
+		kernel.cosine_similarity(student, teacher, output, eps);
+	}
+
+	public void cosine_similarity(Tensor student,Tensor teacher,Tensor output,int dim) {
+		cosine_similarity(student, teacher, output, dim, 1e-8f);
+	}
+
+	public void cosine_similarity(Tensor student,Tensor teacher,Tensor output,int dim,float eps) {
+		kernel.cosine_similarity(student, teacher, output, dim, eps);
+	}
+
+	public void cosine_similarity_back(Tensor gradOut,Tensor student,Tensor teacher,Tensor dStudent) {
+		cosine_similarity_back(gradOut, student, teacher, dStudent, 1e-8f);
+	}
+
+	public void cosine_similarity_back(Tensor gradOut,Tensor student,Tensor teacher,Tensor dStudent,float eps) {
+		kernel.cosine_similarity_back(gradOut, student, teacher, dStudent, eps);
+	}
+
+	public void cosine_similarity_back(Tensor gradOut,Tensor student,Tensor teacher,Tensor dStudent,int dim) {
+		cosine_similarity_back(gradOut, student, teacher, dStudent, dim, 1e-8f);
+	}
+
+	public void cosine_similarity_back(Tensor gradOut,Tensor student,Tensor teacher,Tensor dStudent,int dim,float eps) {
+		kernel.cosine_similarity_back(gradOut, student, teacher, dStudent, dim, eps);
+	}
 	
 	public void t(Tensor t) {
 		RandomUtils.gaussianRandomLogitNormal(t);
@@ -1227,6 +1315,23 @@ public class ICPlan {
 	
 	public void t(Tensor t, float mean, float std) {
 		RandomUtils.gaussianRandomLogitNormal(t, mean, std);
+	}
+	
+	public void maximum(Tensor a, Tensor b, Tensor c) {
+		for(int i = 0;i<a.dataLength;i++) {
+			c.data[i] = Math.max(a.data[i], b.data[i]);
+		}
+        if (c.isHasGPU()) {
+            c.hostToDevice();
+        }
+	}
+	
+	public void expand_mask(Tensor a, Tensor b, Tensor mask, Tensor out, int W, float maskRatio) {
+		kernel.expand_mask(a, b, mask, out, W, maskRatio);
+	}
+	
+	public void expand_(Tensor a, Tensor out, int W) {
+		kernel.expand_(a, out, W);
 	}
 	
 //	public void t_time_shift(Tensor t, int C, int H, int W) {
@@ -1265,6 +1370,23 @@ public class ICPlan {
 	 * @param t
 	 * @param x0 is noise
 	 * @param x1 is org latend
+	 * alpha_t = t
+	 * sigma_t = 1 - t
+	 * xt = alpha_t * x1 + sigma_t * x0
+	 */
+	public void compute_xt(Tensor t,Tensor x0, Tensor x1, Tensor xt, int C, int gh, int gw, int ps) {
+		kernel.compute_xt(x1, x0, t, xt, C, gh, gw, ps);
+	}
+	
+	public void compute_xt(Tensor t,Tensor x0, Tensor x1, Tensor xt, int C, int gh, int gw, int ps, int offset) {
+		kernel.compute_xt(x1, x0, t, xt, C, gh, gw, ps, offset);
+	}
+	
+	/**
+	 * 
+	 * @param t
+	 * @param x0 is noise
+	 * @param x1 is org latend
 	 * @param ut is velocity
 	 * d_alpha_t = 1
 	 * d_sigma_t = -1
@@ -1272,6 +1394,10 @@ public class ICPlan {
 	 */
 	public void compute_ut(Tensor t,Tensor x0, Tensor x1,Tensor ut) {
 		kernel.compute_ut(x1, x0, t, ut);
+	}
+	
+	public void compute_ut(Tensor t,Tensor x0, Tensor x1,Tensor ut, int C, int gh, int gw, int ps) {
+		kernel.compute_ut(x1, x0, t, ut, C, gh, gw, ps);
 	}
 	
 	public void sample_t(Tensor t, float mean, float std) {

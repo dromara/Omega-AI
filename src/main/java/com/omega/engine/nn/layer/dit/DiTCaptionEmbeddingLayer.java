@@ -122,7 +122,6 @@ public class DiTCaptionEmbeddingLayer extends Layer {
     @Override
     public void output() {
         // TODO Auto-generated method stub
-    	
     	if(network.RUN_MODEL == RunModel.TRAIN && uncond_prob > 0) {
     		GPUOP.getInstance().cudaRandom(this.mask);//0-1
     		kernel.tokenDrop(input, y_embedding, mask, input, y_embedding.dataLength, uncond_prob);
@@ -137,6 +136,18 @@ public class DiTCaptionEmbeddingLayer extends Layer {
         this.output = linear2.getOutput();
     }
 
+    public void output_eval() {
+        // TODO Auto-generated method stub
+
+        linear1.forward(input);
+
+        act.forward(linear1.getOutput());
+
+        linear2.forward(act.getOutput());
+
+        this.output = linear2.getOutput();
+    }
+    
     @Override
     public Tensor getOutput() {
         // TODO Auto-generated method stub
@@ -209,6 +220,22 @@ public class DiTCaptionEmbeddingLayer extends Layer {
         this.output();
     }
 
+    public void forward_eval(Tensor input) {
+        // TODO Auto-generated method stub
+        /**
+         * 参数初始化
+         */
+        this.init(input);
+        /**
+         * 设置输入
+         */
+        this.setInput(input);
+        /**
+         * 计算输出
+         */
+        this.output_eval();
+    }
+    
     @Override
     public void back(Tensor delta) {
         // TODO Auto-generated method stub

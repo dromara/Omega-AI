@@ -42,6 +42,7 @@ import com.omega.engine.nn.network.dit.MMJiT_Sprint;
 import com.omega.engine.nn.network.dit.OmegaDiT;
 import com.omega.engine.nn.network.dit.OmegaDiT2;
 import com.omega.engine.nn.network.dit.OmegaDiTFullLabel;
+import com.omega.engine.nn.network.dit.OmegaDiT_Self_Flow;
 import com.omega.engine.nn.network.dit.PixArtDiT;
 import com.omega.engine.nn.network.dit.SanaDiT;
 import com.omega.engine.nn.network.vae.LTXVideo_VAE;
@@ -58,6 +59,37 @@ import com.omega.engine.nn.network.video.OmegaVideoI2V2;
 import com.omega.engine.tensor.Tensor;
 
 public class ModelUtils {
+
+	public static void saveModel(OmegaDiT_Self_Flow model, String outpath) {
+        File file = new File(outpath);
+        if (!file.exists()) {
+            try {
+                file.createNewFile();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+        try (RandomAccessFile rFile = new RandomAccessFile(file, "rw")) {
+            System.out.println("start save model...");
+            model.saveModel(rFile);
+            System.out.println("model save success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+	
+	public static void loadModel(OmegaDiT_Self_Flow model, String inputPath) {
+        try (RandomAccessFile File = new RandomAccessFile(inputPath, "r")) {
+            System.out.println("start load model...");
+            model.loadModel(File);
+            System.out.println("model load success...");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
 	
 	public static void saveModel(JiT_Sprint model, String outpath) {
         File file = new File(outpath);

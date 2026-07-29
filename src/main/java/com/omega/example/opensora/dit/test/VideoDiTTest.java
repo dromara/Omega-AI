@@ -43,10 +43,10 @@ public class VideoDiTTest {
 	
 	public static void complate_ms() throws Exception {
 
-		String dataPath = "/root/gpufree-data/openvid/latend/latend.bin";
-		String clipDataPath = "/root/gpufree-data/openvid/latend/clip.bin";
+		String dataPath = "D:\\dataset\\video\\1w_latend.bin";
+		String clipDataPath = "D:\\dataset\\video\\1w_clip.bin";
 
-        String meanStdPath = "/root/gpufree-data/openvid/latend/1w_mean_std.bin";
+        String meanStdPath = "D:\\dataset\\video\\1w_mean_std.bin";
         
         int batchSize = 1000;
         int latendDim = 128;
@@ -335,9 +335,9 @@ public class VideoDiTTest {
 	
 	public static void video_dit_train2() throws Exception {
 		
-		String dataPath = "/root/gpufree-data/openvid/latend/latend.bin";
-		String clipDataPath = "/root/gpufree-data/openvid/latend/clip.bin";
-        String meanStdPath = "/root/gpufree-data/openvid/latend/1w_mean_std.bin";
+		String dataPath = "D:\\dataset\\video\\1w_latend.bin";
+		String clipDataPath = "D:\\dataset\\video\\1w_clip.bin";
+        String meanStdPath = "D:\\dataset\\video\\1w_mean_std.bin";
         
         int batchSize = 4;
         int latendDim = 128;
@@ -376,9 +376,9 @@ public class VideoDiTTest {
         ICPlan icplan = new ICPlan(dit.tensorOP);
         
         MBSGDOptimizer optimizer = new MBSGDOptimizer(dit, 60, 0.00001f, batchSize, LearnRateUpdate.NONE, false);
-        optimizer.train_video_dit_ICPlan2(dataLoader, icplan, "/root/gpufree-data/models/video/video_dit_b_", mean, std, 2);
+        optimizer.train_video_dit_ICPlan2(dataLoader, icplan, "D:\\dataset\\video\\models\\video_dit_b_", mean, std, 2);
         
-        String save_model_path = "/root/gpufree-data/models/video/video_dit_b.model";
+        String save_model_path = "D:\\dataset\\video\\models\\video_dit_b.model";
         ModelUtils.saveModel(dit, save_model_path);
 	}
 	
@@ -435,14 +435,14 @@ public class VideoDiTTest {
     	dit.CUDNN = true;
         dit.learnRate = 2e-4f;
         
-        ICPlan icplan = new ICPlan(dit.tensorOP, 100, 0.0f);
+        ICPlan icplan = new ICPlan(dit.tensorOP, 50, 0);
         
-        String model_path = "D:\\dataset\\video\\models\\video_dit_b.model";
+        String model_path = "D:\\models\\video\\video_dit_b_20.model";
         ModelUtils.loadModel(dit, model_path);
         
         Tensor mean = new Tensor(latendDim, 1, 1, 1, true);
         Tensor std = new Tensor(latendDim, 1, 1, 1, true);
-        String meanStdPath = "D:\\dataset\\video\\1w_mean_std.bin";
+        String meanStdPath = "D:\\models\\video\\1w_mean_std.bin";
         loadMS(meanStdPath, mean, std);
         
         int batchSize = 2;
@@ -469,8 +469,10 @@ public class VideoDiTTest {
 
         dit.RUN_MODEL = RunModel.EVAL;
         String[] labels = new String[batchSize];
-        labels[0] = "The video features a man in a suit, looking off to the side with a serious expression. The man is the main subject of the video, and he is dressed in a dark suit with a light-colored shirt and tie. The background is blurred, but it appears to be an indoor setting with other people present. The lighting is soft and natural, suggesting an indoor environment with large windows or skylights. The man's expression and the setting suggest a serious or professional context. ";
-        labels[1] = "The video features a man with a beard and short hair, wearing a brown shirt.";
+        labels[0] = "a man in a suit, looking off to the side with a serious expression. The man is the main subject of the video, and he is dressed in a dark suit with a light-colored shirt and tie. The background is blurred, but it appears to be an indoor setting with other people present. The lighting is soft and natural, suggesting an indoor environment with large windows or skylights. The man's expression and the setting suggest a serious or professional context. ";
+        labels[1] = "a man with a beard and short hair, wearing a brown shirt.";
+       
+
 //        labels[2] = "The video features a young man with curly hair";
 //        labels[3] = "The video features a young man with curly hair";
 
@@ -493,9 +495,9 @@ public class VideoDiTTest {
         for(int i = 0;i<10;i++) {
         	
         	if(i > 4) {
-        		labels[0] = "A long hair girl";
-                labels[1] = "A old man";
-  
+        		labels[0] = "A cartoon police car in a room.";
+        	    labels[1] = "There is a tree with green leaves and branches in the foreground, with a blue sky and clouds in the background.";
+        		
                 SDImageDataLoaderEN.loadLabel_offset(label, 0, labels[0], bpe, maxContextLen);
                 SDImageDataLoaderEN.loadLabel_offset(label, 1, labels[1], bpe, maxContextLen);
 
@@ -507,7 +509,6 @@ public class VideoDiTTest {
             GPUOP.getInstance().cudaRandn(noise);
             noise.copyGPU(noise2);
             
-//            Tensor sample = icplan.forward_with_path_drop_cfg(dit, noise, t, condInput, condInput_ynull, cos, sin, latend, eps, 1.0f);
             Tensor sample = icplan.forward_with_path_drop_cfg_heun_step(dit, noise, t, condInput, condInput_ynull, cos, sin, latend, eps, 1.0f);
 
             icplan.latend_un_norm(sample, mean, std, thw);
@@ -518,11 +519,10 @@ public class VideoDiTTest {
 
             video.data = MatrixOperation.clampSelf(video.syncHost(), -1, 1);
 
-            tensor2video(video, batchSize, num_frames, 3, height, width, "D:\\test\\video\\"+i);
+            tensor2video(video, batchSize, num_frames, 3, height, width, "D:\\test\\t2v2\\"+i);
             
             System.out.println("finish create.");
             
-//            sample = icplan.forward_with_path_drop_cfg(dit, noise2, t, condInput, condInput_ynull, cos, sin, latend, eps, 2.0f);
             sample = icplan.forward_with_path_drop_cfg_heun_step(dit, noise2, t, condInput, condInput_ynull, cos, sin, latend, eps, 2.0f);
             
             icplan.latend_un_norm(sample, mean, std, thw);
@@ -532,7 +532,7 @@ public class VideoDiTTest {
 
             video.data = MatrixOperation.clampSelf(video.syncHost(), -1, 1);
 
-            tensor2video(video, batchSize, num_frames, 3, height, width, "D:\\test\\video\\t_"+i);
+            tensor2video(video, batchSize, num_frames, 3, height, width, "D:\\test\\t2v2\\"+i + "_T");
             
             System.out.println("finish create.");
         }
@@ -1041,9 +1041,9 @@ public class VideoDiTTest {
 			
 //			video_dit_test();
 			
-			video_dit_train2();
+//			video_dit_train2();
 			
-//			video_dit_test2();
+			video_dit_test2();
 			
 //			video_dit_train_i2v();
 //			video_dit_test_i2v();

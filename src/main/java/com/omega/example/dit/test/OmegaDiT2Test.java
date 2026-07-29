@@ -669,8 +669,8 @@ public class OmegaDiT2Test {
         
         ICPlan icplan = new ICPlan(network.tensorOP, 50, 0);
         
-        String model_path = "D:\\models\\dit_txt_flux\\flux_sprint_b1_0.model";
-//        String model_path = "D:\\models\\dit_txt_flux\\server_models\\flux_sprint_b1_2.model";
+//        String model_path = "D:\\models\\dit_txt_flux\\flux_sprint_b1_0.model";
+        String model_path = "D:\\models\\dit_txt_flux\\server_v_models\\flux_sprint_b1_3_20000.model";
         ModelUtils.loadModel(network, model_path);
         
         Tensor label = new Tensor(batchSize * maxContextLen, 1, 1, 1, true);
@@ -701,10 +701,10 @@ public class OmegaDiT2Test {
         labels[7] = "A yellow mushroom grows in the forest";
         labels[8] = "a dog";
         labels[9] = "A lovely corgi is taking a walk under the sea";
-        labels[10] = "A cat holding a sign that says hello world";
+        labels[10] = "a cat wearing sunglasses";
         labels[11] = "A man with short hair wearing a dark blazer and a patterned scarf is standing in front of a blurred background.";
-        labels[12] = "A Ukiyoe-style painting, an astronaut riding a unicorn, In the background there is an ancient Japanese architecture.";
-        labels[13] = "porcelain girl's face. fine texture. surreal";
+        labels[12] = "a small boat on a lake at sunset";
+        labels[13] = "a futuristic city street at night";
         labels[14] = "Half human, half robot, repaired human";
         labels[15] = "Poster of a mechanical cat, techical Schematics viewed from front.";
         labels[16] = "A beautiful girl with golden hair, cool and sunny";
@@ -719,6 +719,8 @@ public class OmegaDiT2Test {
         labels[25] = "A cyberpunk panda is taking a walk on the street";
         labels[26] = "Happy dreamy owl monster sitting on a tree branch, colorful glittering particles, forest background, detailed feathers.";
         labels[27] = "One giant, sharp, metal square mirror in the center of the frame, four young people on the foreground, background sunny palm oil planation, tropical, realistic style, photography, nostalgic, green tone, mysterious, dreamy, bright color.";
+        
+        long seed = 1234;
         
         for(int i = 0;i<7;i++) {
 			loadLabel_offset(bpe, label, 0, maxContextLen, labels[i * batchSize + 0]);
@@ -735,15 +737,15 @@ public class OmegaDiT2Test {
                 	network.tensorOP.op.copy_gpu(y_null, condInput_ynull, part_input_size, 0, 1, b * part_input_size, 1);
                 }
             }
-
+            
         	for(int it = 0;it<5;it++) {
             	
             	System.out.println("start create test images.");
 
-                GPUOP.getInstance().cudaRandn(noise);
+                GPUOP.getInstance().cudaRandn(noise, i * 5 + it + seed);
                 noise.copyGPU(noise2);
                 
-                Tensor sample = icplan.forward_with_path_drop_cfg(network, noise, t, condInput, condInput_ynull, cos, sin, latend, eps, 1.0f);
+                Tensor sample = icplan.forward_with_path_drop_cfg_heun_step_v(network, noise, t, condInput, condInput_ynull, cos, sin, latend, eps, 1.0f);
 
                 Tensor result = vae.decode(sample);
                 
@@ -751,11 +753,11 @@ public class OmegaDiT2Test {
                 
                 result.data = MatrixOperation.clampSelf(result.syncHost(), -1, 1);
 
-                showImgs("D:\\test\\dit_fluxvae\\flux_path_drop_sprint_512\\"+i+"_" + it, result, mean, std);
+                showImgs("D:\\test\\dit_fluxvae\\flux_path_drop_sprint_512_3\\"+i+"_" + it, result, mean, std);
                 
                 System.out.println("finish create.");
                 
-                sample = icplan.forward_with_path_drop_cfg(network, noise2, t, condInput, condInput_ynull, cos, sin, latend, eps, 2.0f);
+                sample = icplan.forward_with_path_drop_cfg_heun_step_v(network, noise2, t, condInput, condInput_ynull, cos, sin, latend, eps, 2.0f);
 
                 result = vae.decode(sample);
                 
@@ -763,125 +765,10 @@ public class OmegaDiT2Test {
                 
                 result.data = MatrixOperation.clampSelf(result.syncHost(), -1, 1);
 
-                showImgs("D:\\test\\dit_fluxvae\\flux_path_drop_sprint_512\\"+i+"_" + it + "_T", result, mean, std);
+                showImgs("D:\\test\\dit_fluxvae\\flux_path_drop_sprint_512_3\\"+i+"_" + it + "_T", result, mean, std);
                 
                 System.out.println("finish create.");
             }
-        	
-        }
-        
-	}
-	
-	public static void test_omega_sprint_path_drop_cfg_flux2vae_v_512_fid() throws Exception {
-		int imgSize = 512;
-        int maxContextLen = 77;
-        int batchSize = 4;
-        float[] mean = new float[]{0.5f, 0.5f, 0.5f};
-        float[] std = new float[]{0.5f, 0.5f, 0.5f};
-        String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
-        String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
-        BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
-
-        int maxPositionEmbeddingsSize = 77;
-        int vocabSize = 49408;
-        int headNum = 12;
-        int n_layers = 12;
-        int textEmbedDim = 768;
-        int intermediateSize = 3072;
-        ClipTextModel clip = new ClipTextModel(LossType.MSE, UpdaterType.adamw, headNum, maxContextLen, vocabSize, textEmbedDim, maxPositionEmbeddingsSize, intermediateSize, n_layers);
-        clip.CUDNN = true;
-        clip.time = maxContextLen;
-        clip.RUN_MODEL = RunModel.EVAL;
-        String clipWeight = "D:\\models\\CLIP-GmP-ViT-L-14\\CLIP-GmP-ViT-L-14.json";
-        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, "", false);
-
-        int latendDim = 32;
-        int num_res_blocks = 2;
-        int[] ch_mult = new int[]{1, 2, 4, 4};
-        int ch = 128;
-        Flux_VAE2 vae = new Flux_VAE2(LossType.MSE, UpdaterType.adamw, latendDim, imgSize, ch_mult, ch, num_res_blocks);
-        vae.CUDNN = true;
-        vae.learnRate = 0.001f;
-        vae.RUN_MODEL = RunModel.EVAL;
-        String vaeWeight = "D:\\models\\flux2_vae\\flux2_vae.json";
-        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
-        
-        int vaeLatendDim = 128;
-        int ditHeadNum = 12;
-        int latendSize = 32;
-        int depth = 12;
-        int timeSteps = 1000;
-        int mlpRatio = 4;
-        int patchSize = 1;
-        int hiddenSize = 768;
-        
-        float y_prob = 0.1f;
-        float token_drop = 0.0f;
-        float path_drop_prob = 0.05f;
-        
-        OmegaDiT network = new OmegaDiT(LossType.MSE, UpdaterType.adamw, vaeLatendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, textEmbedDim, maxContextLen, mlpRatio, 768, token_drop, path_drop_prob, y_prob);
-        network.CUDNN = true;
-        network.learnRate = 2e-4f;
-        
-        ICPlan icplan = new ICPlan(network.tensorOP, 50, 0);
-        
-//        String model_path = "D:\\models\\dit_txt_flux\\flux_sprint_b1_0.model";
-        String model_path = "D:\\models\\dit_txt_flux\\server_v_models\\flux_sprint_b1_2.model";
-        ModelUtils.loadModel(network, model_path);
-        
-        Tensor label = new Tensor(batchSize * maxContextLen, 1, 1, 1, true);
-       
-        Tensor condInput = null;
-        Tensor condInput_ynull = null;
-        Tensor t = new Tensor(batchSize, 1, 1, 1, true);
-        
-        Tensor noise = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
-        Tensor latend = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
-        Tensor eps = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
-        
-        Tensor noise2 = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
-        
-        Tensor[] cs = RoPEKernel.getCosAndSin2D(network.time, network.hiddenSize, network.headNum);
-        Tensor cos = cs[0];
-        Tensor sin = cs[1];
-
-        network.RUN_MODEL = RunModel.EVAL;
-        
-        String captionsPath = "D:\\dataset\\fid\\coco-30-val-2014-captions.json";
-        Map<String, Object> labelMaps = LagJsonReader.readJsonFileSmallWeight(captionsPath);
-
-        for(int i = 0;i<labelMaps.size()/batchSize;i++) {
-        	for(int bi = 0;bi<batchSize;bi++) {
-            	loadLabel_offset_host(bpe, label, bi, maxContextLen, labelMaps.get((i*batchSize + bi)+"").toString());
-        	}
-            label.hostToDevice();
-            condInput = clip.get_full_clip_prompt_embeds(label);
-
-            if(condInput_ynull == null) {
-            	condInput_ynull = Tensor.createGPUTensor(condInput_ynull, condInput.number, condInput.channel, condInput.height, condInput.width, true);
-                Tensor y_null = network.main.labelEmbd.getY_embedding();
-                int part_input_size = y_null.dataLength;
-                for(int b = 0;b<batchSize;b++) {
-                	network.tensorOP.op.copy_gpu(y_null, condInput_ynull, part_input_size, 0, 1, b * part_input_size, 1);
-                }
-            }
-
-        	System.out.println("start create test images.");
-
-            GPUOP.getInstance().cudaRandn(noise);
-            noise.copyGPU(noise2);
-            
-            Tensor sample = icplan.forward_with_path_drop_cfg(network, noise, t, condInput, condInput_ynull, cos, sin, latend, eps, 2.0f);
-
-            Tensor result = vae.decode(sample);
-            
-            JCuda.cudaDeviceSynchronize();
-            
-            result.data = MatrixOperation.clampSelf(result.syncHost(), -1, 1);
-
-            showImgs("D:\\test\\dit_fluxvae\\flux_path_drop_sprint_512\\", result, mean, std, i*batchSize);
-            
-            System.out.println("finish create.");
         	
         }
         
@@ -944,7 +831,7 @@ public class OmegaDiT2Test {
         ICPlan icplan = new ICPlan(network.tensorOP, 50, 0);
         
 //        String model_path = "D:\\models\\dit_txt_flux\\flux_sprint_b1_16.model";
-        String model_path = "D:\\models\\dit_txt_flux\\model_v\\flux_sprint_b1_512_0_120000.model";
+        String model_path = "D:\\models\\dit_txt_flux\\server_models\\flux_sprint_b1_512_1_40000.model";
         ModelUtils.loadModel(network, model_path);
         
         Tensor label = new Tensor(batchSize * dataLoader.maxContextLen, 1, 1, 1, true);
@@ -1046,6 +933,119 @@ public class OmegaDiT2Test {
         
 	}
 	
+	public static void test_omega_sprint_path_drop_cfg_flux2vae_v_512_fid() throws Exception {
+		int imgSize = 512;
+        int maxContextLen = 77;
+        int batchSize = 4;
+        float[] mean = new float[]{0.5f, 0.5f, 0.5f};
+        float[] std = new float[]{0.5f, 0.5f, 0.5f};
+        String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
+        String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
+        BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+
+        int maxPositionEmbeddingsSize = 77;
+        int vocabSize = 49408;
+        int headNum = 12;
+        int n_layers = 12;
+        int textEmbedDim = 768;
+        int intermediateSize = 3072;
+        ClipTextModel clip = new ClipTextModel(LossType.MSE, UpdaterType.adamw, headNum, maxContextLen, vocabSize, textEmbedDim, maxPositionEmbeddingsSize, intermediateSize, n_layers);
+        clip.CUDNN = true;
+        clip.time = maxContextLen;
+        clip.RUN_MODEL = RunModel.EVAL;
+        String clipWeight = "D:\\models\\CLIP-GmP-ViT-L-14\\CLIP-GmP-ViT-L-14.json";
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, "", false);
+
+        int latendDim = 32;
+        int num_res_blocks = 2;
+        int[] ch_mult = new int[]{1, 2, 4, 4};
+        int ch = 128;
+        Flux_VAE2 vae = new Flux_VAE2(LossType.MSE, UpdaterType.adamw, latendDim, imgSize, ch_mult, ch, num_res_blocks);
+        vae.CUDNN = true;
+        vae.learnRate = 0.001f;
+        vae.RUN_MODEL = RunModel.EVAL;
+        String vaeWeight = "D:\\models\\flux2_vae\\flux2_vae.json";
+        ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
+        
+        int vaeLatendDim = 128;
+        int ditHeadNum = 12;
+        int latendSize = 32;
+        int depth = 12;
+        int timeSteps = 1000;
+        int mlpRatio = 4;
+        int patchSize = 1;
+        int hiddenSize = 768;
+        
+        float y_prob = 0.1f;
+        float token_drop = 0.0f;
+        float path_drop_prob = 0.05f;
+        
+        OmegaDiT network = new OmegaDiT(LossType.MSE, UpdaterType.adamw, vaeLatendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, textEmbedDim, maxContextLen, mlpRatio, 768, token_drop, path_drop_prob, y_prob);
+        network.CUDNN = true;
+        network.learnRate = 2e-4f;
+        
+        ICPlan icplan = new ICPlan(network.tensorOP, 50, 0);
+
+        String model_path = "D:\\models\\dit_txt_flux\\server_v_models\\flux_sprint_b1_2_0.model";
+        ModelUtils.loadModel(network, model_path);
+        
+        Tensor label = new Tensor(batchSize * maxContextLen, 1, 1, 1, true);
+       
+        Tensor condInput = null;
+        Tensor condInput_ynull = null;
+        Tensor t = new Tensor(batchSize, 1, 1, 1, true);
+        
+        Tensor noise = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+        Tensor latend = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+        Tensor eps = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+        
+        Tensor[] cs = RoPEKernel.getCosAndSin2D(network.time, network.hiddenSize, network.headNum);
+        Tensor cos = cs[0];
+        Tensor sin = cs[1];
+
+        network.RUN_MODEL = RunModel.EVAL;
+        
+        String captionsPath = "D:\\dataset\\fid\\coco-30-val-2014-captions.json";
+        Map<String, Object> labelMaps = LagJsonReader.readJsonFileSmallWeight(captionsPath);
+
+//        for(int i = 0;i<labelMaps.size()/batchSize;i++) {
+        for(int i = 0;i<750;i++) {
+        	for(int bi = 0;bi<batchSize;bi++) {
+//        		System.err.println(labelMaps.get((i*batchSize + bi)+"").toString());
+            	loadLabel_offset_host(bpe, label, bi, maxContextLen, labelMaps.get((i*batchSize + bi)+"").toString());
+        	}
+            label.hostToDevice();
+            condInput = clip.get_full_clip_prompt_embeds(label);
+
+            if(condInput_ynull == null) {
+            	condInput_ynull = Tensor.createGPUTensor(condInput_ynull, condInput.number, condInput.channel, condInput.height, condInput.width, true);
+                Tensor y_null = network.main.labelEmbd.getY_embedding();
+                int part_input_size = y_null.dataLength;
+                for(int b = 0;b<batchSize;b++) {
+                	network.tensorOP.op.copy_gpu(y_null, condInput_ynull, part_input_size, 0, 1, b * part_input_size, 1);
+                }
+            }
+
+        	System.out.println("start create test images.");
+
+            GPUOP.getInstance().cudaRandn(noise);
+
+            Tensor sample = icplan.forward_with_path_drop_cfg(network, noise, t, condInput, condInput_ynull, cos, sin, latend, eps, 2.0f);
+
+            Tensor result = vae.decode(sample);
+            
+            JCuda.cudaDeviceSynchronize();
+            
+            result.data = MatrixOperation.clampSelf(result.syncHost(), -1, 1);
+
+            showImgs("D:\\test\\dit_fluxvae\\flux_path_drop_sprint_512_fid\\", result, mean, std, i*batchSize);
+            
+            System.out.println(i * batchSize + " finish create.");
+        	
+        }
+        
+	}
+	
 	public static void showImgs(String outputPath, Tensor input, float[] mean, float[] std) {
         ImageUtils utils = new ImageUtils();
         for (int b = 0; b < input.number; b++) {
@@ -1058,7 +1058,7 @@ public class OmegaDiT2Test {
         ImageUtils utils = new ImageUtils();
         for (int b = 0; b < input.number; b++) {
             float[] once = input.getByNumber(b);
-            utils.createRGBImage(outputPath + "_" + index + b + ".png", "png", ImageUtils.color2rgb2(once, input.channel, input.height, input.width, true, mean, std), input.height, input.width, null, null);
+            utils.createRGBImage(outputPath + (index + b) + ".png", "png", ImageUtils.color2rgb2(once, input.channel, input.height, input.width, true, mean, std), input.height, input.width, null, null);
         }
 	}
 	
@@ -1363,6 +1363,8 @@ public class OmegaDiT2Test {
 //        	test_omega_sprint_path_drop_cfg_flux2vae_v();
         	
         	test_omega_sprint_path_drop_cfg_flux2vae_v_512();
+        	
+//        	test_omega_sprint_path_drop_cfg_flux2vae_v_512_fid();
         	
 //        	test_omega_sprint_path_drop_cfg_flux2vae_512();
         	

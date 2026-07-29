@@ -211,6 +211,9 @@ public class LatendDataset extends BaseTokenizer {
         try {
             //			System.out.println(it);
         	if(it == 0) {
+        		if (cf != null) {
+        			cf.get();//等待数据从文件加载完毕
+                }
         		cf = null;
         	}
             if (cf != null) {

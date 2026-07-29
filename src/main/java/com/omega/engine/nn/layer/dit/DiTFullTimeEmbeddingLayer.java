@@ -22,7 +22,7 @@ import com.omega.engine.tensor.Tensor;
  *
  * @author Administrator
  */
-public class DiTOrgTimeEmbeddingLayer extends Layer {
+public class DiTFullTimeEmbeddingLayer extends Layer {
 
     public FullyLayer linear1;
     public SiLULayer act;
@@ -37,7 +37,7 @@ public class DiTOrgTimeEmbeddingLayer extends Layer {
     
     private TokenDropKernel tokenDropKernel;
     
-    public DiTOrgTimeEmbeddingLayer(int T, int d_model, int dim, boolean bias, Network network) {
+    public DiTFullTimeEmbeddingLayer(int T, int d_model, int dim, boolean bias, Network network) {
         this.network = network;
         this.bias = bias;
         this.T = T;
@@ -64,7 +64,7 @@ public class DiTOrgTimeEmbeddingLayer extends Layer {
             Transformer tf = new Transformer();
             tf.CUDNN = true;
             tf.number = 2;
-            DiTOrgTimeEmbeddingLayer mal = new DiTOrgTimeEmbeddingLayer(T, d_model, dim, false, tf);
+            DiTFullTimeEmbeddingLayer mal = new DiTFullTimeEmbeddingLayer(T, d_model, dim, false, tf);
             mal.forward(input);
             mal.getOutput().showShape();
             mal.getOutput().showDM();
