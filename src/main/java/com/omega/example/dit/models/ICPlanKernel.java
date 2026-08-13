@@ -33,6 +33,7 @@ public class ICPlanKernel extends CUDAKernel {
     private CUfunction latend_un_norm_function;
     
     private CUfunction expand_mask_function;
+    private CUfunction expand_mask_skip_text_function;
     private CUfunction expand_function;
     
     private int CAFFE_CUDA_NUM_THREADS = 1024;
@@ -100,6 +101,9 @@ public class ICPlanKernel extends CUDAKernel {
             }
             if(expand_mask_function == null) {
             	expand_mask_function = getCudaManager().getLocalFunctionByModule("icplan.cu", "expand_mask"); 
+            }
+            if(expand_mask_skip_text_function == null) {
+                expand_mask_skip_text_function = getCudaManager().getLocalFunctionByModule("icplan.cu", "expand_mask_skip_text");
             }
             if(expand_function == null) {
             	expand_function = getCudaManager().getLocalFunctionByModule("icplan.cu", "expand_"); 
@@ -581,6 +585,24 @@ public class ICPlanKernel extends CUDAKernel {
             );
         } catch (Exception e) {
             // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+
+    public void expand_mask_skip_text(Tensor a, Tensor b, Tensor mask, Tensor out, int W, int textTokenCount, float maskRatio) {
+        if (textTokenCount < 0 || textTokenCount > W) {
+            throw new IllegalArgumentException("textTokenCount must be in [0, W], got: " + textTokenCount);
+        }
+        try {
+            Pointer parameters = Pointer.to(Pointer.to(a.getGpuData()), Pointer.to(b.getGpuData()),
+                    Pointer.to(mask.getGpuData()), Pointer.to(out.getGpuData()),
+                    Pointer.to(new int[]{out.dataLength}), Pointer.to(new int[]{W}),
+                    Pointer.to(new int[]{textTokenCount}), Pointer.to(new float[]{maskRatio}));
+            cuLaunchKernel(expand_mask_skip_text_function, this.CAFFE_GET_BLOCKS(out.dataLength), 1, 1,
+                    CAFFE_CUDA_NUM_THREADS, 1, 1,
+                    0, null,
+                    parameters, null);
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }

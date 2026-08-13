@@ -298,3 +298,28 @@ __global__ void latend_un_norm(
 	   x1[idx] = x1[idx] * std[c] + mean[c];
     }
 }
+
+extern "C"
+__global__ void expand_mask_skip_text(
+    float* a,
+    float* b,
+    float* mask,
+    float* out,
+    int N,
+    int W,
+    int textTokenCount,
+    float maskRatio
+) {
+    int idx = (blockIdx.x + blockIdx.y * gridDim.x) * blockDim.x + threadIdx.x;
+    if (idx < N) {
+        int batchIdx = idx / W;
+        int tokenIdx = idx % W;
+        if (tokenIdx < textTokenCount) {
+            out[idx] = a[batchIdx];
+        } else if (mask[idx] < maskRatio) {
+            out[idx] = b[batchIdx];
+        } else {
+            out[idx] = a[batchIdx];
+        }
+    }
+}

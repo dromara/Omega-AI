@@ -609,9 +609,9 @@ public class SentencePieceTokenizer extends Tokenizer {
     			out[i] = org[i];
         		if(i == org.length - 1) {
         			if(i < out.length - 1) {
-        				out[i + 1] = 1;
+        				out[i + 1] = eos;
         			}else {
-        				out[i] = 1;
+        				out[i] = eos;
         			}
         		}
     		}

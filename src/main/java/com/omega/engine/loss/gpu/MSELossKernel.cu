@@ -19,7 +19,9 @@ extern "C"
 __global__ void loss_back(float *output, float *currentLabel, float *diff, int n, int batch)
 {
     int id = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
- 
+ 	
+ 	if (id >= batch * n) return;
+ 	
 	diff[id] = 2 * (output[id] - currentLabel[id]) / batch / n;    
 
 }

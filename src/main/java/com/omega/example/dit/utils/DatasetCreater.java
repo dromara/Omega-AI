@@ -659,6 +659,7 @@ public class DatasetCreater {
         /**
          * copy data to gpu.
          */
+    	mask.hostToDevice();
         label.hostToDevice();
     }
     
@@ -945,19 +946,19 @@ public class DatasetCreater {
     public static void createLatend_flux2_vae() {
     	
     	try {
+
+    		String outputPath = "/root/gpufree-data/2m/flux2vae_latend.bin";
     		
-    		String outputPath = "D:\\dataset\\amine\\dalle_flux2vae_latend.bin";
-    		
-        	String labelPath = "D:\\dataset\\labels.json";
-            String imgDirPath = "D:\\dataset\\images_256_256\\";
+        	String labelPath = "/root/gpufree-data/processed_images/label.txt";
+            String imgDirPath = "/root/gpufree-data/images_256/";
             boolean horizontalFilp = false;
             int imgSize = 256;
             int maxContextLen = 77;
             int batchSize = 40;
             float[] mean = new float[]{0.5f, 0.5f, 0.5f};
             float[] std = new float[]{0.5f, 0.5f, 0.5f};
-            String vocabPath = "D:\\models\\bpe_tokenizer\\vocab.json";
-            String mergesPath = "D:\\models\\bpe_tokenizer\\merges.txt";
+            String vocabPath = "/root/gpufree-data/models/vocab.json";
+            String mergesPath = "/root/gpufree-data/models/merges.txt";
             BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
             SDImageDataLoaderEN dataLoader = new SDImageDataLoaderEN(bpe, labelPath, imgDirPath, ".jpg", imgSize, imgSize, maxContextLen, batchSize, horizontalFilp, mean, std);
 
@@ -969,7 +970,7 @@ public class DatasetCreater {
             vae.CUDNN = true;
             vae.learnRate = 0.001f;
             vae.RUN_MODEL = RunModel.EVAL;
-            String vaeWeight = "D:\\models\\flux2_vae\\flux2_vae.json";
+            String vaeWeight = "/root/gpufree-data/models/flux2_vae.json";
             ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
 
             int[][] indexs = dataLoader.order();
@@ -1236,34 +1237,36 @@ public class DatasetCreater {
     
     public static void createT5Data() {
     	
-    	int batchSize = 100;
+    	int batchSize = 200;
     	int maxContextLen = 120;
 
 //		String t5DataPath = "D:\\dataset\\flux_train_sampled\\vavae_t5.bin";
 //    	String labelPath = "D:\\dataset\\flux_train_sampled\\metadata.json";
     	
-    	String t5DataPath = "D:\\dataset\\amine\\vavae_t5.bin";
-    	String labelPath = "D:\\dataset\\labels.json";
+    	String t5DataPath = "/root/gpufree-data/2m/flux_t5.bin";
+    	String maskDataPath = "/root/gpufree-data/2m/mask.bin";
+    	String labelPath = "/root/gpufree-data/processed_images/label.txt";
     	
     	Tensor label = new Tensor(batchSize * maxContextLen, 1, 1, 1, true);
     	Tensor mask = new Tensor(batchSize, 1, 1, maxContextLen, true);
-
+        Tensor attnMask = new Tensor(batchSize, 1, 1, maxContextLen, true);
+        
     	try {
 
-    		String tokenizer_path = "D:\\models\\t5\\spiece.model";
+    		String tokenizer_path = "/root/gpufree-data/models/t5/spiece.model";
     		SentencePieceTokenizer tokenizer = new SentencePieceTokenizer(tokenizer_path);
     		
     		int time = maxContextLen;
-    		int voc_size = 250112;
+    		int voc_size = 32128;
     		int num_layers = 24;
-    		int head_num = 32;
-    		int embed_size = 2048;
-    		int d_ff = 5120;
+    		int head_num = 16;
+    		int embed_size = 1024;
+    		int d_ff = 2816;
     		T5Encoder t5 = new T5Encoder(LossType.MSE, UpdaterType.adamw, voc_size, num_layers, head_num, time, embed_size, d_ff, false);
     		t5.CUDNN = true;
     		t5.RUN_MODEL = RunModel.EVAL;
         	
-    		String model_path = "D://models//t5//t5_encoder.model";
+    		String model_path = "/root/gpufree-data/models/t5/t5_encoder.model";
     		com.omega.example.transformer.utils.ModelUtils.loadModel(t5, model_path);
             
     		List<Map<String, Object>> datas = LagJsonReader.readJsonDataSamll(labelPath);
@@ -1274,12 +1277,25 @@ public class DatasetCreater {
             
             File clipFile = new File(t5DataPath);
             FileOutputStream clipWriter = new FileOutputStream(clipFile);
-
+            
+            File maskFile = new File(maskDataPath);
+            FileOutputStream maskWriter = new FileOutputStream(maskFile);
+            
             for(int it = 0;it<indexs.length;it++) {
            	 	 loadLabels(tokenizer, datas, "en", indexs[it], label, mask, maxContextLen, batchSize);
             	 Tensor condInput = t5.forward(label, mask);
             	 JCudaDriver.cuCtxSynchronize();
                  writeTensor(condInput, clipWriter);
+                 for(int i = 0;i<mask.dataLength;i++) {
+                	 float val = mask.data[i];
+                	 if(val == 0) {
+                		 attnMask.data[i] = 1;
+                	 }else {
+                		 attnMask.data[i] = 0;
+                	 }
+                 }
+                 attnMask.hostToDevice();
+                 writeTensor(attnMask, maskWriter);
                  System.out.println(it + "/" + indexs.length + " finish.");
             }
             
@@ -1517,9 +1533,11 @@ public class DatasetCreater {
         	
 //        	test_fluxvae_latend();
         	
+        	createT5Data();
+        	
 //        	createLatend_flux2_vae();
         	
-        	createLatend_flux2_vae_512();
+//        	createLatend_flux2_vae_512();
         	
 //        	test_flux2vae_latend();
         	

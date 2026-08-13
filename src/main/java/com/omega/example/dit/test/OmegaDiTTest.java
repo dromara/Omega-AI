@@ -1,6 +1,10 @@
 package com.omega.example.dit.test;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import com.omega.common.utils.ImageUtils;
 import com.omega.common.utils.JsonUtils;
@@ -1541,36 +1545,49 @@ public class OmegaDiTTest {
 
 		SentencePieceTokenizer t = new SentencePieceTokenizer(tokenizer_path);
 
-		String txt = "一只猫在苹果树下游泳";
+		String txt = "Detailed, close-up photograph of a persons face, artistically covered in a vibrant and expressive layer of multi-colored paint. The camera is focused sharply on the subjects left eye, creating a shallow depth of field that softly blurs the rest of the face and the background. The paint is applied in thick, bold strokes and dabs, creating a vivid rainbow portrait that celebrates color, creativity, and self-expression.";
 
 		String[] tokens = t.tokenize(txt);
 		
-		System.out.println(JsonUtils.toJson(tokens));
+		System.out.println("1:"+JsonUtils.toJson(tokens));
 
 		int[] tokensInt = t.encodeInt(txt, 120);
 		
-		System.out.println(JsonUtils.toJson(tokensInt));
+		System.out.println("2:"+JsonUtils.toJson(tokensInt));
 
 		int[] idx = t.encodeInt(txt);
 
-		System.out.println(JsonUtils.toJson(idx));
+		System.out.println("3:"+JsonUtils.toJson(idx));
 
 		String outText = t.decode(idx);
 
 		System.out.println(outText); 
 		
-		int time = 120;
-		int voc_size = 250112;
-		int num_layers = 24;
-		int head_num = 32;
-		int embed_size = 2048;
-		int d_ff = 5120;
-		T5Encoder t5 = new T5Encoder(LossType.MSE, UpdaterType.adamw, voc_size, num_layers, head_num, time, embed_size, d_ff, false);
-		t5.CUDNN = true;
-		t5.RUN_MODEL = RunModel.EVAL;
-    	
-		String model_path = "D://models//t5//t5_encoder.model";
-        ModelUtils.loadModel(t5, model_path);
+		List<Map<String, Object>> datas = LagJsonReader.readJsonDataSamll("D:\\test\\mmjit\\512_repa_ema\\video_test\\label.txt");
+		int out_len = 0;
+		for(int i = 0;i<datas.size();i++) {
+			Map<String, Object> once = datas.get(i);
+			String pop = once.get("en").toString();
+			int[] tokenInts = t.encodeInt(pop);
+			if(tokenInts.length > 120) {
+				System.err.println(pop);
+				out_len++;
+			}
+		}
+		System.err.println(out_len);
+		
+//		int time = 120;
+//		int voc_size = 32128;
+//		int num_layers = 24;
+//		int head_num = 16;
+//		int embed_size = 1024;
+//		int d_ff = 2816;
+//		T5Encoder t5 = new T5Encoder(LossType.MSE, UpdaterType.adamw, voc_size, num_layers, head_num, time, embed_size, d_ff, false);
+//		t5.CUDNN = true;
+//		t5.RUN_MODEL = RunModel.EVAL;
+//    	
+//		String model_path = "D://models//t5//t5_encoder.model";
+//        ModelUtils.loadModel(t5, model_path);
 		
 //		Map<String, Tensor> weights = new HashMap<String, Tensor>();
 //		weights.put("encoder.embed_tokens.weight", t5.stack.embed_tokens.weight);
@@ -1602,22 +1619,20 @@ public class OmegaDiTTest {
 //        	t5.stack.block.get(i).ffn.norm.gamma = weights.get("encoder.block."+i+".layer.1.layer_norm.weight");
 //        }
 //        t5.stack.final_layer_norm.gamma = weights.get("encoder.final_layer_norm.weight");
-//		
-//        System.err.println(t5.stack.final_layer_norm.gamma);
-        
-        Tensor input = new Tensor(time, 1, 1, 1, true);
-        Tensor mask = new Tensor(1, 1, 1, time, true);
-        float max = -3.4028e+38f;
-        for(int i = 0;i<time;i++) {
-        	input.data[i] = tokensInt[i];
-        	if(input.data[i] == 0) {
-        		mask.data[i] = max;
-        	}
-        }
-        input.hostToDevice();
-        mask.hostToDevice();
-        Tensor output = t5.forward(input, mask);
-        output.showDM("output");
+
+//        Tensor input = new Tensor(time, 1, 1, 1, true);
+//        Tensor mask = new Tensor(1, 1, 1, time, true);
+//        float max = -3.4028e+38f;
+//        for(int i = 0;i<time;i++) {
+//        	input.data[i] = tokensInt[i];
+//        	if(input.data[i] == 0) {
+//        		mask.data[i] = max;
+//        	}
+//        }
+//        input.hostToDevice();
+//        mask.hostToDevice();
+//        Tensor output = t5.forward(input, mask);
+//        output.showDM("output");
         
 
 //        String save_model_path = "D://models//t5//t5_encoder.model";
@@ -1738,7 +1753,7 @@ public class OmegaDiTTest {
 	        	
 //	        	test_omega_sprint_path_drop_cfg_512(); // simple 512
 	        	
-	        	omega_sprint_b1_iddpm_train_fluxvae();
+//	        	omega_sprint_b1_iddpm_train_fluxvae();
 	        	
 //	        	test_omega_sprint_path_drop_cfg_fluxvae();
 	        	
@@ -1746,7 +1761,7 @@ public class OmegaDiTTest {
 	        	
 //	        	test_omega_sprint_path_drop_cfg_fluxvae_512();
 	        	
-//	        	test_t5();
+	        	test_t5();
 	        	
 //	        	test_omega_t5_path_drop_cfg();
 	        	

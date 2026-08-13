@@ -19,7 +19,9 @@ extern "C"
 __global__ void loss_back(float *output, float *currentLabel, float *diff, int n, int batch)
 {
     int id = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
- 
+ 	
+ 	if (id >= batch * n) return;
+ 	
 	diff[id] = 2 * (output[id] - currentLabel[id]) / batch / n;    
 
 }
@@ -35,7 +37,7 @@ __global__ void loss_right(float *input, float *label, float *output, int batch,
 	for(int i = 0;i<n;i++){
         sum += powf(label[id * n + i] - input[id * n + i], 2);
     }
-
+    
 	output[id] = sum / n;
 }
 
@@ -43,7 +45,7 @@ extern "C"
 __global__ void loss_right_back(float *output, float *currentLabel, float *diff, int n, int batch)
 {
     int id = (blockIdx.x + blockIdx.y*gridDim.x) * blockDim.x + threadIdx.x;
-
-	diff[id] = -2 * (currentLabel[id] - output[id]) / batch / n;
+ 
+	diff[id] = -2 * (currentLabel[id] - output[id]) / batch / n;    
 
 }

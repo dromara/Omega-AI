@@ -59,7 +59,6 @@ public class MSELossKernel extends BaseKernel {
     public void forward(Tensor input, Tensor currentLabel, Tensor output) {
         /**
          * float *input, float *label, float *output, int batch, int n
-
          */
         loss_kernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(currentLabel.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{input.number}), Pointer.to(new int[]{input.channel * input.height * input.width}));
         this.N = output.number;
@@ -74,7 +73,6 @@ public class MSELossKernel extends BaseKernel {
     public void backward(Tensor input, Tensor currentLabel, Tensor diff) {
         /**
          * float *input, float *currentLabel, float *diff, int n, int batch
-
          */
         backKernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(currentLabel.getGpuData()), Pointer.to(diff.getGpuData()), Pointer.to(new int[]{input.channel * input.height * input.width}), Pointer.to(new int[]{input.number}));
         cuLaunchKernel(loss_backward_function, this.CAFFE_GET_BLOCKS(diff.number * diff.channel * diff.height * diff.width), 1, 1,      // Grid dimension
@@ -88,7 +86,6 @@ public class MSELossKernel extends BaseKernel {
     public void forward_right(Tensor input, Tensor currentLabel, Tensor output) {
         /**
          * float *input, float *label, float *output, int batch, int n
-
          */
         loss_kernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(currentLabel.getGpuData()), Pointer.to(output.getGpuData()), Pointer.to(new int[]{input.number}), Pointer.to(new int[]{input.channel * input.height * input.width}));
         this.N = output.number;
@@ -103,7 +100,6 @@ public class MSELossKernel extends BaseKernel {
     public void backward_right(Tensor input, Tensor currentLabel, Tensor diff) {
         /**
          * float *input, float *currentLabel, float *diff, int n, int batch
-
          */
         backKernelParameters = Pointer.to(Pointer.to(input.getGpuData()), Pointer.to(currentLabel.getGpuData()), Pointer.to(diff.getGpuData()), Pointer.to(new int[]{input.channel * input.height * input.width}), Pointer.to(new int[]{input.number}));
         cuLaunchKernel(loss_right_backward_function, this.CAFFE_GET_BLOCKS(diff.number * diff.channel * diff.height * diff.width), 1, 1,      // Grid dimension

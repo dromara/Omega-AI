@@ -63,6 +63,10 @@ public class FluxDiTBlockFullTime extends Layer {
     
     private int[] shape;
     
+    private Tensor eval_ao;
+    private Tensor eval_n1o;
+    private Tensor eval_n3o;
+    
     public FluxDiTBlockFullTime(int embedDim, int cEmbedDim, int time, int mlpHiddenDim, int headNum, int maxContext, boolean bias, boolean qkNorm, Network network) {
         this.network = network;
         if (this.updater == null) {
@@ -176,6 +180,35 @@ public class FluxDiTBlockFullTime extends Layer {
         }
     }
     
+    public void init_eval(Tensor input, Tensor tc) {
+        // TODO Auto-generated method stub
+        this.number = input.number;
+        if(shape == null) {
+        	shape= new int[] {number, 6, 1, embedDim};
+        }
+        if(attnInput == null || attnInput.number != number) {
+        	attnInput = CUDAMemoryManager.getCache("dit_block_attnInput", input.number, input.channel, input.height, input.width);
+        	shift_msa = CUDAMemoryManager.getCache("dit_block_shift_msa", number, 1, 1, embedDim);
+        	scale_msa = CUDAMemoryManager.getCache("dit_block_scale_msa", number, 1, 1, embedDim);
+        	gate_msa = CUDAMemoryManager.getCache("dit_block_gate_msa", number, 1, 1, embedDim);
+        	shift_mlp = CUDAMemoryManager.getCache("dit_block_shift_mlp", number, 1, 1, embedDim);
+        	scale_mlp = CUDAMemoryManager.getCache("dit_block_scale_mlp", number, 1, 1, embedDim);
+        	gate_mlp = CUDAMemoryManager.getCache("dit_block_gate_mlp", number, 1, 1, embedDim);
+        }
+        if(crossAttnInput == null || crossAttnInput.number != number) {
+        	crossAttnInput = CUDAMemoryManager.getCache("dit_block_crossAttnInput", input.number, input.channel, input.height, input.width);
+        }
+        if(mlpInput == null || mlpInput.number != number) {
+        	mlpInput = CUDAMemoryManager.getCache("dit_block_mlpInput", input.number,  input.channel, input.height, input.width);
+        }
+        if(output == null || output.number != number) {
+        	output = CUDAMemoryManager.getCache("dit_block_output", input.number, oChannel, oHeight, oWidth);
+        	eval_ao = CUDAMemoryManager.getCache("dit_block_ao", number, 1, 1, 6 * embedDim);
+        	eval_n1o = CUDAMemoryManager.getCache("dit_block_n1", input.number, input.channel, input.height, input.width);
+        	eval_n3o = CUDAMemoryManager.getCache("dit_block_n3", input.number, input.channel, input.height, input.width);
+        }
+    }
+    
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
@@ -270,6 +303,39 @@ public class FluxDiTBlockFullTime extends Layer {
     	 * x3 = x1 + gate_mlp.unsqueeze(1) * self.mlp(modulate(self.norm3(x1), shift_mlp, scale_mlp))
     	 */
     	norm3.forward(crossAttnInput);
+    	modulate(norm3.getOutput(), shift_mlp, scale_mlp, mlpInput);
+
+    	mlp.forward(mlpInput);
+
+    	Tensor_OP().mul(mlp.getOutput(), gate_mlp, output);
+    	Tensor_OP().add(crossAttnInput, output, output);
+
+    }
+    
+    public void output_eval(Tensor tc, Tensor cos, Tensor sin) {
+
+    	/**
+    	 * shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = self.adaLN_modulation(c).chunk(6, dim=1)
+    	 */
+    	modulationAct.forward(tc);
+    	
+    	adaLN_modulation.forward(modulationAct.getOutput(), eval_ao);
+    	
+    	getAdaLN();
+    	
+    	/**
+    	 *  x1 = x + gate_msa.unsqueeze(1) * self.attn(modulate(self.norm1(x), shift_msa, scale_msa))
+    	 */
+    	norm1.forward(input, eval_n1o);
+    	modulate(norm1.getOutput(), shift_msa, scale_msa, attnInput);
+    	attn.forward(attnInput, cos, sin, maxContext);
+    	Tensor_OP().mul(attn.getOutput(), gate_msa, crossAttnInput);
+    	Tensor_OP().add(input, crossAttnInput, crossAttnInput);
+
+    	/**
+    	 * x3 = x1 + gate_mlp.unsqueeze(1) * self.mlp(modulate(self.norm3(x1), shift_mlp, scale_mlp))
+    	 */
+    	norm3.forward(crossAttnInput, eval_n3o);
     	modulate(norm3.getOutput(), shift_mlp, scale_mlp, mlpInput);
 
     	mlp.forward(mlpInput);
@@ -504,6 +570,28 @@ public class FluxDiTBlockFullTime extends Layer {
          * 计算输出
          */
         this.output(tc, cos, sin);
+    }
+    
+    /**
+     * 
+     * @param input
+     * @param tc time cond
+     * @param text
+     */
+    public void forward_eval(Tensor input,Tensor tc,Tensor cos,Tensor sin) {
+        // TODO Auto-generated method stub
+        /**
+         * 设置输入
+         */
+        this.setInput(input);
+        /**
+         * 参数初始化
+         */
+        this.init_eval(input, tc);
+        /**
+         * 计算输出
+         */
+        this.output_eval(tc, cos, sin);
     }
     
     @Override

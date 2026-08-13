@@ -92,6 +92,7 @@ public class LagJsonReader {
             while (reader.hasNext()) {
                 String name = reader.nextName();
                 System.err.println("name:"+name);
+//                Object value = readValue(reader);
                 if(!igones.contains(name)) {
                 	 Object value = readValue(reader);
                      Tensor weight = weights.get(name);
@@ -103,7 +104,7 @@ public class LagJsonReader {
                      }
                      System.out.println(name+"==>finish.");
                 }else {
-                	 Object value = readValue(reader);
+                	 readValue(reader);
                      System.out.println(name+"==>igone.");
                 }
                

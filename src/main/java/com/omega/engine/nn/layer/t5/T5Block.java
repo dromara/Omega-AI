@@ -146,12 +146,13 @@ public class T5Block extends Layer {
     	}
     	
     	relativeBuckets = new Tensor(time * time, 1, 1, 1, relative_buckets, true);
-    	attention_bias = new Tensor(1, num_buckets, time, time, true);
+    	attention_bias = new Tensor(1, headNum, time, time, true);
 //    	relativeBuckets.showDM("relativeBuckets");
     	relative_attention_bias.forward(relativeBuckets);
 //    	relative_attention_bias.weight.showDM("weight");
 //    	relative_attention_bias.getOutput().showDM("relative_attention_bias");
-    	Tensor_OP().permute(relative_attention_bias.getOutput(), attention_bias, new int[] {1, time, time, num_buckets}, new int[] {1, num_buckets, time, time}, new int[] {0, 3, 1, 2});
+    	Tensor_OP().permute(relative_attention_bias.getOutput(), attention_bias, new int[] {time, time, headNum}, new int[] {headNum, time, time}, new int[] {2, 0, 1});
+//		attention_bias.showDM("position_bias:2");
     }
     
     @Override

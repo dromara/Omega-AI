@@ -262,7 +262,10 @@ public class SDImageLoader extends BaseDataLoader {
     	try {
 //            System.out.println(it);
     		if(it == 0) {
-    			cf = null;
+    			if (cf != null) {
+        			cf.get();//等待数据从文件加载完毕
+                }
+        		cf = null;
     		}
             if (cf != null) {
                 boolean success = cf.get();
