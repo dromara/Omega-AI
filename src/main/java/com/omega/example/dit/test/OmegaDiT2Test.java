@@ -1391,15 +1391,15 @@ public class OmegaDiT2Test {
         int[] clipIds = clipTokenizer.encodeInt(labelStr, clipMaxContextLen);
         int eosId = -1;
         for (int j = 0; j < clipIds.length; j++) {
-        	float val = clipIds[j];
+        	int val = clipIds[j];
         	clipLabel.data[index * clipMaxContextLen + j] = val;
-            if (clipIds[j] == clipTokenizer.eos()) {
+            if (val == clipTokenizer.eos()) {
                 eosId = j;
                 break;
             }
-            if (eosId < 0) {
-                eosId = 76;
-            }
+        }
+        if (eosId < 0) {
+            eosId = 76;
         }
         eosIds.data[index] = eosId;
 		int[] ids = tokenizer.encodeInt(labelStr, t5MaxContextLen);
