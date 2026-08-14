@@ -31,7 +31,8 @@ public class OmegaDiT_T5 extends Network {
     public int width;
     public int height;
     public int patchSize;
-    public int textEmbedDim;
+    public int clipEmbedDim;
+    public int t5EmbedDim;
     public int maxContextLen;
     public int hiddenSize;
     private int depth;
@@ -54,7 +55,7 @@ public class OmegaDiT_T5 extends Network {
     private Tensor head;
     private Tensor tail;
     
-    public OmegaDiT_T5(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int textEmbedDim, int maxContextLen, int mlpRatio, int z_dim, float token_drop_ratio, float path_drop_prob, float y_drop_prob) {
+    public OmegaDiT_T5(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int clipEmbedDim, int t5EmbedDim, int maxContextLen, int mlpRatio, int z_dim, float token_drop_ratio, float path_drop_prob, float y_drop_prob) {
         this.lossFunction = LossFactory.create(lossType, this);
 //        this.weight_decay = 0.1f;
         this.updater = updater;
@@ -66,7 +67,8 @@ public class OmegaDiT_T5 extends Network {
         this.hiddenSize = hiddenSize;
         this.depth = depth;
         this.timeSteps = timeSteps;
-        this.textEmbedDim = textEmbedDim;
+        this.clipEmbedDim = clipEmbedDim;
+        this.t5EmbedDim = t5EmbedDim;
         this.maxContextLen = maxContextLen;
         this.mlpRatio = mlpRatio;
         this.token_drop_ratio = token_drop_ratio;
@@ -81,7 +83,7 @@ public class OmegaDiT_T5 extends Network {
     	
         this.inputLayer = new InputLayer(inChannel, height, width);
         
-        main = new OmegaDiTMainMoudue_Sprint_T5(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, textEmbedDim, maxContextLen, mlpRatio, z_dim, y_drop_prob, token_drop_ratio, path_drop_prob, this);
+        main = new OmegaDiTMainMoudue_Sprint_T5(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, clipEmbedDim, t5EmbedDim, maxContextLen, mlpRatio, z_dim, y_drop_prob, token_drop_ratio, path_drop_prob, this);
         
         this.addLayer(inputLayer);
         this.addLayer(main);
@@ -128,45 +130,16 @@ public class OmegaDiT_T5 extends Network {
         return null;
     }
     
-    public Tensor forward(Tensor input, Tensor t, Tensor context, Tensor attnMask, Tensor cos, Tensor sin) {
+    public Tensor forward(Tensor input, Tensor t, Tensor clipLabel, Tensor t5Label, Tensor attnMask, Tensor cos, Tensor sin) {
         /**
          * 设置输入数据
          */
         this.setInputData(input);
-        this.main.forward(input, t, context, attnMask, cos, sin);
+        this.main.forward(input, t, clipLabel, t5Label, attnMask, cos, sin);
         return this.main.getOutput();
     }
     
-    public Tensor forward(Tensor input, Tensor t, Tensor context, Tensor attnMask, Tensor cos, Tensor sin, Tensor idskeep) {
-        /**
-         * 设置输入数据
-         */
-        this.setInputData(input);
-        this.main.forward(input, t, context, attnMask, cos, sin, idskeep);
-        return this.main.getOutput();
-    }
-    
-    public Tensor forward_with_cfg(Tensor input, Tensor t, Tensor context, Tensor attnMask, Tensor cos, Tensor sin, Tensor eps, float cfg_scale) {
-        /**
-         * 设置输入数据
-         */
-        if(input_null == null || input_null.number != input.number * 2) {
-    		input_null = Tensor.createGPUTensor(input_null, input.number * 2, input.channel, input.height, input.width, true);
-    		uncond_eps = Tensor.createGPUTensor(uncond_eps, input.number, input.channel, input.height, input.width, true);
-    	}
-    	tensorOP.cat_batch(input, input, input_null);
-        this.main.forward(input_null, t, context, attnMask, cos, sin);
-        tensorOP.cat_bacth_copy(this.main.getOutput(), eps, uncond_eps);
-        /**
-         * out = uncond_eps + cfg_scale * (eps - uncond_eps)
-         */
-        tensorOP.sub(eps, uncond_eps, eps);
-        tensorOP.mul(eps, cfg_scale, eps);
-        tensorOP.add(uncond_eps, eps, eps);
-        return eps;
-    }
-    
-    public Tensor forward_with_path_drop_cfg(Tensor input, Tensor t, Tensor context, Tensor null_context, Tensor attnMask, Tensor cos, Tensor sin, Tensor eps, float cfg_scale) {
+    public Tensor forward_with_path_drop_cfg(Tensor input, Tensor t, Tensor clipLabel, Tensor t5Label, Tensor clip_null, Tensor t5_null, Tensor attnMask, Tensor cos, Tensor sin, Tensor eps, float cfg_scale) {
         /**
          * 设置输入数据
          */
@@ -175,10 +148,10 @@ public class OmegaDiT_T5 extends Network {
     	}
         input.copyGPU(input_null);
         this.main.uncond = false;
-        this.main.forward(input, t, context, attnMask, cos, sin);
+        this.main.forward(input, t, clipLabel, t5Label, attnMask, cos, sin);
         this.main.getOutput().copyGPU(eps);
         this.main.uncond = true;
-        this.main.forward(input_null, t, null_context, attnMask, cos, sin);
+        this.main.forward(input_null, t, clip_null, t5_null, attnMask, cos, sin);
         uncond_eps = this.main.getOutput();
         
         /**
@@ -191,7 +164,7 @@ public class OmegaDiT_T5 extends Network {
         return eps;
     }
     
-    public Tensor forward_with_path_drop_cfg(ICPlan icplan, Tensor input, Tensor t, Tensor context, Tensor null_context, Tensor attnMask, Tensor cos, Tensor sin, Tensor eps, float cfg_scale) {
+    public Tensor forward_with_path_drop_cfg(ICPlan icplan, Tensor input, Tensor t, Tensor clipLabel, Tensor t5Label, Tensor clip_null, Tensor t5_null, Tensor attnMask, Tensor cos, Tensor sin, Tensor eps, float cfg_scale) {
         /**
          * 设置输入数据
          */
@@ -200,10 +173,10 @@ public class OmegaDiT_T5 extends Network {
     	}
         input.copyGPU(input_null);
         this.main.uncond = false;
-        this.main.forward(input, t, context, attnMask, cos, sin);
+        this.main.forward(input, t, clipLabel, t5Label, attnMask, cos, sin);
         this.main.getOutput().copyGPU(eps);
         this.main.uncond = true;
-        this.main.forward(input_null, t, null_context, attnMask, cos, sin);
+        this.main.forward(input_null, t, clip_null, t5_null, attnMask, cos, sin);
         uncond_eps = this.main.getOutput();
         
         /**
@@ -220,35 +193,6 @@ public class OmegaDiT_T5 extends Network {
         tensorOP.mul(eps, cfg_scale, eps);
         tensorOP.add(uncond_eps, eps, eps);
         return eps;
-    }
-    
-    public Tensor forward_with_cfg(Tensor input, Tensor t, Tensor context, Tensor attnMask, Tensor cos, Tensor sin, Tensor out, float cfg_scale, int channel) {
-        /**
-         * 设置输入数据
-         */
-        if(input_null == null || input_null.number != input.number * 2) {
-    		input_null = Tensor.createGPUTensor(input_null, input.number * 2, input.channel, input.height, input.width, true);
-    		eps = Tensor.createGPUTensor(eps, input.number, channel, input.height, input.width, true);
-    		uncond_eps = Tensor.createGPUTensor(uncond_eps, input.number, channel, input.height, input.width, true);
-    		head = Tensor.createGPUTensor(head, input_null.number, channel, input.height, input.width, true);
-    		tail = Tensor.createGPUTensor(tail, input_null.number, input.channel - channel, input.height, input.width, true);
-    	}
-    	tensorOP.cat_batch(input, input, input_null);
-        this.main.forward(input_null, t, context, attnMask, cos, sin);
-        tensorOP.getByChannel(this.main.getOutput(), head, this.main.getOutput().shape(), 0, channel);
-        tensorOP.getByChannel(this.main.getOutput(), tail, this.main.getOutput().shape(), channel, tail.channel);
-        tensorOP.cat_bacth_copy(head, eps, uncond_eps);
-        /**
-         * out = uncond_eps + cfg_scale * (eps - uncond_eps)
-         */
-        tensorOP.sub(eps, uncond_eps, eps);
-        tensorOP.mul(eps, cfg_scale, eps);
-        tensorOP.add(uncond_eps, eps, eps);
-        tensorOP.cat_batch(eps, eps, head);
-        tensorOP.getByChannel_back(this.main.getOutput(), head, this.main.getOutput().shape(), 0);
-        tensorOP.getByChannel_back(this.main.getOutput(), tail, this.main.getOutput().shape(), channel);
-        tensorOP.getByNumber(this.main.getOutput(), out, 0, input.number);
-        return out;
     }
     
     public void initBack() {
@@ -285,22 +229,7 @@ public class OmegaDiT_T5 extends Network {
         this.main.back(lossDiff, cos, sin);
         //		this.unet.diff.showDMByOffset(0, 100, "unet.diff");
     }
-    
-    public void back(Tensor lossDiff,Tensor cos, Tensor sin, Tensor idskeep) {
-        // TODO Auto-generated method stub
-        //		lossDiff.showDMByNumber(0);
-        initBack();
-        /**
-         * 设置误差
-         * 将误差值输入到最后一层
-         */
-        //		lossDiff.showDMByOffset(0, 100, "lossDiff");
-        this.setLossDiff(lossDiff);
-        //		lossDiff.showDM("lossDiff");
-        this.main.back(lossDiff, cos, sin, idskeep);
-        //		this.unet.diff.showDMByOffset(0, 100, "unet.diff");
-    }
-
+ 
     @Override
     public Tensor loss(Tensor output, Tensor label) {
         // TODO Auto-generated method stub

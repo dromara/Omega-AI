@@ -654,6 +654,30 @@ public class DatasetCreater {
         label.hostToDevice();
     }
     
+    public static void loadLabels(BPETokenizerEN tokenizer,List<Map<String, Object>> datas, String key, int[] indexs, Tensor label, Tensor eosIds, int maxContextLen, int batchSize) {
+        LabelsLoader.load(tokenizer, datas, key, indexs, batchSize, label, maxContextLen);
+        for (int i = 0; i < indexs.length; i++) {
+            int base = i * maxContextLen;
+            int eosId = -1;
+            for (int j = 0; j < maxContextLen; j++) {
+                if ((int) label.data[base + j] == tokenizer.eos()) {
+                    eosId = j;
+                    break;
+                }
+            }
+            if (eosId < 0) {
+                eosId = maxContextLen - 1;
+                label.data[base + eosId] = tokenizer.eos();
+            }
+            eosIds.data[i] = eosId;
+        }
+        /**
+         * copy data to gpu.
+         */
+        label.hostToDevice();
+        eosIds.hostToDevice();
+    }
+    
     public static void loadLabels(SentencePieceTokenizer tokenizer,List<Map<String, Object>> datas, String key, int[] indexs, Tensor label, Tensor mask, int maxContextLen, int batchSize) {
     	T5LabelsLoader.load(tokenizer, datas, key, indexs, batchSize, label, mask, maxContextLen);
         /**
@@ -1306,6 +1330,64 @@ public class DatasetCreater {
     	
     }
     
+    public static void createClipPooled() {
+    	
+    	try {
+    		
+    		String clipDataPath = "/root/gpufree-data/10w/clip_pooled.bin";
+    		
+        	String labelPath = "/root/gpufree-data/10w/labels.json";
+
+        	int batchSize = 200;
+        	
+        	String vocabPath = "/root/gpufree-data/models/CLIP-GmP-ViT-L-14/vocab.json";
+            String mergesPath = "/root/gpufree-data/models/CLIP-GmP-ViT-L-14/merges.txt";
+            BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
+        	
+            int maxPositionEmbeddingsSize = 77;
+            int vocabSize = 49408;
+            int headNum = 12;
+            int n_layers = 12;
+            int textEmbedDim = 768;
+            int intermediateSize = 3072;
+            ClipTextModel clip = new ClipTextModel(LossType.MSE, UpdaterType.adamw, headNum, maxPositionEmbeddingsSize, vocabSize, textEmbedDim, maxPositionEmbeddingsSize, intermediateSize, n_layers);
+            clip.CUDNN = true;
+            clip.time = maxPositionEmbeddingsSize;
+            clip.RUN_MODEL = RunModel.EVAL;
+            String clipWeight = "/root/gpufree-data/models/CLIP-GmP-ViT-L-14/CLIP-GmP-ViT-L-14.json";
+            ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, "", false);
+            
+    		List<Map<String, Object>> datas = LagJsonReader.readJsonDataSamll(labelPath);
+            int count = datas.size();
+            System.err.println("data count[" + count + "].");
+
+            int[][] indexs = MathUtils.orderInts(count, batchSize);
+
+            Tensor label = new Tensor(batchSize * maxPositionEmbeddingsSize, 1, 1, 1, true);
+            Tensor eosIds = new Tensor(batchSize, 1, 1, 1, true);
+
+            File clipFile = new File(clipDataPath);
+            FileOutputStream clipWriter = new FileOutputStream(clipFile);
+            
+            Tensor condInput = new Tensor(batchSize, 1, 1, textEmbedDim, true);
+            
+            for(int it = 0;it<indexs.length;it++) {
+            	 long start = System.nanoTime();
+            	 loadLabels(bpe, datas, "en", indexs[it], label, eosIds, maxPositionEmbeddingsSize, batchSize);
+                 clip.get_clip_prompt_embeds(label, eosIds, condInput);
+                 writeTensor(condInput, clipWriter);
+                 System.out.println(it + "/" + indexs.length + " cost["+(System.nanoTime() - start)/1e6+"ms] finish.");
+            }
+            
+            System.out.println("create ["+count+"] finish.");
+           
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+
+    }
+    
     public static void createTwoClip() {
     	
     	try {
@@ -1533,7 +1615,9 @@ public class DatasetCreater {
         	
 //        	test_fluxvae_latend();
         	
-        	createT5Data();
+//        	createT5Data();
+        	
+        	createClipPooled();
         	
 //        	createLatend_flux2_vae();
         	

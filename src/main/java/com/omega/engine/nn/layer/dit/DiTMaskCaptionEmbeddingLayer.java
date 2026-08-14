@@ -8,8 +8,6 @@ import com.omega.engine.gpu.GPUOP;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
-import com.omega.engine.nn.layer.active.GeluLayer;
-import com.omega.engine.nn.layer.active.GeluType;
 import com.omega.engine.nn.layer.dit.kernel.ContextMaskKernel;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.RunModel;
@@ -26,9 +24,8 @@ public class DiTMaskCaptionEmbeddingLayer extends Layer {
 	
 	private int token_num = 77;
 	
-    public FullyLayer linear1;
-    public GeluLayer act;
-    public FullyLayer linear2;
+    public FullyLayer linear;
+
     private boolean bias = true;
     private int inChannel;
     private int outChannel;
@@ -76,27 +73,20 @@ public class DiTMaskCaptionEmbeddingLayer extends Layer {
     }
 
     public void initLayers() {
-    	int hiddenSize = outChannel;
-        linear1 = new FullyLayer(inChannel, hiddenSize, bias, network);
+
+        linear = new FullyLayer(inChannel, outChannel, bias, network);
         // Required for propagating the projector gradient into mask_token.
-        linear1.PROPAGATE_DOWN = true;
-//        RandomUtils.xavier_uniform(linear1.weight, 1, inChannel, outChannel);
-        linear1.weight.setData(RandomUtils.normal_(inChannel * hiddenSize, 0.0f, 0.02f));
-        if(linear1.bias != null) {
-        	linear1.bias.clearGPU();
+        linear.PROPAGATE_DOWN = true;
+        linear.weight.setData(RandomUtils.normal_(inChannel * outChannel, 0.0f, 0.02f));
+        if(linear.bias != null) {
+        	linear.bias.clearGPU();
         }
-        act = new GeluLayer(linear1, GeluType.TANH);
-        linear2 = new FullyLayer(hiddenSize, outChannel, bias, network);
-//        RandomUtils.xavier_uniform(linear2.weight, 1, outChannel, outChannel);
-        linear2.weight.setData(RandomUtils.normal_(hiddenSize * outChannel, 0.0f, 0.02f));
-        if(linear2.bias != null) {
-        	linear2.bias.clearGPU();
-        }
+
         if(maskKernel == null) {
          maskKernel = new ContextMaskKernel(cuda());
         }
-    	this.weight = new Tensor(1, 1, 1, inChannel, true);
-//        linear2.weight = new Tensor(1, 1, dim, dim, MatrixUtils.order(dim * dim, 0.01f, 0.01f), true);
+    	this.weight = new Tensor(1, 1, 1, inChannel, RandomUtils.normal_(inChannel, 0.0f, 0.02f), true);
+
     }
 
     @Override
@@ -116,7 +106,7 @@ public class DiTMaskCaptionEmbeddingLayer extends Layer {
             throw new IllegalArgumentException(
                     "attnMask must contain batchSize * token_num elements.");
         }
-     this.attnMask = attnMask;
+        this.attnMask = attnMask;
         maskedInput = Tensor.createGPUTensor(maskedInput, input.shape(), true);
         if(network.RUN_MODEL == RunModel.TRAIN && uncond_prob > 0 && (mask == null || mask.number != batchSize)) {
          mask = Tensor.createGPUTensor(mask, batchSize, 1, 1, 1, true);
@@ -147,22 +137,29 @@ public class DiTMaskCaptionEmbeddingLayer extends Layer {
     		GPUOP.getInstance().cudaRandom(this.mask);//0-1
             maskKernel.fuseAttnMask(attnMask, mask, fusedAttnMask, token_num, uncond_prob);
             activeAttnMask = fusedAttnMask;
-    		/**
-    		 * 实现mask与attnMask融合
-    		 */
     	}else {
             activeAttnMask = attnMask;
         }
     	maskKernel.forward(input, activeAttnMask, weight, maskedInput);
-//    	kernel.tokenDrop(input, y_embedding, mask, input, y_embedding.dataLength, uncond_prob);
-//    	input.showDM("input");
-        linear1.forward(maskedInput);
-//        linear1.getOutput().showDM("linear1");
-        act.forward(linear1.getOutput());
-//        act.getOutput().showDM("act");
-        linear2.forward(act.getOutput());
 
-        this.output = linear2.getOutput();
+        linear.forward(maskedInput);
+        
+        this.output = linear.getOutput();
+    }
+    
+    public void output(Tensor mask) {
+        // TODO Auto-generated method stub
+    	if(network.RUN_MODEL == RunModel.TRAIN && uncond_prob > 0) {
+            maskKernel.fuseAttnMask(attnMask, mask, fusedAttnMask, token_num, uncond_prob);
+            activeAttnMask = fusedAttnMask;
+    	}else {
+            activeAttnMask = attnMask;
+        }
+    	maskKernel.forward(input, activeAttnMask, weight, maskedInput);
+
+        linear.forward(maskedInput);
+        
+        this.output = linear.getOutput();
     }
     
     public void output_eval() {
@@ -171,13 +168,9 @@ public class DiTMaskCaptionEmbeddingLayer extends Layer {
         activeAttnMask = attnMask;
     	maskKernel.forward(input, activeAttnMask, weight, maskedInput);
     	
-        linear1.forward(maskedInput);
+        linear.forward(maskedInput);
 
-        act.forward(linear1.getOutput(), linear1.getOutput());
-
-        linear2.forward(act.getOutput());
-
-        this.output = linear2.getOutput();
+        this.output = linear.getOutput();
     }
     
     @Override
@@ -189,10 +182,9 @@ public class DiTMaskCaptionEmbeddingLayer extends Layer {
     @Override
     public void diff() {
         // TODO Auto-generated method stub
-        linear2.back(delta);
-        act.back(linear2.diff);
-        linear1.back(act.diff);
-        maskKernel.backwardMaskToken(linear1.diff, activeAttnMask, diffW);
+        linear.back(delta);
+
+        maskKernel.backwardMaskToken(linear.diff, activeAttnMask, diffW);
     }
 
     @Override
@@ -255,6 +247,22 @@ public class DiTMaskCaptionEmbeddingLayer extends Layer {
         this.output();
     }
 
+    public void forward(Tensor input, Tensor mask, Tensor attnMask) {
+        // TODO Auto-generated method stub
+        /**
+         * 参数初始化
+         */
+        this.init(input, attnMask);
+        /**
+         * 设置输入
+         */
+        this.setInput(input);
+        /**
+         * 计算输出
+         */
+        this.output(mask);
+    }
+    
     public void forward_eval(Tensor input, Tensor attnMask) {
         // TODO Auto-generated method stub
         /**
@@ -301,8 +309,7 @@ public class DiTMaskCaptionEmbeddingLayer extends Layer {
              }
              this.clearAccGrad();
         }
-        linear1.update();
-        linear2.update();
+        linear.update();
     }
 
     @Override
@@ -329,14 +336,12 @@ public class DiTMaskCaptionEmbeddingLayer extends Layer {
 
     public void saveModel(RandomAccessFile outputStream) throws IOException {
         ModelUtils.saveParams(outputStream, weight);
-        linear1.saveModel(outputStream);
-        linear2.saveModel(outputStream);
+        linear.saveModel(outputStream);
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
     	ModelUtils.loadParams(inputStream, weight);
-        linear1.loadModel(inputStream);
-        linear2.loadModel(inputStream);
+        linear.loadModel(inputStream);
     }
 
     @Override
@@ -347,8 +352,7 @@ public class DiTMaskCaptionEmbeddingLayer extends Layer {
         }else {
             network.baseKernel.axpy_gpu(diffW, accDW, accDW.dataLength, scale, 1, 1);
         }
-        linear1.accGrad(scale);
-        linear2.accGrad(scale);
+        linear.accGrad(scale);
     }
 
 	public Tensor getY_embedding() {

@@ -84,6 +84,7 @@ import com.omega.example.diffusion.utils.DiffusionImageDataLoader;
 import com.omega.example.dit.dataset.ImageClipDataLoader;
 import com.omega.example.dit.dataset.ImageClip_REAP_DataLoader;
 import com.omega.example.dit.dataset.LatendDataset;
+import com.omega.example.dit.dataset.LatendDataset_clip_t5;
 import com.omega.example.dit.dataset.LatendDataset_t5_clip;
 import com.omega.example.dit.models.ICPlan;
 import com.omega.example.dit.models.IDDPM;
@@ -16859,7 +16860,7 @@ public class MBSGDOptimizer extends Optimizer {
         }
     }
     
-    public void train_Flux_Sprint_ICPlan_V_T5(Dinov2 repa, SDImageLoader dataLoader,LatendDataset trainingData,ICPlan icplan,String weightPath, int weightCount) {
+    public void train_Flux_Sprint_ICPlan_V_T5(Dinov2 repa, SDImageLoader dataLoader, LatendDataset_clip_t5 trainingData, ICPlan icplan, String weightPath, int weightCount) {
         // TODO Auto-generated method stub
         try {
 
@@ -16871,8 +16872,9 @@ public class MBSGDOptimizer extends Optimizer {
             }
             Tensor latend = new Tensor(batchSize, trainingData.channel, trainingData.height, trainingData.width, true);
 
-            Tensor condInput = new Tensor(batchSize * trainingData.clipMaxTime, 1, 1, trainingData.clipEmbd, true);
+            Tensor clipInput = new Tensor(batchSize, 1, 1, trainingData.clipEmbd, true);
             
+            Tensor t5Input = new Tensor(batchSize * trainingData.clipMaxTime, 1, 1, trainingData.t5Embd, true);
             Tensor attnMask = new Tensor(batchSize, 1, 1, trainingData.clipMaxTime, true);
             
             Tensor img = new Tensor(batchSize, 3, dataLoader.img_h, dataLoader.img_w, true);
@@ -16880,7 +16882,7 @@ public class MBSGDOptimizer extends Optimizer {
             Tensor xt = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
             Tensor ut = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
             Tensor cfm_ut = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
-
+            
             Tensor[] cs = RoPEKernel.getCosAndSin2D(network.time, network.hiddenSize, network.headNum);
             Tensor cos = cs[0];
             Tensor sin = cs[1];
@@ -16919,7 +16921,7 @@ public class MBSGDOptimizer extends Optimizer {
                     if(it < indexs.length - 1) {
                     	next = indexs[it+1];
                     }
-                    trainingData.loadData(indexs[it], next, latend, condInput, attnMask, it);
+                    trainingData.loadData(indexs[it], next, latend, clipInput, t5Input, attnMask, it);
                     dataLoader.loadData(indexs[it], next, img, it);
                     
                     /**
@@ -16931,7 +16933,7 @@ public class MBSGDOptimizer extends Optimizer {
                     /**
                      * forward
                      */
-                    Tensor output = network.forward(xt, t, condInput, attnMask, cos, sin);
+                    Tensor output = network.forward(xt, t, clipInput, t5Input, attnMask, cos, sin);
                     
                     /**
                      * loss
@@ -16970,6 +16972,7 @@ public class MBSGDOptimizer extends Optimizer {
                     /**
                      * update
                      */
+                    network.clipGradNormFast(1.0f);
                     network.update();
                     JCudaDriver.cuCtxSynchronize();
                     

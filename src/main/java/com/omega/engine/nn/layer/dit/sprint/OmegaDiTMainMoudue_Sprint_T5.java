@@ -11,6 +11,7 @@ import com.omega.common.utils.MatrixOperation;
 import com.omega.engine.gpu.BaseKernel;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
+import com.omega.engine.nn.layer.dit.DiTCaptionEmbeddingLayer;
 import com.omega.engine.nn.layer.dit.DiTMaskCaptionEmbeddingLayer;
 import com.omega.engine.nn.layer.dit.DiTOrgTimeEmbeddingLayer;
 import com.omega.engine.nn.layer.dit.DiTPatchEmbeddingLayer;
@@ -40,7 +41,8 @@ public class OmegaDiTMainMoudue_Sprint_T5 extends Layer {
     private int num_g = 0;
     private int timeSteps;
     private int headNum;
-    private int textEmbedDim;
+    private int clipEmbedDim;
+    private int t5EmbedDim;
     private int maxContextLen;
     private int mlpRatio = 4;
 
@@ -49,7 +51,8 @@ public class OmegaDiTMainMoudue_Sprint_T5 extends Layer {
     
     public DiTPatchEmbeddingLayer patchEmbd;
     public DiTOrgTimeEmbeddingLayer timeEmbd;
-    public DiTMaskCaptionEmbeddingLayer labelEmbd;
+    public DiTMaskCaptionEmbeddingLayer t5Embd;
+    public DiTCaptionEmbeddingLayer clipEmbd;
     public List<FluxDiTBlock> encoders;
     public List<FluxDiTBlock> mids;
     public FusionLayer2 fusion;
@@ -69,9 +72,10 @@ public class OmegaDiTMainMoudue_Sprint_T5 extends Layer {
     
     private Tensor d_o;
     
-    private Tensor dtc;
+    private Tensor dvec;
     private Tensor dencoder;
     private Tensor drop_delta;
+    private Tensor tmp_cond;
     
     private float y_drop_prob = 0.0f;
     
@@ -93,7 +97,7 @@ public class OmegaDiTMainMoudue_Sprint_T5 extends Layer {
     
     public boolean uncond = false;
     
-    public OmegaDiTMainMoudue_Sprint_T5(int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int textEmbedDim, int maxContextLen, int mlpRatio, int z_dim, float y_drop_prob, float token_drop_ratio, float path_drop_prob, Network network) {
+    public OmegaDiTMainMoudue_Sprint_T5(int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int clipEmbedDim, int t5EmbedDim, int maxContextLen, int mlpRatio, int z_dim, float y_drop_prob, float token_drop_ratio, float path_drop_prob, Network network) {
 		this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
@@ -108,7 +112,8 @@ public class OmegaDiTMainMoudue_Sprint_T5 extends Layer {
 		this.depth = depth;
 		this.num_g = this.depth - num_f - num_h;
 		this.timeSteps = timeSteps;
-		this.textEmbedDim = textEmbedDim;
+		this.clipEmbedDim = clipEmbedDim;
+		this.t5EmbedDim = t5EmbedDim;
 		this.maxContextLen = maxContextLen;
 		this.mlpRatio = mlpRatio;
 		this.token_drop_ratio = token_drop_ratio;
@@ -130,7 +135,9 @@ public class OmegaDiTMainMoudue_Sprint_T5 extends Layer {
 
         timeEmbd = new DiTOrgTimeEmbeddingLayer(timeSteps, 256, hiddenSize, true, network);
 
-        labelEmbd = new DiTMaskCaptionEmbeddingLayer(textEmbedDim, hiddenSize, maxContextLen, y_drop_prob, true, network);
+        clipEmbd = new DiTCaptionEmbeddingLayer(clipEmbedDim, hiddenSize, 1, y_drop_prob, true, network);
+        
+        t5Embd = new DiTMaskCaptionEmbeddingLayer(t5EmbedDim, hiddenSize, maxContextLen, y_drop_prob, true, network);
         
         encoders = new ArrayList<FluxDiTBlock>();
         mids = new ArrayList<FluxDiTBlock>();
@@ -273,15 +280,16 @@ public class OmegaDiTMainMoudue_Sprint_T5 extends Layer {
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
-    	if(dtc == null || dtc.number != timeEmbd.getOutput().number) {
+    	if(dvec == null || dvec.number != timeEmbd.getOutput().number) {
     		d_o = Tensor.createGPUTensor(d_o, input.number * (maxContextLen + hw), 1, 1, patchEmbd.getOutput().width, true);
-    		dtc = Tensor.createGPUTensor(dtc, timeEmbd.getOutput().shape(), true);
+    		dvec = Tensor.createGPUTensor(dvec, timeEmbd.getOutput().shape(), true);
     		dencoder = Tensor.createGPUTensor(dencoder, number * (maxContextLen + hw), 1, 1, hiddenSize, true);
     		drop_delta = Tensor.createGPUTensor(drop_delta, number * (maxContextLen + hw), 1, 1, hiddenSize, true);
+    		tmp_cond = Tensor.createGPUTensor(tmp_cond, number * maxContextLen, 1, 1, hiddenSize, true);
     	}else {
-    		dtc.clearGPU();
+    		dvec.clearGPU();
     		d_o.clearGPU();
-//    		dencoder.clearGPU();
+    		tmp_cond.clearGPU();
     		drop_delta.clearGPU();
     	}
     }
@@ -297,21 +305,25 @@ public class OmegaDiTMainMoudue_Sprint_T5 extends Layer {
 
     }
     
-    public void output(Tensor tc, Tensor label, Tensor attnMask, Tensor cos, Tensor sin) {
+    public void output(Tensor tc, Tensor clipLabel, Tensor t5Label, Tensor attnMask, Tensor cos, Tensor sin) {
     	
     	patchEmbd.forward(input);
 
     	Tensor_OP().addAxis(patchEmbd.getOutput(), posEmbd, patchEmbd.getOutput(), posEmbd.channel * posEmbd.width);
     	
     	timeEmbd.forward(tc);
+
+    	clipEmbd.forward(clipLabel);
     	
-    	labelEmbd.forward(label, attnMask);
+    	t5Embd.forward(t5Label, clipEmbd.getMask(), attnMask);
     	
     	Tensor x = patchEmbd.getOutput().view(patchEmbd.getOutput().number * patchEmbd.getOutput().channel, 1, 1, patchEmbd.getOutput().width);
     	
-    	Tensor t = timeEmbd.getOutput();
+    	Tensor vec = timeEmbd.getOutput();
     	
-    	Tensor cond = labelEmbd.getOutput();
+    	Tensor_OP().add(clipEmbd.getOutput(), vec, vec);
+    	
+    	Tensor cond = t5Embd.getOutput();
     	
      	baseKernel.concat_channel_forward(cond, x, cat_x, input.number, maxContextLen, hw, 1, patchEmbd.getOutput().width);
      	
@@ -321,7 +333,7 @@ public class OmegaDiTMainMoudue_Sprint_T5 extends Layer {
     	Tensor e_x = cat_x;
     	for(int i = 0;i<num_f;i++) {
     		FluxDiTBlock block = encoders.get(i);
-    		block.forward(e_x, t, cos, sin);
+    		block.forward(e_x, vec, cos, sin);
     		e_x = block.getOutput();
     	}
 
@@ -352,9 +364,9 @@ public class OmegaDiTMainMoudue_Sprint_T5 extends Layer {
 			for(int i = 0;i<num_g;i++) {
 				FluxDiTBlock block = mids.get(i);
 	    		if(idsKeep != null && network.RUN_MODEL == RunModel.TRAIN) {
-	    			block.forward(h_x, t, cos, sin, idsKeep);
+	    			block.forward(h_x, vec, cos, sin, idsKeep);
 	    		}else {
-	     			block.forward(h_x, t, cos, sin);
+	     			block.forward(h_x, vec, cos, sin);
 	    		}
 	    		h_x = block.getOutput();
 	    	}
@@ -379,14 +391,14 @@ public class OmegaDiTMainMoudue_Sprint_T5 extends Layer {
 		Tensor d_x = fusion.getOutput();
     	for(int i = 0;i<num_h;i++) {
     		FluxDiTBlock block = decoders.get(i);
-    		block.forward(d_x, t, cos, sin);
+    		block.forward(d_x, vec, cos, sin);
     		d_x = block.getOutput();
     	}
     	
     	Tensor_OP().getByChannel(d_x, img_x, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
-//    	img_x.showShape("img_x");
-    	finalLayer.forward(img_x, t);
-//    	finalLayer.getOutput().showShape("finalLayer");
+
+    	finalLayer.forward(img_x, vec);
+
     	/**
     	 * unpatchify
     	 * x: (N, T, patch_size**2 * C)
@@ -400,107 +412,6 @@ public class OmegaDiTMainMoudue_Sprint_T5 extends Layer {
     	}
     	Tensor_OP().permute(finalLayer.getOutput(), this.output, xShape, yShape, new int[] {0, 5, 1, 3, 2, 4});
 
-    }
-    
-    public void output(Tensor tc, Tensor label, Tensor attnMask, Tensor cos, Tensor sin, Tensor idskeep) {
-    	
-    	patchEmbd.forward(input);
-
-    	Tensor_OP().addAxis(patchEmbd.getOutput(), posEmbd, patchEmbd.getOutput(), posEmbd.channel * posEmbd.width);
-    	
-    	timeEmbd.forward(tc);
-    	
-    	labelEmbd.forward(label, attnMask);
-    	
-    	Tensor x = patchEmbd.getOutput().view(patchEmbd.getOutput().number * patchEmbd.getOutput().channel, 1, 1, patchEmbd.getOutput().width);
-    	
-    	Tensor t = timeEmbd.getOutput();
-    	
-    	Tensor cond = labelEmbd.getOutput();
-    	
-     	baseKernel.concat_channel_forward(cond, x, cat_x, input.number, maxContextLen, hw, 1, patchEmbd.getOutput().width);
-
-    	/**
-    	 * encoder
-    	 */
-    	Tensor e_x = cat_x;
-    	for(int i = 0;i<num_f;i++) {
-    		FluxDiTBlock block = encoders.get(i);
-    		block.forward(e_x, t, cos, sin);
-    		e_x = block.getOutput();
-    	}
-
-    	/**
-    	 * repa
-    	 */
-		if(network.RUN_MODEL == RunModel.TRAIN) {
-			Tensor_OP().getByChannel(e_x, z_img_x, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
-			z_mlp.forward(z_img_x);
-		}
-		
-		/**
-		 * sprint
-		 */
-		Tensor h_x = e_x;
-		if(!uncond) {
-			if(idskeep != null && network.RUN_MODEL == RunModel.TRAIN) {
-				tokenDropKernel.imgTokenDrop(e_x, idskeep, td_x, token_t, hw, maxContextLen, hiddenSize);
-				h_x = td_x;
-			}
-			
-			/**
-			 * mids
-			 */
-			for(int i = 0;i<num_g;i++) {
-				FluxDiTBlock block = mids.get(i);
-	    		if(idskeep != null && network.RUN_MODEL == RunModel.TRAIN) {
-	    			block.forward(h_x, t, cos, sin, idskeep);
-	    		}else {
-	     			block.forward(h_x, t, cos, sin);
-	    		}
-	    		h_x = block.getOutput();
-	    	}
-		}else {
-			h_x = mids.get(num_g - 1).getOutput();
-		}
-
-		/**
-		 * pad_mask
-		 */
-		if(idskeep != null && network.RUN_MODEL == RunModel.TRAIN) {
-			fusion.forward(h_x, e_x, idskeep);
-		}else if(uncond){
-			fusion.forward_uncond(h_x, e_x);
-		}else {
-			fusion.forward(h_x, e_x);
-		}
-
-		/**
-		 * decoders
-		 */
-		Tensor d_x = fusion.getOutput();
-    	for(int i = 0;i<num_h;i++) {
-    		FluxDiTBlock block = decoders.get(i);
-    		block.forward(d_x, t, cos, sin);
-    		d_x = block.getOutput();
-    	}
-    	
-    	Tensor_OP().getByChannel(d_x, img_x, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
-
-    	finalLayer.forward(img_x, t);
-
-    	/**
-    	 * unpatchify
-    	 * x: (N, T, patch_size**2 * C)
-         * imgs: (N, C, H, W)
-    	 */
-    	if(xShape == null) {
-    		int h = height/patchSize;
-        	int w = width/patchSize;
-        	xShape = new int[] {number, h, w, patchSize, patchSize, oChannel};
-        	yShape = new int[] {number, oChannel, h, patchSize, w, patchSize};
-    	}
-    	Tensor_OP().permute(finalLayer.getOutput(), this.output, xShape, yShape, new int[] {0, 5, 1, 3, 2, 4});
     }
     
     @Override
@@ -521,7 +432,7 @@ public class OmegaDiTMainMoudue_Sprint_T5 extends Layer {
     	 */
     	Tensor_OP().permute(delta, finalLayer.getOutput(), yShape, xShape, new int[] {0, 2, 4, 3, 5, 1});
     	
-    	finalLayer.back(finalLayer.getOutput(), dtc);
+    	finalLayer.back(finalLayer.getOutput(), dvec);
 
     	Tensor dy = d_o;
     	dy.clearGPU();
@@ -533,7 +444,7 @@ public class OmegaDiTMainMoudue_Sprint_T5 extends Layer {
     	 */
     	for(int i = num_h - 1;i>=0;i--) {
     		FluxDiTBlock block = decoders.get(i);
-    		block.back(dy, dtc, cos, sin);
+    		block.back(dy, dvec, cos, sin);
     		dy = block.diff;
     	}
     	
@@ -553,9 +464,9 @@ public class OmegaDiTMainMoudue_Sprint_T5 extends Layer {
 		for(int i = num_g - 1;i>=0;i--) {
 			FluxDiTBlock block = mids.get(i);
     		if(idsKeep != null) {
-    			block.back(dh, dtc, cos, sin, idsKeep);
+    			block.back(dh, dvec, cos, sin, idsKeep);
     		}else {
-     			block.back(dh, dtc, cos, sin);
+     			block.back(dh, dvec, cos, sin);
     		}
     		dh = block.diff;
     	}
@@ -580,100 +491,17 @@ public class OmegaDiTMainMoudue_Sprint_T5 extends Layer {
 		 */
     	for(int i = num_f - 1;i>=0;i--) {
     		FluxDiTBlock block = encoders.get(i);
-    		block.back(de, dtc, cos, sin);
+    		block.back(de, dvec, cos, sin);
     		de = block.diff;
     	}
 
-    	baseKernel.concat_channel_backward(de, labelEmbd.getOutput(), img_x, input.number, maxContextLen, hw, 1, patchEmbd.getOutput().width);
+    	baseKernel.concat_channel_backward(de, tmp_cond, img_x, input.number, maxContextLen, hw, 1, patchEmbd.getOutput().width);
 
-//    	img_x.showDM("d_img_x");
-    	
-     	labelEmbd.back(labelEmbd.getOutput());
+    	t5Embd.back(tmp_cond);
      	
-     	timeEmbd.back(dtc);
-
-     	patchEmbd.back(img_x);
-     	
-    }
-    
-    public void diff(Tensor cos, Tensor sin, Tensor idskeep) {
-        // TODO Auto-generated method stub
-
-    	/**
-    	 * unpatchify back
-    	 */
-    	Tensor_OP().permute(delta, finalLayer.getOutput(), yShape, xShape, new int[] {0, 2, 4, 3, 5, 1});
+    	clipEmbd.back(dvec);
     	
-    	finalLayer.back(finalLayer.getOutput(), dtc);
-    	
-    	Tensor dy = d_o;
-    	dy.clearGPU();
-
-    	Tensor_OP().getByChannel_back(dy, finalLayer.diff, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
-    	
-    	/**
-    	 * decoder backward
-    	 */
-    	for(int i = num_h - 1;i>=0;i--) {
-    		FluxDiTBlock block = decoders.get(i);
-    		block.back(dy, dtc, cos, sin);
-    		dy = block.diff;
-    	}
-//    	dy.showDM("dy");
-//    	dy.showDMByOffsetRed(77 * 768, 768, "dy");
-    	/**
-		 * pad_mask backward
-		 */
-		if(idskeep != null) {
-			fusion.back(dy, dencoder, idskeep);
-		}else {
-			fusion.back(dy, dencoder);
-		}
-    	
-		/**
-		 * mids backward
-		 */
-		Tensor dh = fusion.diff;
-//		dh.showDMByOffsetRed(78 * 768, 768, "dh");
-		for(int i = num_g - 1;i>=0;i--) {
-			FluxDiTBlock block = mids.get(i);
-    		if(idskeep != null) {
-    			block.back(dh, dtc, cos, sin, idskeep);
-    		}else {
-     			block.back(dh, dtc, cos, sin);
-    		}
-    		dh = block.diff;
-    	}
-
-		/**
-		 * sprint backward
-		 */
-		Tensor de = dh;
-		if(idskeep != null) {
-			tokenDropKernel.imgTokenDropBack(drop_delta, idskeep, dh, token_t, hw, maxContextLen, hiddenSize);
-			de = drop_delta;
-		}
-
-		/**
-		 * repa backward
-		 */
-		Tensor_OP().getByChannel_add_back(de, z_mlp.diff, new int[] {input.number, maxContextLen + hw, 1, patchEmbd.getOutput().width}, maxContextLen, hw);
-    	Tensor_OP().add(dencoder, de, de);
-
-		/**
-		 * encoder backward
-		 */
-    	for(int i = num_f - 1;i>=0;i--) {
-    		FluxDiTBlock block = encoders.get(i);
-    		block.back(de, dtc, cos, sin);
-    		de = block.diff;
-    	}
-
-    	baseKernel.concat_channel_backward(de, labelEmbd.getOutput(), img_x, input.number, maxContextLen, hw, 1, patchEmbd.getOutput().width);
-    	
-     	labelEmbd.back(labelEmbd.getOutput());
-     	
-     	timeEmbd.back(dtc);
+     	timeEmbd.back(dvec);
 
      	patchEmbd.back(img_x);
      	
@@ -735,7 +563,7 @@ public class OmegaDiTMainMoudue_Sprint_T5 extends Layer {
      * @param tc time cond
      * @param text
      */
-    public void forward(Tensor input,Tensor tc,Tensor text, Tensor attnMask, Tensor cos, Tensor sin) {
+    public void forward(Tensor input,Tensor tc, Tensor clipLabel, Tensor t5Label, Tensor attnMask, Tensor cos, Tensor sin) {
         // TODO Auto-generated method stub
         /**
          * 设置输入
@@ -748,28 +576,7 @@ public class OmegaDiTMainMoudue_Sprint_T5 extends Layer {
         /**
          * 计算输出
          */
-        this.output(tc, text, attnMask, cos, sin);
-    }
-    
-    /**
-     * @param input
-     * @param tc time cond
-     * @param text
-     */
-    public void forward(Tensor input,Tensor tc,Tensor text, Tensor attnMask, Tensor cos, Tensor sin, Tensor idskeep) {
-        // TODO Auto-generated method stub
-        /**
-         * 设置输入
-         */
-        this.setInput(input);
-        /**
-         * 参数初始化
-         */
-        this.init(input);
-        /**
-         * 计算输出
-         */
-        this.output(tc, text, attnMask, cos, sin, idskeep);
+        this.output(tc, clipLabel, t5Label, attnMask, cos, sin);
     }
     
     @Override
@@ -789,7 +596,7 @@ public class OmegaDiTMainMoudue_Sprint_T5 extends Layer {
         }
     }
     
-    public void back(Tensor delta,Tensor cos,Tensor sin) {
+    public void back(Tensor delta, Tensor cos, Tensor sin) {
         // TODO Auto-generated method stub
         this.initBack();
         /**
@@ -802,19 +609,6 @@ public class OmegaDiTMainMoudue_Sprint_T5 extends Layer {
         this.diff(cos, sin);
     }
     
-    public void back(Tensor delta, Tensor cos, Tensor sin, Tensor idskeep) {
-        // TODO Auto-generated method stub
-        this.initBack();
-        /**
-         * 设置梯度
-         */
-        this.setDelta(delta);
-        /**
-         * 计算梯度
-         */
-        this.diff(cos, sin, idskeep);
-    }
-    
     @Override
     public void update() {
         // TODO Auto-generated method stub
@@ -822,7 +616,9 @@ public class OmegaDiTMainMoudue_Sprint_T5 extends Layer {
 
     	timeEmbd.update();
     	
-    	labelEmbd.update();
+    	clipEmbd.update();
+    	
+    	t5Embd.update();
     	
     	for(int i = 0;i<num_f;i++) {
     		encoders.get(i).update();
@@ -875,7 +671,9 @@ public class OmegaDiTMainMoudue_Sprint_T5 extends Layer {
 
     	timeEmbd.saveModel(outputStream);
 
-    	labelEmbd.saveModel(outputStream);
+    	clipEmbd.saveModel(outputStream);
+    	
+    	t5Embd.saveModel(outputStream);
     	
     	for(int i = 0;i<num_f;i++) {
     		encoders.get(i).saveModel(outputStream);
@@ -901,7 +699,9 @@ public class OmegaDiTMainMoudue_Sprint_T5 extends Layer {
 
     	timeEmbd.loadModel(inputStream);
     	
-    	labelEmbd.loadModel(inputStream);
+    	clipEmbd.loadModel(inputStream);
+    	
+    	t5Embd.loadModel(inputStream);
     	
     	for(int i = 0;i<num_f;i++) {
     		encoders.get(i).loadModel(inputStream);
@@ -928,8 +728,10 @@ public class OmegaDiTMainMoudue_Sprint_T5 extends Layer {
     	patchEmbd.accGrad(scale);
 
     	timeEmbd.accGrad(scale);
-
-    	labelEmbd.accGrad(scale);
+    	
+    	clipEmbd.accGrad(scale);
+    	
+    	t5Embd.accGrad(scale);
     	
     	for(int i = 0;i<num_f;i++) {
     		encoders.get(i).accGrad(scale);

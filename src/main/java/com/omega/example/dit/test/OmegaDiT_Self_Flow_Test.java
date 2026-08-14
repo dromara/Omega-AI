@@ -1,6 +1,5 @@
 package com.omega.example.dit.test;
 
-import java.util.List;
 import java.util.Map;
 
 import com.omega.common.utils.ImageUtils;
@@ -23,7 +22,6 @@ import com.omega.engine.updater.UpdaterType;
 import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.dit.dataset.LatendDataset;
 import com.omega.example.dit.models.ICPlan;
-import com.omega.example.dit.utils.T5LabelsLoader;
 import com.omega.example.sd.utils.SDImageDataLoaderEN;
 import com.omega.example.sd.utils.SDImageLoader;
 import com.omega.example.transformer.utils.LagJsonReader;
@@ -69,59 +67,19 @@ public class OmegaDiT_Self_Flow_Test {
         
         ICPlan icplan = new ICPlan(dit.tensorOP);
 
-//        String model_path = "D:\\models\\dit_txt_flux\\flux_sprint_b1_20.model";
-//        ModelUtils.loadModel(dit, model_path);
+        String model_path = "D:\\models\\dit_sf_flux\\flux_sf_b1_4.model";
+        ModelUtils.loadModel(dit, model_path);
+        
+        String ema_model_path = "D:\\models\\dit_sf_flux\\flux_sf_ema4.model";
+        ModelUtils.loadModel(ema, ema_model_path);
         
         MBSGDOptimizer optimizer = new MBSGDOptimizer(dit, 60, 0.00001f, batchSize, LearnRateUpdate.NONE, false);
         
-        optimizer.train_Flux_Self_Flow_ICPlan_V(ema, dataLoader, icplan, "D://models//dit_sf_flux//", 4);
+        optimizer.train_Flux_Self_Flow_ICPlan_V(ema, dataLoader, icplan, "D://models//dit_sf_flux//", 2);
         String save_model_path = "D://models//dit_sf_flux//fluxvae_sf_b1.model";
         ModelUtils.saveModel(dit, save_model_path);
     }
-	
-	public static void omega_self_flow_b1_train_flux2vae_v() throws Exception {
-		String dataPath = "/root/gpufree-data/2m/flux2vae_latend.bin";
-        String clipDataPath = "/root/gpufree-data/2m/flux_t5.bin";
-		
-        int batchSize = 24;
-        int latendDim = 128;
-        int height = 16;
-        int width = 16;
-        int textEmbedDim = 1024;
-        int maxContext = 120;
-        
-        LatendDataset dataLoader = new LatendDataset(dataPath, clipDataPath, batchSize, latendDim, height, width, maxContext, textEmbedDim, BinDataType.float32);
-        
-		int ditHeadNum = 12;
-        int latendSize = 16;
-        int depth = 12;
-        int timeSteps = 1000;
-        int mlpRatio = 4;
-        int patchSize = 1;
-        int hiddenSize = 768;
-        
-        float y_prob = 0.1f;
-        float path_drop_prob = 0.05f;
-        
-        OmegaDiT_Self_Flow dit = new OmegaDiT_Self_Flow(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, textEmbedDim, maxContext, mlpRatio, path_drop_prob, y_prob);
-        dit.CUDNN = true;
-        dit.learnRate = 2e-4f;
-        
-        OmegaDiT_Self_Flow ema = new OmegaDiT_Self_Flow(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, textEmbedDim, maxContext, mlpRatio, path_drop_prob, y_prob);
-        ema.main.teacher = true;
-        
-        ICPlan icplan = new ICPlan(dit.tensorOP);
 
-//        String model_path = "D:\\models\\dit_txt_flux\\flux_sprint_b1_20.model";
-//        ModelUtils.loadModel(dit, model_path);
-        
-        MBSGDOptimizer optimizer = new MBSGDOptimizer(dit, 100, 0.00001f, batchSize, LearnRateUpdate.NONE, false);
-        
-        optimizer.train_Flux_Self_Flow_ICPlan_V(ema, dataLoader, icplan, "/root/gpufree-data/models/dit_sf_256/", 4);
-        String save_model_path = "/root/gpufree-data/models/dit_sf_256/fluxvae_sf_256_b1.model";
-        ModelUtils.saveModel(dit, save_model_path);
-    }
-	
 	public static void omega_sprint_b1_iddpm_train_flux2vae_v_512() throws Exception {
 		String dataPath = "D:\\dataset\\amine\\dalle_flux2vae_latend_512.bin";
         String clipDataPath = "D:\\dataset\\amine\\dalle_full_clip.bin";
@@ -240,8 +198,8 @@ public class OmegaDiT_Self_Flow_Test {
         
         ICPlan icplan = new ICPlan(network.tensorOP, 50, 0);
         
-//        String model_path = "D:\\models\\dit_txt_flux\\flux_sprint_b1_0.model";
-        String model_path = "D:\\models\\dit_txt_flux\\model_v\\flux_sprint_b1_1.model";
+        String model_path = "D:\\models\\dit_sf_flux\\flux_sf_ema8.model";
+//        String model_path = "D:\\models\\dit_txt_flux\\model_v\\flux_sprint_b1_1.model";
         ModelUtils.loadModel(network, model_path);
         
         Tensor label = new Tensor(batchSize * dataLoader.maxContextLen, 1, 1, 1, true);
@@ -249,7 +207,7 @@ public class OmegaDiT_Self_Flow_Test {
         Tensor condInput = null;
         Tensor condInput_ynull = null;
         Tensor t = new Tensor(batchSize * (maxContextLen + network.main.hw), 1, 1, 1, true);
-
+        
         Tensor noise = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
         Tensor latend = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
         Tensor eps = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
@@ -293,6 +251,8 @@ public class OmegaDiT_Self_Flow_Test {
             }
         }
         
+        long seed = 1234;
+        
         for(int i = 0;i<10;i++) {
         	
         	if(i > 4) {
@@ -321,10 +281,10 @@ public class OmegaDiT_Self_Flow_Test {
         	
         	System.out.println("start create test images.");
 
-            GPUOP.getInstance().cudaRandn(noise);
+        	GPUOP.getInstance().cudaRandn(noise, i + seed);
             noise.copyGPU(noise2);
             
-            Tensor sample = icplan.forward_with_path_drop_cfg_heun_step(network, noise, t, condInput, condInput_ynull, cos, sin, latend, eps, 1.0f);
+            Tensor sample = icplan.forward_with_path_drop_cfg(network, noise, t, condInput, condInput_ynull, cos, sin, latend, eps, 1.0f);
 
             Tensor result = vae.decode(sample);
             
@@ -332,11 +292,11 @@ public class OmegaDiT_Self_Flow_Test {
             
             result.data = MatrixOperation.clampSelf(result.syncHost(), -1, 1);
 
-            OmegaDiTTest.showImgs("D:\\test\\dit_fluxvae\\omega_path_drop_sprint\\" + i, result, mean, std);
+            OmegaDiTTest.showImgs("D:\\test\\dit_fluxvae\\omega_path_drop_sf\\" + i, result, mean, std);
             
             System.out.println("finish create.");
             
-            sample = icplan.forward_with_path_drop_cfg_heun_step(network, noise2, t, condInput, condInput_ynull, cos, sin, latend, eps, 2.0f);
+            sample = icplan.forward_with_path_drop_cfg(network, noise2, t, condInput, condInput_ynull, cos, sin, latend, eps, 2.5f);
 
             result = vae.decode(sample);
             
@@ -344,7 +304,7 @@ public class OmegaDiT_Self_Flow_Test {
             
             result.data = MatrixOperation.clampSelf(result.syncHost(), -1, 1);
 
-            OmegaDiTTest.showImgs("D:\\test\\dit_fluxvae\\omega_path_drop_sprint\\" + i + "_T", result, mean, std);
+            OmegaDiTTest.showImgs("D:\\test\\dit_fluxvae\\omega_path_drop_sf\\" + i + "_T", result, mean, std);
             
             System.out.println("finish create.");
         }
@@ -359,7 +319,7 @@ public class OmegaDiT_Self_Flow_Test {
         
         float[] mean = new float[]{0.5f, 0.5f, 0.5f};
         float[] std = new float[]{0.5f, 0.5f, 0.5f};
-        String tokenizer_path = "/root/gpufree-data/models/t5/spiece.model";
+        String tokenizer_path = "D:\\models\\t5_L\\spiece.model";
 		SentencePieceTokenizer tokenizer = new SentencePieceTokenizer(tokenizer_path);
 		
 		int time = maxContextLen;
@@ -372,7 +332,7 @@ public class OmegaDiT_Self_Flow_Test {
 		t5.CUDNN = true;
 		t5.RUN_MODEL = RunModel.EVAL;
     	
-		String t5_model_path = "/root/gpufree-data/models/t5/t5_encoder.model";
+		String t5_model_path = "D:\\models\\t5_L\\t5_encoder.model";
 		com.omega.example.transformer.utils.ModelUtils.loadModel(t5, t5_model_path);
 
         int latendDim = 32;
@@ -403,9 +363,8 @@ public class OmegaDiT_Self_Flow_Test {
         network.learnRate = 2e-4f;
         
         ICPlan icplan = new ICPlan(network.tensorOP, 50, 0);
-        
-//        String model_path = "D:\\models\\dit_txt_flux\\flux_sprint_b1_0.model";
-        String model_path = "D:\\models\\dit_txt_flux\\model_v\\flux_sprint_b1_1.model";
+
+        String model_path = "D:\\models\\dit_sf_256\\flux_sf_ema4.model";
         ModelUtils.loadModel(network, model_path);
         
         Tensor label = new Tensor(batchSize * maxContextLen, 1, 1, 1, true);
@@ -489,7 +448,7 @@ public class OmegaDiT_Self_Flow_Test {
             GPUOP.getInstance().cudaRandn(noise);
             noise.copyGPU(noise2);
             
-            Tensor sample = icplan.forward_with_path_drop_cfg_heun_step(network, noise, t, condInput, condInput_ynull, cos, sin, latend, eps, 1.0f);
+            Tensor sample = icplan.forward_with_path_drop_cfg(network, noise, t, condInput, condInput_ynull, cos, sin, latend, eps, 1.0f);
 
             Tensor result = vae.decode(sample);
             
@@ -497,11 +456,11 @@ public class OmegaDiT_Self_Flow_Test {
             
             result.data = MatrixOperation.clampSelf(result.syncHost(), -1, 1);
 
-            OmegaDiTTest.showImgs("D:\\test\\dit_fluxvae\\omega_path_drop_sprint\\" + i, result, mean, std);
+            OmegaDiTTest.showImgs("D:\\test\\dit_fluxvae\\omega_sf_256\\" + i, result, mean, std);
             
             System.out.println("finish create.");
             
-            sample = icplan.forward_with_path_drop_cfg_heun_step(network, noise2, t, condInput, condInput_ynull, cos, sin, latend, eps, 2.0f);
+            sample = icplan.forward_with_path_drop_cfg(network, noise2, t, condInput, condInput_ynull, cos, sin, latend, eps, 2.0f);
 
             result = vae.decode(sample);
             
@@ -509,7 +468,7 @@ public class OmegaDiT_Self_Flow_Test {
             
             result.data = MatrixOperation.clampSelf(result.syncHost(), -1, 1);
 
-            OmegaDiTTest.showImgs("D:\\test\\dit_fluxvae\\omega_path_drop_sprint\\" + i + "_T", result, mean, std);
+            OmegaDiTTest.showImgs("D:\\test\\dit_fluxvae\\omega_sf_256\\" + i + "_T", result, mean, std);
             
             System.out.println("finish create.");
         }
@@ -816,6 +775,17 @@ public class OmegaDiT_Self_Flow_Test {
         label.hostToDevice();
     }
 	
+	public static void loadLabel_offset_host(BPETokenizerEN tokenizer, Tensor label, int index, int maxContextLen, String labelStr) {
+    	int[] ids = tokenizer.encodeInt(labelStr, maxContextLen);
+        for (int j = 0; j < maxContextLen; j++) {
+            if (j < ids.length) {
+                label.data[index * maxContextLen + j] = ids[j];
+            } else {
+                label.data[index * maxContextLen + j] = 0;
+            }
+        }
+    }
+	
 	public static void loadLabel_offset(SentencePieceTokenizer tokenizer, Tensor label, Tensor mask, int index, int maxContextLen, String labelStr) {
         int[] ids = tokenizer.encodeInt(labelStr, maxContextLen);
         for (int j = 0; j < maxContextLen; j++) {
@@ -830,27 +800,16 @@ public class OmegaDiT_Self_Flow_Test {
         mask.hostToDevice();
         label.hostToDevice();
     }
-	
-	public static void loadLabel_offset_host(BPETokenizerEN tokenizer, Tensor label, int index, int maxContextLen, String labelStr) {
-    	int[] ids = tokenizer.encodeInt(labelStr, maxContextLen);
-        for (int j = 0; j < maxContextLen; j++) {
-            if (j < ids.length) {
-                label.data[index * maxContextLen + j] = ids[j];
-            } else {
-                label.data[index * maxContextLen + j] = 0;
-            }
-        }
-    }
 
     public static void main(String[] args) {
 		 
         try {
         	
-        	omega_self_flow_b1_train_flux2vae_v();
-        	
 //        	omega_self_flow_b1_iddpm_train_flux2vae_v();
         	
 //        	omega_sprint_b1_iddpm_train_flux2vae_v_512();
+        	
+        	test_omega_self_flow_cfg_flux2vae_v();
         	
 //        	test_omega_sprint_path_drop_cfg_flux2vae_v();
         	

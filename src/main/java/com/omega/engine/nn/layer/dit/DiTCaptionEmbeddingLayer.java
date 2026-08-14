@@ -99,8 +99,8 @@ public class DiTCaptionEmbeddingLayer extends Layer {
         // TODO Auto-generated method stub
         this.number = input.number;
         int batchSize = number / token_num;
-        if(network.RUN_MODEL == RunModel.TRAIN && uncond_prob > 0 && (mask == null || mask.number != batchSize)) {
-        	mask = Tensor.createGPUTensor(mask, batchSize, 1, 1, 1, true);
+        if(network.RUN_MODEL == RunModel.TRAIN && uncond_prob > 0 && (getMask() == null || getMask().number != batchSize)) {
+        	mask = Tensor.createGPUTensor(getMask(), batchSize, 1, 1, 1, true);
         }
         if(network.RUN_MODEL == RunModel.TRAIN && uncond_prob > 0 && getY_embedding() == null) {
         	float[] data = RandomUtils.gaussianRandom(token_num * inChannel, 0.0f, 1.0f);
@@ -123,8 +123,8 @@ public class DiTCaptionEmbeddingLayer extends Layer {
     public void output() {
         // TODO Auto-generated method stub
     	if(network.RUN_MODEL == RunModel.TRAIN && uncond_prob > 0) {
-    		GPUOP.getInstance().cudaRandom(this.mask);//0-1
-    		kernel.tokenDrop(input, y_embedding, mask, input, y_embedding.dataLength, uncond_prob);
+    		GPUOP.getInstance().cudaRandom(this.getMask());//0-1
+    		kernel.tokenDrop(input, y_embedding, getMask(), input, y_embedding.dataLength, uncond_prob);
     	}
 //    	input.showDM("input");
         linear1.forward(input);
@@ -318,6 +318,10 @@ public class DiTCaptionEmbeddingLayer extends Layer {
 			y_embedding = new Tensor(1, 1, token_num, inChannel, true);
 		}
 		return y_embedding;
+	}
+
+	public Tensor getMask() {
+		return mask;
 	}
 }
 
