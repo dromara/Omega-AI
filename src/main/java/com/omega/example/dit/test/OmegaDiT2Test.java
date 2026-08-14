@@ -359,7 +359,8 @@ public class OmegaDiT2Test {
         float[] std = new float[]{0.5f, 0.5f, 0.5f};
         
         int imgSize = 256;
-        int maxContextLen = 120;
+        int clipMaxContextLen = 77;
+        int t5MaxContextLen = 120;
         int batchSize = 10;
         
         /**
@@ -374,9 +375,9 @@ public class OmegaDiT2Test {
         int n_layers = 12;
         int clipEmbedDim = 768;
         int intermediateSize = 3072;
-        ClipTextModel clip = new ClipTextModel(LossType.MSE, UpdaterType.adamw, headNum, maxPositionEmbeddingsSize, vocabSize, clipEmbedDim, maxPositionEmbeddingsSize, intermediateSize, n_layers);
+        ClipTextModel clip = new ClipTextModel(LossType.MSE, UpdaterType.adamw, headNum, clipMaxContextLen, vocabSize, clipEmbedDim, maxPositionEmbeddingsSize, intermediateSize, n_layers);
         clip.CUDNN = true;
-        clip.time = maxPositionEmbeddingsSize;
+        clip.time = clipMaxContextLen;
         clip.RUN_MODEL = RunModel.EVAL;
         String clipWeight = "D:\\models\\CLIP-GmP-ViT-L-14\\CLIP-GmP-ViT-L-14.json";
         ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileBigWeightIterator(clipWeight), clip, "", false);
@@ -386,13 +387,12 @@ public class OmegaDiT2Test {
          */
         String tokenizer_path = "D:\\models\\t5_L\\spiece.model";
 		SentencePieceTokenizer tokenizer = new SentencePieceTokenizer(tokenizer_path);
-		int time = maxContextLen;
 		int voc_size = 32128;
 		int num_layers = 24;
 		int head_num = 16;
 		int t5EmbedDim = 1024;
 		int d_ff = 2816;
-		T5Encoder t5 = new T5Encoder(LossType.MSE, UpdaterType.adamw, voc_size, num_layers, head_num, time, t5EmbedDim, d_ff, false);
+		T5Encoder t5 = new T5Encoder(LossType.MSE, UpdaterType.adamw, voc_size, num_layers, head_num, t5MaxContextLen, t5EmbedDim, d_ff, false);
 		t5.CUDNN = true;
 		t5.RUN_MODEL = RunModel.EVAL;
 		String t5_model_path = "D:\\models\\t5_L\\t5_encoder.model";
@@ -426,20 +426,20 @@ public class OmegaDiT2Test {
         float y_prob = 0.1f;
         float token_drop = 0.0f;
         float path_drop_prob = 0.05f;
-        OmegaDiT_T5 network = new OmegaDiT_T5(LossType.MSE, UpdaterType.adamw, vaeLatendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, clipEmbedDim, t5EmbedDim, maxContextLen, mlpRatio, hiddenSize, token_drop, path_drop_prob, y_prob);
+        OmegaDiT_T5 network = new OmegaDiT_T5(LossType.MSE, UpdaterType.adamw, vaeLatendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, depth, timeSteps, clipEmbedDim, t5EmbedDim, t5MaxContextLen, mlpRatio, hiddenSize, token_drop, path_drop_prob, y_prob);
         network.CUDNN = true;
         network.learnRate = 2e-4f;
         
         ICPlan icplan = new ICPlan(network.tensorOP, 50, 0);
 
-        String model_path = "D:\\models\\dit_txt_flux\\flux_sprint_b1_4.model";
+        String model_path = "D:\\models\\di_t5\\flux_sprint_b1_0.model";
         ModelUtils.loadModel(network, model_path);
         
         Tensor clipLabel = new Tensor(batchSize * maxPositionEmbeddingsSize, 1, 1, 1, true);
         Tensor eosIds = new Tensor(batchSize, 1, 1, 1, true);
-        Tensor t5Label = new Tensor(batchSize * maxContextLen, 1, 1, 1, true);
-    	Tensor mask = new Tensor(batchSize, 1, 1, maxContextLen, true);
-    	Tensor attnMask = new Tensor(batchSize, 1, 1, maxContextLen, true);
+        Tensor t5Label = new Tensor(batchSize * t5MaxContextLen, 1, 1, 1, true);
+    	Tensor mask = new Tensor(batchSize, 1, 1, t5MaxContextLen, true);
+    	Tensor attnMask = new Tensor(batchSize, 1, 1, t5MaxContextLen, true);
     	
     	Tensor clipInput = new Tensor(batchSize, 1, 1, clipEmbedDim, true);
     	Tensor clipInput_ynull = new Tensor(batchSize, 1, 1, clipEmbedDim, true);
@@ -469,16 +469,16 @@ public class OmegaDiT2Test {
         labels[7] = "A yellow mushroom grows in the forest";
         labels[8] = "a dog";
         labels[9] = "A lovely corgi is taking a walk under the sea";
-        loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 0, maxContextLen, labels[0]);
-        loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 1, maxContextLen, labels[1]);
-        loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 2, maxContextLen, labels[2]);
-        loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 3, maxContextLen, labels[3]);
-        loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 4, maxContextLen, labels[4]);
-        loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 5, maxContextLen, labels[5]);
-        loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 6, maxContextLen, labels[6]);
-        loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 7, maxContextLen, labels[7]);
-        loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 8, maxContextLen, labels[8]);
-        loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 9, maxContextLen, labels[9]);
+        loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 0, clipMaxContextLen, t5MaxContextLen, labels[0]);
+        loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 1, clipMaxContextLen, t5MaxContextLen, labels[1]);
+        loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 2, clipMaxContextLen, t5MaxContextLen, labels[2]);
+        loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 3, clipMaxContextLen, t5MaxContextLen, labels[3]);
+        loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 4, clipMaxContextLen, t5MaxContextLen, labels[4]);
+        loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 5, clipMaxContextLen, t5MaxContextLen, labels[5]);
+        loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 6, clipMaxContextLen, t5MaxContextLen, labels[6]);
+        loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 7, clipMaxContextLen, t5MaxContextLen, labels[7]);
+        loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 8, clipMaxContextLen, t5MaxContextLen, labels[8]);
+        loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 9, clipMaxContextLen, t5MaxContextLen, labels[9]);
         clipLabel.hostToDevice();
         eosIds.hostToDevice();
         t5Label.hostToDevice();
@@ -496,7 +496,7 @@ public class OmegaDiT2Test {
             t5Input_ynull = Tensor.createGPUTensor(t5Input_ynull, t5Input.number, t5Input.channel, t5Input.height, t5Input.width, true);
             Tensor y_null = network.main.t5Embd.getY_embedding();
             part_input_size = y_null.dataLength;
-            for(int b = 0;b<batchSize * maxContextLen;b++) {
+            for(int b = 0;b<batchSize * t5MaxContextLen;b++) {
             	network.tensorOP.op.copy_gpu(y_null, t5Input_ynull, part_input_size, 0, 1, b * part_input_size, 1);
             }
             cudaDeviceSynchronize();
@@ -515,16 +515,16 @@ public class OmegaDiT2Test {
                 labels[7] = "A Japanese girl walking along a path, surrounded by blooming oriental cherries, pink petals slowly falling down to the ground.";
                 labels[8] = "A cyberpunk panda is taking a walk on the street";
                 labels[9] = "Happy dreamy owl monster sitting on a tree branch, colorful glittering particles, forest background, detailed feathers.";
-                loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 0, maxContextLen, labels[0]);
-                loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 1, maxContextLen, labels[1]);
-                loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 2, maxContextLen, labels[2]);
-                loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 3, maxContextLen, labels[3]);
-                loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 4, maxContextLen, labels[4]);
-                loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 5, maxContextLen, labels[5]);
-                loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 6, maxContextLen, labels[6]);
-                loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 7, maxContextLen, labels[7]);
-                loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 8, maxContextLen, labels[8]);
-                loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 9, maxContextLen, labels[9]);
+                loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 0, clipMaxContextLen, t5MaxContextLen, labels[0]);
+                loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 1, clipMaxContextLen, t5MaxContextLen, labels[1]);
+                loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 2, clipMaxContextLen, t5MaxContextLen, labels[2]);
+                loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 3, clipMaxContextLen, t5MaxContextLen, labels[3]);
+                loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 4, clipMaxContextLen, t5MaxContextLen, labels[4]);
+                loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 5, clipMaxContextLen, t5MaxContextLen, labels[5]);
+                loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 6, clipMaxContextLen, t5MaxContextLen, labels[6]);
+                loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 7, clipMaxContextLen, t5MaxContextLen, labels[7]);
+                loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 8, clipMaxContextLen, t5MaxContextLen, labels[8]);
+                loadLabel_offset(bpe, tokenizer, clipLabel, eosIds, t5Label, mask, attnMask, 9, clipMaxContextLen, t5MaxContextLen, labels[9]);
                 clipLabel.hostToDevice();
                 eosIds.hostToDevice();
                 t5Label.hostToDevice();
@@ -547,7 +547,7 @@ public class OmegaDiT2Test {
             
             result.data = MatrixOperation.clampSelf(result.syncHost(), -1, 1);
 
-            OmegaDiTTest.showImgs("D:\\test\\dit_fluxvae\\omega_t5_256\\" + i, result, mean, std);
+            OmegaDiTTest.showImgs("D:\\test\\dit_fluxvae\\omega_t5_mask_256\\" + i, result, mean, std);
             
             System.out.println("finish create.");
             
@@ -559,7 +559,7 @@ public class OmegaDiT2Test {
             
             result.data = MatrixOperation.clampSelf(result.syncHost(), -1, 1);
 
-            OmegaDiTTest.showImgs("D:\\test\\dit_fluxvae\\omega_t5_256\\" + i + "_T", result, mean, std);
+            OmegaDiTTest.showImgs("D:\\test\\dit_fluxvae\\omega_t5_mask_256\\" + i + "_T", result, mean, std);
             
             System.out.println("finish create.");
         }
@@ -1387,10 +1387,12 @@ public class OmegaDiT2Test {
         label.hostToDevice();
     }
 	
-	public static void loadLabel_offset(BPETokenizerEN clipTokenizer, SentencePieceTokenizer tokenizer, Tensor clipLabel, Tensor eosIds, Tensor label, Tensor mask, Tensor attnMask, int index, int maxContextLen, String labelStr) {
-        int[] clipIds = clipTokenizer.encodeInt(labelStr, 77);
+	public static void loadLabel_offset(BPETokenizerEN clipTokenizer, SentencePieceTokenizer tokenizer, Tensor clipLabel, Tensor eosIds, Tensor label, Tensor mask, Tensor attnMask, int index, int clipMaxContextLen, int t5MaxContextLen, String labelStr) {
+        int[] clipIds = clipTokenizer.encodeInt(labelStr, clipMaxContextLen);
         int eosId = -1;
         for (int j = 0; j < clipIds.length; j++) {
+        	float val = clipIds[j];
+        	clipLabel.data[index * clipMaxContextLen + j] = val;
             if (clipIds[j] == clipTokenizer.eos()) {
                 eosId = j;
                 break;
@@ -1400,16 +1402,16 @@ public class OmegaDiT2Test {
             }
         }
         eosIds.data[index] = eosId;
-		int[] ids = tokenizer.encodeInt(labelStr, maxContextLen);
-        for (int j = 0; j < maxContextLen; j++) {
+		int[] ids = tokenizer.encodeInt(labelStr, t5MaxContextLen);
+        for (int j = 0; j < t5MaxContextLen; j++) {
         	int val = ids[j];
-        	label.data[index * maxContextLen + j] = val;
+        	label.data[index * t5MaxContextLen + j] = val;
         	if(val != tokenizer.pad()) {
-        		mask.data[index * maxContextLen + j] = 0;
-        		attnMask.data[index * maxContextLen + j] = 1;
+        		mask.data[index * t5MaxContextLen + j] = 0;
+        		attnMask.data[index * t5MaxContextLen + j] = 1;
         	}else {
-        		mask.data[index * maxContextLen + j] = -3.4028e+38f;
-        		attnMask.data[index * maxContextLen + j] = 0;
+        		mask.data[index * t5MaxContextLen + j] = -3.4028e+38f;
+        		attnMask.data[index * t5MaxContextLen + j] = 0;
         	}
         }
     }
@@ -1691,11 +1693,13 @@ public class OmegaDiT2Test {
         	
 //        	test_omega_sprint_path_drop_cfg_flux2vae_v();
         	
-        	test_omega_sprint_path_drop_cfg_flux2vae_v_512();
+//        	test_omega_sprint_path_drop_cfg_flux2vae_v_512();
         	
 //        	test_omega_sprint_path_drop_cfg_flux2vae_v_512_fid();
         	
 //        	test_omega_sprint_path_drop_cfg_flux2vae_512();
+        	
+        	test_omega_t5_cfg_flux2vae_v();
         	
         } catch (Exception e) {
             // TODO: handle exception

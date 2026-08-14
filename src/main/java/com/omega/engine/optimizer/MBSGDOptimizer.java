@@ -16972,7 +16972,7 @@ public class MBSGDOptimizer extends Optimizer {
                     /**
                      * update
                      */
-                    network.clipGradNormFast(1.0f);
+//                    network.clipGradNormFast(1.0f);
                     network.update();
                     JCudaDriver.cuCtxSynchronize();
                     
