@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
-import com.omega.common.utils.JsonUtils;
 import com.omega.common.utils.MathUtils;
 import com.omega.common.utils.RandomUtils;
 import com.omega.engine.gpu.BaseKernel;
@@ -14,12 +13,11 @@ import com.omega.engine.tensor.Tensor;
 import com.omega.example.diffusion.utils.DiffusionImageLoader;
 import com.omega.example.transformer.utils.LagJsonReader;
 import com.omega.example.transformer.utils.bpe.BPETokenizerEN;
+import com.omega.example.transformer.utils.tokenizers.Tokenizer;
 import com.omega.example.unet.utils.SegImageLoader;
 import com.omega.example.yolo.data.BaseDataLoader;
 import com.omega.example.yolo.data.ImageLoader;
 import com.omega.example.yolo.utils.YoloImageUtils;
-
-import jcuda.runtime.JCuda;
 
 /**
  * SDImageDataLoaderEN
@@ -41,8 +39,13 @@ public class SDImageLoader extends BaseDataLoader {
     private List<Map<String, Object>> datas;
     private String[] idxSet;
     private BaseKernel kernel;
+    private String labelKey = "en";
+    private String pathKey;
     private CompletableFuture<Boolean> cf;
-
+    
+    private int maxLength;
+    private Tokenizer tokenizer;
+    
     public SDImageLoader(String labelPath, String imgDirPath, int img_w, int img_h, int batchSize, boolean horizontalFilp) {
         this.horizontalFilp = horizontalFilp;
         this.imgDirPath = imgDirPath;
@@ -78,6 +81,22 @@ public class SDImageLoader extends BaseDataLoader {
         init();
     }
     
+    public SDImageLoader(String labelPath, String imgDirPath, String extName, String pathKey, String labelKey, Tokenizer tokenizer, int maxLength, int img_w, int img_h, int batchSize, boolean horizontalFilp, float[] mean, float[] std) {
+        this.horizontalFilp = horizontalFilp;
+        this.imgDirPath = imgDirPath;
+        this.labelPath = labelPath;
+        this.img_w = img_w;
+        this.img_h = img_h;
+        this.batchSize = batchSize;
+        this.labelKey = labelKey;
+        this.pathKey = pathKey;
+        this.mean = mean;
+        this.std = std;
+        this.extName = extName;
+        setTokenizer(tokenizer, maxLength);
+        init();
+    }
+    
     public void init() {
         loadFileCount();
     }
@@ -86,10 +105,16 @@ public class SDImageLoader extends BaseDataLoader {
         try {
             File file = new File(imgDirPath);
             if (file.exists()) {
-                datas = LagJsonReader.readJsonDataSamll(labelPath);
+            	datas = LagJsonReader.readJsonFileBigArray(labelPath);
                 idxSet = new String[datas.size()];
-                for (int i = 0; i < datas.size(); i++) {
-                    idxSet[i] = datas.get(i).get("id").toString() + extName;
+                if(pathKey != null) {
+                	for (int i = 0; i < datas.size(); i++) {
+                        idxSet[i] = datas.get(i).get(pathKey).toString();
+                    }
+                }else {
+                	for (int i = 0; i < datas.size(); i++) {
+                        idxSet[i] = datas.get(i).get("id").toString() + extName;
+                    }
                 }
             }
             this.number = datas.size();
@@ -156,7 +181,6 @@ public class SDImageLoader extends BaseDataLoader {
         // TODO Auto-generated method stub
         /**
          * 加载input数据
-         *
          */
         if (mean != null) {
             SegImageLoader.load(imgDirPath, extName, idxSet, indexs, input.number, input, false, true, mean, std);
@@ -290,6 +314,39 @@ public class SDImageLoader extends BaseDataLoader {
         }
     }
     
+    public void loadData(int[] indexs, int[] next, Tensor input, Tensor label, int it) {
+        // TODO Auto-generated method stub
+    	try {
+//            System.out.println(it);
+    		if(it == 0) {
+    			if (cf != null) {
+        			cf.get();//等待数据从文件加载完毕
+                }
+        		cf = null;
+    		}
+            if (cf != null) {
+                boolean success = cf.get();
+                if(success){
+                	cf = null;
+                	input.hostToDevice();
+                	cf = loadAsyncData(next, input, label);
+                }
+            } else {
+                cf = loadAsyncData(indexs, input, label);
+                boolean success = cf.get();
+                if(success){
+                	cf = null;
+                	input.hostToDevice();
+                	cf = loadAsyncData(next, input, label);
+                }
+            }
+//            System.out.println("load cost:"+(System.nanoTime() - start)/1e6+"ms.");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
     public CompletableFuture<Boolean> loadAsyncData_online(int[] indexs, Tensor input) {
         CompletableFuture<Boolean> cf = CompletableFuture.supplyAsync(() -> {
             try {
@@ -331,7 +388,40 @@ public class SDImageLoader extends BaseDataLoader {
         });
         return cf;
     }
-
+    
+    public CompletableFuture<Boolean> loadAsyncData(int[] indexs, Tensor input, Tensor label) {
+        CompletableFuture<Boolean> cf = CompletableFuture.supplyAsync(() -> {
+            try {
+            	 /**
+                 * 加载input数据
+                 */
+                if (mean != null) {
+                    SegImageLoader.load(imgDirPath, extName, idxSet, indexs, input.number, input, false, true, mean, std);
+                } else {
+                    SegImageLoader.load(imgDirPath, extName, idxSet, indexs, input.number, input, false, true);
+                }
+                
+                for(int i = 0;i<indexs.length;i++) {
+                	Map<String, Object> once = datas.get(indexs[i]);
+                	String txt = once.get(labelKey).toString();
+                	int[] ids = getTokenizer().encodeInt(txt, maxLength);
+                    for (int j = 0; j < maxLength; j++) {
+                        if (j < ids.length) {
+                             label.data[i * maxLength + j] = ids[j];
+                        } else {
+                             label.data[i * maxLength + j] = getTokenizer().eos();
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                // TODO: handle exception
+                e.printStackTrace();
+            }
+            return true;
+        });
+        return cf;
+    }
+    
     public void loadData(String filePath, Tensor input) {
         // TODO Auto-generated method stub
         /**
@@ -387,4 +477,13 @@ public class SDImageLoader extends BaseDataLoader {
         // TODO Auto-generated method stub
         return null;
     }
+
+	public Tokenizer getTokenizer() {
+		return tokenizer;
+	}
+
+	public void setTokenizer(Tokenizer tokenizer, int maxLength) {
+		this.tokenizer = tokenizer;
+		this.maxLength = maxLength;
+	}
 }

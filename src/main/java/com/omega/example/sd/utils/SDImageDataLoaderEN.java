@@ -42,6 +42,7 @@ public class SDImageDataLoaderEN extends BaseDataLoader {
     private BaseKernel kernel;
     private CompletableFuture<Boolean> cf;
     private String key;
+    private String pathKey;
 
     public SDImageDataLoaderEN(BPETokenizerEN tokenizer, String labelPath, String imgDirPath, int img_w, int img_h, int maxContextLen, int batchSize, boolean horizontalFilp) {
         this.horizontalFilp = horizontalFilp;
@@ -100,6 +101,23 @@ public class SDImageDataLoaderEN extends BaseDataLoader {
         init();
     }
     
+    public SDImageDataLoaderEN(BPETokenizerEN tokenizer, String labelPath, String imgDirPath, String extName, String pathKey, String key, int img_w, int img_h, int maxContextLen, int batchSize, boolean horizontalFilp, float[] mean, float[] std) {
+        this.horizontalFilp = horizontalFilp;
+        this.imgDirPath = imgDirPath;
+        this.labelPath = labelPath;
+        this.maxContextLen = maxContextLen;
+        this.tokenizer = tokenizer;
+        this.img_w = img_w;
+        this.img_h = img_h;
+        this.batchSize = batchSize;
+        this.mean = mean;
+        this.std = std;
+        this.extName = extName;
+        this.key = key;
+        this.pathKey = pathKey;
+        init();
+    }
+    
     public void init() {
         loadFileCount();
     }
@@ -108,10 +126,16 @@ public class SDImageDataLoaderEN extends BaseDataLoader {
         try {
             File file = new File(imgDirPath);
             if (file.exists()) {
-                datas = LagJsonReader.readJsonDataSamll(labelPath);
+                datas = LagJsonReader.readJsonFileBigArray(labelPath);
                 idxSet = new String[datas.size()];
-                for (int i = 0; i < datas.size(); i++) {
-                    idxSet[i] = datas.get(i).get("id").toString() + extName;
+                if(pathKey != null) {
+                	for (int i = 0; i < datas.size(); i++) {
+                        idxSet[i] = datas.get(i).get(pathKey).toString();
+                    }
+                }else {
+                	for (int i = 0; i < datas.size(); i++) {
+                        idxSet[i] = datas.get(i).get("id").toString() + extName;
+                    }
                 }
             }
             this.number = datas.size();

@@ -571,21 +571,22 @@ public class DatasetCreater {
 
     	Tensor latend = new Tensor(batchSize, channel, height, width, true);
     	
-    	 int latendDim = 32;
-         int num_res_blocks = 2;
-         int[] ch_mult = new int[]{1, 1, 2, 2, 4};
-         int ch = 128;
-         
-         VA_VAE vae = new VA_VAE(LossType.MSE, UpdaterType.adamw, latendDim, imgSize, ch_mult, ch, num_res_blocks, true);
-         vae.CUDNN = true;
-         vae.learnRate = 0.001f;
-         vae.RUN_MODEL = RunModel.EVAL;
-         String vaeWeight = "D:\\models\\vavae.json";
-         ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
-
-    	String dataPath = "D:\\dataset\\flux_train_sampled\\vavae_latend.bin";
+		int latendDim = 32;
+		int num_res_blocks = 2;
+		int[] ch_mult = new int[]{1, 1, 2, 2, 4};
+		int ch = 128;
+		
+		VA_VAE vae = new VA_VAE(LossType.MSE, UpdaterType.adamw, latendDim, imgSize, ch_mult, ch, num_res_blocks, true);
+		vae.CUDNN = true;
+		vae.learnRate = 0.001f;
+		vae.RUN_MODEL = RunModel.EVAL;
+		String vaeWeight = "D:\\models\\vavae.json";
+		ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
+		
+		String dataPath = "D:\\dataset\\flux_train_sampled\\vavae_latend.bin";
     	
         try {
+        	
         	RandomAccessFile file = new RandomAccessFile(dataPath, "r");
         	
         	file.seek(10 * latend.getOnceSize() * 4);
@@ -971,10 +972,10 @@ public class DatasetCreater {
     	
     	try {
 
-    		String outputPath = "/root/gpufree-data/2m/flux2vae_latend.bin";
+    		String outputPath = "/root/gpufree-data/6m/flux2vae_latend.bin";
     		
-        	String labelPath = "/root/gpufree-data/processed_images/label.txt";
-            String imgDirPath = "/root/gpufree-data/images_256/";
+        	String labelPath = "/root/gpufree-data/6m/labels.json";
+            String imgDirPath = "/root/gpufree-data/6m/256/";
             boolean horizontalFilp = false;
             int imgSize = 256;
             int maxContextLen = 77;
@@ -984,7 +985,7 @@ public class DatasetCreater {
             String vocabPath = "/root/gpufree-data/models/vocab.json";
             String mergesPath = "/root/gpufree-data/models/merges.txt";
             BPETokenizerEN bpe = new BPETokenizerEN(vocabPath, mergesPath, 49406, 49407);
-            SDImageDataLoaderEN dataLoader = new SDImageDataLoaderEN(bpe, labelPath, imgDirPath, ".jpg", imgSize, imgSize, maxContextLen, batchSize, horizontalFilp, mean, std);
+            SDImageDataLoaderEN dataLoader = new SDImageDataLoaderEN(bpe, labelPath, imgDirPath, ".jpg", "path", "en", imgSize, imgSize, maxContextLen, batchSize, horizontalFilp, mean, std);
 
         	int latendDim = 32;
             int num_res_blocks = 2;

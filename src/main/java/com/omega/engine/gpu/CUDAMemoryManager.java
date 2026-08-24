@@ -8,6 +8,7 @@ import jcuda.Sizeof;
 import jcuda.driver.CUdeviceptr;
 import jcuda.runtime.JCuda;
 import jcuda.runtime.cudaError;
+import jcuda.runtime.cudaMemcpyKind;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -231,8 +232,8 @@ public class CUDAMemoryManager {
 		porints.remove(pointer);
 	}
 	
-	public Pointer getPermutePointer(int[] permutes, long type) {
-		String key = "";
+	public synchronized Pointer getPermutePointer(int[] permutes, long type) {
+		String key = type + ":";
 		for(int id:permutes) {
 			key = key + id + ",";
 		}
@@ -241,6 +242,7 @@ public class CUDAMemoryManager {
 			return p;
 		}
 		p = getCUPointer(permutes.length, type);
+		checkCUDA(JCuda.cudaMemcpy(p, Pointer.to(permutes), permutes.length * type, cudaMemcpyKind.cudaMemcpyHostToDevice));
 		permute_pointerMap.put(key, p);
 		return p;
 	}

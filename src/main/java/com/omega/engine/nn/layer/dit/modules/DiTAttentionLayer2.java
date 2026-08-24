@@ -13,6 +13,7 @@ import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.gpu.AttentionKernel;
+import com.omega.engine.nn.layer.gpu.CudnnFlashAttentionKernel;
 import com.omega.engine.nn.layer.gpu.RoPEKernel;
 import com.omega.engine.nn.layer.normalization.BNType;
 import com.omega.engine.nn.layer.normalization.RMSLayer;
@@ -48,6 +49,8 @@ public class DiTAttentionLayer2 extends Layer {
     private AttentionKernel attentionKernel;
     private SoftmaxCudnnKernel softmaxKernel;
     private RoPEKernel ropeKernel;
+    
+    private CudnnFlashAttentionKernel cudnn_sdpa;
     
     private Tensor rq;
     private Tensor rk;
@@ -157,6 +160,7 @@ public class DiTAttentionLayer2 extends Layer {
         if (ropeKernel == null) {
             ropeKernel = new RoPEKernel(cuda());
         }
+        
     }
 
     @Override
@@ -168,6 +172,11 @@ public class DiTAttentionLayer2 extends Layer {
         // TODO Auto-generated method stub
         this.number = input.number;
         this.batchSize = this.number/time;
+
+        if(this.network.CUDNN_SDPA && cudnn_sdpa == null) {
+        	cudnn_sdpa = new CudnnFlashAttentionKernel(batchSize, headNum, time, dk);
+        }
+        
         if (this.qt != null) {
             //			JCuda.cudaDeviceSynchronize();
             this.output.viewOrg();
@@ -187,13 +196,15 @@ public class DiTAttentionLayer2 extends Layer {
             this.kt = Tensor.createGPUTensor(this.kt, batchSize, headNum, time, dk, true);
             this.vt = Tensor.createGPUTensor(this.vt, batchSize, headNum, time, dk, true);
             // [batch_size，n_heads，len_q，len_k]
-            if (time < dk) {
+            if (time < dk || this.network.CUDNN_SDPA) {
                 this.temp = Tensor.createGPUTensor(this.temp, batchSize, headNum, time, dk, true);
             } else {
                 this.temp = Tensor.createGPUTensor(this.temp, batchSize, headNum, time, time, true);
             }
-            // [batch_size，n_heads，len_q，len_k]
-            this.attn = Tensor.createGPUTensor(this.attn, batchSize, headNum, time, time, true);
+            if(!this.network.CUDNN_SDPA) {
+            	 // [batch_size，n_heads，len_q，len_k]
+                this.attn = Tensor.createGPUTensor(this.attn, batchSize, headNum, time, time, true);
+            }
             // [batch_size, len_q, n_heads * dim_v]
             this.oi = Tensor.createGPUTensor(this.oi, batchSize * time, 1, 1, embedDim, true);
             this.output = Tensor.createGPUTensor(this.output, input.number, input.channel, input.height, input.width, true);
@@ -215,22 +226,30 @@ public class DiTAttentionLayer2 extends Layer {
     
     public void init_eval(Tensor input) {
         // TODO Auto-generated method stub
+    	
         this.number = input.number;
         this.batchSize = this.number/time;
+
+   	 	if(this.network.CUDNN_SDPA && cudnn_sdpa == null) {
+        	cudnn_sdpa = new CudnnFlashAttentionKernel(batchSize, headNum, time, dk);
+        }
+   	
         this.rq = CUDAMemoryManager.getCache("dit_block_attn_rq", batchSize, headNum, time, dk);
     	this.rk = CUDAMemoryManager.getCache("dit_block_attn_rk", batchSize, headNum, time, dk);
     	this.qt = CUDAMemoryManager.getCache("dit_block_attn_qt", batchSize, headNum, time, dk);
     	this.kt = CUDAMemoryManager.getCache("dit_block_attn_kt", batchSize, headNum, time, dk);
     	this.vt = CUDAMemoryManager.getCache("dit_block_attn_vt", batchSize, headNum, time, dk);
         // [batch_size，n_heads，len_q，len_k]
-        if (time < dk) {
-            this.temp = CUDAMemoryManager.getCache("dit_block_attn_temp", batchSize, headNum, time, dk);
-        } else {
-            this.temp = CUDAMemoryManager.getCache("dit_block_attn_temp", batchSize, headNum, time, time);
-        }
-        temp.clearGPU();
-        // [batch_size，n_heads，len_q，len_k]
-        this.attn = CUDAMemoryManager.getCache("dit_block_attn_attn", batchSize, headNum, time, time);
+		if (time < dk || this.network.CUDNN_SDPA) {
+			this.temp = CUDAMemoryManager.getCache("dit_block_attn_temp", batchSize, headNum, time, dk);
+		} else {
+			this.temp = CUDAMemoryManager.getCache("dit_block_attn_temp", batchSize, headNum, time, time);
+		}
+		temp.clearGPU();
+		if(!this.network.CUDNN_SDPA) {
+		 	// [batch_size，n_heads，len_q，len_k]
+		    this.attn = Tensor.createGPUTensor(this.attn, batchSize, headNum, time, time, true);
+		}
         // [batch_size, len_q, n_heads * dim_v]
         this.oi = CUDAMemoryManager.getCache("dit_block_attn_oi", batchSize * time, 1, 1, embedDim);
         this.output = CUDAMemoryManager.getCache("dit_block_attn_out", input.number, input.channel, input.height, input.width);
@@ -248,7 +267,9 @@ public class DiTAttentionLayer2 extends Layer {
         	this.dqt = CUDAMemoryManager.getCache("cache_dqt", batchSize, headNum, time, dk);
         	this.dkt = CUDAMemoryManager.getCache("cache_dkt", batchSize, headNum, time, dk);
         	this.dvt = CUDAMemoryManager.getCache("cache_dvt", batchSize, headNum, time, dk);
-        	this.dattn = CUDAMemoryManager.getCache("cache_dattn", batchSize, headNum, time, time);
+        	if(!this.network.CUDNN_SDPA) {
+        		this.dattn = CUDAMemoryManager.getCache("cache_dattn", batchSize, headNum, time, time);
+        	}
 //            this.dqt = Tensor.createGPUTensor(this.dqt, batchSize, headNum, time, dk, true);
 //            this.dkt = Tensor.createGPUTensor(this.dkt, batchSize, headNum, time, dk, true);
 //            this.dvt = Tensor.createGPUTensor(this.dvt, batchSize, headNum, time, dk, true);
@@ -259,7 +280,9 @@ public class DiTAttentionLayer2 extends Layer {
         	this.dqt.viewOrg(batchSize, headNum, time, dk);
         	this.dkt.viewOrg(batchSize, headNum, time, dk);
         	this.dvt.viewOrg(batchSize, headNum, time, dk);
-        	this.dattn.viewOrg(batchSize, headNum, time, time);
+        	if(!this.network.CUDNN_SDPA) {
+        		this.dattn.viewOrg(batchSize, headNum, time, time);
+        	}
         }
     }
 
@@ -291,8 +314,6 @@ public class DiTAttentionLayer2 extends Layer {
         }else {
         	scaledDotProductAttention(qt, kt, vt);
         }
-   	 	temp.showDM("temp");
-
         Tensor vaccum = temp;
         attentionKernel.unpermute(vaccum, oi, batchSize, time, headNum, dk);
 
@@ -328,8 +349,6 @@ public class DiTAttentionLayer2 extends Layer {
          * apply RoPE
          * qt = [B, HN, T, HS]
          */
-        cos.showDM("cos");
-        sin.showDM("sin");
         ropeKernel.forward2d(cos, sin, q, rq, time, headNum, dk);
         ropeKernel.forward2d(cos, sin, k, rk, time, headNum, dk);
 
@@ -374,8 +393,12 @@ public class DiTAttentionLayer2 extends Layer {
         ropeKernel.forward2d(cos, sin, q, rq, time, headNum, dk, igone);
         ropeKernel.forward2d(cos, sin, k, rk, time, headNum, dk, igone);
 
-        scaledDotProductAttention(rq, rk, vt);
-        
+        if(network.CUDNN_SDPA) {
+        	cudnn_sdpa.forward(rq, rk, vt, temp);
+        }else {
+        	scaledDotProductAttention(rq, rk, vt);
+        }
+
         Tensor vaccum = temp;
         attentionKernel.unpermute(vaccum, oi, batchSize, time, headNum, dk);
 
@@ -531,7 +554,12 @@ public class DiTAttentionLayer2 extends Layer {
          ropeKernel.forward2d(cos, sin, q, rq, time, headNum, dk, igone);
          ropeKernel.forward2d(cos, sin, k, rk, time, headNum, dk, igone);
 
-         scaledDotProductAttention(rq, rk, vt);
+         if(network.CUDNN_SDPA) {
+         	cudnn_sdpa.forward(rq, rk, vt, temp);
+         }else {
+         	scaledDotProductAttention(rq, rk, vt);
+         }
+         
          Tensor vaccum = temp;
          attentionKernel.unpermute(vaccum, oi, batchSize, time, headNum, dk);
 
@@ -717,8 +745,13 @@ public class DiTAttentionLayer2 extends Layer {
     public void diff(Tensor cos, Tensor sin, int igone) {
     	this.getoLinerLayer().back(delta, oi);
         attentionKernel.unpermute_backward(temp, oi, batchSize, time, headNum, dk);
-        scaledDotProductAttentionBackward(rq, rk);
         
+        if(network.CUDNN_SDPA) {
+        	cudnn_sdpa.backward(temp, dqt, dkt, dvt);
+        }else {
+        	scaledDotProductAttentionBackward(rq, rk);
+        }
+
 //        dqt.showDM("dqt");
         /**
          * RoPE backward

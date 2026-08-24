@@ -96,8 +96,8 @@ public class CLIPMLPLayer extends Layer {
     public void output() {
         // TODO Auto-generated method stub
         if (network.RUN_MODEL == RunModel.EVAL) {
-            Tensor cache = CUDAMemoryManager.getCache(network.id+"CLIIP_mlp_cache", input.number, 1, 1, nChannel);
-            Tensor cache2 = CUDAMemoryManager.getCache(network.id+"CLIIP_mlp_cache2", input.number, 1, 1, embedDim);
+            Tensor cache = CUDAMemoryManager.getCache(network.id+"CLIP_mlp_cache", input.number, 1, 1, nChannel);
+            Tensor cache2 = CUDAMemoryManager.getCache(network.id+"CLIP_mlp_cache2", input.number, 1, 1, embedDim);
             getLinear1().forward(input, cache);
             active.forward(getLinear1().getOutput(), cache);
             getLinear2().forward(active.getOutput(), cache2);

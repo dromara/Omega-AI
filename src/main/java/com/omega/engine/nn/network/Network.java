@@ -32,6 +32,7 @@ import java.util.Map;
 public abstract class Network {
 	public String id;
     public boolean CUDNN = false;
+    public boolean CUDNN_SDPA = false;
     public boolean gradCacheMode = false;
     public CUDAManager cudaManager;
     public TensorOP tensorOP;

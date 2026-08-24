@@ -8,8 +8,6 @@ import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.active.SiLULayer;
-import com.omega.engine.nn.layer.normalization.BNType;
-import com.omega.engine.nn.layer.normalization.RMSLayer;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.tensor.Tensor;
 import com.omega.engine.updater.UpdaterFactory;
@@ -26,7 +24,7 @@ public class SimpleHeadMLPLayer extends Layer {
     private int zDim = 0;
     private boolean bias = false;
 
-    public RMSLayer norm;
+//    public RMSLayer norm;
     public FullyLayer linear1;
     private SiLULayer active;
     public FullyLayer linear2;
@@ -51,7 +49,7 @@ public class SimpleHeadMLPLayer extends Layer {
 
     public void initLayers() {
     	
-        this.norm = new RMSLayer(1, 1, embedDim, true, BNType.fully_bn, network);
+//        this.norm = new RMSLayer(1, 1, embedDim, true, BNType.fully_bn, network);
     	
         this.linear1 = new FullyLayer(embedDim, nChannel, bias, network);
         this.linear1.weight.setData(RandomUtils.xavierUniform(embedDim * nChannel, embedDim, nChannel, 1.0f));
@@ -85,8 +83,8 @@ public class SimpleHeadMLPLayer extends Layer {
     @Override
     public void output() {
         // TODO Auto-generated method stub
-    	norm.forward(input);
-        linear1.forward(norm.getOutput());
+//    	norm.forward(input);
+        linear1.forward(input);
         active.forward(linear1.getOutput());
         linear2.forward(active.getOutput());
         this.output = linear2.getOutput();
@@ -104,8 +102,8 @@ public class SimpleHeadMLPLayer extends Layer {
     	this.linear2.back(delta);
         active.back(this.linear2.diff);
         linear1.back(active.diff);
-        norm.back(linear1.diff);
-        this.diff = this.norm.diff;
+//        norm.back(linear1.diff);
+        this.diff = this.linear1.diff;
     }
 
     @Override
@@ -179,7 +177,7 @@ public class SimpleHeadMLPLayer extends Layer {
     @Override
     public void update() {
         // TODO Auto-generated method stub
-    	norm.update();
+//    	norm.update();
         linear1.update();
         linear2.update();
     }
@@ -212,13 +210,13 @@ public class SimpleHeadMLPLayer extends Layer {
     }
 
     public void saveModel(RandomAccessFile outputStream) throws IOException {
-        norm.saveModel(outputStream);
+//        norm.saveModel(outputStream);
         linear1.saveModel(outputStream);
         linear2.saveModel(outputStream);
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
-    	norm.loadModel(inputStream, 1, 1, embedDim, BNType.fully_bn);
+//    	norm.loadModel(inputStream, 1, 1, embedDim, BNType.fully_bn);
         linear1.loadModel(inputStream);
         linear2.loadModel(inputStream);
     }
@@ -226,7 +224,7 @@ public class SimpleHeadMLPLayer extends Layer {
     @Override
     public void accGrad(float scale) {
         // TODO Auto-generated method stub
-        norm.accGrad(scale);
+//        norm.accGrad(scale);
         linear1.accGrad(scale);
         linear2.accGrad(scale);
     }

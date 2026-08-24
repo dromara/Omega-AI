@@ -63,7 +63,39 @@ public class LagJsonReader {
         }
         return null;
     }
+    
+    public static List<Map<String, Object>> readJsonFileBigArray(String path) {
+        List<Map<String, Object>> mapList = new ArrayList<>();
 
+        try (
+            FileInputStream fis = new FileInputStream(path);
+            JsonReader reader = new JsonReader(new InputStreamReader(fis, "UTF-8"))
+        ) {
+            reader.beginArray();
+
+            while (reader.hasNext()) {
+                Map<String, Object> map = new HashMap<>();
+
+                reader.beginObject();
+                while (reader.hasNext()) {
+                    String name = reader.nextName();
+                    Object value = readValue(reader);
+                    map.put(name, value);
+                }
+                reader.endObject();
+
+                mapList.add(map);
+            }
+
+            reader.endArray();
+            return mapList;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+    
     public static Map<String, Object> readJsonFileBigWeightIterator(String path) {
         Map<String, Object> mapList = new LinkedHashMap<>();
         try (FileInputStream fis = new FileInputStream(path);

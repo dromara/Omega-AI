@@ -14,7 +14,6 @@ import jcuda.driver.CUfunction;
 import jcuda.driver.CUstream;
 import jcuda.runtime.JCuda;
 import jcuda.runtime.cudaError;
-import jcuda.runtime.cudaMemcpyKind;
 
 public class OPKernel extends BaseKernel implements Serializable {
     /**
@@ -1814,9 +1813,6 @@ public class OPKernel extends BaseKernel implements Serializable {
             Pointer permutes_p = this.getCudaManager().getMemoryManager().getPermutePointer(permutes, Sizeof.INT);
             Pointer sip = this.getCudaManager().getMemoryManager().getPermutePointer(strides_in, Sizeof.INT);
             Pointer sop = this.getCudaManager().getMemoryManager().getPermutePointer(strides_out, Sizeof.INT);
-            JCuda.cudaMemcpy(permutes_p, Pointer.to(permutes), permutes.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
-            JCuda.cudaMemcpy(sip, Pointer.to(strides_in), strides_in.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
-            JCuda.cudaMemcpy(sop, Pointer.to(strides_out), strides_out.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
             /**
              * int N, float *data_in, float *data_out, int *perms, int *strides_in, int *strides_out, int NUM_AXES
              */
@@ -1845,9 +1841,6 @@ public class OPKernel extends BaseKernel implements Serializable {
             Pointer permutes_p = this.getCudaManager().getMemoryManager().getPermutePointer(permutes, Sizeof.INT);
             Pointer sip = this.getCudaManager().getMemoryManager().getPermutePointer(strides_in, Sizeof.INT);
             Pointer sop = this.getCudaManager().getMemoryManager().getPermutePointer(strides_out, Sizeof.INT);            
-            JCuda.cudaMemcpy(permutes_p, Pointer.to(permutes), permutes.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
-            JCuda.cudaMemcpy(sip, Pointer.to(strides_in), strides_in.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
-            JCuda.cudaMemcpy(sop, Pointer.to(strides_out), strides_out.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
 
             /**
              * int N, float *data_in, float *data_out, int *perms, int *strides_in, int *strides_out, int NUM_AXES
@@ -1877,9 +1870,6 @@ public class OPKernel extends BaseKernel implements Serializable {
             Pointer permutes_p = this.getCudaManager().getMemoryManager().getPermutePointer(permutes, Sizeof.INT);
             Pointer sip = this.getCudaManager().getMemoryManager().getPermutePointer(strides_in, Sizeof.INT);
             Pointer sop = this.getCudaManager().getMemoryManager().getPermutePointer(strides_out, Sizeof.INT);   
-            JCuda.cudaMemcpy(permutes_p, Pointer.to(permutes), permutes.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
-            JCuda.cudaMemcpy(sip, Pointer.to(strides_in), strides_in.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
-            JCuda.cudaMemcpy(sop, Pointer.to(strides_out), strides_out.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
 
             /**
              * int N, float *data_in, float *data_out, int *perms, int *strides_in, int *strides_out, int NUM_AXES
@@ -1909,9 +1899,6 @@ public class OPKernel extends BaseKernel implements Serializable {
             Pointer permutes_p = this.getCudaManager().getMemoryManager().getPermutePointer(permutes, Sizeof.INT);
             Pointer sip = this.getCudaManager().getMemoryManager().getPermutePointer(strides_in, Sizeof.INT);
             Pointer sop = this.getCudaManager().getMemoryManager().getPermutePointer(strides_out, Sizeof.INT);   
-            JCuda.cudaMemcpy(permutes_p, Pointer.to(permutes), permutes.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
-            JCuda.cudaMemcpy(sip, Pointer.to(strides_in), strides_in.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
-            JCuda.cudaMemcpy(sop, Pointer.to(strides_out), strides_out.length * Sizeof.INT, cudaMemcpyKind.cudaMemcpyHostToDevice);
 
             /**
              * int N, float *data_in, float *data_out, int *perms, int *strides_in, int *strides_out, int NUM_AXES

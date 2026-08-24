@@ -86,6 +86,7 @@ public class DinoVisionTransformer extends Layer {
     public void init() {
         // TODO Auto-generated method stub
         this.number = this.input.number;
+        restorePatchOutputShape();
     }
     
     public void init(Tensor input) {
@@ -95,6 +96,10 @@ public class DinoVisionTransformer extends Layer {
         	output = Tensor.createGPUTensor(output, number, oChannel, oHeight, oWidth, true);
         }
 
+        restorePatchOutputShape();
+    }
+    
+    private void restorePatchOutputShape() {
         if(patchEmbd.getOutput() != null){
         	patchEmbd.getOutput().viewOrg();
         }

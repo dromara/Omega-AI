@@ -344,7 +344,6 @@ public class OmegaDiT extends Network {
          * forward
          */
         JCuda.cudaMemset(CUDAMemoryManager.workspace.getPointer(), 0, CUDAMemoryManager.workspace.getSize() * Sizeof.FLOAT);
-        JCuda.cudaDeviceSynchronize();
     }
 
     @Override
