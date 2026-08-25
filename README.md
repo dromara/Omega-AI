@@ -1,5 +1,9 @@
 ![输入图片说明](images/512.png)
 
+<p align="center">
+  <b>简体中文</b> | <a href="README.en.md">English</a>
+</p>
+
 # 自己打造一个深度学习框架 for java
 
 ##  前言
