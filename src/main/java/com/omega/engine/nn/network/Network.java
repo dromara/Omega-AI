@@ -14,6 +14,7 @@ import com.omega.engine.nn.network.utils.EMAKernel;
 import com.omega.engine.parallel.cuda.CUDACommonManager;
 import com.omega.engine.parallel.cuda.CUDAPool;
 import com.omega.engine.tensor.Tensor;
+import com.omega.engine.updater.AdamWFastUpdater;
 import com.omega.engine.updater.UpdaterFactory;
 import com.omega.engine.updater.UpdaterType;
 import jcuda.Pointer;
@@ -82,6 +83,7 @@ public abstract class Network {
 
     public ClipGradNormKernel clipGradNormKernel;
     public EMAKernel emaKernel;
+    private AdamWFastUpdater adamWFastUpdater;
     
     public Network() {
         initCUDA();
@@ -233,6 +235,18 @@ public abstract class Network {
             layer.learnRate = this.learnRate;
             layer.update();
         }
+    }
+
+    public void updateFast() {
+        if (this.updater != UpdaterType.adamw || this.paramLayers == null || this.paramLayers.isEmpty()) {
+            update();
+            return;
+        }
+        this.train_time += 1;
+        if (adamWFastUpdater == null) {
+            adamWFastUpdater = new AdamWFastUpdater(this);
+        }
+        adamWFastUpdater.update();
     }
 
     public void update(int count) {

@@ -16888,6 +16888,11 @@ public class MBSGDOptimizer extends Optimizer {
 
             Tensor noise = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
             
+            Tensor tmp_loss = new Tensor(1, 1, 1, 1, true);
+            Tensor total_loss = new Tensor(1, 1, 1, 1, true);
+            Tensor total_z_loss = new Tensor(1, 1, 1, 1, true);
+            Tensor total_cfm_loss = new Tensor(1, 1, 1, 1, true);
+            
             for (int i = 0; i < this.trainTime; i++) {
                 if (this.trainIndex >= this.minTrainTime) {
                     break;
@@ -16896,10 +16901,8 @@ public class MBSGDOptimizer extends Optimizer {
                 int[][] indexs = dataLoader.shuffle();
                 this.network.RUN_MODEL = RunModel.TRAIN;
                 
-                float train_loss = 0.0f;
-                float loss_100 = 0.0f;
-                float z_loss_100 = 0.0f;
-                float cfm_loss_100 = 0.0f;
+//                float train_loss = 0.0f;
+  
                 /**
                  * 遍历整个训练集
                  */
@@ -16987,35 +16990,40 @@ public class MBSGDOptimizer extends Optimizer {
                     /**
                      * current time error
                      */
-                    if (this.loss.isHasGPU()) {
-                    	float mse_loss = MatrixOperation.sum(this.loss.syncHost()) / this.batchSize;
-                    	float z_loss_mean = MatrixOperation.sum(z_loss.syncHost()) / z_loss.dataLength * 0.5f;
-                    	float cfm_loss_mean = MatrixOperation.sum(cfm_loss.syncHost()) / this.batchSize * -0.05f;
-//                    	System.err.println("mse_loss:"+mse_loss+",z_loss_mean:"+z_loss_mean+",cfm_loss_mean:"+cfm_loss_mean);
+                    // mse loss
+                    network.tensorOP.sum(this.loss, tmp_loss);
+                    network.tensorOP.div(tmp_loss, this.batchSize, tmp_loss);
+                    network.tensorOP.add(total_loss, tmp_loss, total_loss);
+                    // repa z loss
+                    network.tensorOP.sum(z_loss, tmp_loss);
+                    network.tensorOP.div(tmp_loss, z_loss.dataLength / 0.5f, tmp_loss);
+                    network.tensorOP.add(total_z_loss, tmp_loss, total_z_loss);
+                    // cfm loss
+                    network.tensorOP.sum(cfm_loss, tmp_loss);
+                    network.tensorOP.div(tmp_loss, this.batchSize / -0.05f, tmp_loss);
+                    network.tensorOP.add(total_cfm_loss, tmp_loss, total_cfm_loss);
+                    
+                    if((it + 1) % 100 == 0) {
+                    	float mse_loss = MatrixOperation.sum(total_loss.syncHost()) / 100;
+                    	float z_loss_mean = MatrixOperation.sum(total_z_loss.syncHost()) / 100;
+                    	float cfm_loss_mean = MatrixOperation.sum(total_cfm_loss.syncHost()) / 100;
+                    	String msg = "training[" + this.trainIndex+"]{" + (it + 1) + "/" + indexs.length + "} (lr:" + this.network.learnRate + ") train_loss:" + mse_loss + " z_loss:" + z_loss_mean + " cfm_loss_100:" + cfm_loss_mean +  " [costTime:" + (System.nanoTime() - start) / 1e6 + "ms.]";
+                        System.out.println(msg);
+                        total_loss.clearGPU();
+                        total_z_loss.clearGPU();
+                        total_cfm_loss.clearGPU();
                         this.currentError = mse_loss;
-                        loss_100 += mse_loss;
-                        z_loss_100 += z_loss_mean;
-                        cfm_loss_100 += cfm_loss_mean;
-                        if((it + 1) % 100 == 0) {
-                        	loss_100 = loss_100 / 100;
-                        	z_loss_100 = z_loss_100 / 100;
-                        	cfm_loss_100 = cfm_loss_100 / 100;
-                        	String msg = "training[" + this.trainIndex+"]{" + (it + 1) + "/" + indexs.length + "} (lr:" + this.network.learnRate + ") train_loss:" + loss_100 + " z_loss:" + z_loss_100 + " cfm_loss_100:" + cfm_loss_100 +  " [costTime:" + (System.nanoTime() - start) / 1e6 + "ms.]";
-                            System.out.println(msg);
-                            loss_100 = 0.0f;
-                            z_loss_100 = 0.0f;
-                            cfm_loss_100 = 0.0f;
-                        }
-                        if ((it + 1) % 2000 == 0) {
-                            String save_model_path = weightPath + "/flux_sprint_b1_" + i + ".model";
-                            ModelUtils.saveModel(network, save_model_path);
-                        }
-                    } else {
-                        this.currentError = MatrixOperation.sum(this.loss.data) / this.batchSize;
+                    }else if(it == indexs.length-1) {
+                    	 total_loss.clearGPU();
+                         total_z_loss.clearGPU();
+                         total_cfm_loss.clearGPU();
                     }
                     
-                    train_loss += this.currentError;
-
+                    if ((it + 1) % 2000 == 0) {
+                        String save_model_path = weightPath + "/flux_sprint_b1_" + i + ".model";
+                        ModelUtils.saveModel(network, save_model_path);
+                    }
+                    
                     this.batchIndex++;
                     
                 }
@@ -17024,8 +17032,7 @@ public class MBSGDOptimizer extends Optimizer {
                     String save_model_path = weightPath + "/flux_sprint_b1_" + i + ".model";
                     ModelUtils.saveModel(network, save_model_path);
                 }
-                
-                System.out.println("training[" + this.trainIndex + "] train loss:{" + train_loss / indexs.length + "} ");
+
             }
             /**
              * 停止训练

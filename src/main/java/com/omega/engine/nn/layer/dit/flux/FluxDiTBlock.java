@@ -5,12 +5,14 @@ import java.io.RandomAccessFile;
 import java.util.Map;
 
 import com.omega.common.utils.RandomUtils;
+import com.omega.engine.gpu.CUDAMemoryManager;
 import com.omega.engine.nn.layer.FullyLayer;
 import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.active.SiLULayer;
 import com.omega.engine.nn.layer.dit.modules.DiTAttentionLayer2;
 import com.omega.engine.nn.layer.dit.org.DiTSwiGLUFFN;
+import com.omega.engine.nn.layer.gpu.DiTAdaLNKernel;
 import com.omega.engine.nn.layer.gpu.RoPEKernel;
 import com.omega.engine.nn.layer.normalization.BNType;
 //import com.omega.engine.nn.layer.normalization.LNLayer;
@@ -62,7 +64,16 @@ public class FluxDiTBlock extends Layer {
     public Tensor scale_mlp;
     public Tensor gate_mlp;
     
+    private Tensor d_shift_msa;
+    private Tensor d_scale_msa;
+    private Tensor d_gate_msa;
+    private Tensor d_shift_mlp;
+    private Tensor d_scale_mlp;
+    private Tensor d_gate_mlp;
+    
     private int[] shape;
+
+    private DiTAdaLNKernel adaLNKernel;
     
     public FluxDiTBlock(int embedDim, int cEmbedDim, int time, int mlpHiddenDim, int headNum, int maxContext, boolean bias, boolean qkNorm, Network network) {
         this.network = network;
@@ -103,6 +114,10 @@ public class FluxDiTBlock extends Layer {
         
         int swiNum = (int)(2.0f/3.0f * mlpHiddenDim);
         this.mlp = new DiTSwiGLUFFN(embedDim, swiNum, embedDim, bias, network);
+
+        if(adaLNKernel == null) {
+        	adaLNKernel = new DiTAdaLNKernel(cuda());
+        }
     }
 
     @Override
@@ -170,7 +185,14 @@ public class FluxDiTBlock extends Layer {
     @Override
     public void initBack() {
         // TODO Auto-generated method stub
-
+    	if(d_shift_msa == null || d_shift_msa.number != batchSize) {
+    		d_shift_msa = CUDAMemoryManager.getCache("dit_d_shift_msa", batchSize, 1, 1, embedDim);
+    		d_scale_msa = CUDAMemoryManager.getCache("dit_d_scale_msa", batchSize, 1, 1, embedDim);
+    		d_gate_msa = CUDAMemoryManager.getCache("dit_d_gate_msa", batchSize, 1, 1, embedDim);
+    		d_shift_mlp = CUDAMemoryManager.getCache("dit_d_shift_mlp", batchSize, 1, 1, embedDim);
+    		d_scale_mlp = CUDAMemoryManager.getCache("dit_d_scale_mlp", batchSize, 1, 1, embedDim);
+    		d_gate_mlp = CUDAMemoryManager.getCache("dit_d_gate_mlp", batchSize, 1, 1, embedDim);
+    	}
     }
 
     @Override
@@ -193,6 +215,14 @@ public class FluxDiTBlock extends Layer {
     	Tensor_OP().mul(x, scale, output, batchSize, time, 1, output.width, 1);
     	Tensor_OP().addAxis(output, shift, output, batchSize, time, 1, output.width, 1);
     }
+
+    private void splitAdaLN() {
+    	adaLNKernel.split6(adaLN_modulation.getOutput(), shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp, batchSize, embedDim);
+    }
+
+    private void setAdaLNDiff() {
+    	adaLNKernel.set6(adaLN_modulation.getOutput(), d_shift_msa, d_scale_msa, d_gate_msa, d_shift_mlp, d_scale_mlp, d_gate_mlp, batchSize, embedDim);
+    }
     
     public void output(Tensor tc) {
     	
@@ -202,13 +232,8 @@ public class FluxDiTBlock extends Layer {
     	modulationAct.forward(tc);
     	
     	adaLN_modulation.forward(modulationAct.getOutput());
-    	
-    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), shift_msa, shape, 0);
-    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), scale_msa, shape, 1);
-    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), gate_msa, shape, 2);
-    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), shift_mlp, shape, 3);
-    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), scale_mlp, shape, 4);
-    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), gate_mlp, shape, 5);
+
+    	splitAdaLN();
     	
     	/**
     	 *  x1 = x + gate_msa.unsqueeze(1) * self.attn(modulate(self.norm1(x), shift_msa, scale_msa))
@@ -240,13 +265,8 @@ public class FluxDiTBlock extends Layer {
     	modulationAct.forward(tc);
     	
     	adaLN_modulation.forward(modulationAct.getOutput());
-    	
-    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), shift_msa, shape, 0);
-    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), scale_msa, shape, 1);
-    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), gate_msa, shape, 2);
-    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), shift_mlp, shape, 3);
-    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), scale_mlp, shape, 4);
-    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), gate_mlp, shape, 5);
+
+    	splitAdaLN();
     	
     	/**
     	 *  x1 = x + gate_msa.unsqueeze(1) * self.attn(modulate(self.norm1(x), shift_msa, scale_msa))
@@ -280,12 +300,7 @@ public class FluxDiTBlock extends Layer {
     	
     	adaLN_modulation.forward(modulationAct.getOutput());
 
-    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), shift_msa, shape, 0);
-    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), scale_msa, shape, 1);
-    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), gate_msa, shape, 2);
-    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), shift_mlp, shape, 3);
-    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), scale_mlp, shape, 4);
-    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), gate_mlp, shape, 5);
+    	splitAdaLN();
     	
     	/**
     	 *  x1 = x + gate_msa.unsqueeze(1) * self.attn(modulate(self.norm1(x), shift_msa, scale_msa))
@@ -320,12 +335,7 @@ public class FluxDiTBlock extends Layer {
     	
     	adaLN_modulation.forward(modulationAct.getOutput());
     	
-    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), shift_msa, shape, 0);
-    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), scale_msa, shape, 1);
-    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), gate_msa, shape, 2);
-    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), shift_mlp, shape, 3);
-    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), scale_mlp, shape, 4);
-    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), gate_mlp, shape, 5);
+    	splitAdaLN();
     	
     	/**
     	 *  x1 = x + gate_msa.unsqueeze(1) * self.attn(modulate(self.norm1(x), shift_msa, scale_msa))
@@ -359,12 +369,7 @@ public class FluxDiTBlock extends Layer {
     	
     	adaLN_modulation.forward(modulationAct.getOutput());
 
-    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), shift_msa, shape, 0);
-    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), scale_msa, shape, 1);
-    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), gate_msa, shape, 2);
-    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), shift_mlp, shape, 3);
-    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), scale_mlp, shape, 4);
-    	Tensor_OP().getByChannel(adaLN_modulation.getOutput(), gate_mlp, shape, 5);
+    	splitAdaLN();
     	
     	/**
     	 *  x1 = x + gate_msa.unsqueeze(1) * self.attn(modulate(self.norm1(x), shift_msa, scale_msa))
@@ -412,16 +417,10 @@ public class FluxDiTBlock extends Layer {
     	
     	Tensor_OP().mul_left_back(gate_mlp, delta, output,  batchSize, time, 1, output.width, 1);
     	mlp.back(output);
-    	Tensor_OP().mul_right_back(mlp.getOutput(), delta, gate_mlp, batchSize, time, 1, output.width, 1);
-    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), gate_mlp, shape, 5);
-    	
-    	Tensor dShift = shift_mlp;
-    	Tensor dScale = gate_mlp;
+    	Tensor_OP().mul_right_back(mlp.getOutput(), delta, d_gate_mlp, batchSize, time, 1, output.width, 1);
+
     	Tensor x = norm3.getOutput();
-    	Tensor scale = scale_mlp;
-    	modulate_back(dShift, dScale, output, x, scale, mlp.diff);
-    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dShift, shape, 3);
-    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dScale, shape, 4);
+    	modulate_back(d_shift_mlp, d_scale_mlp, output, x, scale_mlp, mlp.diff);
     	
     	norm3.back(output);
 
@@ -429,16 +428,12 @@ public class FluxDiTBlock extends Layer {
     	
     	Tensor_OP().mul_left_back(gate_msa, norm3.diff, output,  batchSize, time, 1, output.width, 1);
     	attn.back(output);
-    	Tensor_OP().mul_right_back(attn.getOutput(), norm3.diff, gate_msa, batchSize, time, 1, output.width, 1);
-    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), gate_msa, shape, 2);
+    	Tensor_OP().mul_right_back(attn.getOutput(), norm3.diff, d_gate_msa, batchSize, time, 1, output.width, 1);
     	
-    	dShift = shift_msa;
-    	dScale = gate_msa;
     	x = norm1.getOutput();
-    	scale = scale_msa;
-    	modulate_back(dShift, dScale, output, x, scale, attn.diff);
-    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dShift, shape, 0);
-    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dScale, shape, 1);
+    	modulate_back(d_shift_msa, d_scale_msa, output, x, scale_msa, attn.diff);
+
+    	setAdaLNDiff();
 
     	norm1.back(output);
 
@@ -460,17 +455,10 @@ public class FluxDiTBlock extends Layer {
     	 */
     	Tensor_OP().mul_left_back(gate_mlp, delta, output,  batchSize, time, 1, output.width, 1);
     	mlp.back(output);
-//    	mlp.diff.showDM("mlp");
-    	Tensor_OP().mul_right_back(mlp.getOutput(), delta, gate_mlp, batchSize, time, 1, output.width, 1);
-    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), gate_mlp, shape, 5);
-    	
-    	Tensor dShift = shift_mlp;
-    	Tensor dScale = gate_mlp;
+    	Tensor_OP().mul_right_back(mlp.getOutput(), delta, d_gate_mlp, batchSize, time, 1, output.width, 1);
+
     	Tensor x = norm3.getOutput();
-    	Tensor scale = scale_mlp;
-    	modulate_back(dShift, dScale, output, x, scale, mlp.diff);
-    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dShift, shape, 3);
-    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dScale, shape, 4);
+    	modulate_back(d_shift_mlp, d_scale_mlp, output, x, scale_mlp, mlp.diff);
     	
     	norm3.back(output, norm3.getOutput());
 
@@ -481,23 +469,15 @@ public class FluxDiTBlock extends Layer {
     	 */
     	Tensor_OP().mul_left_back(gate_msa, norm3.diff, output,  batchSize, time, 1, output.width, 1);
 
-//    	output.showDM("attn_delta");
-    	
     	attn.back(output, cos, sin, maxContext);
 
-//    	attn.diff.showDM("attn.diff");
+    	Tensor_OP().mul_right_back(attn.getOutput(), norm3.diff, d_gate_msa, batchSize, time, 1, output.width, 1);
 
-    	Tensor_OP().mul_right_back(attn.getOutput(), norm3.diff, gate_msa, batchSize, time, 1, output.width, 1);
-    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), gate_msa, shape, 2);
-    	
-    	dShift = shift_msa;
-    	dScale = gate_msa;
     	x = norm1.getOutput();
-    	scale = scale_msa;
-    	modulate_back(dShift, dScale, output, x, scale, attn.diff);
-    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dShift, shape, 0);
-    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dScale, shape, 1);
+    	modulate_back(d_shift_msa, d_scale_msa, output, x, scale_msa, attn.diff);
 
+    	setAdaLNDiff();
+    	
     	norm1.back(output, norm1.getOutput());
 
     	Tensor_OP().add(norm1.diff, norm3.diff, norm1.diff);
@@ -520,16 +500,10 @@ public class FluxDiTBlock extends Layer {
     	Tensor_OP().mul_left_back(gate_mlp, delta, output,  batchSize, time, 1, output.width, 1);
     	mlp.back(output);
 //    	mlp.diff.showDM("mlp");
-    	Tensor_OP().mul_right_back(mlp.getOutput(), delta, gate_mlp, batchSize, time, 1, output.width, 1);
-    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), gate_mlp, shape, 5);
-    	
-    	Tensor dShift = shift_mlp;
-    	Tensor dScale = gate_mlp;
+    	Tensor_OP().mul_right_back(mlp.getOutput(), delta, d_gate_mlp, batchSize, time, 1, output.width, 1);
+
     	Tensor x = norm3.getOutput();
-    	Tensor scale = scale_mlp;
-    	modulate_back(dShift, dScale, output, x, scale, mlp.diff);
-    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dShift, shape, 3);
-    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dScale, shape, 4);
+    	modulate_back(d_shift_mlp, d_scale_mlp, output, x, scale_mlp, mlp.diff);
     	
     	norm3.back(output, norm3.getOutput());
 
@@ -546,16 +520,12 @@ public class FluxDiTBlock extends Layer {
 
 //    	attn.diff.showDM("attn.diff");
 
-    	Tensor_OP().mul_right_back(attn.getOutput(), norm3.diff, gate_msa, batchSize, time, 1, output.width, 1);
-    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), gate_msa, shape, 2);
+    	Tensor_OP().mul_right_back(attn.getOutput(), norm3.diff, d_gate_msa, batchSize, time, 1, output.width, 1);
     	
-    	dShift = shift_msa;
-    	dScale = gate_msa;
     	x = norm1.getOutput();
-    	scale = scale_msa;
-    	modulate_back(dShift, dScale, output, x, scale, attn.diff);
-    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dShift, shape, 0);
-    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dScale, shape, 1);
+    	modulate_back(d_shift_msa, d_scale_msa, output, x, scale_msa, attn.diff);
+
+    	setAdaLNDiff();
 
     	norm1.back(output, norm1.getOutput());
 
@@ -579,16 +549,10 @@ public class FluxDiTBlock extends Layer {
     	Tensor_OP().mul_left_back(gate_mlp, delta, output,  batchSize, time, 1, output.width, 1);
     	mlp.back(output);
 //    	mlp.diff.showDM("mlp");
-    	Tensor_OP().mul_right_back(mlp.getOutput(), delta, gate_mlp, batchSize, time, 1, output.width, 1);
-    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), gate_mlp, shape, 5);
-    	
-    	Tensor dShift = shift_mlp;
-    	Tensor dScale = gate_mlp;
+    	Tensor_OP().mul_right_back(mlp.getOutput(), delta, d_gate_mlp, batchSize, time, 1, output.width, 1);
+
     	Tensor x = norm3.getOutput();
-    	Tensor scale = scale_mlp;
-    	modulate_back(dShift, dScale, output, x, scale, mlp.diff);
-    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dShift, shape, 3);
-    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dScale, shape, 4);
+    	modulate_back(d_shift_mlp, d_scale_mlp, output, x, scale_mlp, mlp.diff);
     	
     	norm3.back(output, norm3.getOutput());
 
@@ -605,16 +569,12 @@ public class FluxDiTBlock extends Layer {
 
 //    	attn.diff.showDM("attn.diff");
 
-    	Tensor_OP().mul_right_back(attn.getOutput(), norm3.diff, gate_msa, batchSize, time, 1, output.width, 1);
-    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), gate_msa, shape, 2);
+    	Tensor_OP().mul_right_back(attn.getOutput(), norm3.diff, d_gate_msa, batchSize, time, 1, output.width, 1);
     	
-    	dShift = shift_msa;
-    	dScale = gate_msa;
     	x = norm1.getOutput();
-    	scale = scale_msa;
-    	modulate_back(dShift, dScale, output, x, scale, attn.diff);
-    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dShift, shape, 0);
-    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dScale, shape, 1);
+    	modulate_back(d_shift_msa, d_scale_msa, output, x, scale_msa, attn.diff);
+
+    	setAdaLNDiff();
 
     	norm1.back(output, norm1.getOutput());
 
@@ -638,16 +598,10 @@ public class FluxDiTBlock extends Layer {
     	Tensor_OP().mul_left_back(gate_mlp, delta, output,  batchSize, time, 1, output.width, 1);
     	mlp.back(output);
 //    	mlp.diff.showDM("mlp");
-    	Tensor_OP().mul_right_back(mlp.getOutput(), delta, gate_mlp, batchSize, time, 1, output.width, 1);
-    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), gate_mlp, shape, 5);
-    	
-    	Tensor dShift = shift_mlp;
-    	Tensor dScale = gate_mlp;
+    	Tensor_OP().mul_right_back(mlp.getOutput(), delta, d_gate_mlp, batchSize, time, 1, output.width, 1);
+
     	Tensor x = norm3.getOutput();
-    	Tensor scale = scale_mlp;
-    	modulate_back(dShift, dScale, output, x, scale, mlp.diff);
-    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dShift, shape, 3);
-    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dScale, shape, 4);
+    	modulate_back(d_shift_mlp, d_scale_mlp, output, x, scale_mlp, mlp.diff);
     	
     	norm3.back(output, norm3.getOutput());
 
@@ -664,16 +618,12 @@ public class FluxDiTBlock extends Layer {
 
 //    	attn.diff.showDM("attn.diff");
 
-    	Tensor_OP().mul_right_back(attn.getOutput(), norm3.diff, gate_msa, batchSize, time, 1, output.width, 1);
-    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), gate_msa, shape, 2);
+    	Tensor_OP().mul_right_back(attn.getOutput(), norm3.diff, d_gate_msa, batchSize, time, 1, output.width, 1);
     	
-    	dShift = shift_msa;
-    	dScale = gate_msa;
     	x = norm1.getOutput();
-    	scale = scale_msa;
-    	modulate_back(dShift, dScale, output, x, scale, attn.diff);
-    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dShift, shape, 0);
-    	Tensor_OP().setByChannel(adaLN_modulation.getOutput(), dScale, shape, 1);
+    	modulate_back(d_shift_msa, d_scale_msa, output, x, scale_msa, attn.diff);
+
+    	setAdaLNDiff();
 
     	norm1.back(output, norm1.getOutput());
 

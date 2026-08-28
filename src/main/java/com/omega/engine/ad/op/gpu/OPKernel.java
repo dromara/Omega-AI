@@ -12,7 +12,6 @@ import jcuda.Pointer;
 import jcuda.Sizeof;
 import jcuda.driver.CUfunction;
 import jcuda.driver.CUstream;
-import jcuda.runtime.JCuda;
 import jcuda.runtime.cudaError;
 
 public class OPKernel extends BaseKernel implements Serializable {
@@ -77,6 +76,7 @@ public class OPKernel extends BaseKernel implements Serializable {
     private CUfunction sum_pow_channel_gpu_function;
     private CUfunction sum_pow_height_gpu_function;
     private CUfunction sum_gpu_kernel_function;
+    private CUfunction scalar_sum_gpu_kernel_function;
     private CUfunction max_gpu_function;
     private CUfunction max_channel_gpu_function;
     private CUfunction max_backward_gpu_function;
@@ -171,6 +171,7 @@ public class OPKernel extends BaseKernel implements Serializable {
         sum_pow_channel_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "sum_pow_channel_kernel");
         sum_pow_height_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "sum_pow_height_kernel");
         sum_gpu_kernel_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "gpuSumKernel");
+        scalar_sum_gpu_kernel_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "gpuScalarSumKernel");
         max_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "max_kernel");
         max_channel_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "max_channel_kernel");
         max_backward_gpu_function = this.getCudaManager().getLocalFunctionByModule("OPKernel.cu", "max_backward_kernel");
@@ -1374,6 +1375,18 @@ public class OPKernel extends BaseKernel implements Serializable {
     		 /**
               * float *a, float *b, const int n
               */
+    		 if (y.getDataLength() == 1) {
+    			 fill_gpu(y, 0.0f);
+    			 int size = blockSize * 4;
+    			 int gridSize = Math.max(1, (a.getDataLength() + size - 1) / size);
+    			 Pointer kernelParameter = Pointer.to(Pointer.to(a.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(new int[]{a.getDataLength()}));
+    			 checkCUDA(cuLaunchKernel(scalar_sum_gpu_kernel_function, gridSize, 1, 1,      // Grid dimension
+    					 blockSize, 1, 1,      // Block dimension
+    					 0, null,               // Shared memory size and stream
+    					 kernelParameter, null // Kernel- and extra parameters
+    			 ));
+    			 return;
+    		 }
              Pointer kernelParameter = Pointer.to(Pointer.to(a.getGpuData()), Pointer.to(y.getGpuData()), Pointer.to(new int[]{a.getDataLength()}));
              checkCUDA(cuLaunchKernel(sum_gpu_kernel_function, CAFFE_GET_BLOCKS(a.getDataLength(), blockSize), 1, 1,      // Grid dimension
             		 blockSize, 1, 1,      // Block dimension
