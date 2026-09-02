@@ -181,11 +181,16 @@
 			var omegaAITopVersion = '1.30.0';
 			var name = '<img style="width: 60px; height: 60px; vertical-align: middle;" src="logo.png" alt="logo" /> ';
 			name += '<b style="font-size: 28px; vertical-align: middle;">Omega-AI</b> <sub>v' + omegaAITopVersion + '</sub>';
+			var docsBasePath = location.protocol === 'file:'
+				? './'
+				: location.pathname.substr(0, location.pathname.lastIndexOf('/') + 1);
 			window.$docsify = {
 				// name: name, // 名字 
 				repo: 'https://gitee.com/dromara/Omega-AI', // github地址
 				// themeColor: '#06A3D7', // 主题颜色  
-				basePath: location.pathname.substr(0, location.pathname.lastIndexOf('/') + 1), // 自动计算项目名字 
+				basePath: docsBasePath, // 自动计算项目名字
+				homepage: 'README.md',
+				notFoundPage: 'README.md',
 				// basePath: '/omega-ai-doc/',		// 设置文件加载的父路径, 这在一些带项目名部署的文件中非常有效
 				auto2top: true, // 是否在切换页面后回到顶部 
 				// coverpage: true, // 开启封面 

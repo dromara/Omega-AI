@@ -1,157 +1,81 @@
-# UNet U形网络
+# Unet U形网络
 
-## 概述
-UNet是一种用于图像分割的对称编码器-解码器架构，通过跳跃连接融合浅层细节与深层语义信息，在医学图像分割等领域表现优异。
+本页只记录 Omega-AI 当前源码中真实存在的实现入口和阅读路径。API 示例必须以源码为准，不使用伪类名或非项目实现的示例代码。
 
-## 核心结构
+[[toc]]
+
+---
+
+## 一、源码入口
+
+| 类型 | 位置 |
+| --- | --- |
+| 主要实现 | `com.omega.engine.nn.network.UNet` |
+| 源码路径 | `src/main/java/com/omega/engine/nn/network/UNet.java` |
+| 示例入口 | `src/main/java/com/omega/example/diffusion/test/DiffusionModelTest.java` |
+| 示例代码（Demo） | `DiffusionModelTest.duffsion_anime()` |
+
+## 二、入口代码片段
+
+节选自 `src/main/java/com/omega/engine/nn/network/UNet.java`，仅保留入口签名和关键初始化，完整实现以源码为准：
+
 ```java
-/**
- * UNet基础实现
- * 结构：编码器 → 桥接层 → 解码器 + 跳跃连接
- */
-public class UNet {
-    private List<EncoderBlock> encoder;  // 编码路径
-    private BridgeBlock bridge;        // 中间桥接层
-    private List<DecoderBlock> decoder; // 解码路径
-    
-    // 网络参数
-    private int inputChannels;
-    private int[] filters = {64, 128, 256, 512}; // 各阶段卷积核数量
-}
-```
+public class UNet extends Network {
+    public int inChannel;
+    public int outChannel;
+    private boolean bias = true;
 
-## 完整实现
-
-### 1. 编码器模块
-```java
-public class EncoderBlock {
-    private ConvLayer conv1;
-    private ConvLayer conv2;
-    private MaxPoolingLayer pool;
-    
-    public float[][][] forward(float[][][] x) {
-        // 两次卷积 + ReLU
-        x = conv1.forward(x);
-        x = ReLU(x);
-        x = conv2.forward(x);
-        x = ReLU(x);
-        
-        // 保存跳跃连接值
-        float[][][] skip = x.clone();
-        
-        // 下采样
-        return pool.forward(x);
+    public UNet(LossType lossType, UpdaterType updater, int inChannel, int outChannel,
+                int width, int height, boolean bilinear, boolean bias) {
+        this.lossFunction = LossFactory.create(lossType, this);
+        this.bilinear = bilinear;
+        this.bias = bias;
     }
 }
 ```
 
-### 2. 解码器模块
+## 三、示例代码（Demo）
+
+节选自 `src/main/java/com/omega/example/diffusion/test/DiffusionModelTest.java`，保留 UNet 扩散训练入口的关键初始化和训练调用：
+
 ```java
-public class DecoderBlock {
-    private ConvTransposeLayer upconv;
-    private ConvLayer conv1;
-    private ConvLayer conv2;
-    
-    public float[][][] forward(float[][][] x, float[][][] skip) {
-        // 上采样
-        x = upconv.forward(x);
-        
-        // 拼接跳跃连接
-        x = concatenate(x, skip);
-        
-        // 两次卷积
-        x = conv1.forward(x);
-        x = ReLU(x);
-        x = conv2.forward(x);
-        return ReLU(x);
+public class DiffusionModelTest {
+    public static void duffsion_anime() {
+        boolean bias = false;
+        int batchSize = 4;
+        int imw = 96;
+        int imh = 96;
+        int mChannel = 64;
+        int resBlockNum = 2;
+        int T = 1000;
+        int[] channelMult = new int[]{1, 2};
+        String imgDirPath = "H:\\voc\\gan_anime\\ml2021spring-hw6\\faces\\";
+
+        DiffusionImageDataLoader dataLoader = new DiffusionImageDataLoader(imgDirPath, imw, imh, batchSize, false);
+        DiffusionUNet network = new DiffusionUNet(LossType.MSE, UpdaterType.adamw, T, 3, mChannel, channelMult, resBlockNum, imw, imh, bias);
+        network.CUDNN = true;
+        network.learnRate = 0.0005f;
+
+        MBSGDOptimizer optimizer = new MBSGDOptimizer(network, 50, 0.00001f, batchSize, LearnRateUpdate.GD_GECAY, false);
+        optimizer.trainGaussianDiffusion(dataLoader);
     }
 }
 ```
 
-## 使用示例（医学图像分割）
-```java
-public class MedicalSegmenter {
-    public static void main(String[] args) {
-        // 创建UNet (1通道输入，2分类输出)
-        UNet model = new UNet()
-            .setInputChannels(1)
-            .setOutputChannels(2);
-        
-        // 配置深度监督
-        model.enableDeepSupervision();
-        
-        // 加载医学数据集
-        MedicalDataset dataset = new MedicalDataset("chest_xrays/");
-        
-        // 训练配置
-        model.setLoss(new DiceLoss())  // 使用Dice损失
-             .setOptimizer(new Adam(0.0001f));
-        
-        // 训练循环
-        for (int epoch=0; epoch<100; epoch++) {
-            float totalLoss = 0;
-            for (ImageMaskPair pair : dataset) {
-                float[][][] pred = model.forward(pair.image);
-                float loss = model.loss(pred, pair.mask);
-                model.backward();
-                totalLoss += loss;
-            }
-            System.out.printf("Epoch %02d Loss: %.3f\n", epoch+1, totalLoss/dataset.size());
-        }
-        
-        // 分割预测
-        float[][][] segmentation = model.predict("patient_001.png");
-        saveMask(segmentation, "result_mask.png");
-    }
-}
-```
+## 四、相关组件
 
-## 性能优化
-1. **内存优化**：特征图缓存
-```java
-public class CachedEncoder extends EncoderBlock {
-    private float[][][] cachedFeature;
-    
-    public float[][][] forward(float[][][] x) {
-        if (cachedFeature == null) {
-            cachedFeature = super.forward(x);
-        }
-        return cachedFeature;
-    }
-}
-```
+`UNet、UNetDownBlock、UNetMidBlock、UNetUpBlock、UNetCrossAttentionLayer`
 
-2. **轻量化改进**：深度可分离卷积
-```java
-public void replaceWithDepthwiseConv() {
-    this.conv1 = new DepthwiseConvLayer(3, 1, 1);
-    this.conv2 = new DepthwiseConvLayer(3, 1, 1);
-}
-```
+## 五、阅读建议
 
-## 常见问题
-### Q1：边缘信息丢失严重？
-- 解决方案：镜像填充 + 数据增强
-```java
-public void preprocess(Image img) {
-    // 使用镜像填充保持尺寸
-    img.padMirror(16); 
-    
-    // 添加随机弹性变形
-    applyElasticDeformation(img);
-}
-```
+1. 先打开示例入口，查看 `main` 方法或训练方法中如何准备数据、创建网络和启动训练。
+2. 再进入主要实现类，查看构造函数、`init`、`forward`、`back`、`loss`、`update` 等方法。
+3. 如果涉及 GPU 加速，继续追踪对应 layer、kernel wrapper 和 `src/main/resources/cu` 下的 CUDA 实现。
+4. 文档中的类名、构造参数和调用方式必须与当前源码保持一致；如果源码变更，以源码为准同步更新本文档。
 
-### Q2：显存不足如何解决？
-- 梯度检查点技术：
-```java
-public void enableGradientCheckpoint() {
-    this.checkpoint = true; // 在前向时存储中间结果
-    this.recompute = true;  // 反向时重新计算部分结果
-}
-```
+## 六、常见注意事项
 
-## 扩展阅读
-- [ResUNet改进架构](/doc/extension/resunet)
-- [3D UNet体数据分割](/doc/extension/3d-unet)
-- [UNet++嵌套结构](/doc/extension/unet-plus)
+- 示例中的数据集路径通常是作者本机路径，运行前需要改成本机目录。
+- 训练 batch size、学习率、是否启用 CUDNN/CUDA 需要结合显存和任务规模调整。
+- 不同模型的 loss、label 格式和输出 shape 不同，不能直接混用其它模型示例。
+- 若需要补充代码片段，应直接从对应示例类中摘取真实代码，并标注来源方法。

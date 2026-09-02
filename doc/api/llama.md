@@ -1,151 +1,98 @@
-# LLaMA 生成式预训练模型
+# LLama 生成式预训练模型
 
-## 概述
-LLaMA（Large Language Model Meta AI）是Meta开源的预训练语言模型系列，核心创新包括：
-- 旋转位置编码（RoPE）
-- 改进的Transformer架构
-- 高效的大模型训练策略
+本页只记录 Omega-AI 当前源码中真实存在的实现入口和阅读路径。API 示例必须以源码为准，不使用伪类名或非项目实现的示例代码。
 
-## 核心结构
+[[toc]]
+
+---
+
+## 一、源码入口
+
+| 类型 | 位置 |
+| --- | --- |
+| 主要实现 | `com.omega.engine.nn.network.Llama2 / Llama3` |
+| 源码路径 | `src/main/java/com/omega/engine/nn/network/Llama3.java` |
+| 示例入口 | `src/main/java/com/omega/example/transformer/test/Llama3Test.java` |
+| 示例代码（Demo） | `Llama3Test.llama3_monkey_sft()` |
+
+## 二、入口代码片段
+
+节选自 `src/main/java/com/omega/engine/nn/network/Llama3.java`，仅保留入口签名和关键初始化，完整实现以源码为准：
+
 ```java
-/**
- * LLaMA基础实现
- * 包含预归一化、旋转位置编码和门控激活
- */
-public class LLaMA {
-    private List<TransformerBlock> layers;  // Transformer块堆叠
-    private RMSNorm preNorm;               // 预归一化
-    private RoPEEncoding ropeEncoding;    // 旋转位置编码
-    private SwiGLU gateActivation;        // 门控激活
-    
-    // 模型参数
-    private int dim;          // 隐藏层维度
-    private int numHeads;     // 注意力头数
-    private int numKvHeads;   // Key/Value头数（分组查询）
-}
-```
+public class Llama3 extends Network {
+    public int vocabSize;
+    public int embedDim;
+    public int headNum = 8;
 
-## 完整实现
+    public Llama3(LossType lossType, UpdaterType updater, int headNum, int nKVHeadNum,
+                  int decoderNum, int vocabSize, int time, int embedDim,
+                  boolean bias, boolean dropout) {
+        this.lossFunction = LossFactory.create(lossType, this);
+        this.bias = bias;
+        this.dropout = dropout;
+    }
 
-### 1. 旋转位置编码
-```java
-public class RoPEEncoding {
-    public float[][] apply(float[][] x, int pos) {
-        float[][] output = new float[x.length][x[0].length];
-        for (int i=0; i<x.length; i++) {
-            for (int j=0; j<x[i].length; j+=2) {
-                float theta = pos / Math.pow(10000, 2*(j/2)/dim);
-                float cos = (float) Math.cos(theta);
-                float sin = (float) Math.sin(theta);
-                output[i][j]   = x[i][j] * cos - x[i][j+1] * sin;
-                output[i][j+1] = x[i][j] * sin + x[i][j+1] * cos;
-            }
-        }
-        return output;
+    public Llama3(LossType lossType, UpdaterType updater, int headNum, int nKVHeadNum,
+                  int decoderNum, int vocabSize, int time, int embedDim,
+                  boolean bias, boolean dropout, boolean flashAttention) {
+        this.flashAttention = flashAttention;
+        this.lossFunction = LossFactory.create(lossType, this);
     }
 }
 ```
 
-### 2. 门控注意力块
+## 三、示例代码（Demo）
+
+节选自 `src/main/java/com/omega/example/transformer/test/Llama3Test.java`，保留 Llama3 SFT 训练入口的关键初始化和训练调用：
+
 ```java
-public class GateAttention {
-    private Linear Wq;     // 查询投影
-    private Linear Wk;     // 键投影
-    private Linear Wv;     // 值投影
-    private Linear Wo;     // 输出投影
-    
-    public float[][] forward(float[][] x) {
-        // 预归一化
-        x = preNorm.forward(x);
-        
-        // 旋转位置编码
-        float[][] q = applyRoPE(Wq.forward(x));
-        float[][] k = applyRoPE(Wk.forward(x));
-        
-        // 分组查询注意力
-        float[][] attn = groupQueryAttention(q, k, Wv.forward(x));
-        return Wo.forward(attn);
+public class Llama3Test {
+    public static void llama3_monkey_sft() {
+        boolean bias = false;
+        boolean dropout = false;
+        boolean flashAttention = false;
+        int batchSize = 3;
+        int max_len = 512;
+        int embedDim = 512;
+        int head_num = 16;
+        int nKVHeadNum = 8;
+        int decoderNum = 8;
+        String trainPath = "H:\\transformer_dataset\\6400\\sft_data_single.csv";
+        String vocabPath = "H:\\transformer_dataset\\6400\\vocab.json";
+        String mergesPath = "H:\\transformer_dataset\\6400\\merges.txt";
+
+        BPETokenizer3 tokenizer = new BPETokenizer3(vocabPath, mergesPath);
+        SFTDataset trainData = new SFTDataset(trainPath, max_len, batchSize, tokenizer);
+        Llama3 network = new Llama3(LossType.softmax_with_cross_entropy_idx, UpdaterType.adamw, head_num,
+                nKVHeadNum, decoderNum, trainData.vocab_size, max_len, embedDim, bias, dropout, flashAttention);
+        network.learnRate = 1e-4f;
+
+        String model_path = "H:\\model\\llama3-26m-chinese.model";
+        ModelUtils.loadModel(network, model_path);
+        EDOptimizer optimizer = new EDOptimizer(network, batchSize, 2, 0.0001f, LearnRateUpdate.CONSTANT, false);
+        optimizer.trainLlama3_chinese_sft(trainData, 8, true);
+
+        String save_model_path = "H:\\model\\llama3-26m-chinese.model";
+        ModelUtils.saveModel(network, save_model_path);
     }
 }
 ```
 
-## 使用示例（对话生成）
-```java
-public class ChatBot {
-    public static void main(String[] args) {
-        // 加载LLaMA-2 7B
-        LLaMA model = LLaMA.load("llama2-7b.bin");
-        
-        // 配置生成参数
-        model.setTemperature(0.7f)
-             .setTopP(0.9f)
-             .setMaxLength(512);
-        
-        // 对话循环
-        while (true) {
-            String input = getInput("用户：");
-            String response = model.generate(
-                "<human>: " + input + "\n<bot>:"
-            );
-            System.out.println("助手：" + response);
-        }
-    }
-}
-```
+## 四、相关组件
 
-## 性能优化
-1. **KV缓存优化**： 
-```java
-public class KVCache {
-    private Map<Integer, float[][]> keyCache = new ConcurrentHashMap<>();
-    private Map<Integer, float[][]> valueCache = new ConcurrentHashMap<>();
-    
-    public void update(int layer, float[][] newKey, float[][] newValue) {
-        keyCache.compute(layer, (k, v) -> concat(v, newKey));
-        valueCache.compute(layer, (k, v) -> concat(v, newValue));
-    }
-}
-```
+`Llama2、Llama3、RMSLayer、RoPE、LlamaCausalSelfAttentionLayer、Tokenizer`
 
-2. **量化部署**：
-```java
-public class Quantizer {
-    public static byte[] quantize(float[] weights) {
-        byte[] quantized = new byte[weights.length];
-        float scale = 127 / maxAbs(weights);
-        for (int i=0; i<weights.length; i++) {
-            quantized[i] = (byte) Math.round(weights[i] * scale);
-        }
-        return quantized;
-    }
-}
-```
+## 五、阅读建议
 
-## 常见问题
-### Q1：如何处理长文本记忆？
-- 扩展上下文窗口：
-```java
-public void extendContext(int newSize) {
-    // 线性插值旋转角度
-    float scale = (float) newSize / originalSize;
-    for (RoPEEncoding layer : ropeLayers) {
-        layer.scaleTheta(scale);
-    }
-}
-```
+1. 先打开示例入口，查看 `main` 方法或训练方法中如何准备数据、创建网络和启动训练。
+2. 再进入主要实现类，查看构造函数、`init`、`forward`、`back`、`loss`、`update` 等方法。
+3. 如果涉及 GPU 加速，继续追踪对应 layer、kernel wrapper 和 `src/main/resources/cu` 下的 CUDA 实现。
+4. 文档中的类名、构造参数和调用方式必须与当前源码保持一致；如果源码变更，以源码为准同步更新本文档。
 
-### Q2：如何支持中文？
-- 分词器适配：
-```java
-public class ChineseTokenizer {
-    public List<String> tokenize(String text) {
-        // 使用SentencePiece中文分词
-        return sentencePiece.encode(text);
-    }
-}
-```
+## 六、常见注意事项
 
-## 扩展阅读
-- [混合专家模型实现](/doc/extension/moe)
-- [RLHF对齐训练](/doc/extension/rlhf)
-- [LLaMA边缘部署](/doc/extension/edge-llama)
+- 示例中的数据集路径通常是作者本机路径，运行前需要改成本机目录。
+- 训练 batch size、学习率、是否启用 CUDNN/CUDA 需要结合显存和任务规模调整。
+- 不同模型的 loss、label 格式和输出 shape 不同，不能直接混用其它模型示例。
+- 若需要补充代码片段，应直接从对应示例类中摘取真实代码，并标注来源方法。

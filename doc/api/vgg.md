@@ -1,158 +1,146 @@
-# VGG 深度卷积神经网络
+# VGG vgg神经网络
 
-## 概述
-VGG网络由牛津大学Visual Geometry Group提出，通过重复使用3x3卷积核和2x2最大池化层构建深度网络，在ImageNet竞赛中取得优异表现。主要特点是小尺寸卷积核和网络深度。
+本页只记录 Omega-AI 当前源码中真实存在的实现入口和阅读路径。API 示例必须以源码为准，不使用伪类名或非项目实现的示例代码。
 
-## 核心结构
+[[toc]]
+
+---
+
+## 一、源码入口
+
+| 类型 | 位置 |
+| --- | --- |
+| 主要实现 | `com.omega.example.vggnet.test.vggnetTest` |
+| 源码路径 | `src/main/java/com/omega/example/vggnet/test/vggnetTest.java` |
+| 示例入口 | `src/main/java/com/omega/example/vggnet/test/vggnetTest.java` |
+| 示例代码（Demo） | `vggnetTest.vgg16_cifar10()` |
+
+## 二、入口代码片段
+
+节选自 `src/main/java/com/omega/example/vggnet/test/vggnetTest.java`，仅保留入口签名和关键初始化，完整实现以源码为准：
+
 ```java
-/**
- * VGG基础实现
- * 结构：多个卷积块（包含连续卷积层） + 池化层 + 全连接层
- */
-public class VGG {
-    private List<ConvBlock> convBlocks;
-    private List<DenseLayer> fcLayers;
-    
-    // 网络配置
-    private static final int[] VGG16_CONFIG = {
-        2,  // 卷积块1包含2个卷积层
-        2,  // 卷积块2包含2个卷积层
-        3,  // 卷积块3包含3个卷积层
-        3,  // 卷积块4包含3个卷积层
-        3   // 卷积块5包含3个卷积层
-    };
-}
-```
-
-## 完整实现
-
-### 1. 卷积块实现
-```java
-public class ConvBlock {
-    private List<ConvLayer> convLayers;
-    private PoolingLayer poolLayer;
-    
-    public ConvBlock(int convNum, int inChannels, int outChannels) {
-        convLayers = new ArrayList<>();
-        for (int i=0; i<convNum; i++) {
-            convLayers.add(new ConvLayer(3, 1, 1, // 3x3卷积核
-                inChannels, outChannels));
-            inChannels = outChannels; // 后续层通道数一致
-        }
-        poolLayer = new MaxPoolingLayer(2, 2); // 2x2池化
-    }
-    
-    public float[][][] forward(float[][][] x) {
-        for (ConvLayer conv : convLayers) {
-            x = conv.forward(x);
-            x = ReLU(x);
-        }
-        return poolLayer.forward(x);
+public class vggnetTest {
+    public void vgg16_cifar10() {
+        CNN netWork = new CNN(LossType.softmax_with_cross_entropy, UpdaterType.adam);
+        netWork.CUDNN = true;
+        netWork.learnRate = 0.001f;
+        InputLayer inputLayer = new InputLayer(channel, height, width);
+        ConvolutionLayer conv1 = new ConvolutionLayer(channel, 64, width, height, 3, 3, 1, 1, false);
+        ReluLayer active1 = new ReluLayer();
+        ConvolutionLayer conv2 = new ConvolutionLayer(conv1.oChannel, 64, conv1.oWidth, conv1.oHeight, 3, 3, 1, 1, false);
+        ReluLayer active2 = new ReluLayer();
+        PoolingLayer pool1 = new PoolingLayer(conv2.oChannel, conv2.oWidth, conv2.oHeight, 2, 2, 2, PoolingType.MAX_POOLING);
     }
 }
 ```
 
-### 2. 网络构建
+## 三、示例代码（Demo）
+
+节选自 `src/main/java/com/omega/example/vggnet/test/vggnetTest.java`，保留 VGG16 CIFAR-10 训练入口的关键初始化和训练调用：
+
 ```java
-public VGG(int numClasses, boolean batchNorm) {
-    // 输入配置：224x224 RGB图像
-    int channels = 3;
-    convBlocks = new ArrayList<>();
-    
-    // 构建5个卷积块
-    int[] config = VGG16_CONFIG;
-    int[] outChannels = {64, 128, 256, 512, 512}; // 各块输出通道数
-    
-    for (int i=0; i<config.length; i++) {
-        convBlocks.add(new ConvBlock(
-            config[i], 
-            channels, 
-            outChannels[i],
-            batchNorm
-        ));
-        channels = outChannels[i];
+public class vggnetTest {
+    public void vgg16_cifar10() {
+        String[] labelSet = new String[]{"airplane", "automobile", "bird", "cat", "deer", "dog", "frog", "horse", "ship", "truck"};
+        String[] train_data_filenames = new String[]{"H:/dataset/cifar-10/data_batch_1.bin", "H:/dataset/cifar-10/data_batch_2.bin", "H:/dataset/cifar-10/data_batch_3.bin", "H:/dataset/cifar-10/data_batch_4.bin", "H:/dataset/cifar-10/data_batch_5.bin"};
+        String test_data_filename = "H:/dataset/cifar-10/test_batch.bin";
+        float[] mean = new float[]{0.485f, 0.456f, 0.406f};
+        float[] std = new float[]{0.229f, 0.224f, 0.225f};
+        DataSet trainData = DataLoader.getImagesToDataSetByBin(train_data_filenames, 10000, 3, 32, 32, 10, labelSet, true);
+        DataSet testData = DataLoader.getImagesToDataSetByBin(test_data_filename, 10000, 3, 32, 32, 10, labelSet, true, mean, std);
+
+        CNN netWork = new CNN(LossType.softmax_with_cross_entropy, UpdaterType.adam);
+        netWork.CUDNN = true;
+        netWork.learnRate = 0.001f;
+        netWork.addLayer(new InputLayer(3, 32, 32));
+
+        ConvolutionLayer conv1 = new ConvolutionLayer(3, 64, 32, 32, 3, 3, 1, 1, false);
+        ConvolutionLayer conv2 = new ConvolutionLayer(conv1.oChannel, 64, conv1.oWidth, conv1.oHeight, 3, 3, 1, 1, false);
+        PoolingLayer pool1 = new PoolingLayer(conv2.oChannel, conv2.oWidth, conv2.oHeight, 2, 2, 2, PoolingType.MAX_POOLING);
+        ConvolutionLayer conv3 = new ConvolutionLayer(pool1.oChannel, 128, pool1.oWidth, pool1.oHeight, 3, 3, 1, 1, false);
+        ConvolutionLayer conv4 = new ConvolutionLayer(conv3.oChannel, 128, conv3.oWidth, conv3.oHeight, 3, 3, 1, 1, false);
+        PoolingLayer pool2 = new PoolingLayer(conv4.oChannel, conv4.oWidth, conv4.oHeight, 2, 2, 2, PoolingType.MAX_POOLING);
+        ConvolutionLayer conv5 = new ConvolutionLayer(pool2.oChannel, 256, pool2.oWidth, pool2.oHeight, 3, 3, 1, 1, false);
+        ConvolutionLayer conv6 = new ConvolutionLayer(conv5.oChannel, 256, conv5.oWidth, conv5.oHeight, 3, 3, 1, 1, false);
+        ConvolutionLayer conv7 = new ConvolutionLayer(conv6.oChannel, 256, conv6.oWidth, conv6.oHeight, 3, 3, 1, 1, false);
+        PoolingLayer pool3 = new PoolingLayer(conv7.oChannel, conv7.oWidth, conv7.oHeight, 2, 2, 2, PoolingType.MAX_POOLING);
+        ConvolutionLayer conv8 = new ConvolutionLayer(pool3.oChannel, 512, pool3.oWidth, pool3.oHeight, 3, 3, 1, 1, false);
+        ConvolutionLayer conv9 = new ConvolutionLayer(conv8.oChannel, 512, conv8.oWidth, conv8.oHeight, 3, 3, 1, 1, false);
+        ConvolutionLayer conv10 = new ConvolutionLayer(conv9.oChannel, 512, conv9.oWidth, conv9.oHeight, 3, 3, 1, 1, false);
+        ConvolutionLayer conv20 = new ConvolutionLayer(conv10.oChannel, 512, conv10.oWidth, conv10.oHeight, 3, 3, 1, 1, false);
+        PoolingLayer pool4 = new PoolingLayer(conv20.oChannel, conv20.oWidth, conv20.oHeight, 2, 2, 2, PoolingType.MAX_POOLING);
+        ConvolutionLayer conv11 = new ConvolutionLayer(pool4.oChannel, 512, pool4.oWidth, pool4.oHeight, 3, 3, 1, 1, false);
+        ConvolutionLayer conv12 = new ConvolutionLayer(conv11.oChannel, 512, conv11.oWidth, conv11.oHeight, 3, 3, 1, 1, false);
+        ConvolutionLayer conv13 = new ConvolutionLayer(conv12.oChannel, 512, conv12.oWidth, conv12.oHeight, 3, 3, 1, 1, false);
+        ConvolutionLayer conv21 = new ConvolutionLayer(conv13.oChannel, 512, conv13.oWidth, conv13.oHeight, 3, 3, 1, 1, false);
+        PoolingLayer pool5 = new PoolingLayer(conv21.oChannel, conv21.oWidth, conv21.oHeight, 2, 2, 2, PoolingType.MAX_POOLING);
+
+        netWork.addLayer(conv1);
+        netWork.addLayer(new ReluLayer());
+        netWork.addLayer(conv2);
+        netWork.addLayer(new ReluLayer());
+        netWork.addLayer(pool1);
+        netWork.addLayer(conv3);
+        netWork.addLayer(new ReluLayer());
+        netWork.addLayer(conv4);
+        netWork.addLayer(new ReluLayer());
+        netWork.addLayer(pool2);
+        netWork.addLayer(conv5);
+        netWork.addLayer(new ReluLayer());
+        netWork.addLayer(conv6);
+        netWork.addLayer(new ReluLayer());
+        netWork.addLayer(conv7);
+        netWork.addLayer(new ReluLayer());
+        netWork.addLayer(pool3);
+        netWork.addLayer(conv8);
+        netWork.addLayer(new ReluLayer());
+        netWork.addLayer(conv9);
+        netWork.addLayer(new ReluLayer());
+        netWork.addLayer(conv10);
+        netWork.addLayer(new ReluLayer());
+        netWork.addLayer(conv20);
+        netWork.addLayer(new ReluLayer());
+        netWork.addLayer(pool4);
+        netWork.addLayer(conv11);
+        netWork.addLayer(new ReluLayer());
+        netWork.addLayer(conv12);
+        netWork.addLayer(new ReluLayer());
+        netWork.addLayer(conv13);
+        netWork.addLayer(new ReluLayer());
+        netWork.addLayer(conv21);
+        netWork.addLayer(new ReluLayer());
+        netWork.addLayer(pool5);
+
+        int fInputCount = pool5.oChannel * pool5.oWidth * pool5.oHeight;
+        netWork.addLayer(new FullyLayer(fInputCount, 4096, false));
+        netWork.addLayer(new ReluLayer());
+        netWork.addLayer(new FullyLayer(4096, 4096, false));
+        netWork.addLayer(new ReluLayer());
+        netWork.addLayer(new FullyLayer(4096, 10));
+        netWork.addLayer(new SoftmaxWithCrossEntropyLayer(10));
+
+        MBSGDOptimizer optimizer = new MBSGDOptimizer(netWork, 20, 0.001f, 128, LearnRateUpdate.CONSTANT, false);
+        optimizer.train(trainData);
+        optimizer.test(testData);
     }
-    
-    // 全连接层
-    fcLayers = Arrays.asList(
-        new DenseLayer(512*7*7, 4096), // 假设经过5次池化后特征图尺寸7x7
-        new DenseLayer(4096, 4096),
-        new DenseLayer(4096, numClasses)
-    );
 }
 ```
 
-## 使用示例（ImageNet分类）
-```java
-public class ImageNetClassifier {
-    public static void main(String[] args) {
-        // 创建VGG16 (1000分类)
-        VGG model = new VGG(1000, true); // 使用BN层
-        
-        // 加载预训练权重
-        model.loadWeights("vgg16_weights.bin");
-        
-        // 配置推理参数
-        model.setInputSize(224, 224)  // 输入尺寸
-             .setMeanRGB(new float[]{0.485f, 0.456f, 0.406f})  // 均值
-             .setStdRGB(new float[]{0.229f, 0.224f, 0.225f});  // 标准差
-        
-        // 预处理并推理
-        float[] probs = model.predict("elephant.jpg");
-        
-        // 输出Top-5结果
-        printTopK(probs, 5);
-    }
-}
-```
+## 四、相关组件
 
-## 性能优化
-1. **内存优化**：特征图复用
-```java
-public class MemoryOptimizedBlock extends ConvBlock {
-    private float[][][] cachedOutput; // 缓存特征图
-    
-    public float[][][] forward(float[][][] x) {
-        if (cachedOutput == null) {
-            cachedOutput = super.forward(x);
-        }
-        return cachedOutput;
-    }
-}
-```
+`ConvolutionLayer、PoolingLayer、FullyLayer、MBSGDOptimizer`
 
-2. **加速技巧**：Winograd卷积优化
-```java
-public void enableWinogradConv() {
-    for (ConvBlock block : convBlocks) {
-        for (ConvLayer conv : block.getConvLayers()) {
-            conv.setAlgorithm(ConvAlgorithm.WINOGRAD);
-        }
-    }
-}
-```
+## 五、阅读建议
 
-## 常见问题
-### Q1：如何减少模型参数？
-- 解决方案：使用1x1卷积降维
-```java
-public void addBottleneck() {
-    // 在原始3x3卷积前添加1x1卷积
-    convLayers.add(0, new ConvLayer(1, 1, 0, inChannels, reducedChannels));
-}
-```
+1. 先打开示例入口，查看 `main` 方法或训练方法中如何准备数据、创建网络和启动训练。
+2. 再进入主要实现类，查看构造函数、`init`、`forward`、`back`、`loss`、`update` 等方法。
+3. 如果涉及 GPU 加速，继续追踪对应 layer、kernel wrapper 和 `src/main/resources/cu` 下的 CUDA 实现。
+4. 文档中的类名、构造参数和调用方式必须与当前源码保持一致；如果源码变更，以源码为准同步更新本文档。
 
-### Q2：输入尺寸不是224x224怎么办？
-- 动态调整实现：
-```java
-public void adaptInputSize(int newWidth, int newHeight) {
-    // 计算最终特征图尺寸
-    int finalSize = newWidth / 32; // 经过5次2x池化
-    adjustFCLayer(finalSize * finalSize);
-}
-```
+## 六、常见注意事项
 
-## 扩展阅读
-- [VGG19深度扩展](/doc/extension/vgg19)
-- [VGG在风格迁移中的应用](/doc/extension/style-transfer)
-- [轻量化VGG实现](/doc/extension/vgg-lite)
+- 示例中的数据集路径通常是作者本机路径，运行前需要改成本机目录。
+- 训练 batch size、学习率、是否启用 CUDNN/CUDA 需要结合显存和任务规模调整。
+- 不同模型的 loss、label 格式和输出 shape 不同，不能直接混用其它模型示例。
+- 若需要补充代码片段，应直接从对应示例类中摘取真实代码，并标注来源方法。

@@ -22,6 +22,20 @@
 
 本文档将会尽力讲解每个功能的设计原因、应用场景，用心阅读文档，你学习到的将不止是 `Omega-AI` 深度学习框架本身，更是能够通过此框架完成绝大多数场景最佳实践。
 
+## 新手阅读路径
+
+如果你是第一次接触 Omega-AI，建议按下面顺序阅读：
+
+1. [快速开始](/doc/start/quick-start.md)：完成环境准备、源码编译和第一个示例运行。
+2. [项目结构](/doc/start/project-structure.md)：了解源码目录和训练主线。
+3. [Tensor 数据结构](/doc/guide/tensor.md)：理解数据、权重、梯度在框架中的表示方式。
+4. [Layer 与 Network](/doc/guide/layer-network.md)：理解网络层和模型如何组织。
+5. [训练流程](/doc/guide/training.md)：理解 forward、loss、backward、update 的完整链路。
+6. [示例总览](/doc/examples/index.md)：选择 MNIST、CNN、YOLO、Transformer、VAE 或 DiT 示例继续学习。
+7. [常见问题排查](/doc/more/common-questions.md)：遇到 CUDA、cuDNN、显存或 loss 异常时先查这里。
+
+如果你已经有 Java 工程经验，可以直接从 [在SpringBoot环境运行](/doc/start/springboot.md) 和 [自定义 CUDA 算子](/doc/examples/custom-cuda-kernel.md) 开始。
+
 
 ## Omega-AI 介绍
 

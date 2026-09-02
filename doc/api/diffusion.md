@@ -1,129 +1,82 @@
 # Diffusion 扩散模型
 
-## 概述
-扩散模型通过逐步去噪过程生成高质量样本，核心思想是通过正向扩散和反向去噪过程学习数据分布。主要包含以下组件：
+本页只记录 Omega-AI 当前源码中真实存在的实现入口和阅读路径。API 示例必须以源码为准，不使用伪类名或非项目实现的示例代码。
 
-- **正向扩散**：逐步添加高斯噪声
-- **反向过程**：学习去噪的U-Net
-- **噪声调度器**：控制噪声添加节奏
+[[toc]]
 
-## 核心结构
+---
+
+## 一、源码入口
+
+| 类型 | 位置 |
+| --- | --- |
+| 主要实现 | `com.omega.engine.nn.network.DiffusionUNet / DiffusionUNetCond / DiffusionUNetCond2` |
+| 源码路径 | `src/main/java/com/omega/engine/nn/network/DiffusionUNet.java` |
+| 示例入口 | `src/main/java/com/omega/example/diffusion/test/DiffusionModelTest.java` |
+| 示例代码（Demo） | `DiffusionModelTest.duffsion_anime()` |
+
+## 二、入口代码片段
+
+节选自 `src/main/java/com/omega/engine/nn/network/DiffusionUNet.java`，仅保留入口签名和关键初始化，完整实现以源码为准：
+
 ```java
-/**
- * 扩散模型基础实现
- */
-public class DiffusionModel {
-    private UNet unet;           // 去噪网络
-    private NoiseScheduler scheduler; // 噪声调度器
-    private int timesteps;       // 扩散总步数
-    
-    public DiffusionModel(int imageSize) {
-        this.unet = new UNet(imageSize);
-        this.scheduler = new CosineScheduler();
+public class DiffusionUNet extends Network {
+    public int width;
+    public int height;
+    private int T;
+
+    public DiffusionUNet(LossType lossType, UpdaterType updater, int T,
+                         int inChannel, int mChannel, int[] channelMult,
+                         int resBlockNum, int width, int height, boolean bias) {
+        this.lossFunction = LossFactory.create(lossType, this);
+        this.bias = bias;
+        this.updater = updater;
     }
 }
 ```
 
-## 完整实现
+## 三、示例代码（Demo）
 
-### 1. 正向扩散过程
-```java
-public float[][] forwardProcess(float[][] x0, int t) {
-    float alphaBar = scheduler.getAlphaBar(t);
-    float[][] epsilon = sampleGaussianNoise(x0[0].length);
-    
-    // 混合原始数据与噪声
-    return scale(x0, (float)Math.sqrt(alphaBar)) 
-         + scale(epsilon, (float)Math.sqrt(1 - alphaBar));
-}
-```
+节选自 `src/main/java/com/omega/example/diffusion/test/DiffusionModelTest.java`，保留扩散模型训练入口的关键初始化和训练调用：
 
-### 2. 训练损失计算
 ```java
-public float calculateLoss(float[][] x0) {
-    // 随机选择时间步
-    int t = uniformSample(1, timesteps);
-    
-    // 正向加噪
-    float[][] epsilonTrue = sampleGaussianNoise();
-    float[][] xt = forwardProcess(x0, t);
-    
-    // UNet预测噪声
-    float[][] epsilonPred = unet.predict(xt, t);
-    
-    // 均方误差损失
-    return mseLoss(epsilonTrue, epsilonPred);
-}
-```
+public class DiffusionModelTest {
+    public static void duffsion_anime() {
+        boolean bias = false;
+        int batchSize = 4;
+        int imw = 96;
+        int imh = 96;
+        int mChannel = 64;
+        int resBlockNum = 2;
+        int T = 1000;
+        int[] channelMult = new int[]{1, 2};
+        String imgDirPath = "H:\\voc\\gan_anime\\ml2021spring-hw6\\faces\\";
 
-## 使用示例（图像生成）
-```java
-public class ImageGenerator {
-    public static void main(String[] args) {
-        // 创建扩散模型（生成256x256图像）
-        DiffusionModel model = new DiffusionModel(256);
-        
-        // 加载预训练权重
-        model.loadWeights("ddpm_imagenet.weights");
-        
-        // 生成样本
-        float[][] generated = model.sample(50); // 50步采样
-        saveAsImage(generated, "output.png");
-        
-        /* 生成效果：
-        高质量的图片内容，例如：
-        - 逼真的动物图像
-        - 清晰的风景照片
-        - 具有创意的艺术构图 */
+        DiffusionImageDataLoader dataLoader = new DiffusionImageDataLoader(imgDirPath, imw, imh, batchSize, false);
+        DiffusionUNet network = new DiffusionUNet(LossType.MSE, UpdaterType.adamw, T, 3, mChannel, channelMult, resBlockNum, imw, imh, bias);
+        network.CUDNN = true;
+        network.learnRate = 0.0005f;
+
+        MBSGDOptimizer optimizer = new MBSGDOptimizer(network, 50, 0.00001f, batchSize, LearnRateUpdate.GD_GECAY, false);
+        optimizer.trainGaussianDiffusion(dataLoader);
     }
 }
 ```
 
-## 性能优化
-1. **加速采样**：DDIM改进算法
-```java
-public class DDIMSampler {
-    public float[][] fastSample(int steps) {
-        // 减少采样步数至25-50步
-        int[] schedule = createJumpSchedule(steps);
-        for (int t : schedule) {
-            xt = ddimStep(xt, t);
-        }
-        return xt;
-    }
-}
-```
+## 四、相关组件
 
-2. **内存优化**：梯度检查点
-```java
-public void enableGradientCheckpoint() {
-    this.unet.setCheckpoint(true); // 在前向时存储中间结果
-}
-```
+`DiffusionUNet、DiffusionImageLoader、DiffusionImageDataLoader、UNet、MBSGDOptimizer`
 
-## 常见问题
-### Q1：生成速度慢如何优化？
-- 解决方案：使用渐进式蒸馏
-```java
-public void distillToStudent() {
-    while (studentSteps > 1) {
-        // 将教师模型的多个步骤蒸馏到学生模型单步
-        reduceStepByKnowledgeDistillation();
-    }
-}
-```
+## 五、阅读建议
 
-### Q2：生成图像模糊怎么办？
-- 改进方案：添加感知损失
-```java
-public float enhancedLoss(float[][] x0, float[][] pred) {
-    float mse = mseLoss(x0, pred);
-    float perceptual = vggLoss(x0, pred); // 使用VGG特征损失
-    return 0.7*mse + 0.3*perceptual;
-}
-```
+1. 先打开示例入口，查看 `main` 方法或训练方法中如何准备数据、创建网络和启动训练。
+2. 再进入主要实现类，查看构造函数、`init`、`forward`、`back`、`loss`、`update` 等方法。
+3. 如果涉及 GPU 加速，继续追踪对应 layer、kernel wrapper 和 `src/main/resources/cu` 下的 CUDA 实现。
+4. 文档中的类名、构造参数和调用方式必须与当前源码保持一致；如果源码变更，以源码为准同步更新本文档。
 
-## 扩展阅读
-- [稳定扩散模型实现](/doc/api/stable-diffusion)
-- [潜在扩散模型原理](/doc/extension/latent-diffusion)
-- [文生图实战指南](/doc/extension/text-to-image)
+## 六、常见注意事项
+
+- 示例中的数据集路径通常是作者本机路径，运行前需要改成本机目录。
+- 训练 batch size、学习率、是否启用 CUDNN/CUDA 需要结合显存和任务规模调整。
+- 不同模型的 loss、label 格式和输出 shape 不同，不能直接混用其它模型示例。
+- 若需要补充代码片段，应直接从对应示例类中摘取真实代码，并标注来源方法。

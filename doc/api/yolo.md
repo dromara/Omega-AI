@@ -1,171 +1,94 @@
-# YOLO 实时目标检测模型
+# Yolo 实时目标检测模型
 
-## 概述
-YOLO（You Only Look Once）是一种单阶段目标检测算法，通过将目标检测转化为回归问题实现实时检测。最新版本在保持高精度的同时达到100+ FPS。
+本页只记录 Omega-AI 当前源码中真实存在的实现入口和阅读路径。API 示例必须以源码为准，不使用伪类名或非项目实现的示例代码。
 
-## 核心结构
+[[toc]]
+
+---
+
+## 一、源码入口
+
+| 类型 | 位置 |
+| --- | --- |
+| 主要实现 | `com.omega.engine.nn.network.Yolo` |
+| 源码路径 | `src/main/java/com/omega/engine/nn/network/Yolo.java` |
+| 示例入口 | `src/main/java/com/omega/example/yolo/test/YoloV3Test.java` |
+| 示例代码（Demo） | `YoloV3Test.yolov3_tiny()` |
+
+## 二、入口代码片段
+
+节选自 `src/main/java/com/omega/engine/nn/network/Yolo.java`，仅保留入口签名和关键初始化，完整实现以源码为准：
+
 ```java
-/**
- * YOLOv4基础实现
- * 包含CSPDarknet骨干网络 + PANet特征金字塔 + YOLO检测头
- */
-public class YOLO {
-    private CSPDarknet backbone;   // 骨干网络
-    private PANet neck;           // 特征金字塔
-    private YOLOHead head;        // 检测头
-    
-    // 检测参数
-    private float confThreshold = 0.5f;  // 置信度阈值
-    private float nmsThreshold = 0.4f;   // NMS阈值
-    private int[] inputSize = {608, 608};// 输入尺寸
-}
-```
+public class Yolo extends OutputsNetwork {
+    private LossFunction[] losses;
+    private LossType lossType;
+    private Tensor[] loss;
+    private Tensor[] lossDiff;
+    private int class_num = 1;
 
-## 完整实现
+    public Yolo(LossFunction lossFunction) {
+        this.lossFunction = lossFunction;
+    }
 
-### 1. YOLO检测层
-```java
-public class YOLOLayer {
-    private int gridSize;       // 特征图尺寸
-    private int numBBox;        // 每个网格预测框数量
-    private int numClasses;     // 类别数量
-    
-    public Detection[] decode(float[] features) {
-        List<Detection> detections = new ArrayList<>();
-        // 将特征图转换为[grid,grid,bbox*(5+numClasses)]
-        for (int i=0; i<gridSize; i++) {
-            for (int j=0; j<gridSize; j++) {
-                int base = (i * gridSize + j) * (5 + numClasses);
-                // 解码预测框
-                float x = (sigmoid(features[base]) + j) / gridSize;
-                float y = (sigmoid(features[base+1]) + i) / gridSize;
-                float w = exp(features[base+2]) * anchors[0];
-                float h = exp(features[base+3]) * anchors[1];
-                float conf = sigmoid(features[base+4]);
-                
-                // 筛选高置信度预测
-                if (conf > confThreshold) {
-                    Detection det = new Detection(x, y, w, h, conf);
-                    det.classProbs = softmax(Arrays.copyOfRange(
-                        features, base+5, base+5+numClasses));
-                    detections.add(det);
-                }
-            }
-        }
-        return nms(detections);
+    public Yolo(LossType lossType, UpdaterType updater) {
+        this.lossType = lossType;
+        this.updater = updater;
     }
 }
 ```
 
-### 2. 损失函数
+## 三、示例代码（Demo）
+
+节选自 `src/main/java/com/omega/example/yolo/test/YoloV3Test.java`，保留 YOLOv3-tiny 训练入口的关键初始化和训练调用：
+
 ```java
-public class YOLOLoss {
-    // 三部分损失：坐标损失 + 置信度损失 + 分类损失
-    public float calculate(float[][][] predictions, float[][][] targets) {
-        float totalLoss = 0;
-        for (int s=0; s<scales.length; s++) { // 多尺度预测
-            float[][] pred = predictions[s];
-            float[][] target = targets[s];
-            
-            // 计算坐标损失（带权重）
-            float xyLoss = calculateXYLoss(pred, target);
-            float whLoss = calculateWHLoss(pred, target);
-            float objLoss = calculateConfidenceLoss(pred, target);
-            float clsLoss = calculateClassLoss(pred, target);
-            
-            totalLoss += (5 * xyLoss + 5 * whLoss + objLoss + clsLoss);
-        }
-        return totalLoss;
+public class YoloV3Test {
+    public void yolov3_tiny() {
+        int im_w = 256;
+        int im_h = 256;
+        int batchSize = 64;
+        int class_num = 1;
+        String cfg_path = "H:\\voc\\banana-detection\\yolov3-tiny-banana.cfg";
+        String trainPath = "H:\\voc\\banana-detection\\bananas_train\\images";
+        String trainLabelPath = "H:\\voc\\banana-detection\\bananas_train\\label.csv";
+        String testPath = "H:\\voc\\banana-detection\\bananas_val\\images";
+        String testLabelPath = "H:\\voc\\banana-detection\\bananas_val\\label.csv";
+
+        YoloDataTransform2 dt = new YoloDataTransform2(class_num, DataType.yolov3, 90);
+        DetectionDataLoader trainData = new DetectionDataLoader(trainPath, trainLabelPath, LabelFileType.csv, im_w, im_h, class_num, batchSize, DataType.yolov3, dt);
+        DetectionDataLoader vailData = new DetectionDataLoader(testPath, testLabelPath, LabelFileType.csv, im_w, im_h, class_num, batchSize, DataType.yolov3);
+
+        Yolo netWork = new Yolo(LossType.yolov3, UpdaterType.adamw);
+        netWork.CUDNN = true;
+        netWork.learnRate = 0.001f;
+        ModelLoader.loadConfigToModel(netWork, cfg_path);
+
+        MBSGDOptimizer optimizer = new MBSGDOptimizer(netWork, 2000, 0.001f, batchSize, LearnRateUpdate.SMART_HALF, false);
+        optimizer.lr_step = new int[]{200, 500, 1000, 1200, 2000};
+        optimizer.trainObjectRecognitionOutputs(trainData, vailData);
+
+        List<YoloBox> draw_bbox = optimizer.showObjectRecognitionYoloV3(vailData, batchSize);
+        String outputPath = "H:\\voc\\banana-detection\\test_yolov3\\";
+        showImg(outputPath, vailData, class_num, draw_bbox, batchSize, false, im_w, im_h, null);
     }
 }
 ```
 
-## 使用示例（COCO数据集训练）
-```java
-public class ObjectDetector {
-    public static void main(String[] args) {
-        // 创建YOLOv4模型（80类COCO数据集）
-        YOLO model = new YOLO(80)
-            .setInputSize(608)
-            .setPretrainedBackbone("cspdarknet53.cfg");
-        
-        // 配置混合精度训练
-        model.enableAMP();
-        
-        // 加载COCO数据集
-        COCODataset dataset = new COCODataset("annotations/instances_train2017.json");
-        
-        // 训练配置
-        model.setOptimizer(new SGD(0.001f, 0.9f))
-             .setLoss(new YOLOLoss())
-             .setAugmentation(new MosaicAugmentation());
-        
-        // 训练循环
-        for (int epoch=0; epoch<300; epoch++) {
-            float map = model.trainEpoch(dataset);
-            System.out.printf("Epoch %03d mAP@0.5: %.2f%%\n", epoch+1, map*100);
-            
-            // 保存检查点
-            if (epoch % 10 == 0) {
-                model.saveWeights("checkpoints/yolov4_epoch"+epoch+".weights");
-            }
-        }
-        
-        // 检测示例
-        BufferedImage img = ImageIO.read(new File("street.jpg"));
-        Detection[] results = model.detect(img);
-        drawBoxes(img, results).save("detection_result.jpg");
-    }
-}
-```
+## 四、相关组件
 
-## 性能优化
-1. **TensorRT加速**：
-```java
-public void convertToTensorRT() {
-    this.engine = new TensorRTEngine()
-        .setFP16Mode(true)
-        .buildFromONNX("yolov4.onnx");
-}
-```
+`Yolo、YoloLayer、YoloLoss、YoloDataLoader、YoloDecode`
 
-2. **多线程预处理**：
-```java
-public void enableParallelProcessing() {
-    this.executor = Executors.newFixedThreadPool(
-        Runtime.getRuntime().availableProcessors());
-}
-```
+## 五、阅读建议
 
-## 常见问题
-### Q1：如何处理重叠框？
-- NMS非极大值抑制实现：
-```java
-private Detection[] nms(Detection[] detections) {
-    Arrays.sort(detections, (a,b) -> Float.compare(b.confidence, a.confidence));
-    List<Detection> result = new ArrayList<>();
-    while (!detections.isEmpty()) {
-        Detection keep = detections[0];
-        result.add(keep);
-        detections = Arrays.stream(detections)
-            .filter(d -> iou(keep, d) < nmsThreshold)
-            .toArray(Detection[]::new);
-    }
-    return result.toArray(new Detection[0]);
-}
-```
+1. 先打开示例入口，查看 `main` 方法或训练方法中如何准备数据、创建网络和启动训练。
+2. 再进入主要实现类，查看构造函数、`init`、`forward`、`back`、`loss`、`update` 等方法。
+3. 如果涉及 GPU 加速，继续追踪对应 layer、kernel wrapper 和 `src/main/resources/cu` 下的 CUDA 实现。
+4. 文档中的类名、构造参数和调用方式必须与当前源码保持一致；如果源码变更，以源码为准同步更新本文档。
 
-### Q2：小目标检测效果差？
-- 改进方案：添加高分辨率检测层
-```java
-public void addHighResolutionHead() {
-    this.heads.add(new YOLOHead(1024, 512, new float[]{ 
-        new Size(12,16), new Size(19,36), new Size(40,28) 
-    }));
-}
-```
+## 六、常见注意事项
 
-## 扩展阅读
-- [YOLOv5改进架构](/doc/extension/yolov5)
-- [YOLOX锚框改进](/doc/extension/yolox)
-- [边缘设备部署指南](/doc/extension/edge-deployment)
+- 示例中的数据集路径通常是作者本机路径，运行前需要改成本机目录。
+- 训练 batch size、学习率、是否启用 CUDNN/CUDA 需要结合显存和任务规模调整。
+- 不同模型的 loss、label 格式和输出 shape 不同，不能直接混用其它模型示例。
+- 若需要补充代码片段，应直接从对应示例类中摘取真实代码，并标注来源方法。

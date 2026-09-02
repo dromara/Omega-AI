@@ -1,150 +1,97 @@
 # VAE 变分自编码器
 
-## 概述
-变分自编码器（Variational Autoencoder）通过概率编码实现数据生成，核心特点包括：
-- 概率编码器学习潜在空间分布
-- 重参数化技巧实现可导采样
-- 证据下界（ELBO）优化目标
+本页只记录 Omega-AI 当前源码中真实存在的实现入口和阅读路径。API 示例必须以源码为准，不使用伪类名或非项目实现的示例代码。
 
-## 核心结构
+[[toc]]
+
+---
+
+## 一、源码入口
+
+| 类型 | 位置 |
+| --- | --- |
+| 主要实现 | `com.omega.engine.nn.network.vae.*` |
+| 源码路径 | `src/main/java/com/omega/engine/nn/network/vae` |
+| 示例入口 | `src/main/java/com/omega/example/vae/test/VAETest.java` |
+| 示例代码（Demo） | `VAETest.tiny_vae()` |
+
+## 二、入口代码片段
+
+节选自 `src/main/java/com/omega/engine/nn/network/vae/VQVAE.java`，仅保留入口签名和关键初始化，完整实现以源码为准：
+
 ```java
-/**
- * VAE基础实现
- * 包含编码器、解码器和KL散度计算
- */
-public class VAE {
-    private Encoder encoder;     // 编码器网络
-    private Decoder decoder;     // 解码器网络
-    private int latentDim;       // 潜在空间维度
-    
-    // 重参数化参数
-    private float epsilon = 1e-6;
-}
-```
+public class VQVAE extends Network {
+    public float beta = 0.2f;
+    public int headNum = 4;
+    public int latendDim = 4;
 
-## 完整实现
-
-### 1. 编码器实现
-```java
-public class Encoder {
-    private Linear muLayer;     // 均值层
-    private Linear logvarLayer; // 对数方差层
-    
-    public GaussianSample encode(float[][] x) {
-        float[][] mu = muLayer.forward(x);
-        float[][] logvar = logvarLayer.forward(x);
-        return new GaussianSample(mu, logvar);
-    }
-}
-
-// 重参数化采样
-public float[][] reparameterize(float[][] mu, float[][] logvar) {
-    float[][] std = exp(0.5f * logvar);
-    float[][] eps = randnLike(std);
-    return add(mu, multiply(std, eps));
-}
-```
-
-### 2. 解码器实现
-```java
-public class Decoder {
-    private List<DenseLayer> layers;
-    
-    public float[][] decode(float[][] z) {
-        float[][] x = z;
-        for (DenseLayer layer : layers) {
-            x = layer.forward(x);
-            x = relu(x);
-        }
-        return sigmoid(x); // 输出概率
+    public VQVAE(LossType lossType, UpdaterType updater, int latendDim,
+                 int imageSize, int numLayers, int headNum, int num_vq_embeddings,
+                 int[] downChannels, boolean[] downSample, int[] midChannels) {
+        this.lossFunction = LossFactory.create(lossType, this);
+        this.downChannels = downChannels;
+        this.downSample = downSample;
     }
 }
 ```
 
-## 使用示例（图像生成）
+节选自 `src/main/java/com/omega/engine/nn/network/vae/Flux_VAE.java`，仅保留入口签名和关键初始化，完整实现以源码为准：
+
 ```java
-public class ImageGenerator {
-    public static void main(String[] args) {
-        // 创建VAE模型（输入784维，潜在空间32维）
-        VAE model = new VAE(784, 32);
-        
-        // 配置训练参数
-        model.setBeta(0.5f); // KL散度权重
-        model.setLearningRate(0.001f);
-        
-        // 加载MNIST数据集
-        MNISTDataset dataset = new MNISTDataset("train-images.idx3-ubyte");
-        
-        // 训练循环
-        for (int epoch=0; epoch<100; epoch++) {
-            float totalLoss = 0;
-            for (float[][] batch : dataset.getBatches(128)) {
-                // 前向传播
-                GaussianSample q = model.encode(batch);
-                float[][] z = model.reparameterize(q.mu, q.logvar);
-                float[][] recon = model.decode(z);
-                
-                // 计算损失
-                float reconLoss = binaryCrossEntropy(batch, recon);
-                float klLoss = klDivergence(q.mu, q.logvar);
-                float loss = reconLoss + model.beta * klLoss;
-                
-                // 反向传播
-                model.backward(loss);
-                model.update();
-                
-                totalLoss += loss;
-            }
-            System.out.printf("Epoch %02d Loss: %.3f\n", epoch+1, totalLoss/dataset.size());
-        }
-        
-        // 生成新样本
-        float[][] z = randn(16, 32); // 16个潜在向量
-        float[][] generated = model.decode(z);
-        saveImages(generated, "samples.png");
+public class Flux_VAE extends Network {
+    public float beta = 0.25f;
+    public float decay = 0.999f;
+
+    public Flux_VAE(LossType lossType, UpdaterType updater, int latendDim,
+                    int imageSize, int[] ch_mult, int ch, int num_res_blocks) {
+        this.lossFunction = LossFactory.create(lossType, this);
+        this.latendDim = latendDim;
+        this.imageSize = imageSize;
     }
 }
 ```
 
-## 性能优化
-1. **正则化技术**：
+## 三、示例代码（Demo）
+
+节选自 `src/main/java/com/omega/example/vae/test/VAETest.java`，保留 TinyVAE 训练入口的关键初始化和训练调用：
+
 ```java
-public void applyRegularization() {
-    this.encoder.addRegularizer(new L2Regularizer(0.001f));
-    this.decoder.addRegularizer(new L2Regularizer(0.001f));
+public class VAETest {
+    public static void tiny_vae() {
+        int batchSize = 8;
+        int imageSize = 256;
+        int z_dims = 64;
+        int latendDim = 4;
+        float[] mean = new float[]{0.5f, 0.5f, 0.5f};
+        float[] std = new float[]{0.5f, 0.5f, 0.5f};
+        String imgDirPath = "H:\\vae_dataset\\pokemon-blip\\dataset\\";
+
+        DiffusionImageDataLoader dataLoader = new DiffusionImageDataLoader(imgDirPath, imageSize, imageSize, batchSize, false, mean, std);
+        TinyVAE network = new TinyVAE(LossType.MSE_SUM, UpdaterType.adamw, z_dims, latendDim, imageSize);
+        network.CUDNN = true;
+        network.learnRate = 0.001f;
+
+        MBSGDOptimizer optimizer = new MBSGDOptimizer(network, 500, 0.00001f, batchSize, LearnRateUpdate.SMART_HALF, false);
+        optimizer.lr_step = new int[]{50, 100, 150, 200, 250, 300, 350, 400, 450};
+        optimizer.trainTinyVAE(dataLoader);
+    }
 }
 ```
 
-2. **并行采样**：
-```java
-public float[][] batchGenerate(int numSamples) {
-    return IntStream.range(0, numSamples)
-        .parallel()
-        .mapToObj(i -> decoder(randn(latentDim)))
-        .toArray(float[][][]::new);
-}
-```
+## 四、相关组件
 
-## 常见问题
-### Q1：生成图像模糊如何改善？
-- 解决方案：使用更深层的解码器
-```java
-public void buildDeepDecoder() {
-    this.decoder.addLayer(512, Activation.LEAKY_RELU)
-                .addLayer(256, Activation.LEAKY_RELU)
-                .addLayer(128, Activation.LEAKY_RELU);
-}
-```
+`VAE、VQVAE、TinyVAE、SD_VAE、Flux_VAE、编码器、解码器`
 
-### Q2：KL散度趋近于0怎么办？
-- 退火策略实现：
-```java
-public void klAnnealing(int epoch, int total) {
-    this.beta = Math.min(1.0f, epoch / (float)total);
-}
-```
+## 五、阅读建议
 
-## 扩展阅读
-- [条件VAE实现](/doc/extension/cvae)
-- [变分扩散模型原理](/doc/extension/vdm)
-- [半监督VAE应用](/doc/extension/semi-supervised)
+1. 先打开示例入口，查看 `main` 方法或训练方法中如何准备数据、创建网络和启动训练。
+2. 再进入主要实现类，查看构造函数、`init`、`forward`、`back`、`loss`、`update` 等方法。
+3. 如果涉及 GPU 加速，继续追踪对应 layer、kernel wrapper 和 `src/main/resources/cu` 下的 CUDA 实现。
+4. 文档中的类名、构造参数和调用方式必须与当前源码保持一致；如果源码变更，以源码为准同步更新本文档。
+
+## 六、常见注意事项
+
+- 示例中的数据集路径通常是作者本机路径，运行前需要改成本机目录。
+- 训练 batch size、学习率、是否启用 CUDNN/CUDA 需要结合显存和任务规模调整。
+- 不同模型的 loss、label 格式和输出 shape 不同，不能直接混用其它模型示例。
+- 若需要补充代码片段，应直接从对应示例类中摘取真实代码，并标注来源方法。

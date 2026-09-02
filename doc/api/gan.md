@@ -1,190 +1,94 @@
 # GAN 对抗神经网络
 
-## 概述
-生成对抗网络（Generative Adversarial Network）通过生成器与判别器的对抗训练，学习数据分布并生成逼真样本。包含以下核心组件：
+本页只记录 Omega-AI 当前源码中真实存在的实现入口和阅读路径。API 示例必须以源码为准，不使用伪类名或非项目实现的示例代码。
 
-- **生成器(Generator)**：将随机噪声转换为数据样本
-- **判别器(Discriminator)**：区分真实样本与生成样本
-- **对抗损失函数**：驱动两者博弈式训练
+[[toc]]
 
-## 核心结构
+---
+
+## 一、源码入口
+
+| 类型 | 位置 |
+| --- | --- |
+| 主要实现 | `com.omega.example.gan.test.GAN` |
+| 源码路径 | `src/main/java/com/omega/example/gan/test/GAN.java` |
+| 示例入口 | `src/main/java/com/omega/example/gan/test/MinistGAN.java` |
+| 示例代码（Demo） | `MinistGAN.gan_anime()` |
+
+## 二、入口代码片段
+
+节选自 `src/main/java/com/omega/example/gan/test/MinistGAN.java`，仅保留入口签名和关键初始化，完整实现以源码为准：
+
 ```java
-/**
- * GAN基础实现
- */
-public class GAN {
-    // 网络组件
-    private Generator generator;
-    private Discriminator discriminator;
-    
-    // 优化参数
-    private Optimizer gOptimizer;
-    private Optimizer dOptimizer;
-    
-    // 噪声维度
-    private int noiseDim;
-    
-    public GAN(int noiseDim, int dataDim) {
-        this.noiseDim = noiseDim;
-        initComponents(dataDim);
+public class MinistGAN {
+    public static BPNetwork NetG(int imgSize, int latentSize) {
+        BPNetwork netWork = new BPNetwork(LossType.MSE, UpdaterType.adamw);
+        netWork.CUDNN = true;
+        netWork.learnRate = 0.0001f;
+        InputLayer inputLayer = new InputLayer(1, 1, latentSize);
+        FullyLayer full1 = new FullyLayer(latentSize, 256, true);
+        ReluLayer active1 = new ReluLayer();
+        FullyLayer full2 = new FullyLayer(256, 256, true);
+        ReluLayer active2 = new ReluLayer();
+        FullyLayer full3 = new FullyLayer(256, imgSize, true);
+        TanhLayer active4 = new TanhLayer();
+        netWork.addLayer(inputLayer);
+        netWork.addLayer(full1);
+        netWork.addLayer(active1);
+        netWork.addLayer(full2);
+        netWork.addLayer(active2);
+        netWork.addLayer(full3);
+        netWork.addLayer(active4);
+        return netWork;
     }
 }
 ```
 
-## 完整实现
+## 三、示例代码（Demo）
 
-### 1. 生成器实现
+节选自 `src/main/java/com/omega/example/gan/test/MinistGAN.java`，保留 GAN 训练入口的关键初始化和训练调用：
+
 ```java
-public class Generator {
-    private List<DenseLayer> layers;
-    
-    public float[] generate(float[] noise) {
-        float[] output = noise;
-        for (DenseLayer layer : layers) {
-            output = layer.forward(output);
-            output = applyActivation(output); // 使用LeakyReLU激活
-        }
-        return output; // 生成与真实数据同维度的样本
-    }
-    
-    // 上采样块（用于图像生成）
-    private float[] upsamplingBlock(float[] input) {
-        // 包含转置卷积、批归一化、激活函数
+public class MinistGAN {
+    public void gan_anime() {
+        int imgSize = 784;
+        int ngf = 784;
+        int nz = 100;
+        int batchSize = 2048;
+        int d_every = 1;
+        int g_every = 1;
+        float[] mean = new float[]{0.5f};
+        float[] std = new float[]{0.5f};
+
+        String mnist_train_data = "/dataset/mnist/train-images.idx3-ubyte";
+        String mnist_train_label = "/dataset/mnist/train-labels.idx1-ubyte";
+        String[] labelSet = new String[]{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"};
+        File trainDataRes = new File(this.getClass().getClassLoader().getResource(mnist_train_data).toURI());
+        File trainLabelRes = new File(this.getClass().getClassLoader().getResource(mnist_train_label).toURI());
+        DataSet trainData = DataLoader.loadDataByUByte(trainDataRes, trainLabelRes, labelSet, 1, 1, 784, true, mean, std);
+
+        BPNetwork netG = NetG(ngf, nz);
+        BPNetwork netD = NetD(imgSize);
+        GANOptimizer optimizer = new GANOptimizer(netG, netD, batchSize, 3500, d_every, g_every, 0.001f, LearnRateUpdate.CONSTANT, false);
+        optimizer.train(trainData);
     }
 }
 ```
 
-### 2. 判别器实现
-```java
-public class Discriminator {
-    private List<DenseLayer> layers;
-    
-    public float discriminate(float[] input) {
-        float[] output = input;
-        for (DenseLayer layer : layers) {
-            output = layer.forward(output);
-            output = applyActivation(output); // 使用LeakyReLU激活
-        }
-        return sigmoid(output[0]); // 返回真实概率
-    }
-    
-    // 下采样块（用于图像判别）
-    private float[] downsamplingBlock(float[] input) {
-        // 包含卷积层、批归一化、激活函数
-    }
-}
-```
+## 四、相关组件
 
-## 对抗训练
-```java
-public class AdversarialTrainer {
-    public void train(int epochs) {
-        for (int epoch=0; epoch<epochs; epoch++) {
-            // 1. 训练判别器
-            discriminatorTrainStep(realData);
-            
-            // 2. 训练生成器
-            generatorTrainStep();
-            
-            // 3. 输出训练状态
-            if (epoch % 100 == 0) {
-                printTrainingStatus(epoch);
-                generateSamples(epoch); // 生成示例样本
-            }
-        }
-    }
-    
-    private void discriminatorTrainStep(float[][] realSamples) {
-        // 生成假样本
-        float[][] fakeSamples = generateFakeSamples(realSamples.length);
-        
-        // 计算判别损失
-        float dLossReal = discriminator.loss(realSamples, 1.0f);
-        float dLossFake = discriminator.loss(fakeSamples, 0.0f);
-        float dLoss = (dLossReal + dLossFake) / 2;
-        
-        // 反向传播更新判别器
-        discriminator.backward();
-        dOptimizer.update();
-    }
-    
-    private void generatorTrainStep() {
-        // 计算生成损失
-        float[] noise = generateNoise(batchSize);
-        float gLoss = generator.loss(noise);
-        
-        // 冻结判别器后反向传播
-        freezeDiscriminator();
-        generator.backward();
-        gOptimizer.update();
-        unfreezeDiscriminator();
-    }
-}
-```
+`生成器、判别器、FullyLayer、BCELoss、MBSGDOptimizer`
 
-## 使用示例（手写数字生成）
-```java
-public class MNISTGAN {
-    public static void main(String[] args) {
-        // 创建GAN (100维噪声输入，784维图像输出)
-        GAN gan = new GAN(100, 28*28);
-        
-        // 配置网络结构
-        gan.getGenerator()
-           .addLayer(256, Activation.LEAKY_RELU)
-           .addLayer(512, Activation.LEAKY_RELU)
-           .addLayer(784, Activation.TANH); // 输出归一化到[-1,1]
-        
-        gan.getDiscriminator()
-           .addLayer(512, Activation.LEAKY_RELU)
-           .addLayer(256, Activation.LEAKY_RELU)
-           .addLayer(1, Activation.SIGMOID);
-           
-        // 配置优化器
-        gan.setGOptimizer(new Adam(0.0002f));
-        gan.setDOptimizer(new Adam(0.0002f));
-        
-        // 加载MNIST数据集
-        MNISTDataset dataset = new MNISTDataset("train-images.idx3-ubyte");
-        
-        // 开始训练
-        gan.train(dataset, 10000, 64);
-        
-        // 生成示例图像
-        gan.generateImages("samples/epoch_final.png");
-    }
-}
-```
+## 五、阅读建议
 
-## 数学原理
-### 损失函数
-生成器损失：
-$$\mathcal{L}_G = -\mathbb{E}[\log D(G(z))]$$
+1. 先打开示例入口，查看 `main` 方法或训练方法中如何准备数据、创建网络和启动训练。
+2. 再进入主要实现类，查看构造函数、`init`、`forward`、`back`、`loss`、`update` 等方法。
+3. 如果涉及 GPU 加速，继续追踪对应 layer、kernel wrapper 和 `src/main/resources/cu` 下的 CUDA 实现。
+4. 文档中的类名、构造参数和调用方式必须与当前源码保持一致；如果源码变更，以源码为准同步更新本文档。
 
-判别器损失：
-$$\mathcal{L}_D = -\mathbb{E}[\log D(x)] - \mathbb{E}[\log (1 - D(G(z)))]$$
+## 六、常见注意事项
 
-## 常见问题
-### Q1：出现模式崩溃怎么办？
-- 解决方案：
-```java
-// 使用Wasserstein GAN
-public class WGAN extends GAN {
-    // 移除判别器最后的Sigmoid
-    // 添加梯度惩罚项
-    public float gradientPenalty() {
-        // 实现梯度惩罚逻辑
-    }
-}
-```
-
-### Q2：生成样本模糊如何改善？
-- 改进方案：
-1. 添加感知损失
-2. 使用更深的网络结构
-3. 采用渐进式训练
-
-## 扩展阅读
-- [DCGAN深度卷积GAN](/doc/extension/dcgan)
-- [CycleGAN跨域转换](/doc/extension/cyclegan)
-- [StyleGAN风格控制](/doc/extension/stylegan)
+- 示例中的数据集路径通常是作者本机路径，运行前需要改成本机目录。
+- 训练 batch size、学习率、是否启用 CUDNN/CUDA 需要结合显存和任务规模调整。
+- 不同模型的 loss、label 格式和输出 shape 不同，不能直接混用其它模型示例。
+- 若需要补充代码片段，应直接从对应示例类中摘取真实代码，并标注来源方法。
