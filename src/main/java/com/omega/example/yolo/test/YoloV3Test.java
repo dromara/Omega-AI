@@ -117,8 +117,8 @@ public class YoloV3Test {
             //			y.yolov3_show2();
             //			y.createMaskTrainTestDataSet();
 //            y.yolov3_tiny_mask();
-            y.yolov3_tiny_mask_test();
-            //			y.yolov3_tiny_helmet();
+//            y.yolov3_tiny_mask_test();
+            			y.yolov3_tiny_helmet();
             //			y.yolov3_tiny_yz();
             //			y.yolov3_tiny_voc();
             //			y.yolov3_tiny_sm();
@@ -196,7 +196,6 @@ public class YoloV3Test {
             optimizer.trainObjectRecognitionOutputs(trainData, vailData);
             /**
              * 处理测试预测结果
-             *
              */
             List<YoloBox> draw_bbox = optimizer.showObjectRecognitionYoloV3(vailData, batchSize);
             String outputPath = "H:\\voc\\helmet\\test_yolov3\\";

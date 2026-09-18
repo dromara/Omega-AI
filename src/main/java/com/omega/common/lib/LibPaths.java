@@ -13,7 +13,7 @@ import java.util.jar.JarInputStream;
 
 public class LibPaths {
 
-    private static String LIB_PATH = "/omega/cu/";
+    private static String LIB_PATH = "D:\\omega-ai-cu\\";
 
     static {
 

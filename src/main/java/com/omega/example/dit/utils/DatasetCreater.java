@@ -1618,9 +1618,9 @@ public class DatasetCreater {
         	
 //        	createT5Data();
         	
-        	createClipPooled();
+//        	createClipPooled();
         	
-//        	createLatend_flux2_vae();
+        	createLatend_flux2_vae();
         	
 //        	createLatend_flux2_vae_512();
         	

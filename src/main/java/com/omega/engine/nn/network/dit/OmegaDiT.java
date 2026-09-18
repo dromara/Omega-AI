@@ -27,6 +27,8 @@ import jcuda.runtime.JCuda;
  */
 public class OmegaDiT extends Network {
 	
+	private boolean qkNorm = false;
+	
     public int inChannel;
     public int width;
     public int height;
@@ -39,6 +41,8 @@ public class OmegaDiT extends Network {
     public int headNum;
     private int mlpRatio = 4;
     private int z_dim = 768;
+    private int num_f = 0;
+    private int num_h = 0;
     
     private float y_drop_prob = 0.0f;
     
@@ -76,12 +80,65 @@ public class OmegaDiT extends Network {
         this.time = (width / patchSize) * (height / patchSize);
         initLayers();
     }
-
+    
+    public OmegaDiT(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int textEmbedDim, int maxContextLen, int mlpRatio, int z_dim, float token_drop_ratio, float path_drop_prob, float y_drop_prob, boolean qkNorm) {
+        this.lossFunction = LossFactory.create(lossType, this);
+//        this.weight_decay = 0.1f;
+        this.updater = updater;
+        this.inChannel = inChannel;
+        this.width = width;
+        this.height = height;
+        this.patchSize = patchSize;
+        this.headNum = headNum;
+        this.hiddenSize = hiddenSize;
+        this.depth = depth;
+        this.timeSteps = timeSteps;
+        this.textEmbedDim = textEmbedDim;
+        this.maxContextLen = maxContextLen;
+        this.mlpRatio = mlpRatio;
+        this.token_drop_ratio = token_drop_ratio;
+        this.path_drop_prob = path_drop_prob;
+        this.y_drop_prob = y_drop_prob;
+		this.z_dim = z_dim;
+		this.qkNorm = qkNorm;
+        this.time = (width / patchSize) * (height / patchSize);
+        initLayers();
+    }
+    
+    public OmegaDiT(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int num_f, int num_h, int timeSteps, int textEmbedDim, int maxContextLen, int mlpRatio, int z_dim, float token_drop_ratio, float path_drop_prob, float y_drop_prob) {
+        this.lossFunction = LossFactory.create(lossType, this);
+//        this.weight_decay = 0.1f;
+        this.updater = updater;
+        this.inChannel = inChannel;
+        this.width = width;
+        this.height = height;
+        this.patchSize = patchSize;
+        this.headNum = headNum;
+        this.hiddenSize = hiddenSize;
+        this.depth = depth;
+        this.num_f = num_f;
+        this.num_h = num_h;
+        this.timeSteps = timeSteps;
+        this.textEmbedDim = textEmbedDim;
+        this.maxContextLen = maxContextLen;
+        this.mlpRatio = mlpRatio;
+        this.token_drop_ratio = token_drop_ratio;
+        this.path_drop_prob = path_drop_prob;
+        this.y_drop_prob = y_drop_prob;
+		this.z_dim = z_dim;
+        this.time = (width / patchSize) * (height / patchSize);
+        initLayers();
+    }
+    
     public void initLayers() {
     	
         this.inputLayer = new InputLayer(inChannel, height, width);
         
-        main = new OmegaDiTMainMoudue_Sprint(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, textEmbedDim, maxContextLen, mlpRatio, z_dim, y_drop_prob, token_drop_ratio, path_drop_prob, this);
+        if(num_f != 0) {
+            main = new OmegaDiTMainMoudue_Sprint(inChannel, width, height, patchSize, hiddenSize, headNum, depth, num_f, num_h, timeSteps, textEmbedDim, maxContextLen, mlpRatio, z_dim, y_drop_prob, token_drop_ratio, path_drop_prob, qkNorm, this);
+        }else {
+            main = new OmegaDiTMainMoudue_Sprint(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, textEmbedDim, maxContextLen, mlpRatio, z_dim, y_drop_prob, token_drop_ratio, path_drop_prob, qkNorm, this);
+        }
         
         this.addLayer(inputLayer);
         this.addLayer(main);

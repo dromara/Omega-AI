@@ -9,6 +9,7 @@ import com.omega.engine.nn.layer.Layer;
 import com.omega.engine.nn.layer.RouteLayer;
 import com.omega.engine.nn.layer.normalization.NormalizationLayer;
 import com.omega.engine.nn.model.NetworkInit;
+import com.omega.engine.nn.network.enums.DType;
 import com.omega.engine.nn.network.utils.ClipGradNormKernel;
 import com.omega.engine.nn.network.utils.EMAKernel;
 import com.omega.engine.parallel.cuda.CUDACommonManager;
@@ -34,6 +35,8 @@ public abstract class Network {
 	public String id;
     public boolean CUDNN = false;
     public boolean CUDNN_SDPA = false;
+    public boolean CUDA_AMP = false;
+    public DType dtype = DType.fp32;
     public boolean gradCacheMode = false;
     public CUDAManager cudaManager;
     public TensorOP tensorOP;
@@ -117,6 +120,13 @@ public abstract class Network {
     public abstract void putParamters();
 
     public abstract void putParamterGrads();
+    
+    public DType CUDA_AMP(DType dType) {
+    	if (dType != DType.fp32) {
+			this.CUDA_AMP = true;
+		}
+    	return dType;
+    }
 
     private void initCUDA() {
         CUDACommonManager cuda = CUDAPool.cudaCommonManager(rankId);

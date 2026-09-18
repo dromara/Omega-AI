@@ -92,3 +92,16 @@ set_target_properties(omega_cudnn_sdpa PROPERTIES
     CUDA_SEPARABLE_COMPILATION ON
     OUTPUT_NAME omega_cudnn_sdpa
 )
+
+option(OMEGA_SDPA_DIAGNOSTICS "Build the isolated SDPA stability test library" OFF)
+if(OMEGA_SDPA_DIAGNOSTICS)
+    add_library(omega_cudnn_sdpa_diagnostic SHARED omega_cudnn_sdpa_diagnostic.cu)
+    target_include_directories(omega_cudnn_sdpa_diagnostic PRIVATE
+        ${JNI_INCLUDE_DIR} ${JNI_PLATFORM_INCLUDE_DIR}
+        ${CUDNN_INCLUDE_DIR} ${CUDNN_FRONTEND_INCLUDE_DIR})
+    target_link_libraries(omega_cudnn_sdpa_diagnostic PRIVATE CUDA::cudart ${CUDNN_LIBRARY})
+    target_compile_options(omega_cudnn_sdpa_diagnostic PRIVATE
+        $<$<COMPILE_LANGUAGE:CUDA>:--use_fast_math --expt-relaxed-constexpr>)
+    set_target_properties(omega_cudnn_sdpa_diagnostic PROPERTIES
+        POSITION_INDEPENDENT_CODE ON CUDA_SEPARABLE_COMPILATION ON)
+endif()

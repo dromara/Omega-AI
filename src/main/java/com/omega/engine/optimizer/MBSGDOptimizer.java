@@ -16837,6 +16837,11 @@ public class MBSGDOptimizer extends Optimizer {
                         this.currentError = MatrixOperation.sum(this.loss.data) / this.batchSize;
                     }
                     
+                    if ((it + 1) % 5000 == 0) {
+                        String save_model_path = weightPath + "/flux_sprint_b1_" + i + ".model";
+                        ModelUtils.saveModel(network, save_model_path);
+                    }
+                    
                     train_loss += this.currentError;
 
                     this.batchIndex++;
@@ -16977,6 +16982,7 @@ public class MBSGDOptimizer extends Optimizer {
                     /**
                      * update
                      */
+                    network.clipGradNormFast(1.0f);
                     network.update();
                     JCudaDriver.cuCtxSynchronize();
                     

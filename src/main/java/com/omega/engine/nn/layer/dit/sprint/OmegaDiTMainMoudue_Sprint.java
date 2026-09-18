@@ -51,6 +51,8 @@ public class OmegaDiTMainMoudue_Sprint extends Layer {
     private int z_dim = 768;
     private int projector_dim = 2048;
     
+    private boolean qkNorm = false;
+    
     public DiTPatchEmbeddingLayer patchEmbd;
     public DiTOrgTimeEmbeddingLayer timeEmbd;
     public DiTCaptionEmbeddingLayer labelEmbd;
@@ -97,7 +99,7 @@ public class OmegaDiTMainMoudue_Sprint extends Layer {
     
     public boolean uncond = false;
     
-    public OmegaDiTMainMoudue_Sprint(int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int textEmbedDim, int maxContextLen, int mlpRatio, int z_dim, float y_drop_prob, float token_drop_ratio, float path_drop_prob, Network network) {
+    public OmegaDiTMainMoudue_Sprint(int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int textEmbedDim, int maxContextLen, int mlpRatio, int z_dim, float y_drop_prob, float token_drop_ratio, float path_drop_prob, boolean qkNorm, Network network) {
 		this.network = network;
         if (this.updater == null) {
             this.setUpdater(UpdaterFactory.create(network));
@@ -119,11 +121,42 @@ public class OmegaDiTMainMoudue_Sprint extends Layer {
 		this.path_drop_prob = path_drop_prob;
 		this.headNum = headNum;
 		this.z_dim = z_dim;
+		this.qkNorm = qkNorm;
 		this.initLayers();
 		this.oHeight = height;
 		this.oWidth = width;
     }
-
+    
+    public OmegaDiTMainMoudue_Sprint(int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int num_f, int num_h, int timeSteps, int textEmbedDim, int maxContextLen, int mlpRatio, int z_dim, float y_drop_prob, float token_drop_ratio, float path_drop_prob, boolean qkNorm, Network network) {
+		this.network = network;
+        if (this.updater == null) {
+            this.setUpdater(UpdaterFactory.create(network));
+        }
+        this.y_drop_prob = y_drop_prob;
+    	this.inChannel = inChannel;
+		this.width = width;
+		this.height = height;
+		this.patchSize = patchSize;
+		this.headNum = headNum;
+		this.hiddenSize = hiddenSize;
+		this.depth = depth;
+		this.num_f = num_f;
+		this.num_h = num_h;
+		this.num_g = this.depth - num_f - num_h;
+		this.timeSteps = timeSteps;
+		this.textEmbedDim = textEmbedDim;
+		this.maxContextLen = maxContextLen;
+		this.mlpRatio = mlpRatio;
+		this.token_drop_ratio = token_drop_ratio;
+		this.path_drop_prob = path_drop_prob;
+		this.headNum = headNum;
+		this.z_dim = z_dim;
+		this.qkNorm = qkNorm;
+		this.initLayers();
+		this.oHeight = height;
+		this.oWidth = width;
+    }
+    
     public void initLayers() {
     	
     	patchEmbd = new DiTPatchEmbeddingLayer(inChannel, width, hiddenSize, patchSize, true, network);
@@ -141,19 +174,19 @@ public class OmegaDiTMainMoudue_Sprint extends Layer {
         decoders = new ArrayList<FluxDiTBlock>();
         
         for(int i = 0;i<num_f;i++) {
-        	FluxDiTBlock block = new FluxDiTBlock(hiddenSize, hiddenSize, patchEmbd.oChannel + maxContextLen, mlpRatio * hiddenSize, headNum, maxContextLen, true, false, network);
+        	FluxDiTBlock block = new FluxDiTBlock(hiddenSize, hiddenSize, patchEmbd.oChannel + maxContextLen, mlpRatio * hiddenSize, headNum, maxContextLen, true, qkNorm, network);
         	encoders.add(block);
         }
         
         for(int i = 0;i<num_g;i++) {
-        	FluxDiTBlock block = new FluxDiTBlock(hiddenSize, hiddenSize, token_t + maxContextLen, mlpRatio * hiddenSize, headNum, maxContextLen, true, false, network);
+        	FluxDiTBlock block = new FluxDiTBlock(hiddenSize, hiddenSize, token_t + maxContextLen, mlpRatio * hiddenSize, headNum, maxContextLen, true, qkNorm, network);
         	mids.add(block);
         }
         
         fusion = new FusionLayer2(hiddenSize, hw, token_t, maxContextLen, path_drop_prob, network);
         
         for(int i = 0;i<num_h;i++) {
-        	FluxDiTBlock block = new FluxDiTBlock(hiddenSize, hiddenSize, patchEmbd.oChannel + maxContextLen, mlpRatio * hiddenSize, headNum, maxContextLen, true, false, network);
+        	FluxDiTBlock block = new FluxDiTBlock(hiddenSize, hiddenSize, patchEmbd.oChannel + maxContextLen, mlpRatio * hiddenSize, headNum, maxContextLen, true, qkNorm, network);
         	decoders.add(block);
         }
         
@@ -1081,7 +1114,7 @@ public class OmegaDiTMainMoudue_Sprint extends Layer {
         nn.CUDNN = true;
         nn.number = N;
     	
-        OmegaDiTMainMoudue_Sprint jb = new OmegaDiTMainMoudue_Sprint(C, W, H, patchSize, hiddenSize, headNum, depth, 1000, TEM, TT, 4, 768, 0.0f, 0.75f, 0.01f, nn);
+        OmegaDiTMainMoudue_Sprint jb = new OmegaDiTMainMoudue_Sprint(C, W, H, patchSize, hiddenSize, headNum, depth, 1000, TEM, TT, 4, 768, 0.0f, 0.75f, 0.01f, false, nn);
     	
         String weight = "D:\\models\\dit_weight.json";
         loadWeight(LagJsonReader.readJsonFileBigWeightIterator(weight), jb, true);

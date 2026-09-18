@@ -1,5 +1,8 @@
 # cuDNN SDPA comparison demo
 
+For isolated padding, backward, scratch-reuse and real-tensor replay checks,
+see [FA stability diagnostics](STABILITY_DIAGNOSTICS.md).
+
 This native library uses NVIDIA cuDNN Frontend SDPA. It does not use any of
 the FlashAttention CUDA kernels under `src/main`.
 
