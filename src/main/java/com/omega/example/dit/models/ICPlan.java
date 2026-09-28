@@ -381,7 +381,7 @@ public class ICPlan {
 		return out;
 	}
 	
-	public Tensor forward_with_path_drop_cfg(OmegaDiT_T5 dit, Tensor y0, Tensor t, Tensor clip, Tensor clip_null, Tensor t5, Tensor t5_null, Tensor mask, Tensor cos, Tensor sin, Tensor y1, Tensor eps, float cfg_scale) {
+	public Tensor forward_with_path_drop_cfg(OmegaDiT_T5 dit, Tensor y0, Tensor t, Tensor t5, Tensor t5_null, Tensor mask, Tensor cos1d, Tensor sin1d, Tensor cos2d, Tensor sin2d, Tensor y1, Tensor eps, float cfg_scale) {
 		ininT(0, 1, count);
 		int j = 1;
 		Tensor out = null;
@@ -392,7 +392,7 @@ public class ICPlan {
 			float dt = t1 - t0;
 			MatrixUtils.val(t.data, t0);
 			t.hostToDevice();
-			f0 = dit.forward_with_path_drop_cfg(y0, t, clip, t5, clip_null, t5_null, mask, cos, sin, eps, cfg_scale);
+			f0 = dit.forward_with_path_drop_cfg(y0, t, t5, t5_null, mask, cos1d, sin1d, cos2d, sin2d, eps, cfg_scale);
 			dit.tensorOP.mul(f0, dt, f0);
 			dit.tensorOP.add(y0, f0, y1);
 			float tj = T[j];
@@ -1422,6 +1422,10 @@ public class ICPlan {
 	
 	public void t(Tensor t, float mean, float std) {
 		RandomUtils.gaussianRandomLogitNormal(t, mean, std);
+	}
+	
+	public void t_new(Tensor t, float mean, float std) {
+		RandomUtils.gaussianRandomLogitNormalNew(t, mean, std);
 	}
 	
 	public void maximum(Tensor a, Tensor b, Tensor c) {

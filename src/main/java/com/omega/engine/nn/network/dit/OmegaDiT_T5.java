@@ -31,19 +31,21 @@ public class OmegaDiT_T5 extends Network {
     public int width;
     public int height;
     public int patchSize;
-    public int clipEmbedDim;
     public int t5EmbedDim;
     public int maxContextLen;
     public int hiddenSize;
+    public int txt_depth = 2;
     private int depth;
+    private int num_f = 2;
+    private int num_h = 2;
     private int timeSteps;
     public int headNum;
+    public int headDims;
     private int mlpRatio = 4;
     private int z_dim = 768;
     
     private float y_drop_prob = 0.0f;
-    
-    public float token_drop_ratio = 0.75f;
+
     private float path_drop_prob = 0.0f;
     
     private InputLayer inputLayer;
@@ -55,7 +57,7 @@ public class OmegaDiT_T5 extends Network {
     private Tensor head;
     private Tensor tail;
     
-    public OmegaDiT_T5(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int timeSteps, int clipEmbedDim, int t5EmbedDim, int maxContextLen, int mlpRatio, int z_dim, float token_drop_ratio, float path_drop_prob, float y_drop_prob) {
+    public OmegaDiT_T5(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int txt_depth, int depth, int num_f, int num_h, int timeSteps, int t5EmbedDim, int maxContextLen, int mlpRatio, int z_dim, float path_drop_prob, float y_drop_prob) {
         this.lossFunction = LossFactory.create(lossType, this);
 //        this.weight_decay = 0.1f;
         this.updater = updater;
@@ -65,13 +67,15 @@ public class OmegaDiT_T5 extends Network {
         this.patchSize = patchSize;
         this.headNum = headNum;
         this.hiddenSize = hiddenSize;
+        this.headDims = hiddenSize / headNum;
+        this.txt_depth = txt_depth;
         this.depth = depth;
+        this.num_f = num_f;
+        this.num_h = num_h;
         this.timeSteps = timeSteps;
-        this.clipEmbedDim = clipEmbedDim;
         this.t5EmbedDim = t5EmbedDim;
         this.maxContextLen = maxContextLen;
         this.mlpRatio = mlpRatio;
-        this.token_drop_ratio = token_drop_ratio;
         this.path_drop_prob = path_drop_prob;
         this.y_drop_prob = y_drop_prob;
 		this.z_dim = z_dim;
@@ -83,7 +87,7 @@ public class OmegaDiT_T5 extends Network {
     	
         this.inputLayer = new InputLayer(inChannel, height, width);
         
-        main = new OmegaDiTMainMoudue_Sprint_T5(inChannel, width, height, patchSize, hiddenSize, headNum, depth, timeSteps, clipEmbedDim, t5EmbedDim, maxContextLen, mlpRatio, z_dim, y_drop_prob, token_drop_ratio, path_drop_prob, this);
+        main = new OmegaDiTMainMoudue_Sprint_T5(inChannel, width, height, patchSize, hiddenSize, headNum, txt_depth, depth, num_f, num_h, timeSteps, t5EmbedDim, maxContextLen, mlpRatio, z_dim, y_drop_prob, path_drop_prob, this);
         
         this.addLayer(inputLayer);
         this.addLayer(main);
@@ -130,16 +134,16 @@ public class OmegaDiT_T5 extends Network {
         return null;
     }
     
-    public Tensor forward(Tensor input, Tensor t, Tensor clipLabel, Tensor t5Label, Tensor attnMask, Tensor cos, Tensor sin) {
+    public Tensor forward(Tensor input, Tensor t, Tensor t5Label, Tensor attnMask, Tensor cos1d, Tensor sin1d, Tensor cos2d, Tensor sin2d) {
         /**
          * 设置输入数据
          */
         this.setInputData(input);
-        this.main.forward(input, t, clipLabel, t5Label, attnMask, cos, sin);
+        this.main.forward(input, t, t5Label, attnMask, cos1d, sin1d, cos2d, sin2d);
         return this.main.getOutput();
     }
     
-    public Tensor forward_with_path_drop_cfg(Tensor input, Tensor t, Tensor clipLabel, Tensor t5Label, Tensor clip_null, Tensor t5_null, Tensor attnMask, Tensor cos, Tensor sin, Tensor eps, float cfg_scale) {
+    public Tensor forward_with_path_drop_cfg(Tensor input, Tensor t, Tensor t5Label, Tensor t5_null, Tensor attnMask, Tensor cos1d, Tensor sin1d, Tensor cos2d, Tensor sin2d, Tensor eps, float cfg_scale) {
         /**
          * 设置输入数据
          */
@@ -148,10 +152,10 @@ public class OmegaDiT_T5 extends Network {
     	}
         input.copyGPU(input_null);
         this.main.uncond = false;
-        this.main.forward(input, t, clipLabel, t5Label, attnMask, cos, sin);
+        this.main.forward(input, t, t5Label, attnMask, cos1d, sin1d, cos2d, sin2d);
         this.main.getOutput().copyGPU(eps);
         this.main.uncond = true;
-        this.main.forward(input_null, t, clip_null, t5_null, attnMask, cos, sin);
+        this.main.forward(input_null, t, t5_null, attnMask, cos1d, sin1d, cos2d, sin2d);
         uncond_eps = this.main.getOutput();
         
         /**
@@ -164,7 +168,7 @@ public class OmegaDiT_T5 extends Network {
         return eps;
     }
     
-    public Tensor forward_with_path_drop_cfg(ICPlan icplan, Tensor input, Tensor t, Tensor clipLabel, Tensor t5Label, Tensor clip_null, Tensor t5_null, Tensor attnMask, Tensor cos, Tensor sin, Tensor eps, float cfg_scale) {
+    public Tensor forward_with_path_drop_cfg(ICPlan icplan, Tensor input, Tensor t, Tensor t5Label, Tensor clip_null, Tensor t5_null, Tensor attnMask, Tensor cos1d, Tensor sin1d, Tensor cos2d, Tensor sin2d, Tensor eps, float cfg_scale) {
         /**
          * 设置输入数据
          */
@@ -173,10 +177,10 @@ public class OmegaDiT_T5 extends Network {
     	}
         input.copyGPU(input_null);
         this.main.uncond = false;
-        this.main.forward(input, t, clipLabel, t5Label, attnMask, cos, sin);
+        this.main.forward(input, t, t5Label, attnMask, cos1d, sin1d, cos2d, sin2d);
         this.main.getOutput().copyGPU(eps);
         this.main.uncond = true;
-        this.main.forward(input_null, t, clip_null, t5_null, attnMask, cos, sin);
+        this.main.forward(input_null, t, t5_null, attnMask, cos1d, sin1d, cos2d, sin2d);
         uncond_eps = this.main.getOutput();
         
         /**
@@ -215,7 +219,7 @@ public class OmegaDiT_T5 extends Network {
         //		this.unet.diff.showDMByOffset(0, 100, "unet.diff");
     }
     
-    public void back(Tensor lossDiff,Tensor cos, Tensor sin) {
+    public void back(Tensor lossDiff, Tensor cos1d, Tensor sin1d, Tensor cos2d, Tensor sin2d) {
         // TODO Auto-generated method stub
         //		lossDiff.showDMByNumber(0);
         initBack();
@@ -226,7 +230,7 @@ public class OmegaDiT_T5 extends Network {
         //		lossDiff.showDMByOffset(0, 100, "lossDiff");
         this.setLossDiff(lossDiff);
         //		lossDiff.showDM("lossDiff");
-        this.main.back(lossDiff, cos, sin);
+        this.main.back(lossDiff, cos1d, sin1d, cos2d, sin2d);
         //		this.unet.diff.showDMByOffset(0, 100, "unet.diff");
     }
  

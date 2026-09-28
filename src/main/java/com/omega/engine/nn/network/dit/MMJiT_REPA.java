@@ -9,7 +9,6 @@ import com.omega.engine.loss.LossType;
 import com.omega.engine.nn.layer.InputLayer;
 import com.omega.engine.nn.layer.LayerType;
 import com.omega.engine.nn.layer.SoftmaxWithCrossEntropyLayer;
-import com.omega.engine.nn.layer.jit.MMJiTMainMoudue;
 import com.omega.engine.nn.layer.jit.MMJiTMainMoudue_REPA;
 import com.omega.engine.nn.network.Network;
 import com.omega.engine.nn.network.NetworkType;
