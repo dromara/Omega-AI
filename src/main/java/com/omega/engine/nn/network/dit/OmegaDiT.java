@@ -105,7 +105,7 @@ public class OmegaDiT extends Network {
         initLayers();
     }
     
-    public OmegaDiT(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int num_f, int num_h, int timeSteps, int textEmbedDim, int maxContextLen, int mlpRatio, int z_dim, float token_drop_ratio, float path_drop_prob, float y_drop_prob) {
+    public OmegaDiT(LossType lossType, UpdaterType updater, int inChannel, int width, int height, int patchSize, int hiddenSize, int headNum, int depth, int num_f, int num_h, int timeSteps, int textEmbedDim, int maxContextLen, int mlpRatio, int z_dim, float token_drop_ratio, float path_drop_prob, float y_drop_prob, boolean qkNorm) {
         this.lossFunction = LossFactory.create(lossType, this);
 //        this.weight_decay = 0.1f;
         this.updater = updater;
@@ -127,6 +127,7 @@ public class OmegaDiT extends Network {
         this.y_drop_prob = y_drop_prob;
 		this.z_dim = z_dim;
         this.time = (width / patchSize) * (height / patchSize);
+        this.qkNorm = qkNorm;
         initLayers();
     }
     

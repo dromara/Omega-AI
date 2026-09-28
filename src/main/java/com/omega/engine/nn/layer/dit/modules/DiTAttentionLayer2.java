@@ -1156,10 +1156,10 @@ public class DiTAttentionLayer2 extends Layer {
     }
 
     public void loadModel(RandomAccessFile inputStream) throws IOException {
-//    	if(qkNorm) {
-//	        qNorm.loadModel(inputStream, 1, 1, dk, BNType.fully_bn);
-//	        kNorm.loadModel(inputStream, 1, 1, dk, BNType.fully_bn);
-//    	}
+    	if(qkNorm) {
+	        qNorm.loadModel(inputStream, 1, 1, dk, BNType.fully_bn);
+	        kNorm.loadModel(inputStream, 1, 1, dk, BNType.fully_bn);
+    	}
         getqLinerLayer().loadModel(inputStream);
         getkLinerLayer().loadModel(inputStream);
         getvLinerLayer().loadModel(inputStream);
