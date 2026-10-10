@@ -17,6 +17,7 @@ import com.omega.engine.nn.network.dit.Dinov2;
 import com.omega.engine.nn.network.dit.OmegaDiT;
 import com.omega.engine.nn.network.dit.OmegaDiT2;
 import com.omega.engine.nn.network.dit.OmegaDiT_T5;
+import com.omega.engine.nn.network.dit.OmegaDiT_T5_VAE_REPA;
 import com.omega.engine.nn.network.vae.Flux_VAE2;
 import com.omega.engine.optimizer.MBSGDOptimizer;
 import com.omega.engine.optimizer.lr.LearnRateUpdate;
@@ -25,7 +26,6 @@ import com.omega.engine.updater.UpdaterType;
 import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.diffusion.utils.DiffusionImageDataLoader;
 import com.omega.example.dit.dataset.LatendDataset;
-import com.omega.example.dit.dataset.LatendDataset_t5;
 import com.omega.example.dit.models.ICPlan;
 import com.omega.example.sd.utils.SDImageDataLoaderEN;
 import com.omega.example.sd.utils.SDImageLoader;
@@ -291,9 +291,7 @@ public class OmegaDiT2Test {
     }
 
 	public static void omega_sprint_b1_t5_train_flux2vae_v() throws Exception {
-        String dataPath = "/root/gpufree-data/10w/dalle_flux2vae_latend.bin";
-        String t5DataPath = "/root/gpufree-data/10w/flux_t5.bin";
-        String maskDataPath = "/root/gpufree-data/10w/mask.bin";
+        String dataPath = "/root/gpufree-data/2m/flux2vae_latend_512.bin";
         
         int batchSize = 8;
         int latendDim = 128;
@@ -302,17 +300,32 @@ public class OmegaDiT2Test {
         int t5EmbedDim = 1024;
         int maxContext = 256;
         
-        LatendDataset_t5 dataLoader = new LatendDataset_t5(dataPath, t5DataPath, maskDataPath, batchSize, latendDim, height, width, maxContext, t5EmbedDim, BinDataType.float32);
+        LatendDataset dataLoader = new LatendDataset(dataPath, null, batchSize, latendDim, height, width, maxContext, t5EmbedDim, BinDataType.float32);
+
+        /**
+         * t5
+         */
+        String tokenizer_path = "/root/gpufree-data/models/t5/spiece.model";
+		SentencePieceTokenizer tokenizer = new SentencePieceTokenizer(tokenizer_path);
+		int voc_size = 32128;
+		int num_layers = 24;
+		int head_num = 16;
+		int d_ff = 2816;
+		T5Encoder t5 = new T5Encoder(LossType.MSE, UpdaterType.adamw, voc_size, num_layers, head_num, maxContext, t5EmbedDim, d_ff, false);
+		t5.CUDNN = true;
+		t5.RUN_MODEL = RunModel.EVAL;
+		String t5_model_path = "/root/gpufree-data/models/t5/t5_encoder.model";
+		com.omega.example.transformer.utils.ModelUtils.loadModel(t5, t5_model_path);
         
-        String labelPath = "/root/gpufree-data/10w/labels.json";
-		String imgDirPath = "/root/gpufree-data/10w/images_448_448/";
+		String labelPath = "/root/gpufree-data/2m/metadata.json";
+		String imgDirPath = "/root/gpufree-data/2m/448/";
 		boolean horizontalFilp = false;
         int imgSize = 448;
 
         float[] mean = new float[]{0.485f, 0.456f, 0.406f};
         float[] std = new float[]{0.229f, 0.224f, 0.225f};
-        SDImageLoader dataLoader2 = new SDImageLoader(labelPath, imgDirPath, ".jpg", imgSize, imgSize, batchSize, horizontalFilp, mean, std);
-		
+        SDImageLoader dataLoader2 = new SDImageLoader(labelPath, imgDirPath, ".png", null, "en", tokenizer, maxContext, imgSize, imgSize, batchSize, horizontalFilp, mean, std);
+	
 		int dinov_patchSize = 14;
 		int dinov_hiddenSize = 768;
 		int dinov_headNum = 12;
@@ -328,7 +341,7 @@ public class OmegaDiT2Test {
 		int ditHeadNum = 12;
         int latendSize = 32;
         int txt_depth = 2;
-        int depth = 24;
+        int depth = 22;
         int num_f = 4;
         int num_h = 4;
         int timeSteps = 1000;
@@ -351,8 +364,87 @@ public class OmegaDiT2Test {
         
         MBSGDOptimizer optimizer = new MBSGDOptimizer(dit, 10, 0.00001f, batchSize, LearnRateUpdate.NONE, false);
         
-        optimizer.train_Flux_Sprint_ICPlan_V_T5(dinov, dataLoader2, dataLoader, icplan, "/root/gpufree-data/models/omgeaDiT_t5/", 1);
-        String save_model_path = "/root/gpufree-data/models/omgeaDiT_t5/fluxvae_sprint_b1.model";
+        optimizer.train_Flux_Sprint_ICPlan_V_T5(t5, dinov, dataLoader2, dataLoader, icplan, "/omega3/models/", 1);
+        String save_model_path = "/omega3/models/fluxvae_sprint_b1_t5.model";
+        ModelUtils.saveModel(dit, save_model_path);
+    }
+	
+	public static void omega_sprint_b1_t5_train_flux2vae_repa2_v() throws Exception {
+        String dataPath = "/root/gpufree-data/2m/flux2vae_latend_512.bin";
+        
+        int batchSize = 8;
+        int latendDim = 128;
+        int height = 32;
+        int width = 32;
+        int t5EmbedDim = 1024;
+        int maxContext = 256;
+        
+        LatendDataset dataLoader = new LatendDataset(dataPath, null, batchSize, latendDim, height, width, maxContext, t5EmbedDim, BinDataType.float32);
+
+        /**
+         * t5
+         */
+        String tokenizer_path = "/root/gpufree-data/models/t5/spiece.model";
+		SentencePieceTokenizer tokenizer = new SentencePieceTokenizer(tokenizer_path);
+		int voc_size = 32128;
+		int num_layers = 24;
+		int head_num = 16;
+		int d_ff = 2816;
+		T5Encoder t5 = new T5Encoder(LossType.MSE, UpdaterType.adamw, voc_size, num_layers, head_num, maxContext, t5EmbedDim, d_ff, false);
+		t5.CUDNN = true;
+		t5.RUN_MODEL = RunModel.EVAL;
+		String t5_model_path = "/root/gpufree-data/models/t5/t5_encoder.model";
+		com.omega.example.transformer.utils.ModelUtils.loadModel(t5, t5_model_path);
+        
+		String labelPath = "/root/gpufree-data/2m/metadata.json";
+		String imgDirPath = "/root/gpufree-data/2m/448/";
+		boolean horizontalFilp = false;
+        int imgSize = 448;
+
+        float[] mean = new float[]{0.485f, 0.456f, 0.406f};
+        float[] std = new float[]{0.229f, 0.224f, 0.225f};
+        SDImageLoader dataLoader2 = new SDImageLoader(labelPath, imgDirPath, ".png", null, "en", tokenizer, maxContext, imgSize, imgSize, batchSize, horizontalFilp, mean, std);
+	
+		int dinov_patchSize = 14;
+		int dinov_hiddenSize = 768;
+		int dinov_headNum = 12;
+		int dinov_depth = 12;
+		int dinov_mlpRatio = 4;
+		Dinov2 dinov = new Dinov2(LossType.MSE, UpdaterType.adamw, 3, imgSize, imgSize, dinov_patchSize, dinov_hiddenSize, dinov_headNum, dinov_depth, dinov_mlpRatio);
+		dinov.CUDNN = true;
+		dinov.RUN_MODEL = RunModel.EVAL;
+        
+        String repa_model_path = "/root/gpufree-data/models/dionv2-14-b-512.model";
+        ModelUtils.loadModel(dinov, repa_model_path);
+		
+		int ditHeadNum = 12;
+        int latendSize = 32;
+        int txt_depth = 2;
+        int depth = 22;
+        int num_f = 2;
+        int num_h = 2;
+        int timeSteps = 1000;
+        int mlpRatio = 4;
+        int patchSize = 1;
+        int hiddenSize = 768;
+        
+        float y_prob = 0.1f;
+        float path_drop_prob = 0.05f;
+        
+        OmegaDiT_T5_VAE_REPA dit = new OmegaDiT_T5_VAE_REPA(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, txt_depth, depth, num_f, num_h, timeSteps, t5EmbedDim, maxContext, mlpRatio, dinov_hiddenSize, latendDim, 2, path_drop_prob, y_prob);
+        dit.CUDNN = true;
+        dit.CUDNN_SDPA = true;
+        dit.learnRate = 2e-4f;
+        
+        ICPlan icplan = new ICPlan(dit.tensorOP);
+
+//        String model_path = "D:\\models\\dit_txt_flux\\flux_sprint_b1_4.model";
+//        ModelUtils.loadModel(dit, model_path);
+        
+        MBSGDOptimizer optimizer = new MBSGDOptimizer(dit, 4, 0.00001f, batchSize, LearnRateUpdate.NONE, false);
+        
+        optimizer.train_Flux_Sprint_ICPlan_V_T5_REPA2(t5, dinov, dataLoader2, dataLoader, icplan, "/omega4/models/", 1);
+        String save_model_path = "/omega4/models/fluxvae_sprint_b1_t5.model";
         ModelUtils.saveModel(dit, save_model_path);
     }
 	
@@ -508,14 +600,14 @@ public class OmegaDiT2Test {
         ModelUtils.saveModel(dit, save_model_path);
     }
 	
-	public static void test_omega_t5_cfg_flux2vae_v() throws Exception {
+public static void test_omega_t5_cfg_flux2vae_v() throws Exception {
 		
         float[] mean = new float[]{0.5f, 0.5f, 0.5f};
         float[] std = new float[]{0.5f, 0.5f, 0.5f};
         
         int imgSize = 512;
         int t5MaxContextLen = 256;
-        int batchSize = 10;
+        int batchSize = 2;
         
         /**
          * t5
@@ -550,10 +642,11 @@ public class OmegaDiT2Test {
         /**
          * dit
          */
+        int vaeLatendDim = 128;
         int ditHeadNum = 12;
         int latendSize = 32;
         int txt_depth = 2;
-        int depth = 24;
+        int depth = 22;
         int num_f = 2;
         int num_h = 2;
         int timeSteps = 1000;
@@ -564,13 +657,13 @@ public class OmegaDiT2Test {
         float y_prob = 0.1f;
         float path_drop_prob = 0.05f;
         
-        OmegaDiT_T5 network = new OmegaDiT_T5(LossType.MSE, UpdaterType.adamw, latendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, txt_depth, depth, num_f, num_h, timeSteps, t5EmbedDim, t5MaxContextLen, mlpRatio, hiddenSize, path_drop_prob, y_prob);
+        OmegaDiT_T5 network = new OmegaDiT_T5(LossType.MSE, UpdaterType.adamw, vaeLatendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, txt_depth, depth, num_f, num_h, timeSteps, t5EmbedDim, t5MaxContextLen, mlpRatio, hiddenSize, path_drop_prob, y_prob);
         network.CUDNN = true;
         network.learnRate = 2e-4f;
         
         ICPlan icplan = new ICPlan(network.tensorOP, 50, 0);
 
-        String model_path = "D:\\models\\di_t5\\flux_sprint_b1_64.model";
+        String model_path = "D:\\models\\dit_t5\\flux_sprint_b1_t5_0_70000.model";
         ModelUtils.loadModel(network, model_path);
 
         Tensor t5Label = new Tensor(batchSize * t5MaxContextLen, 1, 1, 1, true);
@@ -598,7 +691,7 @@ public class OmegaDiT2Test {
         Tensor sin2d = cs2d[1];
 
         network.RUN_MODEL = RunModel.EVAL;
-        String[] labels = new String[28];
+        String[] labels = new String[40];
         labels[0] = "A cat";
         labels[1] = "a vibrant anime mountain lands";
         labels[2] = "a highly detailed anime landscape,big tree on the water, epic sky,golden grass,detailed";
@@ -609,10 +702,10 @@ public class OmegaDiT2Test {
         labels[7] = "A yellow mushroom grows in the forest";
         labels[8] = "a dog";
         labels[9] = "A lovely corgi is taking a walk under the sea";
-        labels[10] = "A cat holding a sign that says hello world";
+        labels[10] = "a cat wearing sunglasses";
         labels[11] = "A man with short hair wearing a dark blazer and a patterned scarf is standing in front of a blurred background.";
-        labels[12] = "A Ukiyoe-style painting, an astronaut riding a unicorn, In the background there is an ancient Japanese architecture.";
-        labels[13] = "porcelain girl's face. fine texture. surreal";
+        labels[12] = "a woman running on a trail";
+        labels[13] = "a futuristic city street at night";
         labels[14] = "Half human, half robot, repaired human";
         labels[15] = "Poster of a mechanical cat, techical Schematics viewed from front.";
         labels[16] = "A beautiful girl with golden hair, cool and sunny";
@@ -627,13 +720,27 @@ public class OmegaDiT2Test {
         labels[25] = "A cyberpunk panda is taking a walk on the street";
         labels[26] = "Happy dreamy owl monster sitting on a tree branch, colorful glittering particles, forest background, detailed feathers.";
         labels[27] = "One giant, sharp, metal square mirror in the center of the frame, four young people on the foreground, background sunny palm oil planation, tropical, realistic style, photography, nostalgic, green tone, mysterious, dreamy, bright color.";
+        labels[28] = "A real beaver holding a white mug that has exactly three cute cartoon beavers on the side.";
+        labels[29] = "Great Wall of China under a Van Gogh-inspired starry sky.";
+        labels[30] = "A sunken ship with the large letters VAE visible on the hull.";
+        labels[31] = "a photo of a stop sign above a fork";
+        labels[32] = "a photo of a frisbee below a horse";
+        labels[33] = "a vibrant plant with star-shaped orange flowers blooming amidst lush green leaves. The plant is potted in a terracotta container that sits on a wooden shelf. Around it, other houseplants contribute to a small indoor garden atmosphere.";
+        labels[34] = "A luminous metropolis floats serenely beneath the translucent domes of colossal jellyfish, their bioluminescent bellies glowing with the warmth of an inverted urban skyline, drifting through the tranquil depths of an otherworldly ocean.";
+        labels[35] = "A photorealistic shot of a spy wearing a red-and-black tactical mask and dark leather gear, riding a motorcycle at high speed through a rainy city street at night. The background is heavily blurred with motion streaks.";
+        labels[36] = "A sushi map of the United States, featuring rolls with colorful toppings that correspond to different regions, sits on a polished wooden table adorned with cherry blossom petals, a small bonsai tree, and a traditional Japanese lantern casting warm, ambient light over the scene.";
+        labels[37] = "Lindsey Wixson stands confidently in a golden wheat field, donning a wide-brimmed straw hat, bold red sunglasses, and a vibrant red fur-trimmed top, accessorized with a sparkling diamond necklace, embodying summer elegance.";
+        labels[38] = "Futuristic women in sleek black suits with illuminated accents stand in a high-tech environment, one wearing a headset with a glowing circular interface, evoking the aesthetic of Tron: Legacy.";
+        labels[39] = "Cute chibi character dressed in a vibrant red kimono adorned with golden floral patterns stands gracefully against a warm, circular backdrop, holding a long bamboo stick with a delicate orange flower, symbolizing the festive spirit of Shichi-Go-San.";
+
+        long seed = 123;
         
-        for(int i = 0;i<7;i++) {
+        for(int i = 0;i<20;i++) {
 
             loadLabel_offset(tokenizer, t5Label, mask, attnMask, 0, t5MaxContextLen, labels[i * batchSize + 0]);
             loadLabel_offset(tokenizer, t5Label, mask, attnMask, 1, t5MaxContextLen, labels[i * batchSize + 1]);
-            loadLabel_offset(tokenizer, t5Label, mask, attnMask, 2, t5MaxContextLen, labels[i * batchSize + 2]);
-            loadLabel_offset(tokenizer, t5Label, mask, attnMask, 3, t5MaxContextLen, labels[i * batchSize + 3]);
+//            loadLabel_offset(tokenizer, t5Label, mask, attnMask, 2, t5MaxContextLen, labels[i * batchSize + 2]);
+//            loadLabel_offset(tokenizer, t5Label, mask, attnMask, 3, t5MaxContextLen, labels[i * batchSize + 3]);
             t5Label.hostToDevice();
             mask.hostToDevice();
             attnMask.hostToDevice();
@@ -649,34 +756,34 @@ public class OmegaDiT2Test {
                 cudaDeviceSynchronize();
             }
             
-            for(int it = 0;it<5;it++) {
+            for(int it = 0;it<6;it++) {
 
             	System.out.println("start create test images.");
 
-                GPUOP.getInstance().cudaRandn(noise, 123+i);
+                GPUOP.getInstance().cudaRandn(noise, seed + i * 5 + it);
                 noise.copyGPU(noise2);
-                
-                Tensor sample = icplan.forward_with_path_drop_cfg(network, noise, t, t5Input, t5Input_ynull, attnMask, cos1d, sin1d, cos2d, sin2d, latend, eps, 1.0f);
 
+                Tensor sample = icplan.forward_with_path_drop_cfg_heun_step_v(network, noise, t, t5Input, t5Input_ynull, attnMask, cos1d, sin1d, cos2d, sin2d, latend, eps, 1.0f);
+               
                 Tensor result = vae.decode(sample);
                 
                 JCuda.cudaDeviceSynchronize();
                 
                 result.data = MatrixOperation.clampSelf(result.syncHost(), -1, 1);
 
-                OmegaDiTTest.showImgs("D:\\test\\dit_fluxvae\\omega_t5_mask_256\\" + i + "_" + it, result, mean, std);
-                
+                showImgs("D:\\test\\dit_fluxvae\\omega_t5_mask\\"+i+"_" + it, result, mean, std);
+
                 System.out.println("finish create.");
                 
-                sample = icplan.forward_with_path_drop_cfg(network, noise2, t, t5Input, t5Input_ynull, attnMask, cos1d, sin1d, cos2d, sin2d, latend, eps, 2.0f);
+                sample = icplan.forward_with_path_drop_cfg_heun_step_v(network, noise2, t, t5Input, t5Input_ynull, attnMask, cos1d, sin1d, cos2d, sin2d, latend, eps, 2.0f);
 
                 result = vae.decode(sample);
                 
                 JCuda.cudaDeviceSynchronize();
                 
                 result.data = MatrixOperation.clampSelf(result.syncHost(), -1, 1);
-
-                OmegaDiTTest.showImgs("D:\\test\\dit_fluxvae\\omega_t5_mask_256\\" + i + "_" + it + "_T", result, mean, std);
+                
+                showImgs("D:\\test\\dit_fluxvae\\omega_t5_mask\\" + i + "_" + it + "_T", result, mean, std);
                 
                 System.out.println("finish create.");
             }
@@ -685,6 +792,198 @@ public class OmegaDiT2Test {
         
 	}
 	
+	public static void test_omega_t5_cfg_flux2vae_repa2_v() throws Exception {
+		
+	    float[] mean = new float[]{0.5f, 0.5f, 0.5f};
+	    float[] std = new float[]{0.5f, 0.5f, 0.5f};
+	    
+	    int imgSize = 512;
+	    int t5MaxContextLen = 256;
+	    int batchSize = 2;
+	    
+	    /**
+	     * t5
+	     */
+	    String tokenizer_path = "D:\\models\\t5_L\\spiece.model";
+		SentencePieceTokenizer tokenizer = new SentencePieceTokenizer(tokenizer_path);
+		int voc_size = 32128;
+		int num_layers = 24;
+		int head_num = 16;
+		int t5EmbedDim = 1024;
+		int d_ff = 2816;
+		T5Encoder t5 = new T5Encoder(LossType.MSE, UpdaterType.adamw, voc_size, num_layers, head_num, t5MaxContextLen, t5EmbedDim, d_ff, false);
+		t5.CUDNN = true;
+		t5.RUN_MODEL = RunModel.EVAL;
+		String t5_model_path = "D:\\models\\t5_L\\t5_encoder.model";
+		com.omega.example.transformer.utils.ModelUtils.loadModel(t5, t5_model_path);
+		
+		/**
+		 * vae
+		 */
+	    int latendDim = 32;
+	    int num_res_blocks = 2;
+	    int[] ch_mult = new int[]{1, 2, 4, 4};
+	    int ch = 128;
+	    Flux_VAE2 vae = new Flux_VAE2(LossType.MSE, UpdaterType.adamw, latendDim, imgSize, ch_mult, ch, num_res_blocks);
+	    vae.CUDNN = true;
+	    vae.learnRate = 0.001f;
+	    vae.RUN_MODEL = RunModel.EVAL;
+	    String vaeWeight = "D:\\models\\flux2_vae\\flux2_vae.json";
+	    ModeLoaderlUtils.loadWeight(LagJsonReader.readJsonFileSmallWeight(vaeWeight), vae, true);
+	    
+	    /**
+	     * dit
+	     */
+	    int vaeLatendDim = 128;
+	    int ditHeadNum = 12;
+	    int latendSize = 32;
+	    int txt_depth = 2;
+	    int depth = 22;
+	    int num_f = 2;
+	    int num_h = 2;
+	    int timeSteps = 1000;
+	    int mlpRatio = 4;
+	    int patchSize = 1;
+	    int hiddenSize = 768;
+	    
+	    float y_prob = 0.1f;
+	    float path_drop_prob = 0.05f;
+	    
+	    OmegaDiT_T5_VAE_REPA network = new OmegaDiT_T5_VAE_REPA(LossType.MSE, UpdaterType.adamw, vaeLatendDim, latendSize, latendSize, patchSize, hiddenSize, ditHeadNum, txt_depth, depth, num_f, num_h, timeSteps, t5EmbedDim, t5MaxContextLen, mlpRatio, hiddenSize, vaeLatendDim, 2, path_drop_prob, y_prob);
+	    network.CUDNN = true;
+	    network.learnRate = 2e-4f;
+	    
+	    ICPlan icplan = new ICPlan(network.tensorOP, 50, 0);
+	
+	    String model_path = "D:\\models\\dit_t5\\flux_sprint_b1_t5_0_70000.model";
+	    ModelUtils.loadModel(network, model_path);
+	
+	    Tensor t5Label = new Tensor(batchSize * t5MaxContextLen, 1, 1, 1, true);
+		Tensor mask = new Tensor(batchSize, 1, 1, t5MaxContextLen, true);
+		Tensor attnMask = new Tensor(batchSize, 1, 1, t5MaxContextLen, true);
+	
+	    Tensor t5Input = null;
+	    Tensor t5Input_ynull = null;
+	    Tensor t = new Tensor(batchSize, 1, 1, 1, true);
+	
+	    Tensor noise = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+	    Tensor latend = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+	    Tensor eps = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+	    
+	    Tensor noise2 = new Tensor(batchSize, network.inChannel, network.height, network.width, true);
+	    
+	    int theta = 10000;
+	
+	    Tensor[] cs1d = RoPEKernel.create1DRope(network.maxContextLen, network.headDims, 0, theta);
+	    Tensor cos1d = cs1d[0];
+	    Tensor sin1d = cs1d[1];
+	    
+	    Tensor[] cs2d = RoPEKernel.getCosAndSin2D(network.time, network.hiddenSize, network.headNum);
+	    Tensor cos2d = cs2d[0];
+	    Tensor sin2d = cs2d[1];
+	
+	    network.RUN_MODEL = RunModel.EVAL;
+	    String[] labels = new String[40];
+	    labels[0] = "A cat";
+	    labels[1] = "a vibrant anime mountain lands";
+	    labels[2] = "a highly detailed anime landscape,big tree on the water, epic sky,golden grass,detailed";
+	    labels[3] = "a girl wearning a white dress standing under the apple tree";
+	    labels[4] = "fruit cream cake";
+	    labels[5] = "bright red phlox flowers bloom in a garden";
+	    labels[6] = "the cambridge shoulder bag";
+	    labels[7] = "A yellow mushroom grows in the forest";
+	    labels[8] = "a dog";
+	    labels[9] = "A lovely corgi is taking a walk under the sea";
+	    labels[10] = "a cat wearing sunglasses";
+	    labels[11] = "A man with short hair wearing a dark blazer and a patterned scarf is standing in front of a blurred background.";
+	    labels[12] = "a woman running on a trail";
+	    labels[13] = "a futuristic city street at night";
+	    labels[14] = "Half human, half robot, repaired human";
+	    labels[15] = "Poster of a mechanical cat, techical Schematics viewed from front.";
+	    labels[16] = "A beautiful girl with golden hair, cool and sunny";
+	    labels[17] = "future rocket station, intricate details, high resolution, unreal engine, UHD";
+	    labels[18] = "a car runing on the sand.";
+	    labels[19] = "Color photo of a corgi made of transparent glass, standing on the riverside in Yosemite National Park.";
+	    labels[20] = "a highly detailed anime sexy beauty with big breasts.";
+	    labels[21] = "Full body shot, a French woman, Photography, French Streets background, backlighting, rim light, Fujifilm.";
+	    labels[22] = "A fox sleeping inside snow";
+	    labels[23] = "A beautiful girl with hair flowing like a cascading waterfail";
+	    labels[24] = "Game-Art - An island with different geographical properties and multiple small cities floating in space";
+	    labels[25] = "A cyberpunk panda is taking a walk on the street";
+	    labels[26] = "Happy dreamy owl monster sitting on a tree branch, colorful glittering particles, forest background, detailed feathers.";
+	    labels[27] = "One giant, sharp, metal square mirror in the center of the frame, four young people on the foreground, background sunny palm oil planation, tropical, realistic style, photography, nostalgic, green tone, mysterious, dreamy, bright color.";
+	    labels[28] = "A real beaver holding a white mug that has exactly three cute cartoon beavers on the side.";
+	    labels[29] = "Great Wall of China under a Van Gogh-inspired starry sky.";
+	    labels[30] = "A sunken ship with the large letters VAE visible on the hull.";
+	    labels[31] = "a photo of a stop sign above a fork";
+	    labels[32] = "a photo of a frisbee below a horse";
+	    labels[33] = "a vibrant plant with star-shaped orange flowers blooming amidst lush green leaves. The plant is potted in a terracotta container that sits on a wooden shelf. Around it, other houseplants contribute to a small indoor garden atmosphere.";
+	    labels[34] = "A luminous metropolis floats serenely beneath the translucent domes of colossal jellyfish, their bioluminescent bellies glowing with the warmth of an inverted urban skyline, drifting through the tranquil depths of an otherworldly ocean.";
+	    labels[35] = "A photorealistic shot of a spy wearing a red-and-black tactical mask and dark leather gear, riding a motorcycle at high speed through a rainy city street at night. The background is heavily blurred with motion streaks.";
+	    labels[36] = "A sushi map of the United States, featuring rolls with colorful toppings that correspond to different regions, sits on a polished wooden table adorned with cherry blossom petals, a small bonsai tree, and a traditional Japanese lantern casting warm, ambient light over the scene.";
+	    labels[37] = "Lindsey Wixson stands confidently in a golden wheat field, donning a wide-brimmed straw hat, bold red sunglasses, and a vibrant red fur-trimmed top, accessorized with a sparkling diamond necklace, embodying summer elegance.";
+	    labels[38] = "Futuristic women in sleek black suits with illuminated accents stand in a high-tech environment, one wearing a headset with a glowing circular interface, evoking the aesthetic of Tron: Legacy.";
+	    labels[39] = "Cute chibi character dressed in a vibrant red kimono adorned with golden floral patterns stands gracefully against a warm, circular backdrop, holding a long bamboo stick with a delicate orange flower, symbolizing the festive spirit of Shichi-Go-San.";
+	
+	    long seed = 123;
+	    
+	    for(int i = 0;i<20;i++) {
+	
+	        loadLabel_offset(tokenizer, t5Label, mask, attnMask, 0, t5MaxContextLen, labels[i * batchSize + 0]);
+	        loadLabel_offset(tokenizer, t5Label, mask, attnMask, 1, t5MaxContextLen, labels[i * batchSize + 1]);
+	//        loadLabel_offset(tokenizer, t5Label, mask, attnMask, 2, t5MaxContextLen, labels[i * batchSize + 2]);
+	//        loadLabel_offset(tokenizer, t5Label, mask, attnMask, 3, t5MaxContextLen, labels[i * batchSize + 3]);
+	        t5Label.hostToDevice();
+	        mask.hostToDevice();
+	        attnMask.hostToDevice();
+	        t5Input = t5.forward(t5Label, mask);
+	        
+	        if(t5Input_ynull == null) {
+	            t5Input_ynull = Tensor.createGPUTensor(t5Input_ynull, t5Input.number, t5Input.channel, t5Input.height, t5Input.width, true);
+	            Tensor y_null = network.main.t5Embd.getY_embedding();
+	            int part_input_size = y_null.dataLength;
+	            for(int b = 0;b<batchSize * t5MaxContextLen;b++) {
+	            	network.tensorOP.op.copy_gpu(y_null, t5Input_ynull, part_input_size, 0, 1, b * part_input_size, 1);
+	            }
+	            cudaDeviceSynchronize();
+	        }
+	        
+	        for(int it = 0;it<6;it++) {
+	
+	        	System.out.println("start create test images.");
+	
+	            GPUOP.getInstance().cudaRandn(noise, seed + i * 5 + it);
+	            noise.copyGPU(noise2);
+	
+	            Tensor sample = icplan.forward_with_path_drop_cfg_heun_step_v(network, noise, t, t5Input, t5Input_ynull, attnMask, cos1d, sin1d, cos2d, sin2d, latend, eps, 1.0f);
+	           
+	            Tensor result = vae.decode(sample);
+	            
+	            JCuda.cudaDeviceSynchronize();
+	            
+	            result.data = MatrixOperation.clampSelf(result.syncHost(), -1, 1);
+	
+	            showImgs("D:\\test\\dit_fluxvae\\omega_t5_mask\\"+i+"_" + it, result, mean, std);
+	
+	            System.out.println("finish create.");
+	            
+	            sample = icplan.forward_with_path_drop_cfg_heun_step_v(network, noise2, t, t5Input, t5Input_ynull, attnMask, cos1d, sin1d, cos2d, sin2d, latend, eps, 2.0f);
+	
+	            result = vae.decode(sample);
+	            
+	            JCuda.cudaDeviceSynchronize();
+	            
+	            result.data = MatrixOperation.clampSelf(result.syncHost(), -1, 1);
+	            
+	            showImgs("D:\\test\\dit_fluxvae\\omega_t5_mask\\" + i + "_" + it + "_T", result, mean, std);
+	            
+	            System.out.println("finish create.");
+	        }
+	        
+	    }
+	    
+	}
+
 	public static void test_omega_sprint_path_drop_cfg_flux2vae() throws Exception {
 		String labelPath = "D:\\dataset\\amine\\data.json";
         String imgDirPath = "D:\\dataset\\amine\\256\\";
@@ -1979,7 +2278,7 @@ public class OmegaDiT2Test {
         	
 //        	omega_sprint_b1_clip_train_flux2vae_v();
         	
-        	test_omega_sprint_path_drop_cfg_flux2vae_v();
+//        	test_omega_sprint_path_drop_cfg_flux2vae_v();
         	
 //        	test_omega_sprint_path_drop_cfg_flux2vae_v_512();
         	
@@ -1988,6 +2287,10 @@ public class OmegaDiT2Test {
 //        	test_omega_sprint_path_drop_cfg_flux2vae_512();
         	
 //        	test_omega_t5_cfg_flux2vae_v();
+        	
+//        	omega_sprint_b1_t5_train_flux2vae_v();
+        	
+        	omega_sprint_b1_t5_train_flux2vae_repa2_v();
         	
         } catch (Exception e) {
             // TODO: handle exception

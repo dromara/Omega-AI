@@ -329,6 +329,7 @@ public class SDImageLoader extends BaseDataLoader {
                 if(success){
                 	cf = null;
                 	input.hostToDevice();
+                	label.hostToDevice();
                 	cf = loadAsyncData(next, input, label);
                 }
             } else {
@@ -337,7 +338,47 @@ public class SDImageLoader extends BaseDataLoader {
                 if(success){
                 	cf = null;
                 	input.hostToDevice();
+                	label.hostToDevice();
                 	cf = loadAsyncData(next, input, label);
+                }
+            }
+//            System.out.println("load cost:"+(System.nanoTime() - start)/1e6+"ms.");
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
+    }
+    
+    public void loadData(int[] indexs, int[] next, Tensor input, Tensor label, Tensor mask, Tensor attnMask, int it) {
+        // TODO Auto-generated method stub
+    	try {
+//            System.out.println(it);
+    		if(it == 0) {
+    			if (cf != null) {
+        			cf.get();//等待数据从文件加载完毕
+                }
+        		cf = null;
+    		}
+            if (cf != null) {
+                boolean success = cf.get();
+                if(success){
+                	cf = null;
+                	input.hostToDevice();
+                	label.hostToDevice();
+                	mask.hostToDevice();
+                	attnMask.hostToDevice();
+                	cf = loadAsyncData(next, input, label, mask, attnMask);
+                }
+            } else {
+                cf = loadAsyncData(indexs, input, label, mask, attnMask);
+                boolean success = cf.get();
+                if(success){
+                	cf = null;
+                	input.hostToDevice();
+                	label.hostToDevice();
+                	mask.hostToDevice();
+                	attnMask.hostToDevice();
+                	cf = loadAsyncData(next, input, label, mask, attnMask);
                 }
             }
 //            System.out.println("load cost:"+(System.nanoTime() - start)/1e6+"ms.");
@@ -411,6 +452,43 @@ public class SDImageLoader extends BaseDataLoader {
                         } else {
                              label.data[i * maxLength + j] = getTokenizer().eos();
                         }
+                    }
+                }
+            } catch (Exception e) {
+                // TODO: handle exception
+                e.printStackTrace();
+            }
+            return true;
+        });
+        return cf;
+    }
+    
+    public CompletableFuture<Boolean> loadAsyncData(int[] indexs, Tensor input, Tensor label, Tensor mask, Tensor attnMask) {
+        CompletableFuture<Boolean> cf = CompletableFuture.supplyAsync(() -> {
+            try {
+            	 /**
+                 * 加载input数据
+                 */
+                if (mean != null) {
+                    SegImageLoader.load(imgDirPath, extName, idxSet, indexs, input.number, input, false, true, mean, std);
+                } else {
+                    SegImageLoader.load(imgDirPath, extName, idxSet, indexs, input.number, input, false, true);
+                }
+                
+                for(int i = 0;i<indexs.length;i++) {
+                	Map<String, Object> once = datas.get(indexs[i]);
+                	String txt = once.get(labelKey).toString();
+                	int[] ids = getTokenizer().encodeInt(txt, maxLength);
+                    for (int j = 0; j < maxLength; j++) {
+                    	int val = ids[j];
+                    	label.data[i * maxLength + j] = val;
+                    	if(val != tokenizer.pad()) {
+                    		mask.data[i * maxLength + j] = 0;
+                    		attnMask.data[i * maxLength + j] = 1;
+                    	}else {
+                    		mask.data[i * maxLength + j] = -3.4028e+38f;
+                    		attnMask.data[i * maxLength + j] = 0;
+                    	}
                     }
                 }
             } catch (Exception e) {
