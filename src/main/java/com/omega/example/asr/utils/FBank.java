@@ -128,8 +128,28 @@ public class FBank {
             float eps = 1.1920928955078125e-07f;
             float[] fbank = new float[maxLen * r[0].length];
             int cols = r[0].length;
-            for (int i = 0; i < r.length * r[0].length; i++) {
+            int frames = r.length;
+            for (int i = 0; i < frames * cols; i++) {
                 fbank[i] = (float) Math.log(Math.max(r[i / cols][i % cols], eps));
+            }
+            // 对 FBank 特征做 per-utterance CMVN(每个 mel 频带做均值方差归一化)。
+            // 原实现直接返回 log-mel，特征分布漂移，模型难以收敛到高识别率；CMVN 是 ASR 的标准预处理。
+            // 仅对有效帧(frames)归一化，超出 frames 的 padding 部分保持 0。
+            for (int c = 0; c < cols; c++) {
+                double sum = 0;
+                for (int t = 0; t < frames; t++) {
+                    sum += fbank[t * cols + c];
+                }
+                float mean = (float) (sum / frames);
+                double var = 0;
+                for (int t = 0; t < frames; t++) {
+                    float d = fbank[t * cols + c] - mean;
+                    var += d * d;
+                }
+                float std = (float) Math.sqrt(var / frames);
+                for (int t = 0; t < frames; t++) {
+                    fbank[t * cols + c] = (fbank[t * cols + c] - mean) / (std + 1e-10f);
+                }
             }
             len[idx] = r.length;
             return fbank;

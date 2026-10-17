@@ -2928,8 +2928,10 @@ public class EDOptimizer extends Optimizer {
             Tensor labelLen = new Tensor(batchSize, 1, 1, 1, true);
             Tensor label = new Tensor(batchSize, 1, 1, trainingData.getMaxContextLen(), true);
             int[] count = new int[1];
-             int pad = -1;
-//            int pad = trainingData.tokenizer.pad();
+            // 原代码硬编码 pad=-1，cross_softmax 内核中 igonre<=-1 时不忽略任何位置，
+            // 导致 padding 位置(label=0)也参与 loss 与梯度计算，污染有效 token 的学习。
+            // 改为 tokenizer.pad()(即 0) 后，内核会在 label==pad 的位置把 loss 与 diff 置 0。
+            int pad = trainingData.tokenizer.pad();
             Tensor output = null;
             for (int i = 0; i < this.trainTime; i++) {
                 if (this.trainIndex >= this.minTrainTime) {
@@ -3016,7 +3018,8 @@ public class EDOptimizer extends Optimizer {
     }
 
     public void updateLRDynamic(int it, int count) {
-        int warmup_iters = 0;
+        // 配合 asr_train 里 optimizer.warmUpTime 的设置实现训练初期线性预热，稳定 Transformer 训练。
+        int warmup_iters = this.warmUpTime;
         int lr_decay_iters = count;
         // System.out.println(this.lr);
         // System.out.println(lr_decay_iters);

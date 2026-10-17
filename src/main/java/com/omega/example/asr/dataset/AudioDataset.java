@@ -52,7 +52,8 @@ public class AudioDataset extends BaseDataLoader {
                 List<Map<String, Object>> rmList = new ArrayList<Map<String, Object>>();
                 for (int i = 0; i < datas.size(); i++) {
                     String path = datas.get(i).get("path").toString();
-                    if (FBank.checkMaxSeqLen(wavDirPath + path, i, getMaxWavLength())) {
+                    // 原第二个参数误传了循环变量 i，应为 numBins(getNumBins())；虽 checkMaxSeqLen 内未用 numBins
+                    if (FBank.checkMaxSeqLen(wavDirPath + path, getNumBins(), getMaxWavLength())) {
                         idxList.add(path);
                     } else {
                         rmList.add(datas.get(i));
@@ -186,6 +187,8 @@ public class AudioDataset extends BaseDataLoader {
 			int idx = indexs[i];
 			String text = tokenizer.sos_str() + datas.get(idx).get("text").toString() + tokenizer.eos_str();
 			int[] ids = tokenizer.encodeInt(text, getMaxContextLen() + 1);
+			// 先清零 labelLen，避免截断样本残留上一个 batch 的旧值
+			labelLen.data[i] = 0;
 			for (int j = 0; j < getMaxContextLen(); j++) {
 				float current = ids[j];
 				float next = ids[j + 1];
@@ -194,6 +197,10 @@ public class AudioDataset extends BaseDataLoader {
 				if (current == tokenizer.eos()) {
 					labelLen.data[i] = j + 1;
 				}
+			}
+			// 若序列被截断未包含 eos，则整个序列都视为有效，避免 labelLen=0 导致 decoder 全部被屏蔽
+			if (labelLen.data[i] == 0) {
+				labelLen.data[i] = getMaxContextLen();
 			}
 		}
 	}

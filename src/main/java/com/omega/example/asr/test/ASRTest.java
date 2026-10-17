@@ -1,9 +1,5 @@
 package com.omega.example.asr.test;
 
-import java.util.Arrays;
-import java.util.Map;
-import java.util.Scanner;
-
 import com.omega.common.utils.MatrixOperation;
 import com.omega.common.utils.MatrixUtils;
 import com.omega.common.utils.RandomUtils;
@@ -22,6 +18,10 @@ import com.omega.example.common.ModeLoaderlUtils;
 import com.omega.example.transformer.utils.LagJsonReader;
 import com.omega.example.transformer.utils.ModelUtils;
 import com.omega.example.transformer.utils.bpe.BPETokenizer3;
+
+import java.util.Arrays;
+import java.util.Map;
+import java.util.Scanner;
 
 public class ASRTest {
 	public static void loadWeight(Map<String, Object> weightMap, ASR network, boolean showLayers) {
@@ -209,7 +209,11 @@ public class ASRTest {
 		network.learnRate = 0.0001f;
 		// String model_path = "H:\\model\\asr2.model";
 		// ModelUtils.loadModel(network, model_path);
-		EDOptimizer optimizer = new EDOptimizer(network, batchSize, 20, 0.0001f, LearnRateUpdate.CONSTANT, false);
+		// ASR 训练路径由 trainASR_chinese -> updateLRDynamic 做 cosine 学习率衰减，warmUpTime 控制预热步数；
+		// 原 20 轮 + 无 warmup 对 Transformer 类 ASR 明显不足。
+		EDOptimizer optimizer = new EDOptimizer(network, batchSize, 50, 0.0001f, LearnRateUpdate.COSINE, false);
+		optimizer.setWarmUp(true);
+		optimizer.warmUpTime = 1000;
 		optimizer.trainASR_chinese(dataLoader);
 		String save_model_path = "H:\\model\\asr.model";
 		ModelUtils.saveModel(network, save_model_path);
@@ -218,10 +222,11 @@ public class ASRTest {
 	public static void asr_predict() throws Exception {
 		boolean bias = true;
 		boolean dropout = false;
-		int maxWavLength = 256;
-		int maxContextLen = 64;
+		// 原代码为 256/256/64，与训练时的 512/512/32 不一致，加载 asr.model 时权重维度错位。
+		int maxWavLength = 512;
+		int maxContextLen = 32;
 		int numBins = 80;
-		int wavDim = 256;
+		int wavDim = 512;
 		int headNum = 8;
 		int n_layers = 8;
 		int nChannel = 2048;
@@ -261,7 +266,8 @@ public class ASRTest {
 				Tensor output = network.forward(input, feat_lens, labelInput, labelLen);
 				output.syncHost();
 				output.showDM();
-				int nextIDX = output2NextIDXTopN(output, idx.length - 1, 3, network.cudaManager);
+				//改为贪心解码(argmax)，取代原来的 topN 随机采样。
+				int nextIDX = output2NextIDXArgMax(output, idx.length - 1);
 				idx = Arrays.copyOf(idx, idx.length + 1);
 				idx[idx.length - 1] = nextIDX;
 				if (nextIDX == tokenizer.eos) {
@@ -275,6 +281,28 @@ public class ASRTest {
 			System.out.println("search:" + tokenizer.decode(awIdx));
 		}
 		scanner.close();
+	}
+
+	/**
+	 * @Description: 贪心解码，直接取当前 token 位置 logits 的 argmax。
+	 * @Author: CloudFly
+	 * @Signature: 天下风云出我辈, 一入代码岁月催
+	 * @Date: 2026-10-17 21:18
+	 */
+	public static int output2NextIDXArgMax(Tensor output, int nextTokenIdx) {
+		if (nextTokenIdx < output.number) {
+			float[] logits = output.getByNumber(nextTokenIdx);
+			int maxIdx = 0;
+			float maxVal = logits[0];
+			for (int i = 1; i < logits.length; i++) {
+				if (logits[i] > maxVal) {
+					maxVal = logits[i];
+					maxIdx = i;
+				}
+			}
+			return maxIdx;
+		}
+		return 0;
 	}
 
 	public static int output2NextIDXTopN(Tensor output, int nextTokenIdx, int topK, CUDAManager cudaManager) {

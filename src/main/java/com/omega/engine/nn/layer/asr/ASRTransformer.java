@@ -30,6 +30,8 @@ public class ASRTransformer extends Layer {
     private int n_layers = 4;
     private Tensor wavMask;
     private Tensor vocMask;
+    private Tensor vocMaskBase;
+    private Tensor vocPadMask;
     private Tensor en_de_mask;
     private Tensor encoder_positions;
     private Tensor decoder_positions;
@@ -81,7 +83,10 @@ public class ASRTransformer extends Layer {
             wavMask = maskKernel.createOutput(number, wavTime, headNum);
             encoder_positions = createPositions(number, wavTime);
             decoder_positions = createPositions(number, vocTime);
-            vocMask = ENTokenizer.triu(number, headNum, vocTime, vocTime, 1.0f);
+            // vocMaskBase 固定存放 triu 因果 mask，vocMask 存放每次 forward 合并后的 mask，vocPadMask 按 labelLen 生成列屏蔽
+            vocMaskBase = ENTokenizer.triu(number, headNum, vocTime, vocTime, 1.0f);
+            vocMask = maskKernel.createOutput(number, vocTime, headNum);
+            vocPadMask = maskKernel.createOutput(number, vocTime, headNum);
             en_de_mask = maskKernel.createUnMaskOutput(number, vocTime, wavTime, headNum);
         }
     }
@@ -115,6 +120,13 @@ public class ASRTransformer extends Layer {
         // TODO Auto-generated method stub
         maskKernel.createHeadMask(wavLen, wavMask, number, wavTime, headNum);
         maskKernel.createHeadUnMask(wavLen, en_de_mask, number, vocTime, wavTime, headNum);
+        // decoder 自注意力 mask 需同时屏蔽 padding(eos 之后)位置，避免 padding token 被作为 key 参与注意力。
+        // 1) createHeadMask 按 labelLen 生成“按列屏蔽”的 padding mask(key 位置 >= labelLen 处为 1)；
+        // 2) vocMask = vocMaskBase(因果) + vocPadMask(列屏蔽)，再 clamp 到 [0,1]，即“因果 or 列屏蔽”。
+        // vocMaskBase 固定不变、vocMask 每次被 add 覆盖，不会跨 batch 累加。
+        maskKernel.createHeadMask(labelLen, vocPadMask, number, vocTime, headNum);
+        Tensor_OP().add(vocMaskBase, vocPadMask, vocMask);
+        Tensor_OP().clamp(vocMask, 0.0f, 1.0f, vocMask);
         encoder.forward(wavInput, wavMask, encoder_positions);
         decoder.forward(labelInput, encoder.getOutput(), vocMask, en_de_mask, decoder_positions);
         this.output = decoder.getOutput();
