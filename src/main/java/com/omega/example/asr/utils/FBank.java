@@ -325,16 +325,20 @@ public class FBank {
         }
         float[] getWindowFunction = getWindowFunction(window_size);
         // System.err.println(JsonUtils.toJson(getWindowFunction));
+        // 预加重 y[n] = x[n] - pre_emphasis * x[n-1]，必须跨帧连续。
+        // 原实现 j==0 写成 (tmp - pre_emphasis*tmp) 几乎把每帧首个样本清零，且 preVal 跨帧不连续，
+        // 导致预加重在帧边界断裂，损伤高频特征。改为逐样本连续预加重。
         float preVal = 0.0f;
         if (remove_dc_offset) {
             for (int i = 0; i < m; i++) {
                 for (int j = 0; j < window_size; j++) {
-                    float tmp = (strided[i][j] - mean[i]);
-                    if (j == 0) {
-                        strided[i][j] = (tmp - pre_emphasis * tmp) * getWindowFunction[j];
-                    } else {
-                        strided[i][j] = ((strided[i][j] - mean[i]) - pre_emphasis * preVal) * getWindowFunction[j];
-                    }
+                    float tmp = strided[i][j] - mean[i];
+//                    if (j == 0) {
+//                        strided[i][j] = (tmp - pre_emphasis * tmp) * getWindowFunction[j];
+//                    } else {
+//                        strided[i][j] = ((strided[i][j] - mean[i]) - pre_emphasis * preVal) * getWindowFunction[j];
+//                    }
+                    strided[i][j] = (tmp - pre_emphasis * preVal) * getWindowFunction[j];
                     preVal = tmp;
                 }
             }

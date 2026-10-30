@@ -89,7 +89,10 @@ public class WAVFBankLoader extends RecursiveAction {
         for (int i = getStart(); i <= getEnd(); i++) {
             String filePath = getPath() + "/" + getNames()[getIndexs()[i]];
             float[] data = FBank.fbank(filePath, getNum_bins(), maxLen, i, getInputLen().data);
-            System.arraycopy(data, 0, getInput().data, i * getInput().channel * getInput().height * getInput().width, getInput().channel * getInput().height * getInput().width);
+            // 每条音频的 fbank 有 maxLen * num_bins 个元素(全部帧)，必须整体拷贝；
+            // 原实现只拷贝了 num_bins(80) 个元素=第一帧，导致其余帧全为 0，模型学不到声学特征。
+//            System.arraycopy(data, 0, getInput().data, i * getInput().channel * getInput().height * getInput().width, getInput().channel * getInput().height * getInput().width);
+            System.arraycopy(data, 0, getInput().data, i * maxLen * getNum_bins(), maxLen * getNum_bins());
         }
     }
 
