@@ -68,8 +68,9 @@ public static void main(String[] args) {
 ##### 图像自编码解码器（VAE） Flux2.1 VAE
 ##### 特征对齐(REPA) Dinov2
 ##### 预测目标速度场 velocity flow matching
-##### 完全开源可复现: 代码、数据、模型、训练策略
-##### 示例图参数：seed=123，cfg=2.0
+##### 完全开源可复现:代码、数据、模型、训练策略
+##### 权重下载
+注：示例图参数 seed=123，cfg=2.0
 |![输入图片说明](images/0_0_T_0.png) |![输入图片说明](images/4_5_T_0.png)| ![输入图片说明](images/5_1_T_0_1.png)  | ![输入图片说明](images/9_2_T_0.png) |   
 |---|---|---|---|
 | A cat  | A dog  | a cat wearing sunglasses | a car runing on the sand.  |  
