@@ -73,9 +73,9 @@ public static void main(String[] args) {
 |![输入图片说明](images/0_0_T_0.png) |![输入图片说明](images/4_5_T_0.png)| ![输入图片说明](images/5_1_T_0_1.png)  | ![输入图片说明](images/9_2_T_0.png) |   
 |---|---|---|---|
 | A cat  | A dog  | a cat wearing sunglasses | a car runing on the sand.  |  
-|![输入图片说明](images/0_0_T_1.png)|![输入图片说明](images/1_5_T_0.png)|![输入图片说明](images/3_4_T_1.png)|![输入图片说明](images/3_3_T_0.png)|
+|![输入图片说明](images/0_0_T_1.png)| ![输入图片说明](images/1_5_T_0.png)|![输入图片说明](images/3_4_T_1.png)|![输入图片说明](images/3_3_T_0.png)|
 | a vibrant anime mountain lands  | a highly detailed anime landscape,big tree on the water, epic sky,golden grass,detailed  | A yellow mushroom grows in the forest | the cambridge shoulder bag |
-|![输入图片说明](images/5_1_T_1.png)|![输入图片说明](images/7_3_T_0.png)|![输入图片说明](images/8_1_T_0.png)|![输入图片说明](images/11_3_T_1.png)|
+|![输入图片说明](images/5_1_T_1.png)|![输入图片说明](images/7_3_T_0.png)|![输入图片说明](images/8_1_T_0.png)|![输入图片说明](images/10_0_T_1.png)|
 | A man with short hair wearing a dark blazer and a patterned scarf is standing in front of a blurred background.  | Half human, half robot, repaired human | A beautiful girl with golden hair, cool and sunny  | Full body shot, a French woman, Photography, French Streets background, backlighting, rim light, Fujifilm. |
 |![输入图片说明](images/15_0_T_1.png)|![输入图片说明](images/16_4_T_111.png)|![输入图片说明](images/13_2_T_0.png)|![输入图片说明](images/14_0_T_1.png)|
 | a photo of a stop sign above a fork | a vibrant plant with star-shaped orange flowers blooming amidst lush green leaves. The plant is potted in a terracotta container that sits on a wooden shelf. Around it, other houseplants contribute to a small indoor garden atmosphere. | Happy dreamy owl monster sitting on a tree branch, colorful glittering particles, forest background, detailed feathers. |Game-Art - An island with different geographical properties and multiple small cities floating in space|
