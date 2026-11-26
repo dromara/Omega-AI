@@ -68,15 +68,16 @@ public static void main(String[] args) {
 ##### 图像自编码解码器（VAE） Flux2.1 VAE
 ##### 特征对齐(REPA) Dinov2
 ##### 预测目标速度场 velocity flow matching
+##### 支持分辨率 512*512
 ##### 完全开源可复现:代码、数据、模型、训练策略
 ##### 权重下载
 注：示例图参数 seed=123，cfg=2.0
 <table>
   <tr>
-    <td width="25%" align="center"><img src="images/0_0_T_0.png" alt="输入图片说明" width="160" height="160"></td>
-    <td width="25%" align="center"><img src="images/4_5_T_0.png" alt="输入图片说明" width="160" height="160"></td>
-    <td width="25%" align="center"><img src="images/5_1_T_0_1.png" alt="输入图片说明" width="160" height="160"></td>
-    <td width="25%" align="center"><img src="images/9_2_T_0.png" alt="输入图片说明" width="160" height="160"></td>
+    <td width="25%" align="center"><img src="images/0_0_T_0.png" alt="输入图片说明" width="200" height="200"></td>
+    <td width="25%" align="center"><img src="images/4_5_T_0.png" alt="输入图片说明" width="200" height="200"></td>
+    <td width="25%" align="center"><img src="images/5_1_T_0_1.png" alt="输入图片说明" width="200" height="200"></td>
+    <td width="25%" align="center"><img src="images/9_2_T_0.png" alt="输入图片说明" width="200" height="200"></td>
   </tr>
   <tr>
     <td><p>A cat</p></td>
@@ -85,10 +86,10 @@ public static void main(String[] args) {
     <td><p>a car runing on the sand.</p></td>
   </tr>
   <tr>
-    <td align="center"><img src="images/0_0_T_1.png" alt="输入图片说明" width="160" height="160"></td>
-    <td align="center"><img src="images/1_5_T_0.png" alt="输入图片说明" width="160" height="160"></td>
-    <td align="center"><img src="images/3_4_T_1.png" alt="输入图片说明" width="160" height="160"></td>
-    <td align="center"><img src="images/3_3_T_0.png" alt="输入图片说明" width="160" height="160"></td>
+    <td align="center"><img src="images/0_0_T_1.png" alt="输入图片说明" width="200" height="200"></td>
+    <td align="center"><img src="images/1_5_T_0.png" alt="输入图片说明" width="200" height="200"></td>
+    <td align="center"><img src="images/3_4_T_1.png" alt="输入图片说明" width="200" height="200"></td>
+    <td align="center"><img src="images/3_3_T_0.png" alt="输入图片说明" width="200" height="200"></td>
   </tr>
   <tr>
     <td><p>a vibrant anime mountain lands</p></td>
@@ -97,10 +98,10 @@ public static void main(String[] args) {
     <td><p>the cambridge shoulder bag</p></td>
   </tr>
   <tr>
-    <td align="center"><img src="images/5_1_T_1.png" alt="输入图片说明" width="160" height="160"></td>
-    <td align="center"><img src="images/7_3_T_0.png" alt="输入图片说明" width="160" height="160"></td>
-    <td align="center"><img src="images/8_1_T_0.png" alt="输入图片说明" width="160" height="160"></td>
-    <td align="center"><img src="images/10_0_T_1.png" alt="输入图片说明" width="160" height="160"></td>
+    <td align="center"><img src="images/5_1_T_1.png" alt="输入图片说明" width="200" height="200"></td>
+    <td align="center"><img src="images/7_3_T_0.png" alt="输入图片说明" width="200" height="200"></td>
+    <td align="center"><img src="images/8_1_T_0.png" alt="输入图片说明" width="200" height="200"></td>
+    <td align="center"><img src="images/10_0_T_1.png" alt="输入图片说明" width="200" height="200"></td>
   </tr>
   <tr>
     <td><p>A man with short hair wearing a dark blazer and a patterned scarf is standing in front of a blurred background.</p></td>
@@ -109,10 +110,10 @@ public static void main(String[] args) {
     <td><p>Full body shot, a French woman, Photography, French Streets background, backlighting, rim light, Fujifilm.</p></td>
   </tr>
   <tr>
-    <td align="center"><img src="images/15_0_T_1.png" alt="输入图片说明" width="160" height="160"></td>
-    <td align="center"><img src="images/16_4_T_1.png" alt="输入图片说明" width="160" height="160"></td>
-    <td align="center"><img src="images/13_2_T_0.png" alt="输入图片说明" width="160" height="160"></td>
-    <td align="center"><img src="images/14_0_T_1.png" alt="输入图片说明" width="160" height="160"></td>
+    <td align="center"><img src="images/15_0_T_1.png" alt="输入图片说明" width="200" height="200"></td>
+    <td align="center"><img src="images/16_4_T_1.png" alt="输入图片说明" width="200" height="200"></td>
+    <td align="center"><img src="images/13_2_T_0.png" alt="输入图片说明" width="200" height="200"></td>
+    <td align="center"><img src="images/14_0_T_1.png" alt="输入图片说明" width="200" height="200"></td>
   </tr>
   <tr>
     <td><p>a photo of a stop sign above a fork</p></td>
