@@ -70,7 +70,7 @@ public static void main(String[] args) {
 ##### 预测目标速度场 velocity flow matching
 ##### 支持分辨率 512*512
 ##### 完全开源可复现:代码、数据、模型、训练策略
-##### 权重下载
+##### 权重下载 ：https://www.modelscope.cn/models/haylee2024/Omega-mini-dit-v2
 注：示例图参数 seed=123，cfg=2.0
 <table>
   <tr>
