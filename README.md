@@ -63,6 +63,23 @@ public static void main(String[] args) {
 
 ## Demo展示
 
+### Omega-mini-dit-v2（260M参数文生图）
+##### 文本编码器 CLIP-GmP-ViT-L-14
+##### 图像自编码解码器（VAE） Flux2.1 VAE
+##### 特征对齐(REPA) Dinov2
+##### 预测目标速度场 velocity flow matching
+##### 完全开源可复现: 代码、数据、模型、训练策略
+##### 示例图参数：seed=123，cfg=2.0
+|![输入图片说明](images/0_0_T_0.png) |![输入图片说明](images/4_5_T_0.png)| ![输入图片说明](images/5_1_T_0_1.png)  | ![输入图片说明](images/9_2_T_0.png) |   
+|---|---|---|---|
+| A cat  | A dog  | a cat wearing sunglasses | a car runing on the sand.  |  
+|![输入图片说明](images/0_0_T_1.png)|![输入图片说明](images/1_5_T_0.png)|![输入图片说明](images/3_4_T_1.png)|![输入图片说明](images/3_3_T_0.png)|
+| a vibrant anime mountain lands  | a highly detailed anime landscape,big tree on the water, epic sky,golden grass,detailed  | A yellow mushroom grows in the forest | the cambridge shoulder bag |
+|![输入图片说明](images/5_1_T_1.png)|![输入图片说明](images/7_3_T_0.png)|![输入图片说明](images/8_1_T_0.png)|![输入图片说明](images/11_3_T_1.png)|
+| A man with short hair wearing a dark blazer and a patterned scarf is standing in front of a blurred background.  | Half human, half robot, repaired human | A beautiful girl with golden hair, cool and sunny  | Full body shot, a French woman, Photography, French Streets background, backlighting, rim light, Fujifilm. |
+|![输入图片说明](images/15_0_T_1.png)|![输入图片说明](images/16_4_T_111.png)|![输入图片说明](images/13_2_T_0.png)|![输入图片说明](images/14_0_T_1.png)|
+| a photo of a stop sign above a fork | a vibrant plant with star-shaped orange flowers blooming amidst lush green leaves. The plant is potted in a terracotta container that sits on a wooden shelf. Around it, other houseplants contribute to a small indoor garden atmosphere. | Happy dreamy owl monster sitting on a tree branch, colorful glittering particles, forest background, detailed feathers. |Game-Art - An island with different geographical properties and multiple small cities floating in space|
+
 ### Omega-mini-dit（130M参数文生图）
 #### [基于dit_b/1+va-vae+clip+repa+sprint+rms](https://gitee.com/dromara/omega-ai#omega-mini-dit%E6%96%87%E7%94%9F%E5%9B%BE)
 #### [OmegaDiT pytorch版本：https://github.com/yongchuan/OmegaDiT](https://github.com/yongchuan/OmegaDiT)
